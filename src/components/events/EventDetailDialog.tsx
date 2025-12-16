@@ -20,7 +20,7 @@ interface EventDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, updates: Partial<Event>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onDuplicate: (id: string) => Promise<void>;
+  onDuplicate: (id: string, newDate?: Date) => Promise<void>;
   isPending?: boolean;
 }
 
@@ -37,12 +37,15 @@ export function EventDetailDialog({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [time, setTime] = useState('');
   const [timeTbc, setTimeTbc] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateDate, setDuplicateDate] = useState<Date | undefined>();
 
   useEffect(() => {
     if (event) {
       setEditedEvent(event);
       const eventDate = new Date(event.start_time);
       setSelectedDate(eventDate);
+      setDuplicateDate(eventDate);
       
       // Check if time_tbc is set, otherwise try to detect from time
       const isTbc = (event as any).time_tbc === true;
@@ -84,7 +87,8 @@ export function EventDetailDialog({
 
   const handleDuplicate = async () => {
     if (!event) return;
-    await onDuplicate(event.id);
+    await onDuplicate(event.id, duplicateDate);
+    setDuplicateDialogOpen(false);
     onOpenChange(false);
   };
 
@@ -280,14 +284,55 @@ export function EventDetailDialog({
               {isPending ? 'Saving...' : 'Save Changes'}
             </Button>
             
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={handleDuplicate}
-              title="Duplicate event"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
+            <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  title="Duplicate event"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Duplicate Event</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Choose a date for the duplicated event. The time and all other details will be copied.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                  <Label className="mb-2 block">New Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !duplicateDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {duplicateDate ? format(duplicateDate, "PPP") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={duplicateDate}
+                        onSelect={setDuplicateDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDuplicate}>Duplicate</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             
             <AlertDialog>
               <AlertDialogTrigger asChild>
