@@ -108,6 +108,7 @@ export function useInvoices() {
     invoices: invoicesQuery.data ?? [],
     isLoading: invoicesQuery.isLoading,
     error: invoicesQuery.error,
+    refetch: invoicesQuery.refetch,
     createInvoice,
     updateInvoice,
     deleteInvoice,
