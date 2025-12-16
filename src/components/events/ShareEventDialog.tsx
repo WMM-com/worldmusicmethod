@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSharedEvents } from '@/hooks/useSharedEvents';
 import { Share2, X, UserCheck, Eye, EyeOff } from 'lucide-react';
 import { Event } from '@/types/database';
@@ -14,10 +15,13 @@ interface ShareEventDialogProps {
   trigger?: React.ReactNode;
 }
 
+type FeeVisibilityOption = 'hide' | 'show' | 'custom';
+
 export function ShareEventDialog({ event, trigger }: ShareEventDialogProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
-  const [canSeeFee, setCanSeeFee] = useState(false);
+  const [feeVisibility, setFeeVisibility] = useState<FeeVisibilityOption>('hide');
+  const [customFee, setCustomFee] = useState<number>(0);
   
   const { shareEvent, unshareEvent, updateShare, getEventShares } = useSharedEvents();
   const shares = getEventShares(event.id);
@@ -28,11 +32,13 @@ export function ShareEventDialog({ event, trigger }: ShareEventDialogProps) {
     await shareEvent.mutateAsync({
       eventId: event.id,
       email: email.trim().toLowerCase(),
-      canSeeFee,
+      canSeeFee: feeVisibility !== 'hide',
+      customFee: feeVisibility === 'custom' ? customFee : undefined,
     });
     
     setEmail('');
-    setCanSeeFee(false);
+    setFeeVisibility('hide');
+    setCustomFee(0);
   };
 
   const handleRemoveShare = (shareId: string) => {
@@ -43,6 +49,10 @@ export function ShareEventDialog({ event, trigger }: ShareEventDialogProps) {
 
   const handleToggleFeeVisibility = (shareId: string, currentValue: boolean) => {
     updateShare.mutate({ shareId, canSeeFee: !currentValue });
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
   };
 
   return (
@@ -69,6 +79,7 @@ export function ShareEventDialog({ event, trigger }: ShareEventDialogProps) {
               {event.venue_name && `${event.venue_name} • `}
               {new Date(event.start_time).toLocaleDateString()}
             </p>
+            <p className="text-sm font-medium mt-1">Your fee: {formatCurrency(event.fee)}</p>
           </div>
 
           {/* Add new share */}
@@ -83,20 +94,41 @@ export function ShareEventDialog({ event, trigger }: ShareEventDialogProps) {
               />
             </div>
             
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="fee-visibility" className="text-sm font-medium">
-                  Show Fee
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Allow this bandmate to see the event fee
-                </p>
-              </div>
-              <Switch
-                id="fee-visibility"
-                checked={canSeeFee}
-                onCheckedChange={setCanSeeFee}
-              />
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Fee Visibility</Label>
+              <RadioGroup value={feeVisibility} onValueChange={(v) => setFeeVisibility(v as FeeVisibilityOption)}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="hide" id="hide" />
+                  <Label htmlFor="hide" className="text-sm font-normal cursor-pointer">
+                    Hide fee
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="show" id="show" />
+                  <Label htmlFor="show" className="text-sm font-normal cursor-pointer">
+                    Show actual fee ({formatCurrency(event.fee)})
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="custom" id="custom" />
+                  <Label htmlFor="custom" className="text-sm font-normal cursor-pointer">
+                    Show a different fee
+                  </Label>
+                </div>
+              </RadioGroup>
+              
+              {feeVisibility === 'custom' && (
+                <div className="ml-6 space-y-2">
+                  <Label className="text-sm text-muted-foreground">Custom fee to display</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={customFee}
+                    onChange={(e) => setCustomFee(parseFloat(e.target.value) || 0)}
+                    className="max-w-[150px]"
+                  />
+                </div>
+              )}
             </div>
             
             <Button 
@@ -173,7 +205,7 @@ export function ShareEventDialog({ event, trigger }: ShareEventDialogProps) {
             <p className="font-medium mb-1">How it works:</p>
             <ul className="list-disc list-inside space-y-1">
               <li>Bandmates receive a read-only view of this event</li>
-              <li>You control whether they can see the fee</li>
+              <li>You control whether they see the fee (or a different amount)</li>
               <li>They can acknowledge to confirm they've seen the details</li>
               <li>If you update the event, they'll need to re-acknowledge</li>
             </ul>

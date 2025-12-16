@@ -496,7 +496,12 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      event_status: "pending" | "confirmed" | "completed" | "cancelled"
+      event_status:
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "cancelled"
+        | "pencilled"
       event_type:
         | "gig"
         | "session"
@@ -641,7 +646,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      event_status: ["pending", "confirmed", "completed", "cancelled"],
+      event_status: [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "pencilled",
+      ],
       event_type: ["gig", "session", "lesson", "rehearsal", "meeting", "other"],
       expense_category: [
         "travel",
