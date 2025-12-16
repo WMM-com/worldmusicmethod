@@ -380,8 +380,11 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={3}
-              placeholder="Payment terms, bank details, thank you message..."
+              placeholder="e.g. Interest will be charged at 2% per month on overdue invoices. Payment via bank transfer preferred."
             />
+            <p className="text-xs text-muted-foreground">
+              Add late payment terms, bank details, or thank you message
+            </p>
           </div>
 
           {/* Submit */}
