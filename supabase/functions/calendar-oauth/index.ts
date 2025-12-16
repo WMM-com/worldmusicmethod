@@ -9,8 +9,24 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Allowed providers for validation
+const ALLOWED_PROVIDERS = ["google", "outlook", "yahoo", "apple"] as const;
+type CalendarProvider = typeof ALLOWED_PROVIDERS[number];
+
+// Allowed actions for validation
+const ALLOWED_ACTIONS = ["authorize", "callback", "disconnect"] as const;
+type OAuthAction = typeof ALLOWED_ACTIONS[number];
+
+function isValidProvider(value: unknown): value is CalendarProvider {
+  return typeof value === "string" && ALLOWED_PROVIDERS.includes(value as CalendarProvider);
+}
+
+function isValidAction(value: unknown): value is OAuthAction {
+  return typeof value === "string" && ALLOWED_ACTIONS.includes(value as OAuthAction);
+}
+
 // OAuth configs for each provider
-const getOAuthConfig = (provider: string) => {
+const getOAuthConfig = (provider: CalendarProvider) => {
   switch (provider) {
     case "google":
       return {
@@ -44,8 +60,6 @@ const getOAuthConfig = (provider: string) => {
         clientSecret: Deno.env.get("APPLE_CLIENT_SECRET"),
         scopes: ["name", "email"],
       };
-    default:
-      throw new Error("Unsupported provider");
   }
 };
 
@@ -61,9 +75,20 @@ serve(async (req) => {
     
     console.log(`Calendar OAuth action: ${action}, provider: ${provider}`);
 
+    // Validate action parameter
+    if (!isValidAction(action)) {
+      console.error("Invalid action:", action);
+      return new Response(JSON.stringify({ error: "Invalid request" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "authorize") {
-      if (!provider) {
-        return new Response(JSON.stringify({ error: "Invalid request" }), {
+      // Validate provider for authorize action
+      if (!isValidProvider(provider)) {
+        console.error("Invalid provider:", provider);
+        return new Response(JSON.stringify({ error: "Invalid calendar provider" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -148,6 +173,16 @@ serve(async (req) => {
       }
 
       const { userId, provider: stateProvider } = stateData;
+      
+      // Validate provider from state
+      if (!isValidProvider(stateProvider)) {
+        console.error("Invalid provider in state:", stateProvider);
+        return new Response(
+          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Authentication failed'}, '*'); window.close();</script></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+      
       const config = getOAuthConfig(stateProvider);
       const redirectUri = `${SUPABASE_URL}/functions/v1/calendar-oauth?action=callback&provider=${stateProvider}`;
 
@@ -209,8 +244,10 @@ serve(async (req) => {
     }
 
     if (action === "disconnect") {
-      if (!provider) {
-        return new Response(JSON.stringify({ error: "Invalid request" }), {
+      // Validate provider for disconnect action
+      if (!isValidProvider(provider)) {
+        console.error("Invalid provider:", provider);
+        return new Response(JSON.stringify({ error: "Invalid calendar provider" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

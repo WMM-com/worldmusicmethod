@@ -9,6 +9,15 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Validation constants
+const ALLOWED_PROVIDERS = ["google", "outlook", "yahoo", "apple"] as const;
+const ALLOWED_ACTIONS = ["sync_event", "fetch_events", "sync_all"] as const;
+type CalendarProvider = typeof ALLOWED_PROVIDERS[number];
+type SyncAction = typeof ALLOWED_ACTIONS[number];
+
+// ISO 8601 date regex for basic validation
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:?\d{2})?)?$/;
+
 interface CalendarEvent {
   id: string;
   title: string;
@@ -17,6 +26,104 @@ interface CalendarEvent {
   venue_name?: string;
   venue_address?: string;
   notes?: string;
+}
+
+// Validation helpers
+function isValidProvider(value: unknown): value is CalendarProvider {
+  return typeof value === "string" && ALLOWED_PROVIDERS.includes(value as CalendarProvider);
+}
+
+function isValidAction(value: unknown): value is SyncAction {
+  return typeof value === "string" && ALLOWED_ACTIONS.includes(value as SyncAction);
+}
+
+function isValidDateString(value: unknown): value is string {
+  return typeof value === "string" && ISO_DATE_REGEX.test(value);
+}
+
+function isValidString(value: unknown, maxLength: number = 1000): value is string {
+  return typeof value === "string" && value.length <= maxLength;
+}
+
+function isValidCalendarEvent(value: unknown): value is CalendarEvent {
+  if (!value || typeof value !== "object") return false;
+  const obj = value as Record<string, unknown>;
+  
+  // Required fields
+  if (!isValidString(obj.id, 100)) return false;
+  if (!isValidString(obj.title, 500)) return false;
+  if (!isValidDateString(obj.start_time)) return false;
+  
+  // Optional fields
+  if (obj.end_time !== undefined && !isValidDateString(obj.end_time)) return false;
+  if (obj.venue_name !== undefined && !isValidString(obj.venue_name, 500)) return false;
+  if (obj.venue_address !== undefined && !isValidString(obj.venue_address, 1000)) return false;
+  if (obj.notes !== undefined && !isValidString(obj.notes, 5000)) return false;
+  
+  return true;
+}
+
+interface SyncRequestBody {
+  action: SyncAction;
+  provider: CalendarProvider;
+  event?: CalendarEvent;
+  startDate?: string;
+  endDate?: string;
+}
+
+function validateSyncRequest(body: unknown): { 
+  valid: true; 
+  data: SyncRequestBody 
+} | { valid: false; error: string } {
+  if (!body || typeof body !== "object") {
+    return { valid: false, error: "Invalid request body" };
+  }
+  
+  const obj = body as Record<string, unknown>;
+  
+  if (!isValidAction(obj.action)) {
+    return { valid: false, error: "Invalid action. Must be one of: sync_event, fetch_events, sync_all" };
+  }
+  
+  if (!isValidProvider(obj.provider)) {
+    return { valid: false, error: "Invalid provider. Must be one of: google, outlook, yahoo, apple" };
+  }
+  
+  // Validate event for sync_event action
+  if (obj.action === "sync_event") {
+    if (!obj.event) {
+      return { valid: false, error: "Event is required for sync_event action" };
+    }
+    if (!isValidCalendarEvent(obj.event)) {
+      return { valid: false, error: "Invalid event data structure" };
+    }
+  }
+  
+  // Validate dates for fetch_events action
+  if (obj.action === "fetch_events") {
+    if (!obj.startDate || !isValidDateString(obj.startDate)) {
+      return { valid: false, error: "Valid startDate is required for fetch_events action" };
+    }
+    if (!obj.endDate || !isValidDateString(obj.endDate)) {
+      return { valid: false, error: "Valid endDate is required for fetch_events action" };
+    }
+  }
+  
+  // startDate is optional for sync_all but if provided must be valid
+  if (obj.startDate !== undefined && !isValidDateString(obj.startDate)) {
+    return { valid: false, error: "Invalid startDate format" };
+  }
+  
+  return { 
+    valid: true, 
+    data: {
+      action: obj.action,
+      provider: obj.provider,
+      event: obj.event as CalendarEvent | undefined,
+      startDate: obj.startDate as string | undefined,
+      endDate: obj.endDate as string | undefined,
+    }
+  };
 }
 
 // Refresh access token if expired
@@ -185,7 +292,7 @@ async function syncAppleCalendar(accessToken: string, event: CalendarEvent, acti
 }
 
 // Fetch events from provider
-async function fetchEventsFromProvider(provider: string, accessToken: string, startDate: string, endDate: string) {
+async function fetchEventsFromProvider(provider: CalendarProvider, accessToken: string, startDate: string, endDate: string) {
   if (provider === "google") {
     const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
     url.searchParams.set("timeMin", startDate);
@@ -265,7 +372,27 @@ serve(async (req) => {
       });
     }
 
-    const { action, provider, event, startDate, endDate } = await req.json();
+    // Parse and validate request body
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    const validation = validateSyncRequest(requestBody);
+    if (!validation.valid) {
+      console.error("Validation error:", validation.error);
+      return new Response(JSON.stringify({ error: validation.error }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    const { action, provider, event, startDate, endDate } = validation.data;
     console.log(`Calendar sync action: ${action}, provider: ${provider}`);
 
     // Get calendar connection
@@ -295,7 +422,7 @@ serve(async (req) => {
 
     let result;
 
-    if (action === "sync_event") {
+    if (action === "sync_event" && event) {
       // Sync a single event to the calendar
       switch (provider) {
         case "google":
@@ -310,13 +437,8 @@ serve(async (req) => {
         case "apple":
           result = await syncAppleCalendar(accessToken, event, "create");
           break;
-        default:
-          return new Response(JSON.stringify({ error: "Invalid request" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
       }
-    } else if (action === "fetch_events") {
+    } else if (action === "fetch_events" && startDate && endDate) {
       // Fetch events from the calendar
       result = await fetchEventsFromProvider(provider, accessToken, startDate, endDate);
     } else if (action === "sync_all") {
