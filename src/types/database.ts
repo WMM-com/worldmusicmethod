@@ -12,6 +12,9 @@ export interface Profile {
   address: string | null;
   bank_details: string | null;
   logo_url: string | null;
+  default_currency: string | null;
+  tax_id: string | null;
+  vat_number: string | null;
   created_at: string;
   updated_at: string;
 }
