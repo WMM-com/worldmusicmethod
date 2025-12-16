@@ -424,6 +424,7 @@ export type Database = {
           acknowledged_at: string | null
           can_see_fee: boolean | null
           created_at: string
+          custom_fee: number | null
           event_id: string
           id: string
           shared_by: string
@@ -435,6 +436,7 @@ export type Database = {
           acknowledged_at?: string | null
           can_see_fee?: boolean | null
           created_at?: string
+          custom_fee?: number | null
           event_id: string
           id?: string
           shared_by: string
@@ -446,6 +448,7 @@ export type Database = {
           acknowledged_at?: string | null
           can_see_fee?: boolean | null
           created_at?: string
+          custom_fee?: number | null
           event_id?: string
           id?: string
           shared_by?: string

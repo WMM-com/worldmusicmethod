@@ -6,16 +6,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useEvents } from '@/hooks/useEvents';
 import { ShareEventDialog } from '@/components/events/ShareEventDialog';
+import { EventCalendarView } from '@/components/events/EventCalendarView';
 import { format } from 'date-fns';
-import { Plus, Calendar, Search, Share2 } from 'lucide-react';
+import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid } from 'lucide-react';
 import { EventType, EventStatus, PaymentStatus } from '@/types/database';
+import { cn } from '@/lib/utils';
+
+type ViewMode = 'list' | 'calendar';
+
+interface FormErrors {
+  title?: string;
+  date?: string;
+}
 
 export default function Events() {
   const { events, isLoading, createEvent } = useEvents();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [timeUnknown, setTimeUnknown] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: '',
     event_type: 'gig' as EventType,
@@ -24,7 +40,7 @@ export default function Events() {
     client_email: '',
     fee: 0,
     currency: 'GBP',
-    start_time: '',
+    time: '',
     status: 'pending' as EventStatus,
     payment_status: 'unpaid' as PaymentStatus,
     notes: '',
@@ -36,12 +52,42 @@ export default function Events() {
     e.client_name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    if (!newEvent.title.trim()) {
+      newErrors.title = 'Event title is required';
+    }
+    
+    if (!selectedDate) {
+      newErrors.date = 'Event date is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateEvent = async () => {
-    if (!newEvent.title || !newEvent.start_time) return;
+    if (!validateForm()) return;
+    
+    // Build the start_time from date and optional time
+    let startTime: Date;
+    if (selectedDate) {
+      startTime = new Date(selectedDate);
+      if (!timeUnknown && newEvent.time) {
+        const [hours, minutes] = newEvent.time.split(':').map(Number);
+        startTime.setHours(hours, minutes, 0, 0);
+      } else {
+        // Default to noon if time unknown (avoids timezone issues with midnight)
+        startTime.setHours(12, 0, 0, 0);
+      }
+    } else {
+      return;
+    }
     
     await createEvent.mutateAsync({
       ...newEvent,
-      start_time: new Date(newEvent.start_time).toISOString(),
+      start_time: startTime.toISOString(),
       venue_address: null,
       client_phone: null,
       arrival_time: null,
@@ -52,6 +98,10 @@ export default function Events() {
     });
     
     setDialogOpen(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
     setNewEvent({
       title: '',
       event_type: 'gig',
@@ -60,15 +110,29 @@ export default function Events() {
       client_email: '',
       fee: 0,
       currency: 'GBP',
-      start_time: '',
+      time: '',
       status: 'pending',
       payment_status: 'unpaid',
       notes: '',
     });
+    setSelectedDate(undefined);
+    setTimeUnknown(false);
+    setErrors({});
   };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+  };
+
+  const getStatusBadgeClass = (status: EventStatus) => {
+    switch (status) {
+      case 'confirmed': return 'bg-success/20 text-success';
+      case 'completed': return 'bg-primary/20 text-primary';
+      case 'pending': return 'bg-warning/20 text-warning';
+      case 'pencilled': return 'bg-secondary text-secondary-foreground';
+      case 'cancelled': return 'bg-destructive/20 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
+    }
   };
 
   return (
@@ -80,68 +144,165 @@ export default function Events() {
             <p className="text-muted-foreground mt-1">Manage your gigs, sessions, and bookings</p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gradient-primary">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Event
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center border rounded-lg p-1 bg-secondary/30">
+              <Button 
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="h-8"
+              >
+                <List className="h-4 w-4" />
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Create New Event</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Event Title *</Label>
-                  <Input value={newEvent.title} onChange={(e) => setNewEvent({...newEvent, title: e.target.value})} placeholder="e.g. Wedding Reception" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Event Type</Label>
-                    <Select value={newEvent.event_type} onValueChange={(v) => setNewEvent({...newEvent, event_type: v as EventType})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gig">Gig</SelectItem>
-                        <SelectItem value="session">Session</SelectItem>
-                        <SelectItem value="lesson">Lesson</SelectItem>
-                        <SelectItem value="rehearsal">Rehearsal</SelectItem>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Date & Time *</Label>
-                    <Input type="datetime-local" value={newEvent.start_time} onChange={(e) => setNewEvent({...newEvent, start_time: e.target.value})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Venue</Label>
-                    <Input value={newEvent.venue_name} onChange={(e) => setNewEvent({...newEvent, venue_name: e.target.value})} placeholder="Venue name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fee (£)</Label>
-                    <Input type="number" value={newEvent.fee} onChange={(e) => setNewEvent({...newEvent, fee: parseFloat(e.target.value) || 0})} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Client Name</Label>
-                    <Input value={newEvent.client_name} onChange={(e) => setNewEvent({...newEvent, client_name: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Client Email</Label>
-                    <Input type="email" value={newEvent.client_email} onChange={(e) => setNewEvent({...newEvent, client_email: e.target.value})} />
-                  </div>
-                </div>
-                <Button className="w-full gradient-primary" onClick={handleCreateEvent} disabled={createEvent.isPending}>
-                  {createEvent.isPending ? 'Creating...' : 'Create Event'}
+              <Button 
+                variant={viewMode === 'calendar' ? 'secondary' : 'ghost'} 
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="h-8"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gradient-primary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Event
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Create New Event</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Event Title *</Label>
+                    <Input 
+                      value={newEvent.title} 
+                      onChange={(e) => {
+                        setNewEvent({...newEvent, title: e.target.value});
+                        if (errors.title) setErrors({...errors, title: undefined});
+                      }} 
+                      placeholder="e.g. Wedding Reception"
+                      className={cn(errors.title && "border-destructive")}
+                    />
+                    {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Event Type</Label>
+                      <Select value={newEvent.event_type} onValueChange={(v) => setNewEvent({...newEvent, event_type: v as EventType})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gig">Gig</SelectItem>
+                          <SelectItem value="session">Session</SelectItem>
+                          <SelectItem value="lesson">Lesson</SelectItem>
+                          <SelectItem value="rehearsal">Rehearsal</SelectItem>
+                          <SelectItem value="meeting">Meeting</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={newEvent.status} onValueChange={(v) => setNewEvent({...newEvent, status: v as EventStatus})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pencilled">Pencilled</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Date *</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !selectedDate && "text-muted-foreground",
+                            errors.date && "border-destructive"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {selectedDate ? format(selectedDate, "PPP") : "Select date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(date) => {
+                            setSelectedDate(date);
+                            if (errors.date) setErrors({...errors, date: undefined});
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Time</Label>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="time-unknown" 
+                          checked={timeUnknown}
+                          onCheckedChange={(checked) => setTimeUnknown(checked === true)}
+                        />
+                        <label htmlFor="time-unknown" className="text-sm text-muted-foreground cursor-pointer">
+                          Time TBD
+                        </label>
+                      </div>
+                    </div>
+                    <Input 
+                      type="time" 
+                      value={newEvent.time} 
+                      onChange={(e) => setNewEvent({...newEvent, time: e.target.value})}
+                      disabled={timeUnknown}
+                      className={cn(timeUnknown && "opacity-50")}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Venue</Label>
+                      <Input value={newEvent.venue_name} onChange={(e) => setNewEvent({...newEvent, venue_name: e.target.value})} placeholder="Venue name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fee (£)</Label>
+                      <Input type="number" value={newEvent.fee} onChange={(e) => setNewEvent({...newEvent, fee: parseFloat(e.target.value) || 0})} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Client Name</Label>
+                      <Input value={newEvent.client_name} onChange={(e) => setNewEvent({...newEvent, client_name: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Client Email</Label>
+                      <Input type="email" value={newEvent.client_email} onChange={(e) => setNewEvent({...newEvent, client_email: e.target.value})} />
+                    </div>
+                  </div>
+                  <Button className="w-full gradient-primary" onClick={handleCreateEvent} disabled={createEvent.isPending}>
+                    {createEvent.isPending ? 'Creating...' : 'Create Event'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="relative max-w-sm">
@@ -151,10 +312,12 @@ export default function Events() {
 
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading events...</div>
+        ) : viewMode === 'calendar' ? (
+          <EventCalendarView events={filteredEvents} />
         ) : filteredEvents.length === 0 ? (
           <Card className="glass">
             <CardContent className="py-12 text-center">
-              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No events yet</h3>
               <p className="text-muted-foreground mb-4">Create your first event to get started</p>
             </CardContent>
@@ -180,12 +343,9 @@ export default function Events() {
                       <div className="text-right space-y-1">
                         <p className="font-semibold">{formatCurrency(event.fee)}</p>
                         <div className="flex gap-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            event.status === 'confirmed' ? 'bg-success/20 text-success' :
-                            event.status === 'completed' ? 'bg-primary/20 text-primary' :
-                            event.status === 'pending' ? 'bg-warning/20 text-warning' :
-                            'bg-destructive/20 text-destructive'
-                          }`}>{event.status}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(event.status)}`}>
+                            {event.status}
+                          </span>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
                             event.payment_status === 'paid' ? 'bg-success/20 text-success' :
                             event.payment_status === 'overdue' ? 'bg-destructive/20 text-destructive' :

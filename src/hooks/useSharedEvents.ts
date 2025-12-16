@@ -127,7 +127,7 @@ export function useSharedEvents() {
 
   // Share an event
   const shareEvent = useMutation({
-    mutationFn: async ({ eventId, email, canSeeFee }: ShareEventParams) => {
+    mutationFn: async ({ eventId, email, canSeeFee, customFee }: ShareEventParams) => {
       if (!user) throw new Error('Not authenticated');
 
       // Check if user exists with this email
@@ -145,6 +145,7 @@ export function useSharedEvents() {
           shared_with: targetProfile?.id || null,
           shared_with_email: email,
           can_see_fee: canSeeFee,
+          custom_fee: customFee ?? null,
         })
         .select()
         .single();
