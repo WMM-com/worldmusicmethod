@@ -176,7 +176,7 @@ async function refreshToken(connection: any): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.error("Token refresh failed");
+      console.error("Token refresh failed: unable to renew credentials");
       return null;
     }
 
@@ -196,7 +196,7 @@ async function refreshToken(connection: any): Promise<string | null> {
 
     return tokens.access_token;
   } catch (error) {
-    console.error("Token refresh error:", error);
+    console.error("Token refresh error: operation failed");
     return null;
   }
 }
@@ -305,7 +305,7 @@ async function fetchEventsFromProvider(provider: CalendarProvider, accessToken: 
     });
     
     if (!response.ok) {
-      console.error("Failed to fetch Google events");
+      console.error("Failed to fetch Google events: calendar API error");
       throw new Error("Sync failed");
     }
     
@@ -328,7 +328,7 @@ async function fetchEventsFromProvider(provider: CalendarProvider, accessToken: 
     });
     
     if (!response.ok) {
-      console.error("Failed to fetch Outlook events");
+      console.error("Failed to fetch Outlook events: calendar API error");
       throw new Error("Sync failed");
     }
     
@@ -365,7 +365,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      console.error("Auth validation failed:", authError);
+      console.error("Auth validation failed: unable to verify user");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -464,8 +464,8 @@ serve(async (req) => {
               syncResult = { skipped: true, provider };
           }
           results.push({ eventId: evt.id, success: true, result: syncResult });
-        } catch (error: any) {
-          console.error("Event sync error:", error);
+        } catch (error) {
+          console.error("Event sync error: failed to sync event");
           results.push({ eventId: evt.id, success: false });
         }
       }
@@ -475,8 +475,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, data: result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
-    console.error("Calendar sync error:", error);
+  } catch (error) {
+    console.error("Calendar sync error: operation failed");
     return new Response(JSON.stringify({ error: "Sync failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
