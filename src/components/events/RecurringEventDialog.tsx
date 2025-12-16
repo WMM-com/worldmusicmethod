@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
-import { CalendarIcon, Repeat } from 'lucide-react';
+import { format } from 'date-fns';
+import { CalendarIcon, Repeat, X } from 'lucide-react';
 import { EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -17,29 +17,33 @@ interface RecurringEventDialogProps {
   isPending: boolean;
 }
 
-interface RecurringEventData {
+export interface RecurringEventData {
   title: string;
   event_type: EventType;
-  venue_name: string;
-  client_name: string;
-  client_email: string;
+  venue_name: string | null;
+  venue_address: string | null;
+  client_name: string | null;
+  client_email: string | null;
+  client_phone: string | null;
   fee: number;
   currency: string;
   start_time: string;
+  end_time: string | null;
+  arrival_time: string | null;
+  notes: string | null;
   status: EventStatus;
   payment_status: PaymentStatus;
+  payment_date: string | null;
+  tags: string[] | null;
   time_tbc: boolean;
   is_recurring: boolean;
 }
 
-type RecurrenceInterval = 'daily' | 'weekly' | 'biweekly' | 'monthly';
-
 export function RecurringEventDialog({ onCreateRecurring, isPending }: RecurringEventDialogProps) {
   const [open, setOpen] = useState(false);
-  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [numberOfEvents, setNumberOfEvents] = useState(2);
+  const [eventDates, setEventDates] = useState<(Date | undefined)[]>([undefined, undefined]);
   const [timeUnknown, setTimeUnknown] = useState(false);
-  const [recurrenceInterval, setRecurrenceInterval] = useState<RecurrenceInterval>('weekly');
-  const [occurrences, setOccurrences] = useState(4);
   
   const [eventDetails, setEventDetails] = useState({
     title: '',
@@ -54,43 +58,41 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
     payment_status: 'unpaid' as PaymentStatus,
   });
 
-  const [errors, setErrors] = useState<{ title?: string; date?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; dates?: string }>({});
 
-  const generateDates = (start: Date, interval: RecurrenceInterval, count: number): Date[] => {
-    const dates: Date[] = [];
-    let currentDate = new Date(start);
+  const handleNumberOfEventsChange = (value: number) => {
+    const newCount = Math.min(20, Math.max(1, value));
+    setNumberOfEvents(newCount);
     
-    for (let i = 0; i < count; i++) {
-      dates.push(new Date(currentDate));
-      
-      switch (interval) {
-        case 'daily':
-          currentDate = addDays(currentDate, 1);
-          break;
-        case 'weekly':
-          currentDate = addWeeks(currentDate, 1);
-          break;
-        case 'biweekly':
-          currentDate = addWeeks(currentDate, 2);
-          break;
-        case 'monthly':
-          currentDate = addMonths(currentDate, 1);
-          break;
+    // Adjust dates array to match new count
+    setEventDates(prev => {
+      if (newCount > prev.length) {
+        return [...prev, ...Array(newCount - prev.length).fill(undefined)];
+      } else {
+        return prev.slice(0, newCount);
       }
-    }
-    
-    return dates;
+    });
+  };
+
+  const updateDate = (index: number, date: Date | undefined) => {
+    setEventDates(prev => {
+      const newDates = [...prev];
+      newDates[index] = date;
+      return newDates;
+    });
+    if (errors.dates) setErrors({ ...errors, dates: undefined });
   };
 
   const validateForm = (): boolean => {
-    const newErrors: { title?: string; date?: string } = {};
+    const newErrors: { title?: string; dates?: string } = {};
     
     if (!eventDetails.title.trim()) {
       newErrors.title = 'Event title is required';
     }
     
-    if (!startDate) {
-      newErrors.date = 'Start date is required';
+    const filledDates = eventDates.filter(d => d !== undefined);
+    if (filledDates.length === 0) {
+      newErrors.dates = 'At least one date is required';
     }
     
     setErrors(newErrors);
@@ -98,11 +100,11 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
   };
 
   const handleCreate = async () => {
-    if (!validateForm() || !startDate) return;
+    if (!validateForm()) return;
     
-    const dates = generateDates(startDate, recurrenceInterval, occurrences);
+    const filledDates = eventDates.filter((d): d is Date => d !== undefined);
     
-    const events: RecurringEventData[] = dates.map((date, index) => {
+    const events: RecurringEventData[] = filledDates.map((date, index) => {
       const eventDate = new Date(date);
       
       if (!timeUnknown && eventDetails.time) {
@@ -113,16 +115,23 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
       }
       
       return {
-        title: occurrences > 1 ? `${eventDetails.title} #${index + 1}` : eventDetails.title,
+        title: filledDates.length > 1 ? `${eventDetails.title} #${index + 1}` : eventDetails.title,
         event_type: eventDetails.event_type,
-        venue_name: eventDetails.venue_name,
-        client_name: eventDetails.client_name,
-        client_email: eventDetails.client_email,
+        venue_name: eventDetails.venue_name || null,
+        venue_address: null,
+        client_name: eventDetails.client_name || null,
+        client_email: eventDetails.client_email || null,
+        client_phone: null,
         fee: eventDetails.fee,
         currency: eventDetails.currency,
         start_time: eventDate.toISOString(),
+        end_time: null,
+        arrival_time: null,
+        notes: null,
         status: eventDetails.status,
         payment_status: eventDetails.payment_status,
+        payment_date: null,
+        tags: null,
         time_tbc: timeUnknown,
         is_recurring: true,
       };
@@ -146,14 +155,13 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
       status: 'confirmed',
       payment_status: 'unpaid',
     });
-    setStartDate(undefined);
+    setEventDates([undefined, undefined]);
+    setNumberOfEvents(2);
     setTimeUnknown(false);
-    setRecurrenceInterval('weekly');
-    setOccurrences(4);
     setErrors({});
   };
 
-  const previewDates = startDate ? generateDates(startDate, recurrenceInterval, Math.min(occurrences, 8)) : [];
+  const filledDatesCount = eventDates.filter(d => d !== undefined).length;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -215,65 +223,64 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
           </div>
 
           <div className="space-y-2">
-            <Label>First Date *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !startDate && "text-muted-foreground",
-                    errors.date && "border-destructive"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(startDate, "PPP") : "Select start date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={startDate}
-                  onSelect={(date) => {
-                    setStartDate(date);
-                    if (errors.date) setErrors({...errors, date: undefined});
-                  }}
-                  initialFocus
-                  className="pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-            {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
+            <Label>Number of Events</Label>
+            <Input 
+              type="number" 
+              min={1}
+              max={20}
+              value={numberOfEvents} 
+              onChange={(e) => handleNumberOfEventsChange(parseInt(e.target.value) || 1)} 
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Repeat Every</Label>
-              <Select value={recurrenceInterval} onValueChange={(v) => setRecurrenceInterval(v as RecurrenceInterval)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Day</SelectItem>
-                  <SelectItem value="weekly">Week</SelectItem>
-                  <SelectItem value="biweekly">2 Weeks</SelectItem>
-                  <SelectItem value="monthly">Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Number of Events</Label>
-              <Input 
-                type="number" 
-                min={1}
-                max={52}
-                value={occurrences} 
-                onChange={(e) => setOccurrences(Math.min(52, Math.max(1, parseInt(e.target.value) || 1)))} 
-              />
+          <div className="space-y-2">
+            <Label>Event Dates *</Label>
+            {errors.dates && <p className="text-sm text-destructive">{errors.dates}</p>}
+            <div className="space-y-2 max-h-48 overflow-y-auto p-1">
+              {eventDates.map((date, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground w-6">#{index + 1}</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "flex-1 justify-start text-left font-normal",
+                          !date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date ? format(date, "EEE, MMM d, yyyy") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(d) => updateDate(index, d)}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {date && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => updateDate(index, undefined)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Time</Label>
+              <Label>Time (applies to all events)</Label>
               <div className="flex items-center space-x-2">
                 <Checkbox 
                   id="recurring-time-unknown" 
@@ -331,28 +338,12 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
             </div>
           </div>
 
-          {previewDates.length > 0 && (
-            <div className="space-y-2 p-3 bg-secondary/30 rounded-lg">
-              <Label className="text-sm">Preview ({occurrences} events)</Label>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
-                {previewDates.map((date, i) => (
-                  <p key={i} className="text-sm text-muted-foreground">
-                    #{i + 1} - {format(date, 'EEE, MMM d, yyyy')}
-                  </p>
-                ))}
-                {occurrences > 8 && (
-                  <p className="text-sm text-muted-foreground italic">...and {occurrences - 8} more</p>
-                )}
-              </div>
-            </div>
-          )}
-
           <Button 
             className="w-full gradient-primary" 
             onClick={handleCreate} 
-            disabled={isPending}
+            disabled={isPending || filledDatesCount === 0}
           >
-            {isPending ? 'Creating...' : `Create ${occurrences} Event${occurrences > 1 ? 's' : ''}`}
+            {isPending ? 'Creating...' : `Create ${filledDatesCount} Event${filledDatesCount !== 1 ? 's' : ''}`}
           </Button>
         </div>
       </DialogContent>
