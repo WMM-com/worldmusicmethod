@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2, Save } from 'lucide-react';
+import { CalendarIcon, Trash2, Save, Copy } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ interface EventDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (id: string, updates: Partial<Event>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onDuplicate: (id: string) => Promise<void>;
   isPending?: boolean;
 }
 
@@ -29,6 +30,7 @@ export function EventDetailDialog({
   onOpenChange, 
   onSave, 
   onDelete,
+  onDuplicate,
   isPending 
 }: EventDetailDialogProps) {
   const [editedEvent, setEditedEvent] = useState<Partial<Event>>({});
@@ -80,7 +82,11 @@ export function EventDetailDialog({
     onOpenChange(false);
   };
 
-  if (!event) return null;
+  const handleDuplicate = async () => {
+    if (!event) return;
+    await onDuplicate(event.id);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -274,9 +280,18 @@ export function EventDetailDialog({
               {isPending ? 'Saving...' : 'Save Changes'}
             </Button>
             
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleDuplicate}
+              title="Duplicate event"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="icon">
+                <Button variant="destructive" size="icon" title="Delete event">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
