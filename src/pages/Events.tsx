@@ -38,6 +38,7 @@ export default function Events() {
     updateEvent,
     softDeleteEvent,
     restoreEvent,
+    duplicateEvent,
     permanentDeleteEvent,
     emptyBin
   } = useEvents();
@@ -458,6 +459,7 @@ export default function Events() {
         onOpenChange={setDetailDialogOpen}
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
+        onDuplicate={async (id) => { await duplicateEvent.mutateAsync(id); }}
         isPending={updateEvent.isPending}
       />
     </AppLayout>

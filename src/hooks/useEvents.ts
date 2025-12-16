@@ -171,6 +171,46 @@ export function useEvents() {
     },
   });
 
+  // Duplicate event
+  const duplicateEvent = useMutation({
+    mutationFn: async (eventId: string) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      // Fetch the original event
+      const { data: original, error: fetchError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      if (!original) throw new Error('Event not found');
+
+      // Create a copy without id, timestamps, and share_token
+      const { id, created_at, updated_at, share_token, deleted_at, ...eventData } = original;
+      
+      const { data, error } = await supabase
+        .from('events')
+        .insert({
+          ...eventData,
+          title: `${eventData.title} (Copy)`,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Event;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Event duplicated');
+    },
+    onError: (error) => {
+      toast.error('Failed to duplicate event: ' + error.message);
+    },
+  });
+
   return {
     events: eventsQuery.data ?? [],
     deletedEvents: deletedEventsQuery.data ?? [],
@@ -181,6 +221,7 @@ export function useEvents() {
     updateEvent,
     softDeleteEvent,
     restoreEvent,
+    duplicateEvent,
     permanentDeleteEvent,
     emptyBin,
   };
