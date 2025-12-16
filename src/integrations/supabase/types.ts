@@ -489,6 +489,16 @@ export type Database = {
     }
     Functions: {
       generate_invoice_number: { Args: { _user_id: string }; Returns: string }
+      get_shared_contract: {
+        Args: { p_share_token: string }
+        Returns: {
+          client_name: string
+          created_at: string
+          id: string
+          signed_at: string
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
