@@ -174,14 +174,12 @@ async function syncOutlookCalendar(accessToken: string, event: CalendarEvent, ac
 
 // Yahoo Calendar sync (via CalDAV)
 async function syncYahooCalendar(accessToken: string, event: CalendarEvent, action: "create" | "update" | "delete") {
-  // Yahoo uses CalDAV which requires different handling
   console.log("Yahoo calendar sync - CalDAV implementation needed");
   return { provider: "yahoo", status: "not_fully_implemented" };
 }
 
 // Apple Calendar sync (via CalDAV)
 async function syncAppleCalendar(accessToken: string, event: CalendarEvent, action: "create" | "update" | "delete") {
-  // Apple uses CalDAV which requires different handling
   console.log("Apple calendar sync - CalDAV implementation needed");
   return { provider: "apple", status: "not_fully_implemented" };
 }
@@ -200,7 +198,8 @@ async function fetchEventsFromProvider(provider: string, accessToken: string, st
     });
     
     if (!response.ok) {
-      throw new Error("Failed to fetch Google events");
+      console.error("Failed to fetch Google events");
+      throw new Error("Sync failed");
     }
     
     const data = await response.json();
@@ -222,7 +221,8 @@ async function fetchEventsFromProvider(provider: string, accessToken: string, st
     });
     
     if (!response.ok) {
-      throw new Error("Failed to fetch Outlook events");
+      console.error("Failed to fetch Outlook events");
+      throw new Error("Sync failed");
     }
     
     const data = await response.json();
@@ -247,7 +247,10 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -255,7 +258,11 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      throw new Error("Invalid token");
+      console.error("Auth validation failed:", authError);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { action, provider, event, startDate, endDate } = await req.json();
@@ -270,12 +277,20 @@ serve(async (req) => {
       .single();
 
     if (connError || !connections) {
-      throw new Error(`No ${provider} calendar connected`);
+      console.error("No calendar connection found for provider:", provider);
+      return new Response(JSON.stringify({ error: "Calendar not connected" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const accessToken = await refreshToken(connections);
     if (!accessToken) {
-      throw new Error("Failed to get valid access token");
+      console.error("Failed to get valid access token");
+      return new Response(JSON.stringify({ error: "Calendar authentication expired" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let result;
@@ -296,7 +311,10 @@ serve(async (req) => {
           result = await syncAppleCalendar(accessToken, event, "create");
           break;
         default:
-          throw new Error(`Unsupported provider: ${provider}`);
+          return new Response(JSON.stringify({ error: "Invalid request" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
       }
     } else if (action === "fetch_events") {
       // Fetch events from the calendar
@@ -325,7 +343,8 @@ serve(async (req) => {
           }
           results.push({ eventId: evt.id, success: true, result: syncResult });
         } catch (error: any) {
-          results.push({ eventId: evt.id, success: false, error: error.message });
+          console.error("Event sync error:", error);
+          results.push({ eventId: evt.id, success: false });
         }
       }
       result = { synced: results.length, results };
@@ -336,8 +355,8 @@ serve(async (req) => {
     });
   } catch (error: any) {
     console.error("Calendar sync error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+    return new Response(JSON.stringify({ error: "Sync failed" }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

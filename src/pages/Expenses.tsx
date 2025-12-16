@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Receipt, Upload, ExternalLink, Loader2, Filter, X, Pencil } from 'lucide-react';
+import { Plus, Trash2, Receipt, Upload, Loader2, Filter, X, Pencil } from 'lucide-react';
+import { ReceiptLink } from '@/components/expenses/ReceiptLink';
 import { Expense } from '@/types/database';
 import { ExpenseCategory } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
@@ -137,11 +138,17 @@ export default function Expenses() {
       return null;
     }
     
-    const { data: urlData } = supabase.storage
+    // Store only the file path - we'll generate signed URLs when displaying
+    return fileName;
+  };
+
+  const getReceiptSignedUrl = async (filePath: string): Promise<string | null> => {
+    const { data, error } = await supabase.storage
       .from('receipts')
-      .getPublicUrl(fileName);
+      .createSignedUrl(filePath, 3600); // 1 hour expiry
     
-    return urlData.publicUrl;
+    if (error) return null;
+    return data.signedUrl;
   };
 
   const onSubmit = async (data: ExpenseFormData) => {
@@ -506,15 +513,7 @@ export default function Expenses() {
                       </TableCell>
                       <TableCell>
                         {expense.receipt_url ? (
-                          <a
-                            href={expense.receipt_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline text-sm"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            View
-                          </a>
+                          <ReceiptLink filePath={expense.receipt_url} />
                         ) : (
                           <span className="text-muted-foreground text-sm">—</span>
                         )}

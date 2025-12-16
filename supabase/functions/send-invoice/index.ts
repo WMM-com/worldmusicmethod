@@ -147,12 +147,18 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     if (!sendGridApiKey) {
       console.error("SENDGRID_API_KEY not configured");
-      throw new Error("SendGrid API key not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -163,7 +169,10 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (authError || !user) {
       console.error("Auth error:", authError);
-      throw new Error("Unauthorized");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { invoiceId, recipientEmail, senderName, senderEmail }: InvoiceEmailRequest = await req.json();
@@ -179,7 +188,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (invoiceError || !invoice) {
       console.error("Invoice fetch error:", invoiceError);
-      throw new Error("Invoice not found");
+      return new Response(
+        JSON.stringify({ error: "Unable to process request" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Fetch user profile for sender details
@@ -224,7 +236,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (!sendGridResponse.ok) {
       const errorText = await sendGridResponse.text();
       console.error("SendGrid error:", sendGridResponse.status, errorText);
-      throw new Error(`SendGrid error: ${sendGridResponse.status}`);
+      return new Response(
+        JSON.stringify({ error: "Email delivery failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     console.log("Email sent successfully");
@@ -255,7 +270,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-invoice function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "Operation failed" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
