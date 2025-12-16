@@ -111,8 +111,10 @@ export default function Events() {
       return;
     }
     
+    const { time, ...eventBase } = newEvent;
+
     await createEvent.mutateAsync({
-      ...newEvent,
+      ...eventBase,
       start_time: startTime.toISOString(),
       venue_address: null,
       client_phone: null,

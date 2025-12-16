@@ -50,10 +50,13 @@ export function useEvents() {
     mutationFn: async (event: Omit<Event, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'share_token'>) => {
       if (!user) throw new Error('Not authenticated');
 
+      // Guard against UI-only fields accidentally being passed (e.g. `time`)
+      const { time: _time, ...eventData } = event as any;
+
       const { data, error } = await supabase
         .from('events')
         .insert({
-          ...event,
+          ...eventData,
           user_id: user.id,
         })
         .select()
@@ -138,9 +141,13 @@ export function useEvents() {
 
   const updateEvent = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Event> & { id: string }) => {
+
+      // Guard against UI-only fields accidentally being passed (and breaking PostgREST)
+      const { time: _time, ...safeUpdates } = updates as any;
+
       const { data, error } = await supabase
         .from('events')
-        .update(updates)
+        .update(safeUpdates)
         .eq('id', id)
         .select()
         .single();
