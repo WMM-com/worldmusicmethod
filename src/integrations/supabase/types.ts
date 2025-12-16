@@ -188,6 +188,7 @@ export type Database = {
           client_phone: string | null
           created_at: string
           currency: string | null
+          deleted_at: string | null
           end_time: string | null
           event_type: Database["public"]["Enums"]["event_type"]
           fee: number | null
@@ -200,6 +201,7 @@ export type Database = {
           start_time: string
           status: Database["public"]["Enums"]["event_status"]
           tags: string[] | null
+          time_tbc: boolean | null
           title: string
           updated_at: string
           user_id: string
@@ -213,6 +215,7 @@ export type Database = {
           client_phone?: string | null
           created_at?: string
           currency?: string | null
+          deleted_at?: string | null
           end_time?: string | null
           event_type?: Database["public"]["Enums"]["event_type"]
           fee?: number | null
@@ -225,6 +228,7 @@ export type Database = {
           start_time: string
           status?: Database["public"]["Enums"]["event_status"]
           tags?: string[] | null
+          time_tbc?: boolean | null
           title: string
           updated_at?: string
           user_id: string
@@ -238,6 +242,7 @@ export type Database = {
           client_phone?: string | null
           created_at?: string
           currency?: string | null
+          deleted_at?: string | null
           end_time?: string | null
           event_type?: Database["public"]["Enums"]["event_type"]
           fee?: number | null
@@ -250,6 +255,7 @@ export type Database = {
           start_time?: string
           status?: Database["public"]["Enums"]["event_status"]
           tags?: string[] | null
+          time_tbc?: boolean | null
           title?: string
           updated_at?: string
           user_id?: string
