@@ -9,12 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useEvents } from '@/hooks/useEvents';
 import { ShareEventDialog } from '@/components/events/ShareEventDialog';
 import { EventCalendarView } from '@/components/events/EventCalendarView';
+import { EventDetailDialog } from '@/components/events/EventDetailDialog';
+import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
 import { format } from 'date-fns';
-import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid } from 'lucide-react';
-import { EventType, EventStatus, PaymentStatus } from '@/types/database';
+import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2 } from 'lucide-react';
+import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 type ViewMode = 'list' | 'calendar';
@@ -25,13 +29,29 @@ interface FormErrors {
 }
 
 export default function Events() {
-  const { events, isLoading, createEvent } = useEvents();
+  const { 
+    events, 
+    deletedEvents,
+    isLoading, 
+    isLoadingDeleted,
+    createEvent, 
+    updateEvent,
+    softDeleteEvent,
+    restoreEvent,
+    permanentDeleteEvent,
+    emptyBin
+  } = useEvents();
+  
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [errors, setErrors] = useState<FormErrors>({});
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [timeUnknown, setTimeUnknown] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
+  
   const [newEvent, setNewEvent] = useState({
     title: '',
     event_type: 'gig' as EventType,
@@ -70,7 +90,6 @@ export default function Events() {
   const handleCreateEvent = async () => {
     if (!validateForm()) return;
     
-    // Build the start_time from date and optional time
     let startTime: Date;
     if (selectedDate) {
       startTime = new Date(selectedDate);
@@ -78,7 +97,6 @@ export default function Events() {
         const [hours, minutes] = newEvent.time.split(':').map(Number);
         startTime.setHours(hours, minutes, 0, 0);
       } else {
-        // Default to noon if time unknown (avoids timezone issues with midnight)
         startTime.setHours(12, 0, 0, 0);
       }
     } else {
@@ -95,7 +113,8 @@ export default function Events() {
       payment_date: null,
       tags: null,
       is_recurring: false,
-    });
+      time_tbc: timeUnknown,
+    } as any);
     
     setDialogOpen(false);
     resetForm();
@@ -124,6 +143,16 @@ export default function Events() {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
   };
 
+  const formatEventTime = (event: Event) => {
+    const date = new Date(event.start_time);
+    const isTbc = (event as any).time_tbc === true;
+    
+    if (isTbc) {
+      return format(date, 'EEE, MMM d, yyyy') + ' • Time TBC';
+    }
+    return format(date, 'EEE, MMM d, yyyy • h:mm a');
+  };
+
   const getStatusBadgeClass = (status: EventStatus) => {
     switch (status) {
       case 'confirmed': return 'bg-success/20 text-success';
@@ -133,6 +162,19 @@ export default function Events() {
       case 'cancelled': return 'bg-destructive/20 text-destructive';
       default: return 'bg-muted text-muted-foreground';
     }
+  };
+
+  const handleEventClick = (event: Event) => {
+    setSelectedEvent(event);
+    setDetailDialogOpen(true);
+  };
+
+  const handleSaveEvent = async (id: string, updates: Partial<Event>) => {
+    await updateEvent.mutateAsync({ id, ...updates });
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    await softDeleteEvent.mutateAsync(id);
   };
 
   return (
@@ -263,7 +305,7 @@ export default function Events() {
                           onCheckedChange={(checked) => setTimeUnknown(checked === true)}
                         />
                         <label htmlFor="time-unknown" className="text-sm text-muted-foreground cursor-pointer">
-                          Time TBD
+                          Time TBC
                         </label>
                       </div>
                     </div>
@@ -305,70 +347,119 @@ export default function Events() {
           </div>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search events..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <TabsList>
+              <TabsTrigger value="active">Active Events</TabsTrigger>
+              <TabsTrigger value="bin" className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                Bin
+                {deletedEvents.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1">
+                    {deletedEvents.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            
+            {activeTab === 'active' && (
+              <div className="relative max-w-sm flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search events..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+              </div>
+            )}
+          </div>
 
-        {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading events...</div>
-        ) : viewMode === 'calendar' ? (
-          <EventCalendarView events={filteredEvents} />
-        ) : filteredEvents.length === 0 ? (
-          <Card className="glass">
-            <CardContent className="py-12 text-center">
-              <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No events yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first event to get started</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="glass hover:bg-secondary/30 transition-colors">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{event.title}</h3>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">{event.event_type}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {event.venue_name && `${event.venue_name} • `}
-                        {format(new Date(event.start_time), 'EEE, MMM d, yyyy • h:mm a')}
-                      </p>
-                      {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right space-y-1">
-                        <p className="font-semibold">{formatCurrency(event.fee)}</p>
-                        <div className="flex gap-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(event.status)}`}>
-                            {event.status}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            event.payment_status === 'paid' ? 'bg-success/20 text-success' :
-                            event.payment_status === 'overdue' ? 'bg-destructive/20 text-destructive' :
-                            'bg-muted text-muted-foreground'
-                          }`}>{event.payment_status}</span>
-                        </div>
-                      </div>
-                      <ShareEventDialog 
-                        event={event}
-                        trigger={
-                          <Button variant="ghost" size="icon" title="Share with bandmates">
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                    </div>
-                  </div>
+          <TabsContent value="active" className="mt-6">
+            {isLoading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading events...</div>
+            ) : viewMode === 'calendar' ? (
+              <EventCalendarView events={filteredEvents} onEventClick={handleEventClick} />
+            ) : filteredEvents.length === 0 ? (
+              <Card className="glass">
+                <CardContent className="py-12 text-center">
+                  <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No events yet</h3>
+                  <p className="text-muted-foreground mb-4">Create your first event to get started</p>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="space-y-3">
+                {filteredEvents.map((event) => (
+                  <Card 
+                    key={event.id} 
+                    className="glass hover:bg-secondary/30 transition-colors cursor-pointer"
+                    onClick={() => handleEventClick(event)}
+                  >
+                    <CardContent className="py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium">{event.title}</h3>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">{event.event_type}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {event.venue_name && `${event.venue_name} • `}
+                            {formatEventTime(event)}
+                          </p>
+                          {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right space-y-1">
+                            <p className="font-semibold">{formatCurrency(event.fee)}</p>
+                            <div className="flex gap-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(event.status)}`}>
+                                {event.status}
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                event.payment_status === 'paid' ? 'bg-success/20 text-success' :
+                                event.payment_status === 'overdue' ? 'bg-destructive/20 text-destructive' :
+                                'bg-muted text-muted-foreground'
+                              }`}>{event.payment_status}</span>
+                            </div>
+                          </div>
+                          <ShareEventDialog 
+                            event={event}
+                            trigger={
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                title="Share with bandmates"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bin" className="mt-6">
+            <DeletedEventsTab
+              deletedEvents={deletedEvents}
+              onRestore={(id) => restoreEvent.mutateAsync(id)}
+              onPermanentDelete={(id) => permanentDeleteEvent.mutateAsync(id)}
+              onEmptyBin={() => emptyBin.mutateAsync()}
+              isLoading={isLoadingDeleted}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
+
+      <EventDetailDialog
+        event={selectedEvent}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onSave={handleSaveEvent}
+        onDelete={handleDeleteEvent}
+        isPending={updateEvent.isPending}
+      />
     </AppLayout>
   );
 }

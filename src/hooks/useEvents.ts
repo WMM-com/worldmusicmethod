@@ -8,6 +8,7 @@ export function useEvents() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Active events (not deleted)
   const eventsQuery = useQuery({
     queryKey: ['events', user?.id],
     queryFn: async () => {
@@ -17,7 +18,27 @@ export function useEvents() {
         .from('events')
         .select('*')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('start_time', { ascending: true });
+
+      if (error) throw error;
+      return data as Event[];
+    },
+    enabled: !!user,
+  });
+
+  // Deleted events (bin)
+  const deletedEventsQuery = useQuery({
+    queryKey: ['events', 'deleted', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
 
       if (error) throw error;
       return data as Event[];
@@ -71,7 +92,46 @@ export function useEvents() {
     },
   });
 
-  const deleteEvent = useMutation({
+  // Soft delete - move to bin
+  const softDeleteEvent = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('events')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Event moved to bin');
+    },
+    onError: (error) => {
+      toast.error('Failed to delete event: ' + error.message);
+    },
+  });
+
+  // Restore from bin
+  const restoreEvent = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('events')
+        .update({ deleted_at: null })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Event restored');
+    },
+    onError: (error) => {
+      toast.error('Failed to restore event: ' + error.message);
+    },
+  });
+
+  // Permanent delete
+  const permanentDeleteEvent = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('events')
@@ -82,20 +142,47 @@ export function useEvents() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
-      toast.success('Event deleted successfully');
+      toast.success('Event permanently deleted');
     },
     onError: (error) => {
       toast.error('Failed to delete event: ' + error.message);
     },
   });
 
+  // Empty bin - delete all soft-deleted events
+  const emptyBin = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('user_id', user.id)
+        .not('deleted_at', 'is', null);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Bin emptied');
+    },
+    onError: (error) => {
+      toast.error('Failed to empty bin: ' + error.message);
+    },
+  });
+
   return {
     events: eventsQuery.data ?? [],
+    deletedEvents: deletedEventsQuery.data ?? [],
     isLoading: eventsQuery.isLoading,
+    isLoadingDeleted: deletedEventsQuery.isLoading,
     error: eventsQuery.error,
     createEvent,
     updateEvent,
-    deleteEvent,
+    softDeleteEvent,
+    restoreEvent,
+    permanentDeleteEvent,
+    emptyBin,
   };
 }
 
@@ -111,6 +198,7 @@ export function useUpcomingEvents(limit = 5) {
         .from('events')
         .select('*')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .gte('start_time', new Date().toISOString())
         .order('start_time', { ascending: true })
         .limit(limit);
