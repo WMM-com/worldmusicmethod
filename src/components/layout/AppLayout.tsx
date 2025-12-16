@@ -40,10 +40,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border-l-2',
                   isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                    ? 'text-secondary border-secondary bg-card'
+                    : 'text-sidebar-foreground hover:text-secondary hover:bg-card border-transparent'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -55,8 +55,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-sm font-medium text-primary">
+            <div className="h-9 w-9 rounded-full bg-secondary/20 flex items-center justify-center">
+              <span className="text-sm font-medium text-secondary">
                 {profile?.full_name?.charAt(0) || profile?.email?.charAt(0) || 'U'}
               </span>
             </div>
@@ -65,7 +65,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <p className="text-xs text-muted-foreground truncate">{profile?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={signOut}>
+          <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-secondary" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-2" />
             Sign out
           </Button>
@@ -99,10 +99,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
+                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors border-l-2',
                     isActive
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:bg-secondary/50'
+                      ? 'text-secondary border-secondary bg-card'
+                      : 'text-muted-foreground hover:text-secondary hover:bg-card border-transparent'
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -110,7 +110,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </Link>
               );
             })}
-            <Button variant="ghost" className="w-full justify-start mt-4 text-muted-foreground" onClick={signOut}>
+            <Button variant="ghost" className="w-full justify-start mt-4 text-muted-foreground hover:text-secondary" onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign out
             </Button>

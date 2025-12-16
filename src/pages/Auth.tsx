@@ -116,7 +116,7 @@ export default function Auth() {
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="font-medium text-primary hover:underline"
+              className="font-medium text-secondary hover:underline"
             >
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>
