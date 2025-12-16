@@ -18,14 +18,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { FileText, Send, Mail, CheckCircle, Plus, Download } from 'lucide-react';
+import { FileText, Send, Mail, CheckCircle, Plus, Download, DollarSign } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { sendInvoiceSchema } from '@/lib/validations';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { downloadInvoicePdf } from '@/lib/generateInvoicePdf';
 import { Invoice } from '@/types/database';
 
 export default function Invoices() {
-  const { invoices, isLoading, refetch } = useInvoices();
+  const { invoices, isLoading, refetch, updateInvoice } = useInvoices();
   const { profile } = useAuth();
   const { toast } = useToast();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
@@ -34,6 +40,22 @@ export default function Invoices() {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+
+  const handleMarkAsPaid = (invoice: Invoice) => {
+    updateInvoice.mutate({
+      id: invoice.id,
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+    });
+  };
+
+  const handleMarkAsUnpaid = (invoice: Invoice) => {
+    updateInvoice.mutate({
+      id: invoice.id,
+      status: 'unpaid',
+      paid_at: null,
+    });
+  };
 
   const formatCurrency = (amount: number, currency: string = 'GBP') => {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(amount);
@@ -153,13 +175,38 @@ export default function Invoices() {
                           Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
                         </p>
                       )}
+                      {invoice.paid_at && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(invoice.amount, invoice.currency)}</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          invoice.status === 'paid' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
-                        }`}>{invoice.status}</span>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className={`text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${
+                              invoice.status === 'paid' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
+                            }`}>
+                              {invoice.status}
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {invoice.status !== 'paid' && (
+                              <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice as Invoice)}>
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            )}
+                            {invoice.status === 'paid' && (
+                              <DropdownMenuItem onClick={() => handleMarkAsUnpaid(invoice as Invoice)}>
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Mark as Unpaid
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
