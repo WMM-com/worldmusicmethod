@@ -10,18 +10,64 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface InvoiceEmailRequest {
-  invoiceId: string;
-  recipientEmail: string;
-  senderName?: string;
-  senderEmail?: string;
-}
-
 interface InvoiceItem {
   description: string;
   quantity: number;
   rate: number;
   amount: number;
+}
+
+// Validation helpers
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidUUID(value: unknown): value is string {
+  return typeof value === "string" && UUID_REGEX.test(value);
+}
+
+function isValidEmail(value: unknown): value is string {
+  return typeof value === "string" && EMAIL_REGEX.test(value) && value.length <= 255;
+}
+
+function isValidString(value: unknown, maxLength: number = 200): value is string {
+  return typeof value === "string" && value.length <= maxLength;
+}
+
+function validateInvoiceRequest(body: unknown): { 
+  valid: true; 
+  data: { invoiceId: string; recipientEmail: string; senderName?: string; senderEmail?: string } 
+} | { valid: false; error: string } {
+  if (!body || typeof body !== "object") {
+    return { valid: false, error: "Invalid request body" };
+  }
+  
+  const { invoiceId, recipientEmail, senderName, senderEmail } = body as Record<string, unknown>;
+  
+  if (!isValidUUID(invoiceId)) {
+    return { valid: false, error: "Invalid invoice ID format" };
+  }
+  
+  if (!isValidEmail(recipientEmail)) {
+    return { valid: false, error: "Invalid recipient email format" };
+  }
+  
+  if (senderName !== undefined && !isValidString(senderName, 100)) {
+    return { valid: false, error: "Invalid sender name" };
+  }
+  
+  if (senderEmail !== undefined && senderEmail !== "" && !isValidEmail(senderEmail)) {
+    return { valid: false, error: "Invalid sender email format" };
+  }
+  
+  return { 
+    valid: true, 
+    data: { 
+      invoiceId, 
+      recipientEmail, 
+      senderName: senderName as string | undefined, 
+      senderEmail: senderEmail as string | undefined 
+    } 
+  };
 }
 
 const formatCurrency = (amount: number, currency: string = "GBP") => {
@@ -175,7 +221,27 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { invoiceId, recipientEmail, senderName, senderEmail }: InvoiceEmailRequest = await req.json();
+    // Parse and validate request body
+    let requestBody: unknown;
+    try {
+      requestBody = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const validation = validateInvoiceRequest(requestBody);
+    if (!validation.valid) {
+      console.error("Validation error:", validation.error);
+      return new Response(
+        JSON.stringify({ error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const { invoiceId, recipientEmail, senderName, senderEmail } = validation.data;
     console.log("Sending invoice:", invoiceId, "to:", recipientEmail);
 
     // Fetch the invoice
