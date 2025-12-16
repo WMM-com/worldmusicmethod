@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useEvents } from '@/hooks/useEvents';
+import { useSharedEvents } from '@/hooks/useSharedEvents';
 import { ShareEventDialog } from '@/components/events/ShareEventDialog';
 import { EventCalendarView } from '@/components/events/EventCalendarView';
 import { EventDetailDialog } from '@/components/events/EventDetailDialog';
@@ -19,7 +20,7 @@ import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
 import { RecurringEventDialog } from '@/components/events/RecurringEventDialog';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { format } from 'date-fns';
-import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText } from 'lucide-react';
+import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText, Users } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +57,8 @@ export default function Events() {
     bulkUpdateStatus,
     bulkDuplicate,
   } = useEvents();
+  
+  const { getEventShares } = useSharedEvents();
   
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -567,6 +570,38 @@ export default function Events() {
                               {formatEventTime(event)}
                             </p>
                             {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
+                            {(() => {
+                              const shares = getEventShares(event.id);
+                              if (shares.length === 0) return null;
+                              return (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <Users className="h-3 w-3 text-muted-foreground" />
+                                  <div className="flex -space-x-1">
+                                    {shares.slice(0, 3).map((share) => (
+                                      <div
+                                        key={share.id}
+                                        className="h-5 w-5 rounded-full bg-primary/20 border border-background flex items-center justify-center"
+                                        title={share.shared_with_email || ''}
+                                      >
+                                        <span className="text-[10px] font-medium text-primary">
+                                          {share.shared_with_email?.charAt(0).toUpperCase()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                    {shares.length > 3 && (
+                                      <div className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center">
+                                        <span className="text-[10px] font-medium text-muted-foreground">
+                                          +{shares.length - 3}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {shares.length === 1 ? '1 bandmate' : `${shares.length} bandmates`}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
