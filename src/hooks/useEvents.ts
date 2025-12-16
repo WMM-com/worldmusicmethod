@@ -73,11 +73,49 @@ export function useEvents() {
 
   // Create multiple recurring events
   const createRecurringEvents = useMutation({
-    mutationFn: async (events: Omit<Event, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'share_token'>[]) => {
+    mutationFn: async (events: Array<{
+      title: string;
+      start_time: string;
+      event_type?: EventType;
+      venue_name?: string | null;
+      venue_address?: string | null;
+      client_name?: string | null;
+      client_email?: string | null;
+      client_phone?: string | null;
+      fee?: number;
+      currency?: string;
+      end_time?: string | null;
+      arrival_time?: string | null;
+      notes?: string | null;
+      status?: EventStatus;
+      payment_status?: PaymentStatus;
+      payment_date?: string | null;
+      tags?: string[] | null;
+      time_tbc?: boolean;
+      is_recurring?: boolean;
+    }>) => {
       if (!user) throw new Error('Not authenticated');
 
       const eventsWithUser = events.map(event => ({
-        ...event,
+        title: event.title,
+        event_type: event.event_type || 'gig',
+        venue_name: event.venue_name || null,
+        venue_address: event.venue_address || null,
+        client_name: event.client_name || null,
+        client_email: event.client_email || null,
+        client_phone: event.client_phone || null,
+        fee: event.fee || 0,
+        currency: event.currency || 'GBP',
+        start_time: event.start_time,
+        end_time: event.end_time || null,
+        arrival_time: event.arrival_time || null,
+        notes: event.notes || null,
+        status: event.status || 'pending',
+        payment_status: event.payment_status || 'unpaid',
+        payment_date: event.payment_date || null,
+        tags: event.tags || null,
+        time_tbc: event.time_tbc || false,
+        is_recurring: event.is_recurring ?? true,
         user_id: user.id,
       }));
 
