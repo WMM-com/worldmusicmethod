@@ -17,7 +17,7 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { format, isPast, parseISO, startOfDay } from 'date-fns';
 import { FileText, Send, Mail, CheckCircle, Plus, Download, DollarSign } from 'lucide-react';
 import {
   DropdownMenu,
@@ -55,6 +55,30 @@ export default function Invoices() {
       status: 'unpaid',
       paid_at: null,
     });
+  };
+
+  const isOverdue = (invoice: Invoice) => {
+    if (invoice.status === 'paid') return false;
+    if (!invoice.due_date) return false;
+    return isPast(startOfDay(parseISO(invoice.due_date)));
+  };
+
+  const getDisplayStatus = (invoice: Invoice) => {
+    if (invoice.status === 'paid') return 'paid';
+    if (isOverdue(invoice)) return 'overdue';
+    return invoice.status;
+  };
+
+  const getStatusStyles = (invoice: Invoice) => {
+    const displayStatus = getDisplayStatus(invoice);
+    switch (displayStatus) {
+      case 'paid':
+        return 'bg-success/20 text-success';
+      case 'overdue':
+        return 'bg-destructive/20 text-destructive';
+      default:
+        return 'bg-warning/20 text-warning';
+    }
   };
 
   const formatCurrency = (amount: number, currency: string = 'GBP') => {
@@ -180,16 +204,19 @@ export default function Invoices() {
                           Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
                         </p>
                       )}
+                      {!invoice.paid_at && invoice.due_date && (
+                        <p className={`text-xs mt-1 ${isOverdue(invoice as Invoice) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                          Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(invoice.amount, invoice.currency)}</p>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className={`text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${
-                              invoice.status === 'paid' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
-                            }`}>
-                              {invoice.status}
+                            <button className={`text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${getStatusStyles(invoice as Invoice)}`}>
+                              {getDisplayStatus(invoice as Invoice)}
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
