@@ -119,6 +119,43 @@ export function useEvents() {
     },
   });
 
+  // Reschedule event (update date while preserving time)
+  const rescheduleEvent = useMutation({
+    mutationFn: async ({ id, newDate }: { id: string; newDate: Date }) => {
+      // First fetch the event to get the original time
+      const { data: original, error: fetchError } = await supabase
+        .from('events')
+        .select('start_time')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+      if (!original) throw new Error('Event not found');
+
+      // Preserve the original time while updating the date
+      const originalDate = new Date(original.start_time);
+      const updatedDate = new Date(newDate);
+      updatedDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+
+      const { data, error } = await supabase
+        .from('events')
+        .update({ start_time: updatedDate.toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as Event;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Event rescheduled');
+    },
+    onError: (error) => {
+      toast.error('Failed to reschedule event: ' + error.message);
+    },
+  });
+
   // Soft delete - move to bin
   const softDeleteEvent = useMutation({
     mutationFn: async (id: string) => {
@@ -343,6 +380,7 @@ export function useEvents() {
     createEvent,
     createRecurringEvents,
     updateEvent,
+    rescheduleEvent,
     softDeleteEvent,
     restoreEvent,
     duplicateEvent,
