@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Receipt, Upload, ExternalLink, Loader2, Filter, X } from 'lucide-react';
+import { Plus, Trash2, Receipt, Upload, ExternalLink, Loader2, Filter, X, Pencil } from 'lucide-react';
+import { Expense } from '@/types/database';
 import { ExpenseCategory } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,9 +46,10 @@ type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 export default function Expenses() {
   const { user } = useAuth();
-  const { expenses, isLoading, createExpense, deleteExpense } = useExpenses();
+  const { expenses, isLoading, createExpense, updateExpense, deleteExpense } = useExpenses();
   const { events } = useEvents();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [uploading, setUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   
@@ -145,26 +147,69 @@ export default function Expenses() {
   const onSubmit = async (data: ExpenseFormData) => {
     setUploading(true);
     
-    let receiptUrl: string | null = null;
+    let receiptUrl: string | null = editingExpense?.receipt_url || null;
     if (receiptFile) {
       receiptUrl = await uploadReceipt(receiptFile);
     }
 
-    await createExpense.mutateAsync({
-      description: data.description,
-      amount: parseFloat(data.amount),
-      category: data.category as ExpenseCategory,
-      date: data.date,
-      event_id: data.event_id || null,
-      notes: data.notes || null,
-      receipt_url: receiptUrl,
-      currency: 'GBP',
-    });
+    if (editingExpense) {
+      await updateExpense.mutateAsync({
+        id: editingExpense.id,
+        description: data.description,
+        amount: parseFloat(data.amount),
+        category: data.category as ExpenseCategory,
+        date: data.date,
+        event_id: data.event_id || null,
+        notes: data.notes || null,
+        receipt_url: receiptUrl,
+      });
+    } else {
+      await createExpense.mutateAsync({
+        description: data.description,
+        amount: parseFloat(data.amount),
+        category: data.category as ExpenseCategory,
+        date: data.date,
+        event_id: data.event_id || null,
+        notes: data.notes || null,
+        receipt_url: receiptUrl,
+        currency: 'GBP',
+      });
+    }
 
     setUploading(false);
     setReceiptFile(null);
+    setEditingExpense(null);
     form.reset();
     setIsDialogOpen(false);
+  };
+
+  const handleEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    form.reset({
+      description: expense.description,
+      amount: String(expense.amount),
+      category: expense.category as ExpenseCategory,
+      date: expense.date,
+      event_id: expense.event_id || '',
+      notes: expense.notes || '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setEditingExpense(null);
+      form.reset({
+        description: '',
+        amount: '',
+        category: 'other',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        event_id: '',
+        notes: '',
+      });
+      setReceiptFile(null);
+    }
+    setIsDialogOpen(open);
   };
 
   const handleDelete = async (id: string) => {
@@ -181,7 +226,7 @@ export default function Expenses() {
             <h1 className="text-2xl font-bold">Expenses</h1>
             <p className="text-muted-foreground">Track and manage your business expenses</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
             <DialogTrigger asChild>
               <Button className="gradient-primary">
                 <Plus className="h-4 w-4 mr-2" />
@@ -190,7 +235,7 @@ export default function Expenses() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Add New Expense</DialogTitle>
+                <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -243,7 +288,7 @@ export default function Expenses() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select category" />
@@ -303,12 +348,12 @@ export default function Expenses() {
                   />
 
                   <div>
-                    <FormLabel>Receipt (Optional)</FormLabel>
+                    <FormLabel>Receipt {editingExpense?.receipt_url ? '(Current receipt exists)' : '(Optional)'}</FormLabel>
                     <div className="mt-2">
                       <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
                         <Upload className="h-5 w-5 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">
-                          {receiptFile ? receiptFile.name : 'Upload receipt image'}
+                          {receiptFile ? receiptFile.name : 'Upload new receipt image'}
                         </span>
                         <input
                           type="file"
@@ -327,7 +372,7 @@ export default function Expenses() {
                         Saving...
                       </>
                     ) : (
-                      'Add Expense'
+                      editingExpense ? 'Save Changes' : 'Add Expense'
                     )}
                   </Button>
                 </form>
@@ -475,30 +520,40 @@ export default function Expenses() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Expense</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete this expense? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(expense.id)}
-                                className="bg-destructive hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => handleEdit(expense)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Expense</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this expense? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(expense.id)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
