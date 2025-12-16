@@ -1,4 +1,4 @@
-export type EventStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+export type EventStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'pencilled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'overdue';
 export type EventType = 'gig' | 'session' | 'lesson' | 'rehearsal' | 'meeting' | 'other';
 export type ExpenseCategory = 'travel' | 'equipment' | 'food' | 'accommodation' | 'marketing' | 'software' | 'other';
