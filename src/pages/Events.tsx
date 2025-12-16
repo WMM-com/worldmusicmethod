@@ -16,6 +16,7 @@ import { ShareEventDialog } from '@/components/events/ShareEventDialog';
 import { EventCalendarView } from '@/components/events/EventCalendarView';
 import { EventDetailDialog } from '@/components/events/EventDetailDialog';
 import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
+import { RecurringEventDialog } from '@/components/events/RecurringEventDialog';
 import { format } from 'date-fns';
 import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2 } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
@@ -34,7 +35,8 @@ export default function Events() {
     deletedEvents,
     isLoading, 
     isLoadingDeleted,
-    createEvent, 
+    createEvent,
+    createRecurringEvents,
     updateEvent,
     softDeleteEvent,
     restoreEvent,
@@ -207,6 +209,11 @@ export default function Events() {
                 <LayoutGrid className="h-4 w-4" />
               </Button>
             </div>
+
+            <RecurringEventDialog 
+              onCreateRecurring={async (events) => { await createRecurringEvents.mutateAsync(events as any); }}
+              isPending={createRecurringEvents.isPending}
+            />
 
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
