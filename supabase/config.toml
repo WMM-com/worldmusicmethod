@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.calendar-sync]
 verify_jwt = true
+
+[functions.send-invoice]
+verify_jwt = false
