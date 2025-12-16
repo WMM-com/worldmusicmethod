@@ -14,7 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Montserrat', 'system-ui', 'sans-serif'],
+        display: ['Marcellus SC', 'serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
