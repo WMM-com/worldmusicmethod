@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, isWithinInterval, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useEvents } from '@/hooks/useEvents';
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, Receipt, Upload, ExternalLink, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Receipt, Upload, ExternalLink, Loader2, Filter, X } from 'lucide-react';
 import { ExpenseCategory } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +50,11 @@ export default function Expenses() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  
+  // Filter state
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
@@ -62,6 +67,41 @@ export default function Expenses() {
       notes: '',
     },
   });
+
+  // Filtered expenses
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      // Category filter
+      if (categoryFilter !== 'all' && expense.category !== categoryFilter) {
+        return false;
+      }
+      
+      // Date range filter
+      if (startDate || endDate) {
+        const expenseDate = parseISO(expense.date);
+        const start = startDate ? startOfDay(parseISO(startDate)) : null;
+        const end = endDate ? endOfDay(parseISO(endDate)) : null;
+        
+        if (start && end) {
+          if (!isWithinInterval(expenseDate, { start, end })) return false;
+        } else if (start && expenseDate < start) {
+          return false;
+        } else if (end && expenseDate > end) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [expenses, categoryFilter, startDate, endDate]);
+
+  const clearFilters = () => {
+    setCategoryFilter('all');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const hasActiveFilters = categoryFilter !== 'all' || startDate || endDate;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
@@ -131,7 +171,7 @@ export default function Expenses() {
     await deleteExpense.mutateAsync(id);
   };
 
-  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
 
   return (
     <AppLayout>
@@ -296,16 +336,76 @@ export default function Expenses() {
           </Dialog>
         </div>
 
+        {/* Filters */}
+        <Card className="glass">
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="h-4 w-4" />
+                <span>Filter by:</span>
+              </div>
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm text-muted-foreground">Category</label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All categories</SelectItem>
+                      {EXPENSE_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-muted-foreground">From</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-muted-foreground">To</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0">
+                  <X className="h-4 w-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <p className="text-sm text-muted-foreground mt-3">
+                Showing {filteredExpenses.length} of {expenses.length} expenses
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Summary Card */}
         <Card className="glass">
           <CardHeader>
-            <CardTitle className="text-lg">Total Expenses</CardTitle>
+            <CardTitle className="text-lg">
+              {hasActiveFilters ? 'Filtered Total' : 'Total Expenses'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold gradient-text">{formatCurrency(totalExpenses)}</p>
           </CardContent>
         </Card>
-
         {/* Expenses Table */}
         <Card className="glass">
           <CardContent className="p-0">
@@ -313,11 +413,17 @@ export default function Expenses() {
               <div className="flex items-center justify-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : expenses.length === 0 ? (
+            ) : filteredExpenses.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-center">
                 <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-1">No expenses yet</h3>
-                <p className="text-muted-foreground text-sm">Start tracking your expenses by adding one above</p>
+                <h3 className="text-lg font-medium mb-1">
+                  {hasActiveFilters ? 'No matching expenses' : 'No expenses yet'}
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  {hasActiveFilters 
+                    ? 'Try adjusting your filters' 
+                    : 'Start tracking your expenses by adding one above'}
+                </p>
               </div>
             ) : (
               <Table>
@@ -332,7 +438,7 @@ export default function Expenses() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenses.map((expense) => (
+                  {filteredExpenses.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(expense.date), 'MMM d, yyyy')}
