@@ -38,6 +38,7 @@ export default function Events() {
     createEvent,
     createRecurringEvents,
     updateEvent,
+    rescheduleEvent,
     softDeleteEvent,
     restoreEvent,
     duplicateEvent,
@@ -428,7 +429,11 @@ export default function Events() {
             {isLoading ? (
               <div className="text-center py-12 text-muted-foreground">Loading events...</div>
             ) : viewMode === 'calendar' ? (
-              <EventCalendarView events={filteredEvents} onEventClick={handleEventClick} />
+              <EventCalendarView 
+                events={filteredEvents} 
+                onEventClick={handleEventClick}
+                onEventReschedule={(eventId, newDate) => rescheduleEvent.mutate({ id: eventId, newDate })}
+              />
             ) : filteredEvents.length === 0 ? (
               <Card className="glass">
                 <CardContent className="py-12 text-center">
