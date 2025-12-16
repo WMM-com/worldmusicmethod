@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { z } from 'zod';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,9 +25,28 @@ import { cn } from '@/lib/utils';
 
 type ViewMode = 'list' | 'calendar';
 
+// Zod schema for event validation
+const eventSchema = z.object({
+  title: z.string().min(1, 'Event title is required').max(200, 'Title must be less than 200 characters'),
+  event_type: z.enum(['gig', 'session', 'lesson', 'rehearsal', 'meeting', 'other']),
+  venue_name: z.string().max(200, 'Venue name too long').optional(),
+  client_name: z.string().max(200, 'Client name too long').optional(),
+  client_email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
+  fee: z.number().nonnegative('Fee cannot be negative').optional(),
+  currency: z.string().length(3),
+  status: z.enum(['pending', 'confirmed', 'completed', 'cancelled', 'pencilled']),
+  payment_status: z.enum(['unpaid', 'paid', 'partial', 'overdue']),
+  notes: z.string().max(1000, 'Notes must be less than 1000 characters').optional(),
+});
+
 interface FormErrors {
   title?: string;
   date?: string;
+  venue_name?: string;
+  client_name?: string;
+  client_email?: string;
+  fee?: string;
+  notes?: string;
 }
 
 export default function Events() {
@@ -83,8 +103,25 @@ export default function Events() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
     
-    if (!newEvent.title.trim()) {
-      newErrors.title = 'Event title is required';
+    // Validate with Zod schema
+    const result = eventSchema.safeParse({
+      title: newEvent.title,
+      event_type: newEvent.event_type,
+      venue_name: newEvent.venue_name || undefined,
+      client_name: newEvent.client_name || undefined,
+      client_email: newEvent.client_email || '',
+      fee: newEvent.fee,
+      currency: newEvent.currency,
+      status: newEvent.status,
+      payment_status: newEvent.payment_status,
+      notes: newEvent.notes || undefined,
+    });
+
+    if (!result.success) {
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof FormErrors;
+        newErrors[field] = err.message;
+      });
     }
     
     if (!selectedDate) {

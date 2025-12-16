@@ -45,7 +45,7 @@ const getOAuthConfig = (provider: string) => {
         scopes: ["name", "email"],
       };
     default:
-      throw new Error(`Unsupported provider: ${provider}`);
+      throw new Error("Unsupported provider");
   }
 };
 
@@ -62,14 +62,19 @@ serve(async (req) => {
     console.log(`Calendar OAuth action: ${action}, provider: ${provider}`);
 
     if (action === "authorize") {
-      // Generate OAuth URL
       if (!provider) {
-        throw new Error("Provider is required");
+        return new Response(JSON.stringify({ error: "Invalid request" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
-        throw new Error("No authorization header");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -77,12 +82,20 @@ serve(async (req) => {
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       
       if (authError || !user) {
-        throw new Error("Invalid token");
+        console.error("Auth validation failed:", authError);
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const config = getOAuthConfig(provider);
       if (!config.clientId) {
-        throw new Error(`${provider} OAuth not configured. Please add ${provider.toUpperCase()}_CLIENT_ID to secrets.`);
+        console.error(`${provider} OAuth not configured`);
+        return new Response(JSON.stringify({ error: "Calendar provider not available" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const redirectUri = `${SUPABASE_URL}/functions/v1/calendar-oauth?action=callback&provider=${provider}`;
@@ -103,24 +116,38 @@ serve(async (req) => {
     }
 
     if (action === "callback") {
-      // Handle OAuth callback
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state");
       const error = url.searchParams.get("error");
 
       if (error) {
-        console.error("OAuth error:", error);
+        console.error("OAuth provider error:", error);
         return new Response(
-          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: '${error}'}, '*'); window.close();</script></body></html>`,
+          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Authentication cancelled'}, '*'); window.close();</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
         );
       }
 
       if (!code || !state) {
-        throw new Error("Missing code or state");
+        console.error("Missing code or state in callback");
+        return new Response(
+          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Authentication failed'}, '*'); window.close();</script></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
       }
 
-      const { userId, provider: stateProvider } = JSON.parse(atob(state));
+      let stateData;
+      try {
+        stateData = JSON.parse(atob(state));
+      } catch {
+        console.error("Invalid state parameter");
+        return new Response(
+          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Authentication failed'}, '*'); window.close();</script></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
+      }
+
+      const { userId, provider: stateProvider } = stateData;
       const config = getOAuthConfig(stateProvider);
       const redirectUri = `${SUPABASE_URL}/functions/v1/calendar-oauth?action=callback&provider=${stateProvider}`;
 
@@ -140,7 +167,10 @@ serve(async (req) => {
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
         console.error("Token exchange failed:", errorText);
-        throw new Error("Failed to exchange code for tokens");
+        return new Response(
+          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Authentication failed'}, '*'); window.close();</script></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
       }
 
       const tokens = await tokenResponse.json();
@@ -166,7 +196,10 @@ serve(async (req) => {
 
       if (dbError) {
         console.error("Database error:", dbError);
-        throw new Error("Failed to save connection");
+        return new Response(
+          `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Connection failed'}, '*'); window.close();</script></body></html>`,
+          { headers: { "Content-Type": "text/html" } }
+        );
       }
 
       return new Response(
@@ -177,12 +210,18 @@ serve(async (req) => {
 
     if (action === "disconnect") {
       if (!provider) {
-        throw new Error("Provider is required");
+        return new Response(JSON.stringify({ error: "Invalid request" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
       const authHeader = req.headers.get("Authorization");
       if (!authHeader) {
-        throw new Error("No authorization header");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -190,7 +229,11 @@ serve(async (req) => {
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       
       if (authError || !user) {
-        throw new Error("Invalid token");
+        console.error("Auth validation failed:", authError);
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const { error: dbError } = await supabase
@@ -200,7 +243,11 @@ serve(async (req) => {
         .eq("provider", provider);
 
       if (dbError) {
-        throw new Error("Failed to disconnect");
+        console.error("Database error:", dbError);
+        return new Response(JSON.stringify({ error: "Disconnection failed" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       return new Response(JSON.stringify({ success: true }), {
@@ -208,11 +255,14 @@ serve(async (req) => {
       });
     }
 
-    throw new Error("Invalid action");
+    return new Response(JSON.stringify({ error: "Invalid request" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error: any) {
     console.error("Calendar OAuth error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
+    return new Response(JSON.stringify({ error: "Operation failed" }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

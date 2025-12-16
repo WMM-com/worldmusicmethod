@@ -40,15 +40,9 @@ export function useCalendarSync() {
     mutationFn: async (provider: CalendarProvider) => {
       if (!session?.access_token) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase.functions.invoke('calendar-oauth', {
-        body: {},
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      // Construct URL with query params
-      const functionUrl = `https://bfwvjhrokucqjcbeufwk.supabase.co/functions/v1/calendar-oauth?action=authorize&provider=${provider}`;
+      // Use environment variable for Supabase URL
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/calendar-oauth?action=authorize&provider=${provider}`;
       
       const response = await fetch(functionUrl, {
         method: 'GET',
@@ -59,7 +53,7 @@ export function useCalendarSync() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get auth URL');
+        throw new Error(errorData.error || 'Failed to connect calendar');
       }
 
       const result = await response.json();
@@ -111,7 +105,8 @@ export function useCalendarSync() {
     mutationFn: async (provider: CalendarProvider) => {
       if (!session?.access_token) throw new Error('Not authenticated');
 
-      const functionUrl = `https://bfwvjhrokucqjcbeufwk.supabase.co/functions/v1/calendar-oauth?action=disconnect&provider=${provider}`;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const functionUrl = `${supabaseUrl}/functions/v1/calendar-oauth?action=disconnect&provider=${provider}`;
       
       const response = await fetch(functionUrl, {
         method: 'GET',
@@ -121,8 +116,7 @@ export function useCalendarSync() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to disconnect');
+        throw new Error('Failed to disconnect calendar');
       }
 
       return response.json();
