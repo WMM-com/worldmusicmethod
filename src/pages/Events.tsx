@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { z } from 'zod';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,21 +22,9 @@ import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, 
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
-type ViewMode = 'list' | 'calendar';
+import { eventSchema } from '@/lib/validations';
 
-// Zod schema for event validation
-const eventSchema = z.object({
-  title: z.string().min(1, 'Event title is required').max(200, 'Title must be less than 200 characters'),
-  event_type: z.enum(['gig', 'session', 'lesson', 'rehearsal', 'meeting', 'other']),
-  venue_name: z.string().max(200, 'Venue name too long').optional(),
-  client_name: z.string().max(200, 'Client name too long').optional(),
-  client_email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
-  fee: z.number().nonnegative('Fee cannot be negative').optional(),
-  currency: z.string().length(3),
-  status: z.enum(['pending', 'confirmed', 'completed', 'cancelled', 'pencilled']),
-  payment_status: z.enum(['unpaid', 'paid', 'partial', 'overdue']),
-  notes: z.string().max(1000, 'Notes must be less than 1000 characters').optional(),
-});
+type ViewMode = 'list' | 'calendar';
 
 interface FormErrors {
   title?: string;

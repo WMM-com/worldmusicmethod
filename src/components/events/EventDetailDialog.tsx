@@ -13,6 +13,18 @@ import { format } from 'date-fns';
 import { CalendarIcon, Trash2, Save, Copy } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { eventSchema } from '@/lib/validations';
+
+interface FormErrors {
+  title?: string;
+  venue_name?: string;
+  venue_address?: string;
+  client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  fee?: string;
+  notes?: string;
+}
 
 interface EventDetailDialogProps {
   event: Event | null;
@@ -39,6 +51,7 @@ export function EventDetailDialog({
   const [timeTbc, setTimeTbc] = useState(false);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateDate, setDuplicateDate] = useState<Date | undefined>();
+  const [errors, setErrors] = useState<FormErrors>({});
 
   useEffect(() => {
     if (event) {
@@ -46,6 +59,7 @@ export function EventDetailDialog({
       const eventDate = new Date(event.start_time);
       setSelectedDate(eventDate);
       setDuplicateDate(eventDate);
+      setErrors({});
       
       // Check if time_tbc is set, otherwise try to detect from time
       const isTbc = (event as any).time_tbc === true;
@@ -59,8 +73,41 @@ export function EventDetailDialog({
     }
   }, [event]);
 
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    const result = eventSchema.safeParse({
+      title: editedEvent.title,
+      event_type: editedEvent.event_type,
+      venue_name: editedEvent.venue_name || '',
+      venue_address: editedEvent.venue_address || '',
+      client_name: editedEvent.client_name || '',
+      client_email: editedEvent.client_email || '',
+      client_phone: editedEvent.client_phone || '',
+      fee: editedEvent.fee ?? 0,
+      currency: editedEvent.currency || 'GBP',
+      status: editedEvent.status,
+      payment_status: editedEvent.payment_status,
+      notes: editedEvent.notes || '',
+    });
+
+    if (!result.success) {
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof FormErrors;
+        if (field in newErrors || !newErrors[field]) {
+          newErrors[field] = err.message;
+        }
+      });
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSave = async () => {
     if (!event || !selectedDate) return;
+
+    if (!validateForm()) return;
 
     let startTime = new Date(selectedDate);
     if (!timeTbc && time) {
@@ -103,9 +150,14 @@ export function EventDetailDialog({
             <Label>Event Title *</Label>
             <Input 
               value={editedEvent.title || ''} 
-              onChange={(e) => setEditedEvent({...editedEvent, title: e.target.value})} 
+              onChange={(e) => {
+                setEditedEvent({...editedEvent, title: e.target.value});
+                if (errors.title) setErrors({...errors, title: undefined});
+              }} 
               placeholder="e.g. Wedding Reception"
+              className={errors.title ? 'border-destructive' : ''}
             />
+            {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -234,8 +286,13 @@ export function EventDetailDialog({
               <Input 
                 type="email" 
                 value={editedEvent.client_email || ''} 
-                onChange={(e) => setEditedEvent({...editedEvent, client_email: e.target.value})} 
+                onChange={(e) => {
+                  setEditedEvent({...editedEvent, client_email: e.target.value});
+                  if (errors.client_email) setErrors({...errors, client_email: undefined});
+                }}
+                className={errors.client_email ? 'border-destructive' : ''}
               />
+              {errors.client_email && <p className="text-sm text-destructive">{errors.client_email}</p>}
             </div>
           </div>
 
@@ -268,10 +325,15 @@ export function EventDetailDialog({
             <Label>Notes</Label>
             <Textarea 
               value={editedEvent.notes || ''} 
-              onChange={(e) => setEditedEvent({...editedEvent, notes: e.target.value})} 
+              onChange={(e) => {
+                setEditedEvent({...editedEvent, notes: e.target.value});
+                if (errors.notes) setErrors({...errors, notes: undefined});
+              }} 
               placeholder="Any additional notes..."
               rows={3}
+              className={errors.notes ? 'border-destructive' : ''}
             />
+            {errors.notes && <p className="text-sm text-destructive">{errors.notes}</p>}
           </div>
 
           <div className="flex gap-2 pt-4">
