@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Users } from 'lucide-react';
+import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Users, Receipt } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/events', label: 'Events', icon: Calendar },
   { href: '/shared', label: 'Shared With Me', icon: Users },
   { href: '/invoices', label: 'Invoices', icon: FileText },
+  { href: '/expenses', label: 'Expenses', icon: Receipt },
   { href: '/finances', label: 'Finances', icon: PieChart },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];

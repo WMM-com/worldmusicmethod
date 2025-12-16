@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
 import Invoices from "./pages/Invoices";
 import Finances from "./pages/Finances";
+import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
 import SharedWithMe from "./pages/SharedWithMe";
 import NotFound from "./pages/NotFound";
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
             <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
             <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
+            <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
