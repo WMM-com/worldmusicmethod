@@ -18,7 +18,7 @@ import { EventDetailDialog } from '@/components/events/EventDetailDialog';
 import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
 import { RecurringEventDialog } from '@/components/events/RecurringEventDialog';
 import { format } from 'date-fns';
-import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2 } from 'lucide-react';
+import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +42,10 @@ export default function Events() {
     restoreEvent,
     duplicateEvent,
     permanentDeleteEvent,
-    emptyBin
+    emptyBin,
+    bulkSoftDelete,
+    bulkUpdateStatus,
+    bulkDuplicate,
   } = useEvents();
   
   const [search, setSearch] = useState('');
@@ -54,6 +57,7 @@ export default function Events() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
+  const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
   
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -179,6 +183,48 @@ export default function Events() {
   const handleDeleteEvent = async (id: string) => {
     await softDeleteEvent.mutateAsync(id);
   };
+
+  const toggleEventSelection = (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedEventIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(eventId)) {
+        newSet.delete(eventId);
+      } else {
+        newSet.add(eventId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllEvents = () => {
+    if (selectedEventIds.size === filteredEvents.length) {
+      setSelectedEventIds(new Set());
+    } else {
+      setSelectedEventIds(new Set(filteredEvents.map(e => e.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedEventIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    await bulkSoftDelete.mutateAsync(Array.from(selectedEventIds));
+    clearSelection();
+  };
+
+  const handleBulkDuplicate = async () => {
+    await bulkDuplicate.mutateAsync(Array.from(selectedEventIds));
+    clearSelection();
+  };
+
+  const handleBulkStatusChange = async (status: EventStatus) => {
+    await bulkUpdateStatus.mutateAsync({ ids: Array.from(selectedEventIds), status });
+    clearSelection();
+  };
+
+  const isBulkActionPending = bulkSoftDelete.isPending || bulkDuplicate.isPending || bulkUpdateStatus.isPending;
 
   return (
     <AppLayout>
@@ -393,24 +439,101 @@ export default function Events() {
               </Card>
             ) : (
               <div className="space-y-3">
+                {/* Bulk Actions Toolbar */}
+                {filteredEvents.length > 0 && (
+                  <div className={cn(
+                    "flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border transition-all",
+                    selectedEventIds.size > 0 ? "border-primary" : "border-transparent"
+                  )}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={selectAllEvents}
+                      className="h-8"
+                    >
+                      <CheckSquare className="h-4 w-4 mr-2" />
+                      {selectedEventIds.size === filteredEvents.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                    
+                    {selectedEventIds.size > 0 && (
+                      <>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedEventIds.size} selected
+                        </span>
+                        <div className="h-4 w-px bg-border mx-2" />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleBulkDuplicate}
+                          disabled={isBulkActionPending}
+                          className="h-8"
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </Button>
+                        <Select onValueChange={(v) => handleBulkStatusChange(v as EventStatus)}>
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue placeholder="Set Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pencilled">Pencilled</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={handleBulkDelete}
+                          disabled={isBulkActionPending}
+                          className="h-8"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={clearSelection}
+                          className="h-8 ml-auto"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+                
                 {filteredEvents.map((event) => (
                   <Card 
                     key={event.id} 
-                    className="glass hover:bg-secondary/30 transition-colors cursor-pointer"
+                    className={cn(
+                      "glass hover:bg-secondary/30 transition-colors cursor-pointer",
+                      selectedEventIds.has(event.id) && "ring-2 ring-primary bg-primary/5"
+                    )}
                     onClick={() => handleEventClick(event)}
                   >
                     <CardContent className="py-4">
                       <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium">{event.title}</h3>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">{event.event_type}</span>
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedEventIds.has(event.id)}
+                            onClick={(e) => toggleEventSelection(event.id, e)}
+                            className="h-5 w-5"
+                          />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{event.title}</h3>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">{event.event_type}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {event.venue_name && `${event.venue_name} • `}
+                              {formatEventTime(event)}
+                            </p>
+                            {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {event.venue_name && `${event.venue_name} • `}
-                            {formatEventTime(event)}
-                          </p>
-                          {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right space-y-1">
