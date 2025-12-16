@@ -17,8 +17,9 @@ import { EventCalendarView } from '@/components/events/EventCalendarView';
 import { EventDetailDialog } from '@/components/events/EventDetailDialog';
 import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
 import { RecurringEventDialog } from '@/components/events/RecurringEventDialog';
+import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { format } from 'date-fns';
-import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare } from 'lucide-react';
+import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -66,6 +67,8 @@ export default function Events() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [invoiceEvent, setInvoiceEvent] = useState<Event | null>(null);
   
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -580,6 +583,18 @@ export default function Events() {
                               }`}>{event.payment_status}</span>
                             </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Create invoice"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInvoiceEvent(event);
+                              setInvoiceDialogOpen(true);
+                            }}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
                           <ShareEventDialog 
                             event={event}
                             trigger={
@@ -622,6 +637,12 @@ export default function Events() {
         onDelete={handleDeleteEvent}
         onDuplicate={async (id, newDate) => { await duplicateEvent.mutateAsync({ eventId: id, newDate }); }}
         isPending={updateEvent.isPending}
+      />
+
+      <InvoiceCreateDialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
+        fromEvent={invoiceEvent}
       />
     </AppLayout>
   );

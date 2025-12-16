@@ -10,10 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2, Save, Copy } from 'lucide-react';
+import { CalendarIcon, Trash2, Save, Copy, FileText } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { eventSchema } from '@/lib/validations';
+import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 
 interface FormErrors {
   title?: string;
@@ -52,6 +53,7 @@ export function EventDetailDialog({
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [duplicateDate, setDuplicateDate] = useState<Date | undefined>();
   const [errors, setErrors] = useState<FormErrors>({});
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -346,6 +348,15 @@ export function EventDetailDialog({
               {isPending ? 'Saving...' : 'Save Changes'}
             </Button>
             
+            <Button
+              variant="outline"
+              size="icon"
+              title="Create invoice"
+              onClick={() => setInvoiceDialogOpen(true)}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            
             <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
               <AlertDialogTrigger asChild>
                 <Button 
@@ -416,6 +427,12 @@ export function EventDetailDialog({
               </AlertDialogContent>
             </AlertDialog>
           </div>
+          
+          <InvoiceCreateDialog
+            open={invoiceDialogOpen}
+            onOpenChange={setInvoiceDialogOpen}
+            fromEvent={event}
+          />
         </div>
       </DialogContent>
     </Dialog>

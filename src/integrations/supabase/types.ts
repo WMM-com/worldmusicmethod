@@ -391,36 +391,45 @@ export type Database = {
           bank_details: string | null
           business_name: string | null
           created_at: string
+          default_currency: string | null
           email: string
           full_name: string | null
           id: string
           logo_url: string | null
           phone: string | null
+          tax_id: string | null
           updated_at: string
+          vat_number: string | null
         }
         Insert: {
           address?: string | null
           bank_details?: string | null
           business_name?: string | null
           created_at?: string
+          default_currency?: string | null
           email: string
           full_name?: string | null
           id: string
           logo_url?: string | null
           phone?: string | null
+          tax_id?: string | null
           updated_at?: string
+          vat_number?: string | null
         }
         Update: {
           address?: string | null
           bank_details?: string | null
           business_name?: string | null
           created_at?: string
+          default_currency?: string | null
           email?: string
           full_name?: string | null
           id?: string
           logo_url?: string | null
           phone?: string | null
+          tax_id?: string | null
           updated_at?: string
+          vat_number?: string | null
         }
         Relationships: []
       }

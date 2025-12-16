@@ -17,8 +17,9 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { FileText, Send, Mail, CheckCircle } from 'lucide-react';
+import { FileText, Send, Mail, CheckCircle, Plus } from 'lucide-react';
 import { sendInvoiceSchema } from '@/lib/validations';
+import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 
 interface Invoice {
   id: string;
@@ -26,6 +27,7 @@ interface Invoice {
   client_name: string;
   client_email: string | null;
   amount: number;
+  currency: string;
   status: string;
   sent_at: string | null;
 }
@@ -34,13 +36,14 @@ export default function Invoices() {
   const { invoices, isLoading, refetch } = useInvoices();
   const { toast } = useToast();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+  const formatCurrency = (amount: number, currency: string = 'GBP') => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(amount);
   };
 
   const handleOpenSendDialog = (invoice: Invoice) => {
@@ -109,9 +112,15 @@ export default function Invoices() {
   return (
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Invoices</h1>
-          <p className="text-muted-foreground mt-1">Create and manage your invoices</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Invoices</h1>
+            <p className="text-muted-foreground mt-1">Create and manage your invoices</p>
+          </div>
+          <Button className="gradient-primary" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </Button>
         </div>
 
         {isLoading ? (
@@ -121,7 +130,11 @@ export default function Invoices() {
             <CardContent className="py-12 text-center">
               <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No invoices yet</h3>
-              <p className="text-muted-foreground">Invoices will appear here when you create them from events</p>
+              <p className="text-muted-foreground mb-4">Create your first invoice or generate one from an event</p>
+              <Button className="gradient-primary" onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Invoice
+              </Button>
             </CardContent>
           </Card>
         ) : (
@@ -142,7 +155,7 @@ export default function Invoices() {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(invoice.amount)}</p>
+                        <p className="font-semibold">{formatCurrency(invoice.amount, invoice.currency)}</p>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           invoice.status === 'paid' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
                         }`}>{invoice.status}</span>
@@ -164,6 +177,11 @@ export default function Invoices() {
           </div>
         )}
       </div>
+
+      <InvoiceCreateDialog 
+        open={createDialogOpen} 
+        onOpenChange={setCreateDialogOpen}
+      />
 
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
         <DialogContent>
@@ -202,7 +220,7 @@ export default function Invoices() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Amount</span>
-                  <span className="font-medium">{formatCurrency(selectedInvoice.amount)}</span>
+                  <span className="font-medium">{formatCurrency(selectedInvoice.amount, selectedInvoice.currency)}</span>
                 </div>
               </div>
             )}
