@@ -1,1 +1,7 @@
 project_id = "bfwvjhrokucqjcbeufwk"
+
+[functions.calendar-oauth]
+verify_jwt = false
+
+[functions.calendar-sync]
+verify_jwt = true
