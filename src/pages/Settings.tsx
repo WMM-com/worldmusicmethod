@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
+import { CalendarSettings } from '@/components/settings/CalendarSettings';
 export default function Settings() {
   const { profile, updateProfile } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -70,6 +70,8 @@ export default function Settings() {
             </Button>
           </CardContent>
         </Card>
+
+        <CalendarSettings />
       </div>
     </AppLayout>
   );
