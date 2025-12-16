@@ -214,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      console.error("Auth error:", authError);
+      console.error("Auth error: authentication failed");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -253,7 +253,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (invoiceError || !invoice) {
-      console.error("Invoice fetch error:", invoiceError);
+      console.error("Invoice fetch error: unable to retrieve invoice");
       return new Response(
         JSON.stringify({ error: "Unable to process request" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -300,8 +300,7 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (!sendGridResponse.ok) {
-      const errorText = await sendGridResponse.text();
-      console.error("SendGrid error:", sendGridResponse.status, errorText);
+      console.error("SendGrid error: delivery failed with status", sendGridResponse.status);
       return new Response(
         JSON.stringify({ error: "Email delivery failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -333,8 +332,8 @@ const handler = async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
-    console.error("Error in send-invoice function:", error);
+  } catch (error) {
+    console.error("Error in send-invoice function: operation failed");
     return new Response(
       JSON.stringify({ error: "Operation failed" }),
       {

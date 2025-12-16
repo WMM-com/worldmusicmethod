@@ -107,7 +107,7 @@ serve(async (req) => {
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       
       if (authError || !user) {
-        console.error("Auth validation failed:", authError);
+        console.error("Auth validation failed: unable to verify user");
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -200,8 +200,7 @@ serve(async (req) => {
       });
 
       if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error("Token exchange failed:", errorText);
+        console.error("Token exchange failed: unable to complete OAuth flow");
         return new Response(
           `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Authentication failed'}, '*'); window.close();</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
@@ -230,7 +229,7 @@ serve(async (req) => {
         }, { onConflict: "user_id,provider" });
 
       if (dbError) {
-        console.error("Database error:", dbError);
+        console.error("Database error: failed to store connection");
         return new Response(
           `<html><body><script>window.opener.postMessage({type: 'calendar-oauth-error', error: 'Connection failed'}, '*'); window.close();</script></body></html>`,
           { headers: { "Content-Type": "text/html" } }
@@ -266,7 +265,7 @@ serve(async (req) => {
       const { data: { user }, error: authError } = await supabase.auth.getUser(token);
       
       if (authError || !user) {
-        console.error("Auth validation failed:", authError);
+        console.error("Auth validation failed: unable to verify user");
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -280,7 +279,7 @@ serve(async (req) => {
         .eq("provider", provider);
 
       if (dbError) {
-        console.error("Database error:", dbError);
+        console.error("Database error: failed to disconnect calendar");
         return new Response(JSON.stringify({ error: "Disconnection failed" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -296,8 +295,8 @@ serve(async (req) => {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
-    console.error("Calendar OAuth error:", error);
+  } catch (error) {
+    console.error("Calendar OAuth error: operation failed");
     return new Response(JSON.stringify({ error: "Operation failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
