@@ -459,7 +459,7 @@ export default function Events() {
         onOpenChange={setDetailDialogOpen}
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
-        onDuplicate={async (id) => { await duplicateEvent.mutateAsync(id); }}
+        onDuplicate={async (id, newDate) => { await duplicateEvent.mutateAsync({ eventId: id, newDate }); }}
         isPending={updateEvent.isPending}
       />
     </AppLayout>
