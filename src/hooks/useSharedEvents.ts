@@ -37,6 +37,7 @@ interface ShareEventParams {
   eventId: string;
   email: string;
   canSeeFee: boolean;
+  customFee?: number | null;
 }
 
 export function useSharedEvents() {
