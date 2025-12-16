@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { z } from 'zod';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { FileText, Send, Mail, CheckCircle } from 'lucide-react';
+import { sendInvoiceSchema } from '@/lib/validations';
 
 interface Invoice {
   id: string;
@@ -34,6 +36,7 @@ export default function Invoices() {
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [recipientEmail, setRecipientEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
   const formatCurrency = (amount: number) => {
@@ -43,14 +46,23 @@ export default function Invoices() {
   const handleOpenSendDialog = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setRecipientEmail(invoice.client_email || '');
+    setEmailError(null);
     setSendDialogOpen(true);
   };
 
   const handleSendInvoice = async () => {
-    if (!selectedInvoice || !recipientEmail) {
+    // Validate email with Zod
+    const result = sendInvoiceSchema.safeParse({ recipientEmail });
+    if (!result.success) {
+      setEmailError(result.error.errors[0]?.message || 'Invalid email');
+      return;
+    }
+    setEmailError(null);
+
+    if (!selectedInvoice) {
       toast({
         title: "Error",
-        description: "Please enter a recipient email address",
+        description: "No invoice selected",
         variant: "destructive",
       });
       return;
@@ -80,7 +92,7 @@ export default function Invoices() {
 
       setSendDialogOpen(false);
       setSelectedInvoice(null);
-      setRecipientEmail('');
+      setEmailError(null);
       refetch();
     } catch (error: any) {
       console.error("Error sending invoice:", error);
@@ -174,8 +186,13 @@ export default function Invoices() {
                 type="email"
                 placeholder="client@example.com"
                 value={recipientEmail}
-                onChange={(e) => setRecipientEmail(e.target.value)}
+                onChange={(e) => {
+                  setRecipientEmail(e.target.value);
+                  if (emailError) setEmailError(null);
+                }}
+                className={emailError ? 'border-destructive' : ''}
               />
+              {emailError && <p className="text-sm text-destructive">{emailError}</p>}
             </div>
             {selectedInvoice && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
