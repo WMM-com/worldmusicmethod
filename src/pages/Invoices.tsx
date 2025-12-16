@@ -14,26 +14,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useInvoices } from '@/hooks/useInvoices';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { FileText, Send, Mail, CheckCircle, Plus } from 'lucide-react';
+import { FileText, Send, Mail, CheckCircle, Plus, Download } from 'lucide-react';
 import { sendInvoiceSchema } from '@/lib/validations';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
-
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  client_name: string;
-  client_email: string | null;
-  amount: number;
-  currency: string;
-  status: string;
-  sent_at: string | null;
-}
+import { downloadInvoicePdf } from '@/lib/generateInvoicePdf';
+import { Invoice } from '@/types/database';
 
 export default function Invoices() {
   const { invoices, isLoading, refetch } = useInvoices();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -44,6 +37,14 @@ export default function Invoices() {
 
   const formatCurrency = (amount: number, currency: string = 'GBP') => {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(amount);
+  };
+
+  const handleDownloadPdf = (invoice: Invoice) => {
+    downloadInvoicePdf(invoice, profile);
+    toast({
+      title: "PDF Downloaded",
+      description: `Invoice ${invoice.invoice_number} has been downloaded`,
+    });
   };
 
   const handleOpenSendDialog = (invoice: Invoice) => {
@@ -160,15 +161,26 @@ export default function Invoices() {
                           invoice.status === 'paid' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
                         }`}>{invoice.status}</span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenSendDialog(invoice as Invoice)}
-                        className="flex items-center gap-1"
-                      >
-                        <Send className="h-4 w-4" />
-                        <span className="hidden sm:inline">Send</span>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadPdf(invoice as Invoice)}
+                          className="flex items-center gap-1"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">PDF</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenSendDialog(invoice as Invoice)}
+                          className="flex items-center gap-1"
+                        >
+                          <Send className="h-4 w-4" />
+                          <span className="hidden sm:inline">Send</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
