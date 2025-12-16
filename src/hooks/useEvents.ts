@@ -198,6 +198,92 @@ export function useEvents() {
     },
   });
 
+  // Bulk soft delete
+  const bulkSoftDelete = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('events')
+        .update({ deleted_at: new Date().toISOString() })
+        .in('id', ids)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success(`${ids.length} events moved to bin`);
+    },
+    onError: (error) => {
+      toast.error('Failed to delete events: ' + error.message);
+    },
+  });
+
+  // Bulk update status
+  const bulkUpdateStatus = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: EventStatus }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('events')
+        .update({ status })
+        .in('id', ids)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { ids }) => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success(`${ids.length} events updated`);
+    },
+    onError: (error) => {
+      toast.error('Failed to update events: ' + error.message);
+    },
+  });
+
+  // Bulk duplicate
+  const bulkDuplicate = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      // Fetch all events to duplicate
+      const { data: originals, error: fetchError } = await supabase
+        .from('events')
+        .select('*')
+        .in('id', ids)
+        .eq('user_id', user.id);
+
+      if (fetchError) throw fetchError;
+      if (!originals || originals.length === 0) throw new Error('No events found');
+
+      // Create copies
+      const copies = originals.map(original => {
+        const { id, created_at, updated_at, share_token, deleted_at, ...eventData } = original;
+        return {
+          ...eventData,
+          title: `${eventData.title} (Copy)`,
+          user_id: user.id,
+        };
+      });
+
+      const { data, error } = await supabase
+        .from('events')
+        .insert(copies)
+        .select();
+
+      if (error) throw error;
+      return data as Event[];
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success(`${data.length} events duplicated`);
+    },
+    onError: (error) => {
+      toast.error('Failed to duplicate events: ' + error.message);
+    },
+  });
+
   // Duplicate event
   const duplicateEvent = useMutation({
     mutationFn: async ({ eventId, newDate }: { eventId: string; newDate?: Date }) => {
@@ -262,6 +348,9 @@ export function useEvents() {
     duplicateEvent,
     permanentDeleteEvent,
     emptyBin,
+    bulkSoftDelete,
+    bulkUpdateStatus,
+    bulkDuplicate,
   };
 }
 
