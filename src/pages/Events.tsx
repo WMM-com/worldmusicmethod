@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useEvents } from '@/hooks/useEvents';
+import { ShareEventDialog } from '@/components/events/ShareEventDialog';
 import { format } from 'date-fns';
-import { Plus, Calendar, Search } from 'lucide-react';
+import { Plus, Calendar, Search, Share2 } from 'lucide-react';
 import { EventType, EventStatus, PaymentStatus } from '@/types/database';
 
 export default function Events() {
@@ -161,7 +162,7 @@ export default function Events() {
         ) : (
           <div className="space-y-3">
             {filteredEvents.map((event) => (
-              <Card key={event.id} className="glass hover:bg-secondary/30 transition-colors cursor-pointer">
+              <Card key={event.id} className="glass hover:bg-secondary/30 transition-colors">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
@@ -175,21 +176,31 @@ export default function Events() {
                       </p>
                       {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
                     </div>
-                    <div className="text-right space-y-1">
-                      <p className="font-semibold">{formatCurrency(event.fee)}</p>
-                      <div className="flex gap-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          event.status === 'confirmed' ? 'bg-success/20 text-success' :
-                          event.status === 'completed' ? 'bg-primary/20 text-primary' :
-                          event.status === 'pending' ? 'bg-warning/20 text-warning' :
-                          'bg-destructive/20 text-destructive'
-                        }`}>{event.status}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          event.payment_status === 'paid' ? 'bg-success/20 text-success' :
-                          event.payment_status === 'overdue' ? 'bg-destructive/20 text-destructive' :
-                          'bg-muted text-muted-foreground'
-                        }`}>{event.payment_status}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right space-y-1">
+                        <p className="font-semibold">{formatCurrency(event.fee)}</p>
+                        <div className="flex gap-2">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            event.status === 'confirmed' ? 'bg-success/20 text-success' :
+                            event.status === 'completed' ? 'bg-primary/20 text-primary' :
+                            event.status === 'pending' ? 'bg-warning/20 text-warning' :
+                            'bg-destructive/20 text-destructive'
+                          }`}>{event.status}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            event.payment_status === 'paid' ? 'bg-success/20 text-success' :
+                            event.payment_status === 'overdue' ? 'bg-destructive/20 text-destructive' :
+                            'bg-muted text-muted-foreground'
+                          }`}>{event.payment_status}</span>
+                        </div>
                       </div>
+                      <ShareEventDialog 
+                        event={event}
+                        trigger={
+                          <Button variant="ghost" size="icon" title="Share with bandmates">
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                     </div>
                   </div>
                 </CardContent>

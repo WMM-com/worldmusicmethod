@@ -10,6 +10,7 @@ import Events from "./pages/Events";
 import Invoices from "./pages/Invoices";
 import Finances from "./pages/Finances";
 import Settings from "./pages/Settings";
+import SharedWithMe from "./pages/SharedWithMe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
             <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
             <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
