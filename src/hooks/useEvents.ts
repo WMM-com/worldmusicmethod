@@ -71,6 +71,33 @@ export function useEvents() {
     },
   });
 
+  // Create multiple recurring events
+  const createRecurringEvents = useMutation({
+    mutationFn: async (events: Omit<Event, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'share_token'>[]) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const eventsWithUser = events.map(event => ({
+        ...event,
+        user_id: user.id,
+      }));
+
+      const { data, error } = await supabase
+        .from('events')
+        .insert(eventsWithUser)
+        .select();
+
+      if (error) throw error;
+      return data as Event[];
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      toast.success(`${data.length} recurring events created`);
+    },
+    onError: (error) => {
+      toast.error('Failed to create recurring events: ' + error.message);
+    },
+  });
+
   const updateEvent = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Event> & { id: string }) => {
       const { data, error } = await supabase
@@ -228,6 +255,7 @@ export function useEvents() {
     isLoadingDeleted: deletedEventsQuery.isLoading,
     error: eventsQuery.error,
     createEvent,
+    createRecurringEvents,
     updateEvent,
     softDeleteEvent,
     restoreEvent,
