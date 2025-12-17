@@ -23,6 +23,12 @@ const CURRENCIES = [
   { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
 ];
 
+const TAX_COUNTRIES = [
+  { code: 'UK', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'IE', name: 'Ireland', flag: '🇮🇪' },
+  { code: 'US', name: 'United States', flag: '🇺🇸' },
+];
+
 export default function Settings() {
   const { profile, updateProfile } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -35,6 +41,7 @@ export default function Settings() {
     default_currency: 'GBP',
     tax_id: '',
     vat_number: '',
+    tax_country: '',
   });
 
   // Sync form with profile when profile loads
@@ -49,6 +56,7 @@ export default function Settings() {
         default_currency: profile.default_currency || 'GBP',
         tax_id: profile.tax_id || '',
         vat_number: profile.vat_number || '',
+        tax_country: profile.tax_country || '',
       });
     }
   }, [profile]);
@@ -109,21 +117,43 @@ export default function Settings() {
             <CardDescription>Configure your default currency and tax identifiers for international invoicing</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Default Currency</Label>
-              <Select value={form.default_currency} onValueChange={(v) => setForm({...form, default_currency: v})}>
-                <SelectTrigger className="w-full sm:w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map(c => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.symbol} {c.code} - {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">This will be pre-selected when creating new invoices and events</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Default Currency</Label>
+                <Select value={form.default_currency} onValueChange={(v) => setForm({...form, default_currency: v})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.symbol} {c.code} - {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Pre-selected for new invoices/events</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Tax Residency Country</Label>
+                <Select 
+                  value={form.tax_country || "none"} 
+                  onValueChange={(v) => setForm({...form, tax_country: v === "none" ? "" : v})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not set</SelectItem>
+                    {TAX_COUNTRIES.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.flag} {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Used for tax estimation on Finances page</p>
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

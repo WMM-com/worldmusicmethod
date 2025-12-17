@@ -400,6 +400,7 @@ export type Database = {
           id: string
           logo_url: string | null
           phone: string | null
+          tax_country: string | null
           tax_id: string | null
           updated_at: string
           vat_number: string | null
@@ -415,6 +416,7 @@ export type Database = {
           id: string
           logo_url?: string | null
           phone?: string | null
+          tax_country?: string | null
           tax_id?: string | null
           updated_at?: string
           vat_number?: string | null
@@ -430,6 +432,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           phone?: string | null
+          tax_country?: string | null
           tax_id?: string | null
           updated_at?: string
           vat_number?: string | null

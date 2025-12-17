@@ -15,6 +15,7 @@ export interface Profile {
   default_currency: string | null;
   tax_id: string | null;
   vat_number: string | null;
+  tax_country: string | null;
   created_at: string;
   updated_at: string;
 }
