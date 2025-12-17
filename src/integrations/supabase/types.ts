@@ -193,6 +193,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           fee: number | null
           id: string
+          is_publicly_shared: boolean | null
           is_recurring: boolean | null
           notes: string | null
           payment_date: string | null
@@ -220,6 +221,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           fee?: number | null
           id?: string
+          is_publicly_shared?: boolean | null
           is_recurring?: boolean | null
           notes?: string | null
           payment_date?: string | null
@@ -247,6 +249,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           fee?: number | null
           id?: string
+          is_publicly_shared?: boolean | null
           is_recurring?: boolean | null
           notes?: string | null
           payment_date?: string | null
