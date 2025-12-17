@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Trash2, Link2, Unlink, Download } from 'lucide-react';
+import { ArrowLeft, Trash2, Link2, Unlink, Download, RotateCcw, RotateCw } from 'lucide-react';
 import { StageIcon } from './StageIcon';
 import { cn } from '@/lib/utils';
 import { downloadTechSpecPdf } from '@/lib/generateTechSpecPdf';
@@ -151,6 +151,16 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     if (selectedItem) {
       updateItem(selectedItem.id, { notes: value || null });
       setSelectedItem({ ...selectedItem, notes: value || null });
+    }
+  };
+
+  const handleRotate = (direction: 'left' | 'right') => {
+    if (selectedItem) {
+      const newRotation = direction === 'left' 
+        ? (selectedItem.rotation - 15 + 360) % 360 
+        : (selectedItem.rotation + 15) % 360;
+      updateItem(selectedItem.id, { rotation: newRotation });
+      setSelectedItem({ ...selectedItem, rotation: newRotation });
     }
   };
 
@@ -369,6 +379,29 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                       <SelectItem value="venue">Venue</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rotation</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRotate('left')}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground flex-1 text-center">
+                      {selectedItem.rotation}°
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRotate('right')}
+                    >
+                      <RotateCw className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {(selectedItem.icon_type === 'mic_tall' || 
