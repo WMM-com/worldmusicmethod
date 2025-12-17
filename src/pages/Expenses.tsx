@@ -11,10 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Receipt, Upload, Loader2, Filter, X, Pencil } from 'lucide-react';
 import { ReceiptLink } from '@/components/expenses/ReceiptLink';
@@ -41,6 +42,8 @@ const expenseSchema = z.object({
   date: z.string().min(1, 'Date is required'),
   event_id: z.string().optional(),
   notes: z.string().max(500).optional(),
+  is_tax_deductible: z.boolean().default(true),
+  deductible_percentage: z.string().default('100'),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -68,6 +71,8 @@ export default function Expenses() {
       date: format(new Date(), 'yyyy-MM-dd'),
       event_id: '',
       notes: '',
+      is_tax_deductible: true,
+      deductible_percentage: '100',
     },
   });
 
@@ -169,6 +174,8 @@ export default function Expenses() {
         event_id: data.event_id || null,
         notes: data.notes || null,
         receipt_url: receiptUrl,
+        is_tax_deductible: data.is_tax_deductible,
+        deductible_percentage: parseInt(data.deductible_percentage),
       });
     } else {
       await createExpense.mutateAsync({
@@ -180,6 +187,8 @@ export default function Expenses() {
         notes: data.notes || null,
         receipt_url: receiptUrl,
         currency: 'GBP',
+        is_tax_deductible: data.is_tax_deductible,
+        deductible_percentage: parseInt(data.deductible_percentage),
       });
     }
 
@@ -199,6 +208,8 @@ export default function Expenses() {
       date: expense.date,
       event_id: expense.event_id || '',
       notes: expense.notes || '',
+      is_tax_deductible: expense.is_tax_deductible ?? true,
+      deductible_percentage: String(expense.deductible_percentage ?? 100),
     });
     setIsDialogOpen(true);
   };
@@ -213,6 +224,8 @@ export default function Expenses() {
         date: format(new Date(), 'yyyy-MM-dd'),
         event_id: '',
         notes: '',
+        is_tax_deductible: true,
+        deductible_percentage: '100',
       });
       setReceiptFile(null);
     }
@@ -356,6 +369,62 @@ export default function Expenses() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Tax Deductibility */}
+                  <div className="space-y-3 p-3 rounded-lg bg-muted/50">
+                    <FormField
+                      control={form.control}
+                      name="is_tax_deductible"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Tax Deductible</FormLabel>
+                            <FormDescription>
+                              This expense can be claimed against taxable income
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {form.watch('is_tax_deductible') && (
+                      <FormField
+                        control={form.control}
+                        name="deductible_percentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Deductible Percentage</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select percentage" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="100">100% (Fully deductible)</SelectItem>
+                                <SelectItem value="75">75%</SelectItem>
+                                <SelectItem value="50">50%</SelectItem>
+                                <SelectItem value="30">30% (e.g., phone bill)</SelectItem>
+                                <SelectItem value="25">25%</SelectItem>
+                                <SelectItem value="20">20%</SelectItem>
+                                <SelectItem value="10">10%</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormDescription>
+                              For mixed-use expenses (e.g., rent, phone), select the business portion
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                  </div>
 
                   <div>
                     <FormLabel>Receipt {editingExpense?.receipt_url ? '(Current receipt exists)' : '(Optional)'}</FormLabel>

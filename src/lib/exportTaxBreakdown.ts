@@ -32,9 +32,17 @@ export function exportTaxBreakdownToCSV({ calculation, country, taxYear }: Expor
     // Income Summary
     ['INCOME SUMMARY'],
     ['Description', 'Amount'],
-    ['Gross Income (from completed events)', formatAmount(calculation.grossIncome)],
+    ['Event Income (from completed events)', formatAmount(calculation.eventIncome)],
+    ['Other Income (royalties, merch, etc.)', formatAmount(calculation.otherIncomeTotal)],
+    ['Total Gross Income', formatAmount(calculation.grossIncome)],
+    [''],
+    
+    // Expenses
+    ['EXPENSES'],
+    ['Description', 'Amount'],
     ['Total Expenses', formatAmount(calculation.totalExpenses)],
-    ['Net Income (Gross - Expenses)', formatAmount(calculation.netIncome)],
+    ['Tax Deductible Portion', formatAmount(calculation.deductibleExpenses)],
+    ['Net Income (Gross - Deductible Expenses)', formatAmount(calculation.netIncome)],
     [''],
     
     // Allowances

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useEvents } from './useEvents';
 import { useExpenses } from './useExpenses';
+import { useOtherIncome } from './useOtherIncome';
 import { 
   TaxCountry, 
   TAX_CONFIGS, 
@@ -11,8 +12,11 @@ import {
 import { startOfYear, endOfYear, isWithinInterval, parseISO } from 'date-fns';
 
 export interface TaxBreakdown {
+  eventIncome: number;
+  otherIncomeTotal: number;
   grossIncome: number;
   totalExpenses: number;
+  deductibleExpenses: number;
   netIncome: number;
   personalAllowance: number;
   tradingAllowance: number;
@@ -82,6 +86,7 @@ function getTaxYearDates(country: TaxCountry, taxYear: string): { start: Date; e
 export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
   const { events } = useEvents();
   const { expenses } = useExpenses();
+  const { otherIncome } = useOtherIncome();
 
   const calculation = useMemo<TaxBreakdown | null>(() => {
     if (!country) return null;
@@ -96,17 +101,34 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
       const eventDate = parseISO(e.start_time);
       return isWithinInterval(eventDate, { start, end });
     });
-    const grossIncome = yearEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+    const eventIncome = yearEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
 
-    // Calculate expenses in the tax year
+    // Calculate other income in the tax year
+    const yearOtherIncome = otherIncome.filter(inc => {
+      const incomeDate = parseISO(inc.date);
+      return isWithinInterval(incomeDate, { start, end });
+    });
+    const otherIncomeTotal = yearOtherIncome.reduce((sum, inc) => sum + inc.amount, 0);
+
+    // Total gross income
+    const grossIncome = eventIncome + otherIncomeTotal;
+
+    // Calculate expenses in the tax year (total and deductible)
     const yearExpenses = expenses.filter(e => {
       const expenseDate = parseISO(e.date);
       return isWithinInterval(expenseDate, { start, end });
     });
     const totalExpenses = yearExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    
+    // Calculate deductible expenses (only count the deductible portion)
+    const deductibleExpenses = yearExpenses.reduce((sum, e) => {
+      if (!e.is_tax_deductible) return sum;
+      const deductiblePortion = (e.amount || 0) * ((e.deductible_percentage ?? 100) / 100);
+      return sum + deductiblePortion;
+    }, 0);
 
-    // Net income before allowances
-    const netIncome = Math.max(0, grossIncome - totalExpenses);
+    // Net income before allowances (using deductible expenses)
+    const netIncome = Math.max(0, grossIncome - deductibleExpenses);
 
     // Apply allowances
     const { personalAllowance, tradingAllowance, incomeTaxBrackets, socialContributions } = taxConfig;
@@ -170,8 +192,11 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
     const effectiveRate = netIncome > 0 ? (totalTaxLiability / netIncome) * 100 : 0;
 
     return {
+      eventIncome,
+      otherIncomeTotal,
       grossIncome,
       totalExpenses,
+      deductibleExpenses,
       netIncome,
       personalAllowance: effectivePersonalAllowance,
       tradingAllowance: country === 'US' ? tradingAllowance : (country === 'UK' ? tradingAllowance : 0),
@@ -183,7 +208,7 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
       totalTaxLiability,
       effectiveRate,
     };
-  }, [country, taxYear, events, expenses]);
+  }, [country, taxYear, events, expenses, otherIncome]);
 
   return {
     calculation,

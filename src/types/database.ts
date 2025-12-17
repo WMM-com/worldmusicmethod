@@ -107,6 +107,23 @@ export interface Expense {
   date: string;
   receipt_url: string | null;
   notes: string | null;
+  is_tax_deductible: boolean;
+  deductible_percentage: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OtherIncomeCategory = 'royalties' | 'merch' | 'funding' | 'benefits' | 'employment' | 'rental' | 'teaching' | 'other';
+
+export interface OtherIncome {
+  id: string;
+  user_id: string;
+  description: string;
+  amount: number;
+  currency: string;
+  category: OtherIncomeCategory;
+  date: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }

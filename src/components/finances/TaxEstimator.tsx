@@ -114,31 +114,50 @@ export function TaxEstimator() {
         {calculation && (
           <>
             {/* Income Summary */}
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  Gross Income
-                </p>
-                <p className="text-xl font-semibold">{formatCurrency(calculation.grossIncome)}</p>
+            <div className="space-y-3">
+              <h4 className="font-medium">Income</h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-4 w-4" />
+                    Event Income
+                  </p>
+                  <p className="text-xl font-semibold">{formatCurrency(calculation.eventIncome)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <TrendingUp className="h-4 w-4" />
+                    Other Income
+                  </p>
+                  <p className="text-xl font-semibold">{formatCurrency(calculation.otherIncomeTotal)}</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <TrendingDown className="h-4 w-4" />
-                  Expenses
-                </p>
-                <p className="text-xl font-semibold text-destructive">-{formatCurrency(calculation.totalExpenses)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                  <Receipt className="h-4 w-4" />
-                  Net Income
-                </p>
-                <p className="text-xl font-semibold text-success">{formatCurrency(calculation.netIncome)}</p>
+              <div className="flex justify-between pt-2 border-t">
+                <span className="font-medium">Total Gross Income</span>
+                <span className="font-semibold text-success">{formatCurrency(calculation.grossIncome)}</span>
               </div>
             </div>
 
             <Separator />
+
+            {/* Expenses */}
+            <div className="space-y-2">
+              <h4 className="font-medium">Expenses</h4>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Expenses</span>
+                  <span>{formatCurrency(calculation.totalExpenses)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax Deductible Portion</span>
+                  <span className="text-destructive">-{formatCurrency(calculation.deductibleExpenses)}</span>
+                </div>
+                <div className="flex justify-between font-medium pt-1">
+                  <span>Net Income (Gross - Deductible)</span>
+                  <span className="text-success">{formatCurrency(calculation.netIncome)}</span>
+                </div>
+              </div>
+            </div>
 
             {/* Allowances */}
             <div className="space-y-2">
