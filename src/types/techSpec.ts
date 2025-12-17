@@ -88,6 +88,12 @@ export interface StagePlotItem {
   provided_by: ProvidedBy | null;
   paired_with_id: string | null;
   notes: string | null;
+  // Channel list fields
+  channel_number: number | null;
+  phantom_power: boolean;
+  insert_required: boolean;
+  monitor_mixes: string[] | null;
+  fx_sends: string[] | null;
   created_at: string;
   updated_at: string;
 }
