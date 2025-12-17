@@ -570,6 +570,108 @@ export type Database = {
           },
         ]
       }
+      stage_plot_items: {
+        Row: {
+          created_at: string
+          icon_type: string
+          id: string
+          label: string | null
+          mic_type: string | null
+          notes: string | null
+          paired_with_id: string | null
+          position_x: number
+          position_y: number
+          provided_by: string
+          rotation: number | null
+          tech_spec_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon_type: string
+          id?: string
+          label?: string | null
+          mic_type?: string | null
+          notes?: string | null
+          paired_with_id?: string | null
+          position_x?: number
+          position_y?: number
+          provided_by?: string
+          rotation?: number | null
+          tech_spec_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon_type?: string
+          id?: string
+          label?: string | null
+          mic_type?: string | null
+          notes?: string | null
+          paired_with_id?: string | null
+          position_x?: number
+          position_y?: number
+          provided_by?: string
+          rotation?: number | null
+          tech_spec_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_plot_items_paired_with_id_fkey"
+            columns: ["paired_with_id"]
+            isOneToOne: false
+            referencedRelation: "stage_plot_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_plot_items_tech_spec_id_fkey"
+            columns: ["tech_spec_id"]
+            isOneToOne: false
+            referencedRelation: "tech_specs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tech_specs: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_publicly_shared: boolean | null
+          name: string
+          share_token: string | null
+          stage_depth: number | null
+          stage_width: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_publicly_shared?: boolean | null
+          name: string
+          share_token?: string | null
+          stage_depth?: number | null
+          stage_width?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_publicly_shared?: boolean | null
+          name?: string
+          share_token?: string | null
+          stage_depth?: number | null
+          stage_width?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -623,6 +725,18 @@ export type Database = {
           monthly_data: Json
           total_event_income: number
           total_other_income: number
+        }[]
+      }
+      get_shared_tech_spec: {
+        Args: { p_share_token: string }
+        Returns: {
+          description: string
+          id: string
+          name: string
+          owner_business: string
+          owner_name: string
+          stage_depth: number
+          stage_width: number
         }[]
       }
       has_role: {
