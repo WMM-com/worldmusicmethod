@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Trash2, Link2, Unlink, Download, RotateCcw, RotateCw, Zap, Plug } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { ArrowLeft, Trash2, Link2, Unlink, Download, RotateCcw, RotateCw, Zap, Plug, Drum } from 'lucide-react';
 import { StageIcon } from './StageIcon';
 import { ChannelList } from './ChannelList';
 import { cn } from '@/lib/utils';
@@ -32,13 +33,15 @@ interface ConsolidatedItem {
 
 export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
   const { profile } = useAuth();
-  const { items, addItem, updateItem, deleteItem, pairItems } = useStagePlotItems(techSpec.id);
+  const { items, addItem, addDrumKit, updateItem, deleteItem, pairItems } = useStagePlotItems(techSpec.id);
   const [selectedItem, setSelectedItem] = useState<StagePlotItem | null>(null);
   const [draggingItem, setDraggingItem] = useState<StagePlotItem | null>(null);
   const [pairingMode, setPairingMode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [monitorMixInput, setMonitorMixInput] = useState('');
   const [fxSendInput, setFxSendInput] = useState('');
+  const [drumKitDialog, setDrumKitDialog] = useState<{ x: number; y: number } | null>(null);
+  const [drumKitStartChannel, setDrumKitStartChannel] = useState('1');
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const handleExportPdf = () => {
@@ -97,9 +100,31 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     if (itemId) {
       await updateItem(itemId, { position_x: x, position_y: y });
     } else if (iconType) {
+      // Special handling for drum kit - show dialog to set up channels
+      if (iconType === 'drums') {
+        const nextChannel = Math.max(0, ...items.map(i => i.channel_number || 0)) + 1;
+        setDrumKitStartChannel(nextChannel.toString());
+        setDrumKitDialog({ x, y });
+        return;
+      }
       const newItem = await addItem(iconType, x, y);
       if (newItem) setSelectedItem(newItem);
     }
+  };
+
+  const handleAddDrumKit = async () => {
+    if (!drumKitDialog) return;
+    const startChannel = parseInt(drumKitStartChannel, 10) || 1;
+    await addDrumKit(drumKitDialog.x, drumKitDialog.y, startChannel);
+    setDrumKitDialog(null);
+  };
+
+  const handleAddDrumKitSimple = async () => {
+    if (!drumKitDialog) return;
+    // Just add the drum kit icon without mic channels
+    const newItem = await addItem('drums', drumKitDialog.x, drumKitDialog.y, { label: 'Drum Kit' });
+    if (newItem) setSelectedItem(newItem);
+    setDrumKitDialog(null);
   };
 
   const handleItemClick = (item: StagePlotItem) => {
@@ -718,6 +743,44 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Drum Kit Setup Dialog */}
+      <Dialog open={!!drumKitDialog} onOpenChange={(open) => !open && setDrumKitDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Drum className="h-5 w-5" />
+              Add Drum Kit
+            </DialogTitle>
+            <DialogDescription>
+              Add a full drum kit with mic channels for kick, snare, hi-hat, toms, and overheads?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Starting Channel Number</Label>
+              <Input
+                type="number"
+                min="1"
+                value={drumKitStartChannel}
+                onChange={(e) => setDrumKitStartChannel(e.target.value)}
+                placeholder="1"
+              />
+              <p className="text-xs text-muted-foreground">
+                9 channels will be created: Kick, Snare Top, Snare Bottom, Hi-Hat, Rack Tom 1, Rack Tom 2, Floor Tom, OH Left, OH Right
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={handleAddDrumKitSimple}>
+              Just Add Icon
+            </Button>
+            <Button onClick={handleAddDrumKit}>
+              Add with Mic Channels
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

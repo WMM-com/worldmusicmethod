@@ -137,7 +137,12 @@ export function useStagePlotItems(techSpecId: string | null) {
   const addItem = async (
     iconType: IconType,
     positionX: number,
-    positionY: number
+    positionY: number,
+    options?: {
+      label?: string;
+      channel_number?: number;
+      mic_type?: string;
+    }
   ) => {
     if (!techSpecId) return null;
 
@@ -148,7 +153,10 @@ export function useStagePlotItems(techSpecId: string | null) {
         icon_type: iconType,
         position_x: positionX,
         position_y: positionY,
-        provided_by: null, // No default - user must select
+        provided_by: null,
+        label: options?.label || null,
+        channel_number: options?.channel_number || null,
+        mic_type: options?.mic_type || null,
       })
       .select()
       .single();
@@ -161,6 +169,61 @@ export function useStagePlotItems(techSpecId: string | null) {
 
     await fetchItems();
     return data as StagePlotItem;
+  };
+
+  const addDrumKit = async (centerX: number, centerY: number, startChannel: number) => {
+    if (!techSpecId) return [];
+
+    // Define drum kit mic positions relative to center
+    const drumMics = [
+      { label: 'Kick', offset: { x: 0, y: 15 }, micType: 'beta52', icon: 'mic_short' as IconType },
+      { label: 'Snare Top', offset: { x: -8, y: 5 }, micType: 'sm57', icon: 'mic_short' as IconType },
+      { label: 'Snare Bottom', offset: { x: -8, y: 8 }, micType: 'sm57', icon: 'mic_short' as IconType },
+      { label: 'Hi-Hat', offset: { x: -15, y: 0 }, micType: 'condenser', icon: 'mic_short' as IconType },
+      { label: 'Rack Tom 1', offset: { x: -5, y: -5 }, micType: 'e609', icon: 'mic_short' as IconType },
+      { label: 'Rack Tom 2', offset: { x: 5, y: -5 }, micType: 'e609', icon: 'mic_short' as IconType },
+      { label: 'Floor Tom', offset: { x: 12, y: 5 }, micType: 'e609', icon: 'mic_short' as IconType },
+      { label: 'OH Left', offset: { x: -12, y: -12 }, micType: 'condenser', icon: 'mic_tall' as IconType },
+      { label: 'OH Right', offset: { x: 12, y: -12 }, micType: 'condenser', icon: 'mic_tall' as IconType },
+    ];
+
+    const insertData = drumMics.map((mic, index) => ({
+      tech_spec_id: techSpecId,
+      icon_type: mic.icon,
+      position_x: Math.max(5, Math.min(95, centerX + mic.offset.x)),
+      position_y: Math.max(5, Math.min(95, centerY + mic.offset.y)),
+      provided_by: null,
+      label: mic.label,
+      channel_number: startChannel + index,
+      mic_type: mic.micType,
+    }));
+
+    // Also add the drum kit icon itself (no channel)
+    insertData.unshift({
+      tech_spec_id: techSpecId,
+      icon_type: 'drums',
+      position_x: centerX,
+      position_y: centerY,
+      provided_by: null,
+      label: 'Drum Kit',
+      channel_number: null,
+      mic_type: null,
+    });
+
+    const { data, error } = await supabase
+      .from('stage_plot_items')
+      .insert(insertData)
+      .select();
+
+    if (error) {
+      console.error('Error adding drum kit:', error);
+      toast.error('Failed to add drum kit');
+      return [];
+    }
+
+    toast.success('Drum kit added with 9 mic channels');
+    await fetchItems();
+    return data as StagePlotItem[];
   };
 
   const updateItem = async (id: string, updates: Partial<StagePlotItem>) => {
@@ -202,6 +265,7 @@ export function useStagePlotItems(techSpecId: string | null) {
     items,
     loading,
     addItem,
+    addDrumKit,
     updateItem,
     deleteItem,
     pairItems,
