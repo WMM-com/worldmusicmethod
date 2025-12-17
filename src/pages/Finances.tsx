@@ -2,6 +2,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFinancials } from '@/hooks/useFinancials';
 import { TaxEstimator } from '@/components/finances/TaxEstimator';
+import { OtherIncomeSection } from '@/components/finances/OtherIncomeSection';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const COLORS = ['hsl(262, 83%, 58%)', 'hsl(173, 80%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(340, 75%, 55%)', 'hsl(210, 80%, 55%)'];
@@ -107,6 +108,9 @@ export default function Finances() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Other Income Section */}
+        <OtherIncomeSection />
 
         {/* Tax Estimator Section */}
         <TaxEstimator />

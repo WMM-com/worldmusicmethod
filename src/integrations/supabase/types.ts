@@ -274,9 +274,11 @@ export type Database = {
           created_at: string
           currency: string | null
           date: string
+          deductible_percentage: number | null
           description: string
           event_id: string | null
           id: string
+          is_tax_deductible: boolean | null
           notes: string | null
           receipt_url: string | null
           updated_at: string
@@ -288,9 +290,11 @@ export type Database = {
           created_at?: string
           currency?: string | null
           date?: string
+          deductible_percentage?: number | null
           description: string
           event_id?: string | null
           id?: string
+          is_tax_deductible?: boolean | null
           notes?: string | null
           receipt_url?: string | null
           updated_at?: string
@@ -302,9 +306,11 @@ export type Database = {
           created_at?: string
           currency?: string | null
           date?: string
+          deductible_percentage?: number | null
           description?: string
           event_id?: string | null
           id?: string
+          is_tax_deductible?: boolean | null
           notes?: string | null
           receipt_url?: string | null
           updated_at?: string
@@ -387,6 +393,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      other_income: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          currency: string | null
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          currency?: string | null
+          date?: string
+          description: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          currency?: string | null
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
