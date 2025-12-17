@@ -1,9 +1,7 @@
 export type IconType =
   // People
-  | 'person'
-  | 'vocalist'
-  | 'conductor'
-  | 'seated_musician'
+  | 'person_standing'
+  | 'person_seated'
   // Guitars
   | 'electric_guitar'
   | 'acoustic_guitar'
@@ -112,10 +110,8 @@ export interface StageIcon {
 
 export const STAGE_ICONS: StageIcon[] = [
   // People
-  { type: 'person', label: 'Performer', category: 'people' },
-  { type: 'vocalist', label: 'Vocalist', category: 'people' },
-  { type: 'conductor', label: 'Conductor', category: 'people' },
-  { type: 'seated_musician', label: 'Seated Musician', category: 'people' },
+  { type: 'person_standing', label: 'Standing Performer', category: 'people' },
+  { type: 'person_seated', label: 'Seated Performer', category: 'people' },
   
   // Guitars
   { type: 'electric_guitar', label: 'Electric Guitar', category: 'guitars' },
@@ -185,5 +181,29 @@ export const MIC_TYPES: { value: MicType; label: string }[] = [
   { value: 'dynamic', label: 'Dynamic (any)' },
   { value: 'ribbon', label: 'Ribbon (any)' },
   { value: 'di', label: 'DI Only' },
+  { value: 'other', label: 'Other' },
+];
+
+export const PERFORMER_ROLES: { value: string; label: string }[] = [
+  { value: 'vocalist', label: 'Vocalist' },
+  { value: 'lead_vocalist', label: 'Lead Vocalist' },
+  { value: 'backing_vocals', label: 'Backing Vocals' },
+  { value: 'guitarist', label: 'Guitarist' },
+  { value: 'lead_guitar', label: 'Lead Guitar' },
+  { value: 'rhythm_guitar', label: 'Rhythm Guitar' },
+  { value: 'bassist', label: 'Bassist' },
+  { value: 'drummer', label: 'Drummer' },
+  { value: 'keyboardist', label: 'Keyboardist' },
+  { value: 'pianist', label: 'Pianist' },
+  { value: 'violinist', label: 'Violinist' },
+  { value: 'cellist', label: 'Cellist' },
+  { value: 'trumpet', label: 'Trumpet' },
+  { value: 'saxophone', label: 'Saxophone' },
+  { value: 'trombone', label: 'Trombone' },
+  { value: 'flute', label: 'Flute' },
+  { value: 'percussionist', label: 'Percussionist' },
+  { value: 'dj', label: 'DJ' },
+  { value: 'conductor', label: 'Conductor' },
+  { value: 'md', label: 'Musical Director' },
   { value: 'other', label: 'Other' },
 ];
