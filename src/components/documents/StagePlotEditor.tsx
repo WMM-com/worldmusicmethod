@@ -667,7 +667,12 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
         </TabsList>
         
         <TabsContent value="channels" className="mt-4">
-          <ChannelList items={items} />
+          <ChannelList 
+            items={items} 
+            onUpdateChannel={(itemId, channelNumber) => {
+              updateItem(itemId, { channel_number: channelNumber });
+            }}
+          />
         </TabsContent>
         
         <TabsContent value="equipment" className="mt-4">
