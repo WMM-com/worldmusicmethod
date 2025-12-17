@@ -320,14 +320,17 @@ export default function Expenses() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Link to Event (Optional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                          value={field.value || "none"}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select event" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No event</SelectItem>
+                            <SelectItem value="none">No event</SelectItem>
                             {events.map((event) => (
                               <SelectItem key={event.id} value={event.id}>
                                 {event.title} - {format(new Date(event.start_time), 'MMM d, yyyy')}
