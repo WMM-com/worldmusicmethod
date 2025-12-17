@@ -1,4 +1,9 @@
 export type IconType =
+  // People
+  | 'person'
+  | 'vocalist'
+  | 'conductor'
+  | 'seated_musician'
   // Guitars
   | 'electric_guitar'
   | 'acoustic_guitar'
@@ -101,11 +106,17 @@ export interface StagePlotItem {
 export interface StageIcon {
   type: IconType;
   label: string;
-  category: 'guitars' | 'keys' | 'drums' | 'orchestral' | 'brass' | 'woodwinds' | 'audio' | 'other';
+  category: 'people' | 'guitars' | 'keys' | 'drums' | 'orchestral' | 'brass' | 'woodwinds' | 'audio' | 'other';
   size?: 'sm' | 'md' | 'lg';
 }
 
 export const STAGE_ICONS: StageIcon[] = [
+  // People
+  { type: 'person', label: 'Performer', category: 'people' },
+  { type: 'vocalist', label: 'Vocalist', category: 'people' },
+  { type: 'conductor', label: 'Conductor', category: 'people' },
+  { type: 'seated_musician', label: 'Seated Musician', category: 'people' },
+  
   // Guitars
   { type: 'electric_guitar', label: 'Electric Guitar', category: 'guitars' },
   { type: 'acoustic_guitar', label: 'Acoustic Guitar', category: 'guitars' },

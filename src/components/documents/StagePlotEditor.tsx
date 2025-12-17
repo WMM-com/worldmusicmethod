@@ -253,6 +253,7 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
   };
 
   const categoryLabels: Record<string, string> = {
+    people: 'People',
     guitars: 'Guitars',
     keys: 'Keys',
     drums: 'Drums & Percussion',
@@ -263,7 +264,7 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     other: 'Other',
   };
 
-  const categoryOrder = ['guitars', 'keys', 'drums', 'orchestral', 'brass', 'woodwinds', 'audio', 'other'];
+  const categoryOrder = ['people', 'guitars', 'keys', 'drums', 'orchestral', 'brass', 'woodwinds', 'audio', 'other'];
 
   return (
     <div className="space-y-4">
