@@ -6,9 +6,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useTaxCalculator } from '@/hooks/useTaxCalculator';
 import { TAX_CONFIGS, TaxCountry, getCurrentTaxYear, getTaxYearsForCountry } from '@/lib/taxConfig';
+import { exportTaxBreakdownToCSV } from '@/lib/exportTaxBreakdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Calculator, Settings, AlertTriangle, TrendingDown, TrendingUp, Receipt } from 'lucide-react';
+import { Calculator, Settings, AlertTriangle, TrendingDown, TrendingUp, Receipt, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function TaxEstimator() {
   const { profile } = useAuth();
@@ -54,6 +56,21 @@ export function TaxEstimator() {
   const config = TAX_CONFIGS[taxCountry];
   const taxYears = getTaxYearsForCountry(taxCountry);
 
+  const handleExport = () => {
+    if (!calculation || !taxCountry) return;
+    
+    try {
+      exportTaxBreakdownToCSV({
+        calculation,
+        country: taxCountry,
+        taxYear: selectedTaxYear,
+      });
+      toast.success('Tax breakdown exported to CSV');
+    } catch (error) {
+      toast.error('Failed to export tax breakdown');
+    }
+  };
+
   return (
     <Card className="glass">
       <CardHeader>
@@ -65,18 +82,25 @@ export function TaxEstimator() {
             </CardTitle>
             <CardDescription>Estimated self-employment tax liability</CardDescription>
           </div>
-          <Select value={selectedTaxYear} onValueChange={setSelectedTaxYear}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Tax Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {taxYears.map((ty) => (
-                <SelectItem key={ty.value} value={ty.value}>
-                  {ty.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select value={selectedTaxYear} onValueChange={setSelectedTaxYear}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Tax Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {taxYears.map((ty) => (
+                  <SelectItem key={ty.value} value={ty.value}>
+                    {ty.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {calculation && (
+              <Button variant="outline" size="icon" onClick={handleExport} title="Export to CSV">
+                <Download className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
