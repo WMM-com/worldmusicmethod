@@ -606,6 +606,64 @@ export function StageIcon({ type, size = 24, className }: StageIconProps) {
         </svg>
       );
 
+    // Person - standing figure
+    case 'person':
+      return (
+        <svg {...svgProps}>
+          <circle cx="24" cy="10" r="6" />
+          <line x1="24" y1="16" x2="24" y2="32" />
+          <line x1="24" y1="20" x2="14" y2="28" />
+          <line x1="24" y1="20" x2="34" y2="28" />
+          <line x1="24" y1="32" x2="16" y2="44" />
+          <line x1="24" y1="32" x2="32" y2="44" />
+        </svg>
+      );
+
+    // Vocalist - person with mic
+    case 'vocalist':
+      return (
+        <svg {...svgProps}>
+          <circle cx="24" cy="10" r="6" />
+          <line x1="24" y1="16" x2="24" y2="32" />
+          <line x1="24" y1="20" x2="16" y2="28" />
+          <line x1="24" y1="20" x2="32" y2="18" />
+          <line x1="32" y1="18" x2="36" y2="14" />
+          <ellipse cx="38" cy="12" rx="3" ry="4" />
+          <line x1="24" y1="32" x2="16" y2="44" />
+          <line x1="24" y1="32" x2="32" y2="44" />
+        </svg>
+      );
+
+    // Conductor - person with baton
+    case 'conductor':
+      return (
+        <svg {...svgProps}>
+          <circle cx="24" cy="10" r="6" />
+          <line x1="24" y1="16" x2="24" y2="32" />
+          <line x1="24" y1="20" x2="14" y2="26" />
+          <line x1="24" y1="20" x2="36" y2="12" />
+          <line x1="36" y1="12" x2="42" y2="6" />
+          <line x1="24" y1="32" x2="18" y2="44" />
+          <line x1="24" y1="32" x2="30" y2="44" />
+        </svg>
+      );
+
+    // Seated musician - person sitting
+    case 'seated_musician':
+      return (
+        <svg {...svgProps}>
+          <circle cx="24" cy="10" r="6" />
+          <line x1="24" y1="16" x2="24" y2="28" />
+          <line x1="24" y1="20" x2="14" y2="26" />
+          <line x1="24" y1="20" x2="34" y2="26" />
+          <line x1="24" y1="28" x2="14" y2="32" />
+          <line x1="14" y1="32" x2="10" y2="44" />
+          <line x1="24" y1="28" x2="34" y2="32" />
+          <line x1="34" y1="32" x2="38" y2="44" />
+          <rect x="8" y="30" width="32" height="4" rx="1" />
+        </svg>
+      );
+
     default:
       return (
         <svg {...svgProps}>
