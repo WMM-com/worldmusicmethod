@@ -581,7 +581,7 @@ export type Database = {
           paired_with_id: string | null
           position_x: number
           position_y: number
-          provided_by: string
+          provided_by: string | null
           rotation: number | null
           tech_spec_id: string
           updated_at: string
@@ -596,7 +596,7 @@ export type Database = {
           paired_with_id?: string | null
           position_x?: number
           position_y?: number
-          provided_by?: string
+          provided_by?: string | null
           rotation?: number | null
           tech_spec_id: string
           updated_at?: string
@@ -611,7 +611,7 @@ export type Database = {
           paired_with_id?: string | null
           position_x?: number
           position_y?: number
-          provided_by?: string
+          provided_by?: string | null
           rotation?: number | null
           tech_spec_id?: string
           updated_at?: string

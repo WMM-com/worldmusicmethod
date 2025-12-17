@@ -148,6 +148,7 @@ export function useStagePlotItems(techSpecId: string | null) {
         icon_type: iconType,
         position_x: positionX,
         position_y: positionY,
+        provided_by: null, // No default - user must select
       })
       .select()
       .single();
