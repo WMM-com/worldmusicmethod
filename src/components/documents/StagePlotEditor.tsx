@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { TechSpec, StagePlotItem, IconType, STAGE_ICONS, MIC_TYPES, ProvidedBy } from '@/types/techSpec';
 import { useStagePlotItems } from '@/hooks/useTechSpecs';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,10 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Trash2, Link2, Unlink } from 'lucide-react';
+import { ArrowLeft, Trash2, Link2, Unlink, Download } from 'lucide-react';
 import { StageIcon } from './StageIcon';
 import { cn } from '@/lib/utils';
+import { downloadTechSpecPdf } from '@/lib/generateTechSpecPdf';
 
 interface StagePlotEditorProps {
   techSpec: TechSpec;
@@ -19,12 +20,17 @@ interface StagePlotEditorProps {
 }
 
 export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
+  const { profile } = useAuth();
   const { items, addItem, updateItem, deleteItem, pairItems } = useStagePlotItems(techSpec.id);
   const [selectedItem, setSelectedItem] = useState<StagePlotItem | null>(null);
   const [draggingItem, setDraggingItem] = useState<StagePlotItem | null>(null);
   const [pairingMode, setPairingMode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  const handleExportPdf = () => {
+    downloadTechSpecPdf(techSpec, items, profile);
+  };
 
   const filteredIcons = STAGE_ICONS.filter(
     (icon) =>
@@ -99,16 +105,22 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h2 className="text-xl font-semibold">{techSpec.name}</h2>
-          {techSpec.description && (
-            <p className="text-sm text-muted-foreground">{techSpec.description}</p>
-          )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-semibold">{techSpec.name}</h2>
+            {techSpec.description && (
+              <p className="text-sm text-muted-foreground">{techSpec.description}</p>
+            )}
+          </div>
         </div>
+        <Button variant="outline" onClick={handleExportPdf} disabled={items.length === 0}>
+          <Download className="h-4 w-4 mr-2" />
+          Export PDF
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[300px_1fr_280px]">
