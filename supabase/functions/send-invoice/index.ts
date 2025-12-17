@@ -70,6 +70,17 @@ function validateInvoiceRequest(body: unknown): {
   };
 }
 
+// HTML escape function to prevent XSS attacks
+function escapeHtml(unsafe: string | null | undefined): string {
+  if (!unsafe) return "";
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const formatCurrency = (amount: number, currency: string = "GBP") => {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -87,11 +98,17 @@ const formatDate = (dateString: string | null) => {
 };
 
 const generateEmailHtml = (invoice: any, senderName: string) => {
+  // Escape all user-controlled values to prevent XSS
+  const safeInvoiceNumber = escapeHtml(invoice.invoice_number);
+  const safeClientName = escapeHtml(invoice.client_name);
+  const safeSenderName = escapeHtml(senderName);
+  const safeNotes = escapeHtml(invoice.notes);
+  
   const items = (invoice.items as InvoiceItem[]) || [];
   const itemsHtml = items.length > 0
     ? items.map((item) => `
         <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.description}</td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(item.description)}</td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity}</td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCurrency(item.rate, invoice.currency)}</td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCurrency(item.amount, invoice.currency)}</td>
@@ -113,16 +130,16 @@ const generateEmailHtml = (invoice: any, senderName: string) => {
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 32px; text-align: center;">
             <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">Invoice</h1>
-            <p style="color: #94a3b8; margin: 8px 0 0 0; font-size: 16px;">${invoice.invoice_number}</p>
+            <p style="color: #94a3b8; margin: 8px 0 0 0; font-size: 16px;">${safeInvoiceNumber}</p>
           </div>
           
           <!-- Content -->
           <div style="padding: 32px;">
             <p style="color: #374151; font-size: 16px; margin: 0 0 24px 0;">
-              Dear ${invoice.client_name},
+              Dear ${safeClientName},
             </p>
             <p style="color: #6b7280; font-size: 14px; margin: 0 0 32px 0;">
-              Please find attached your invoice from ${senderName}. We appreciate your business!
+              Please find attached your invoice from ${safeSenderName}. We appreciate your business!
             </p>
             
             <!-- Invoice Details -->
@@ -162,7 +179,7 @@ const generateEmailHtml = (invoice: any, senderName: string) => {
             
             ${invoice.notes ? `
               <div style="margin-top: 24px; padding: 16px; background-color: #fef3c7; border-radius: 8px;">
-                <p style="color: #92400e; font-size: 14px; margin: 0;"><strong>Notes:</strong> ${invoice.notes}</p>
+                <p style="color: #92400e; font-size: 14px; margin: 0;"><strong>Notes:</strong> ${safeNotes}</p>
               </div>
             ` : ""}
           </div>
