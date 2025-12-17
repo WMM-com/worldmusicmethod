@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { TechSpec, StagePlotItem, IconType, STAGE_ICONS, MIC_TYPES, ProvidedBy } from '@/types/techSpec';
+import { TechSpec, StagePlotItem, IconType, STAGE_ICONS, MIC_TYPES, PERFORMER_ROLES, ProvidedBy } from '@/types/techSpec';
 import { useStagePlotItems } from '@/hooks/useTechSpecs';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -174,6 +174,15 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     if (selectedItem) {
       updateItem(selectedItem.id, { mic_type: value || null } as Partial<StagePlotItem>);
       setSelectedItem({ ...selectedItem, mic_type: value || null } as StagePlotItem);
+    }
+  };
+
+  const handlePerformerRoleChange = (value: string) => {
+    if (selectedItem) {
+      const role = PERFORMER_ROLES.find(r => r.value === value);
+      const newLabel = role?.label || value;
+      updateItem(selectedItem.id, { label: newLabel });
+      setSelectedItem({ ...selectedItem, label: newLabel });
     }
   };
 
@@ -533,6 +542,32 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  )}
+
+                  {/* Performer role dropdown for people */}
+                  {(selectedItem.icon_type === 'person_standing' || 
+                    selectedItem.icon_type === 'person_seated') && (
+                    <div className="space-y-2">
+                      <Label>Role / Instrument</Label>
+                      <Select
+                        value={PERFORMER_ROLES.find(r => r.label === selectedItem.label)?.value || ''}
+                        onValueChange={handlePerformerRoleChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PERFORMER_ROLES.map((role) => (
+                            <SelectItem key={role.value} value={role.value}>
+                              {role.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Selecting a role auto-fills the label
+                      </p>
                     </div>
                   )}
 
