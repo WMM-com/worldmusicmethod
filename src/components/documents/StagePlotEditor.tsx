@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { TechSpec, StagePlotItem, IconType, STAGE_ICONS, MIC_TYPES, ProvidedBy } from '@/types/techSpec';
 import { useStagePlotItems } from '@/hooks/useTechSpecs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,14 @@ import { downloadTechSpecPdf } from '@/lib/generateTechSpecPdf';
 interface StagePlotEditorProps {
   techSpec: TechSpec;
   onBack: () => void;
+}
+
+interface ConsolidatedItem {
+  icon_type: IconType;
+  label: string;
+  mic_type: string | null;
+  provided_by: ProvidedBy | null;
+  count: number;
 }
 
 export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
@@ -44,6 +52,32 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     return acc;
   }, {} as Record<string, typeof STAGE_ICONS>);
 
+  // Consolidate items for equipment list
+  const consolidatedItems = useMemo(() => {
+    const itemMap = new Map<string, ConsolidatedItem>();
+    
+    items.forEach(item => {
+      const iconInfo = STAGE_ICONS.find(i => i.type === item.icon_type);
+      const displayLabel = item.label || iconInfo?.label || item.icon_type;
+      const key = `${item.icon_type}-${displayLabel}-${item.mic_type || ''}-${item.provided_by || ''}`;
+      
+      if (itemMap.has(key)) {
+        const existing = itemMap.get(key)!;
+        existing.count += 1;
+      } else {
+        itemMap.set(key, {
+          icon_type: item.icon_type as IconType,
+          label: displayLabel,
+          mic_type: item.mic_type,
+          provided_by: item.provided_by as ProvidedBy | null,
+          count: 1,
+        });
+      }
+    });
+    
+    return Array.from(itemMap.values());
+  }, [items]);
+
   const handleCanvasDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     const iconType = e.dataTransfer.getData('iconType') as IconType;
@@ -56,10 +90,8 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
     if (itemId) {
-      // Moving existing item
       await updateItem(itemId, { position_x: x, position_y: y });
     } else if (iconType) {
-      // Adding new item
       const newItem = await addItem(iconType, x, y);
       if (newItem) setSelectedItem(newItem);
     }
@@ -67,7 +99,6 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
 
   const handleItemClick = (item: StagePlotItem) => {
     if (pairingMode && pairingMode !== item.id) {
-      // Complete pairing
       pairItems(pairingMode, item.id);
       pairItems(item.id, pairingMode);
       setPairingMode(null);
@@ -94,14 +125,47 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
     return items.find((i) => i.id === item.paired_with_id);
   };
 
+  const handleLabelChange = (value: string) => {
+    if (selectedItem) {
+      updateItem(selectedItem.id, { label: value || null });
+      setSelectedItem({ ...selectedItem, label: value || null });
+    }
+  };
+
+  const handleProvidedByChange = (value: string) => {
+    if (selectedItem) {
+      const providedBy = value === 'none' ? null : value as ProvidedBy;
+      updateItem(selectedItem.id, { provided_by: providedBy });
+      setSelectedItem({ ...selectedItem, provided_by: providedBy });
+    }
+  };
+
+  const handleMicTypeChange = (value: string) => {
+    if (selectedItem) {
+      updateItem(selectedItem.id, { mic_type: value || null } as Partial<StagePlotItem>);
+      setSelectedItem({ ...selectedItem, mic_type: value || null } as StagePlotItem);
+    }
+  };
+
+  const handleNotesChange = (value: string) => {
+    if (selectedItem) {
+      updateItem(selectedItem.id, { notes: value || null });
+      setSelectedItem({ ...selectedItem, notes: value || null });
+    }
+  };
+
   const categoryLabels: Record<string, string> = {
-    strings: 'Strings',
+    guitars: 'Guitars',
     keys: 'Keys',
     drums: 'Drums & Percussion',
-    brass: 'Brass & Wind',
+    orchestral: 'Orchestral Strings',
+    brass: 'Brass',
+    woodwinds: 'Woodwinds',
     audio: 'Audio Equipment',
     other: 'Other',
   };
+
+  const categoryOrder = ['guitars', 'keys', 'drums', 'orchestral', 'brass', 'woodwinds', 'audio', 'other'];
 
   return (
     <div className="space-y-4">
@@ -138,28 +202,32 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
           <CardContent className="p-0">
             <ScrollArea className="h-[480px] px-4 pb-4">
               <div className="space-y-4">
-                {Object.entries(groupedIcons).map(([category, icons]) => (
-                  <div key={category}>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">
-                      {categoryLabels[category]}
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {icons.map((icon) => (
-                        <div
-                          key={icon.type}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('iconType', icon.type);
-                          }}
-                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-secondary hover:bg-card cursor-grab active:cursor-grabbing transition-colors"
-                        >
-                          <StageIcon type={icon.type} size={32} />
-                          <span className="text-xs text-center leading-tight">{icon.label}</span>
-                        </div>
-                      ))}
+                {categoryOrder.map((category) => {
+                  const icons = groupedIcons[category];
+                  if (!icons?.length) return null;
+                  return (
+                    <div key={category}>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2">
+                        {categoryLabels[category]}
+                      </h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {icons.map((icon) => (
+                          <div
+                            key={icon.type}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('iconType', icon.type);
+                            }}
+                            className="flex flex-col items-center gap-1 p-2 rounded-lg border border-border hover:border-secondary hover:bg-card cursor-grab active:cursor-grabbing transition-colors"
+                          >
+                            <StageIcon type={icon.type} size={icon.size === 'lg' ? 40 : 32} />
+                            <span className="text-xs text-center leading-tight">{icon.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </CardContent>
@@ -194,7 +262,7 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 {items.map((item) => {
                   const paired = getPairedItem(item);
-                  if (!paired || item.id > paired.id) return null; // Only draw once per pair
+                  if (!paired || item.id > paired.id) return null;
                   return (
                     <line
                       key={`line-${item.id}-${paired.id}`}
@@ -211,46 +279,52 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
               </svg>
 
               {/* Stage items */}
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('itemId', item.id);
-                    setDraggingItem(item);
-                  }}
-                  onDragEnd={() => setDraggingItem(null)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleItemClick(item);
-                  }}
-                  className={cn(
-                    'absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all',
-                    selectedItem?.id === item.id && 'ring-2 ring-secondary ring-offset-2 ring-offset-background rounded-lg',
-                    pairingMode && pairingMode !== item.id && 'animate-pulse',
-                    item.provided_by === 'venue' && 'opacity-70'
-                  )}
-                  style={{
-                    left: `${item.position_x}%`,
-                    top: `${item.position_y}%`,
-                    transform: `translate(-50%, -50%) rotate(${item.rotation}deg)`,
-                  }}
-                >
-                  <div className="flex flex-col items-center gap-0.5">
-                    <div className={cn(
-                      'p-1.5 rounded-lg',
-                      item.provided_by === 'artist' ? 'bg-card border border-border' : 'bg-accent/20 border border-accent/50'
-                    )}>
-                      <StageIcon type={item.icon_type as IconType} size={28} />
-                    </div>
-                    {item.label && (
-                      <span className="text-[10px] font-medium bg-background/80 px-1 rounded max-w-[60px] truncate">
-                        {item.label}
-                      </span>
+              {items.map((item) => {
+                const iconInfo = STAGE_ICONS.find(i => i.type === item.icon_type);
+                const iconSize = iconInfo?.size === 'lg' ? 36 : 28;
+                return (
+                  <div
+                    key={item.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('itemId', item.id);
+                      setDraggingItem(item);
+                    }}
+                    onDragEnd={() => setDraggingItem(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleItemClick(item);
+                    }}
+                    className={cn(
+                      'absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all',
+                      selectedItem?.id === item.id && 'ring-2 ring-secondary ring-offset-2 ring-offset-background rounded-lg',
+                      pairingMode && pairingMode !== item.id && 'animate-pulse',
+                      item.provided_by === 'venue' && 'opacity-70'
                     )}
+                    style={{
+                      left: `${item.position_x}%`,
+                      top: `${item.position_y}%`,
+                      transform: `translate(-50%, -50%) rotate(${item.rotation}deg)`,
+                    }}
+                  >
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className={cn(
+                        'p-1.5 rounded-lg',
+                        item.provided_by === 'artist' ? 'bg-card border border-border' : 
+                        item.provided_by === 'venue' ? 'bg-accent/20 border border-accent/50' :
+                        'bg-muted border border-border'
+                      )}>
+                        <StageIcon type={item.icon_type as IconType} size={iconSize} />
+                      </div>
+                      {item.label && (
+                        <span className="text-[10px] font-medium bg-background/80 px-1 rounded max-w-[60px] truncate">
+                          {item.label}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {items.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -275,7 +349,7 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                   <Label>Label</Label>
                   <Input
                     value={selectedItem.label || ''}
-                    onChange={(e) => updateItem(selectedItem.id, { label: e.target.value || null })}
+                    onChange={(e) => handleLabelChange(e.target.value)}
                     placeholder="e.g., Lead Vocal, Kick Drum"
                   />
                 </div>
@@ -283,13 +357,14 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                 <div className="space-y-2">
                   <Label>Provided By</Label>
                   <Select
-                    value={selectedItem.provided_by}
-                    onValueChange={(v) => updateItem(selectedItem.id, { provided_by: v as ProvidedBy })}
+                    value={selectedItem.provided_by || 'none'}
+                    onValueChange={handleProvidedByChange}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
                       <SelectItem value="artist">Artist</SelectItem>
                       <SelectItem value="venue">Venue</SelectItem>
                     </SelectContent>
@@ -303,7 +378,7 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                     <Label>Mic Type</Label>
                     <Select
                       value={selectedItem.mic_type || ''}
-                      onValueChange={(v) => updateItem(selectedItem.id, { mic_type: v || null } as Partial<StagePlotItem>)}
+                      onValueChange={handleMicTypeChange}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select mic type" />
@@ -323,7 +398,7 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                   <Label>Notes</Label>
                   <Textarea
                     value={selectedItem.notes || ''}
-                    onChange={(e) => updateItem(selectedItem.id, { notes: e.target.value || null })}
+                    onChange={(e) => handleNotesChange(e.target.value)}
                     placeholder="Additional details..."
                     rows={3}
                   />
@@ -381,35 +456,38 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
         </Card>
       </div>
 
-      {/* Equipment List */}
+      {/* Equipment List - Consolidated */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Equipment List</CardTitle>
         </CardHeader>
         <CardContent>
-          {items.length === 0 ? (
+          {consolidatedItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">No equipment added yet</p>
           ) : (
-            <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-              {items.map((item) => {
-                const iconInfo = STAGE_ICONS.find((i) => i.type === item.icon_type);
-                const micInfo = item.mic_type ? MIC_TYPES.find((m) => m.value === (item.mic_type as string)) : null;
+            <div className="space-y-1">
+              {consolidatedItems.map((item, index) => {
+                const micInfo = item.mic_type ? MIC_TYPES.find((m) => m.value === item.mic_type) : null;
                 return (
                   <div
-                    key={item.id}
+                    key={index}
                     className={cn(
-                      'flex items-center gap-3 p-2 rounded-lg border',
-                      item.provided_by === 'artist' ? 'border-border' : 'border-accent/50 bg-accent/10'
+                      'flex items-center gap-3 py-2 px-3 rounded-lg border',
+                      item.provided_by === 'artist' ? 'border-border' : 
+                      item.provided_by === 'venue' ? 'border-accent/50 bg-accent/10' :
+                      'border-border/50'
                     )}
                   >
-                    <StageIcon type={item.icon_type as IconType} size={24} />
+                    <StageIcon type={item.icon_type} size={24} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {item.label || iconInfo?.label || item.icon_type}
+                      <p className="text-sm font-medium">
+                        {item.count > 1 ? `${item.count}x ` : ''}{item.label}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {micInfo?.label && `${micInfo.label} · `}
-                        {item.provided_by === 'venue' ? 'Venue provides' : 'Artist provides'}
+                        {item.provided_by === 'venue' ? 'Venue provides' : 
+                         item.provided_by === 'artist' ? 'Artist provides' : 
+                         'Provider not specified'}
                       </p>
                     </div>
                   </div>

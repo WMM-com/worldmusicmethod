@@ -101,9 +101,12 @@ export function generateTechSpecPdf(
     if (item.provided_by === 'venue') {
       doc.setFillColor(200, 220, 255);
       doc.setDrawColor(100, 130, 200);
-    } else {
+    } else if (item.provided_by === 'artist') {
       doc.setFillColor(255, 255, 255);
       doc.setDrawColor(100, 100, 100);
+    } else {
+      doc.setFillColor(230, 230, 230);
+      doc.setDrawColor(150, 150, 150);
     }
     doc.circle(itemX, itemY, radius, 'FD');
     
@@ -207,7 +210,8 @@ export function generateTechSpecPdf(
       doc.setTextColor(80, 100, 180);
       doc.setFont('helvetica', 'bold');
     }
-    doc.text(item.provided_by === 'venue' ? 'Venue' : 'Artist', colProvider, y);
+    const providerText = item.provided_by === 'venue' ? 'Venue' : item.provided_by === 'artist' ? 'Artist' : 'TBD';
+    doc.text(providerText, colProvider, y);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
 
@@ -242,6 +246,7 @@ export function generateTechSpecPdf(
   
   const artistItems = items.filter((i) => i.provided_by === 'artist').length;
   const venueItems = items.filter((i) => i.provided_by === 'venue').length;
+  const unspecifiedItems = items.filter((i) => !i.provided_by).length;
   
   doc.text(`Total items: ${items.length}`, margin, y);
   y += 5;
@@ -249,6 +254,11 @@ export function generateTechSpecPdf(
   y += 5;
   doc.setTextColor(80, 100, 180);
   doc.text(`Venue to provide: ${venueItems} items`, margin, y);
+  if (unspecifiedItems > 0) {
+    y += 5;
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Unspecified: ${unspecifiedItems} items`, margin, y);
+  }
 
   // Footer
   const footerY = pageHeight - 10;
