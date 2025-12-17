@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { FileText, TrendingUp, Calendar, DollarSign, Building2 } from 'lucide-react';
+import { FileText, TrendingUp, Calendar, DollarSign, Building2, Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 interface ShareSettings {
   share_id: string;
@@ -42,7 +44,6 @@ export default function IncomeProof() {
 
   const loadData = async () => {
     try {
-      // Get share settings
       const { data: shareData, error: shareError } = await supabase
         .rpc('get_income_proof_by_token', { p_token: token });
 
@@ -56,7 +57,6 @@ export default function IncomeProof() {
       const settings = shareData[0] as ShareSettings;
       setShareSettings(settings);
 
-      // Get financial data
       const { data: finData, error: finError } = await supabase
         .rpc('get_shared_financial_data', { p_user_id: settings.owner_user_id });
 
@@ -74,6 +74,159 @@ export default function IncomeProof() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+  };
+
+  const downloadPDF = () => {
+    if (!financialData || !shareSettings) return;
+
+    const doc = new jsPDF();
+    const totalIncome = (financialData.total_event_income || 0) + (financialData.total_other_income || 0);
+    const displayName = financialData.business_name || financialData.full_name || 'Self-Employed Professional';
+    
+    let y = 20;
+    const leftMargin = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text(displayName, pageWidth / 2, y, { align: 'center' });
+    y += 10;
+
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Income Verification Document', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on ${format(new Date(), 'MMMM d, yyyy')}`, pageWidth / 2, y, { align: 'center' });
+    y += 5;
+    doc.text(`Document ID: ${token?.slice(0, 8)}...`, pageWidth / 2, y, { align: 'center' });
+    doc.setTextColor(0);
+    y += 15;
+
+    // Separator line
+    doc.setDrawColor(200);
+    doc.line(leftMargin, y, pageWidth - leftMargin, y);
+    y += 15;
+
+    // Income Summary
+    if (shareSettings.include_income_summary) {
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Income Summary', leftMargin, y);
+      y += 12;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      
+      doc.text('Total Annual Income:', leftMargin, y);
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatCurrency(totalIncome), pageWidth - leftMargin, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
+      y += 8;
+
+      doc.text('Event/Service Income:', leftMargin, y);
+      doc.text(formatCurrency(financialData.total_event_income || 0), pageWidth - leftMargin, y, { align: 'right' });
+      y += 8;
+
+      if (shareSettings.include_other_income) {
+        doc.text('Other Income:', leftMargin, y);
+        doc.text(formatCurrency(financialData.total_other_income || 0), pageWidth - leftMargin, y, { align: 'right' });
+        y += 8;
+      }
+
+      doc.text('Monthly Average:', leftMargin, y);
+      doc.text(formatCurrency(totalIncome / 12), pageWidth - leftMargin, y, { align: 'right' });
+      y += 15;
+    }
+
+    // Monthly Breakdown
+    if (shareSettings.include_monthly_breakdown && financialData.monthly_data && financialData.monthly_data.length > 0) {
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Monthly Income Breakdown (Last 12 Months)', leftMargin, y);
+      y += 12;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      
+      // Table header
+      doc.text('Month', leftMargin, y);
+      doc.text('Event Income', 80, y);
+      if (shareSettings.include_other_income) {
+        doc.text('Other Income', 120, y);
+        doc.text('Total', pageWidth - leftMargin, y, { align: 'right' });
+      } else {
+        doc.text('Total', pageWidth - leftMargin, y, { align: 'right' });
+      }
+      y += 6;
+
+      doc.setDrawColor(200);
+      doc.line(leftMargin, y, pageWidth - leftMargin, y);
+      y += 6;
+
+      doc.setFont('helvetica', 'normal');
+      financialData.monthly_data.forEach((month) => {
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        const monthTotal = month.event_income + month.other_income;
+        doc.text(month.month, leftMargin, y);
+        doc.text(formatCurrency(month.event_income), 80, y);
+        if (shareSettings.include_other_income) {
+          doc.text(formatCurrency(month.other_income), 120, y);
+        }
+        doc.text(formatCurrency(monthTotal), pageWidth - leftMargin, y, { align: 'right' });
+        y += 7;
+      });
+      y += 10;
+    }
+
+    // Tax Information
+    if (shareSettings.include_tax_calculations) {
+      if (y > 250) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Tax Information', leftMargin, y);
+      y += 12;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const taxText = `This individual is registered as self-employed and maintains records for tax purposes. Total declared income for the current tax year: ${formatCurrency(totalIncome)}`;
+      const splitText = doc.splitTextToSize(taxText, pageWidth - 2 * leftMargin);
+      doc.text(splitText, leftMargin, y);
+      y += splitText.length * 6 + 10;
+    }
+
+    // Footer
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    
+    doc.setDrawColor(200);
+    doc.line(leftMargin, y, pageWidth - leftMargin, y);
+    y += 10;
+
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    const footerText = 'This document was generated automatically and represents income data as recorded in the system. For official verification, please contact the individual directly.';
+    const footerSplit = doc.splitTextToSize(footerText, pageWidth - 2 * leftMargin);
+    doc.text(footerSplit, pageWidth / 2, y, { align: 'center' });
+    y += footerSplit.length * 5 + 5;
+    doc.text('Generated via Left Brain', pageWidth / 2, y, { align: 'center' });
+
+    // Save
+    const fileName = `income-proof-${displayName.replace(/\s+/g, '-').toLowerCase()}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+    doc.save(fileName);
   };
 
   if (loading) {
@@ -104,6 +257,14 @@ export default function IncomeProof() {
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
+        {/* Download Button */}
+        <div className="flex justify-end">
+          <Button onClick={downloadPDF} className="gap-2">
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-primary">
@@ -195,7 +356,7 @@ export default function IncomeProof() {
           </Card>
         )}
 
-        {/* Tax Calculations placeholder - would need more data */}
+        {/* Tax Calculations */}
         {shareSettings?.include_tax_calculations && (
           <Card>
             <CardHeader>
