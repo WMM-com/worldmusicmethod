@@ -326,6 +326,45 @@ export type Database = {
           },
         ]
       }
+      income_proof_shares: {
+        Row: {
+          created_at: string
+          id: string
+          include_income_summary: boolean | null
+          include_monthly_breakdown: boolean | null
+          include_other_income: boolean | null
+          include_tax_calculations: boolean | null
+          share_token: string
+          updated_at: string
+          user_id: string
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          include_income_summary?: boolean | null
+          include_monthly_breakdown?: boolean | null
+          include_other_income?: boolean | null
+          include_tax_calculations?: boolean | null
+          share_token?: string
+          updated_at?: string
+          user_id: string
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          include_income_summary?: boolean | null
+          include_monthly_breakdown?: boolean | null
+          include_other_income?: boolean | null
+          include_tax_calculations?: boolean | null
+          share_token?: string
+          updated_at?: string
+          user_id?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
@@ -555,6 +594,17 @@ export type Database = {
     }
     Functions: {
       generate_invoice_number: { Args: { _user_id: string }; Returns: string }
+      get_income_proof_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          include_income_summary: boolean
+          include_monthly_breakdown: boolean
+          include_other_income: boolean
+          include_tax_calculations: boolean
+          owner_user_id: string
+          share_id: string
+        }[]
+      }
       get_shared_contract: {
         Args: { p_share_token: string }
         Returns: {
@@ -563,6 +613,16 @@ export type Database = {
           id: string
           signed_at: string
           title: string
+        }[]
+      }
+      get_shared_financial_data: {
+        Args: { p_user_id: string }
+        Returns: {
+          business_name: string
+          full_name: string
+          monthly_data: Json
+          total_event_income: number
+          total_other_income: number
         }[]
       }
       has_role: {

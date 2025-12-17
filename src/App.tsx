@@ -12,6 +12,7 @@ import Finances from "./pages/Finances";
 import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
 import SharedWithMe from "./pages/SharedWithMe";
+import IncomeProof from "./pages/IncomeProof";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
+            <Route path="/income-proof/:token" element={<IncomeProof />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
