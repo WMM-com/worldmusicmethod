@@ -89,10 +89,9 @@ export function generateTechSpecPdf(
   });
   doc.setLineDashPattern([], 0);
 
-  // Draw items on stage
+  // Draw items on stage with channel numbers
   doc.setFontSize(6);
-  items.forEach((item, index) => {
-    const iconInfo = STAGE_ICONS.find((i) => i.type === item.icon_type);
+  items.forEach((item) => {
     const itemX = margin + (item.position_x / 100) * stageWidth;
     const itemY = y + (item.position_y / 100) * stageHeight;
     
@@ -110,10 +109,13 @@ export function generateTechSpecPdf(
     }
     doc.circle(itemX, itemY, radius, 'FD');
     
-    // Draw number inside circle
+    // Draw channel number if assigned, otherwise index
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'bold');
-    doc.text((index + 1).toString(), itemX, itemY + 1.5, { align: 'center' });
+    const displayNum = item.channel_number ? item.channel_number.toString() : '';
+    if (displayNum) {
+      doc.text(displayNum, itemX, itemY + 1.5, { align: 'center' });
+    }
   });
 
   y += stageHeight + 10;
@@ -145,10 +147,109 @@ export function generateTechSpecPdf(
 
   y += 15;
 
+  // Channel List / Input List (Most important for sound engineers)
+  const channelItems = items
+    .filter(item => item.channel_number !== null)
+    .sort((a, b) => (a.channel_number || 0) - (b.channel_number || 0));
+
+  if (channelItems.length > 0) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Channel List / Input List', margin, y);
+    y += 8;
+
+    // Table header
+    doc.setFillColor(30, 30, 30);
+    doc.rect(margin, y, contentWidth, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    
+    const colCh = margin + 3;
+    const colInput = margin + 18;
+    const colMic = margin + 70;
+    const col48v = margin + 105;
+    const colIns = margin + 118;
+    const colMon = margin + 132;
+    const colFx = margin + 158;
+    
+    y += 5.5;
+    doc.text('Ch', colCh, y);
+    doc.text('Input / Source', colInput, y);
+    doc.text('Mic / DI', colMic, y);
+    doc.text('48V', col48v, y);
+    doc.text('Ins', colIns, y);
+    doc.text('Monitors', colMon, y);
+    doc.text('FX', colFx, y);
+    y += 5;
+
+    // Table rows
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+
+    channelItems.forEach((item, index) => {
+      if (y > pageHeight - 30) {
+        doc.addPage();
+        y = margin;
+      }
+
+      const iconInfo = STAGE_ICONS.find((i) => i.type === item.icon_type);
+      const micInfo = item.mic_type ? MIC_TYPES.find((m) => m.value === (item.mic_type as string)) : null;
+      const displayLabel = item.label || iconInfo?.label || item.icon_type;
+      
+      // Alternate row background
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 248, 248);
+        doc.rect(margin, y - 3.5, contentWidth, 7, 'F');
+      }
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text((item.channel_number || '').toString(), colCh, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(displayLabel.substring(0, 25), colInput, y);
+      doc.text((micInfo?.label || item.mic_type || '-').substring(0, 15), colMic, y);
+      
+      // 48V indicator
+      if (item.phantom_power) {
+        doc.setTextColor(200, 150, 0);
+        doc.text('✓', col48v + 3, y);
+        doc.setTextColor(0, 0, 0);
+      }
+      
+      // Insert indicator
+      if (item.insert_required) {
+        doc.setTextColor(0, 100, 200);
+        doc.text('✓', colIns + 3, y);
+        doc.setTextColor(0, 0, 0);
+      }
+      
+      // Monitor mixes
+      const monText = item.monitor_mixes?.join(', ') || '-';
+      doc.text(monText.substring(0, 12), colMon, y);
+      
+      // FX sends
+      const fxText = item.fx_sends?.join(', ') || '-';
+      doc.text(fxText.substring(0, 12), colFx, y);
+
+      y += 7;
+    });
+
+    y += 5;
+  }
+
   // Equipment List
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
+  
+  if (y > pageHeight - 60) {
+    doc.addPage();
+    y = margin;
+  }
+  
   doc.text('Equipment List', margin, y);
   y += 8;
 
@@ -162,14 +263,14 @@ export function generateTechSpecPdf(
   const colNum = margin + 3;
   const colItem = margin + 15;
   const colLabel = margin + 55;
-  const colMic = margin + 100;
+  const colMicEq = margin + 100;
   const colProvider = margin + 145;
   
   y += 5.5;
   doc.text('#', colNum, y);
   doc.text('Equipment', colItem, y);
   doc.text('Label', colLabel, y);
-  doc.text('Mic/Input', colMic, y);
+  doc.text('Mic/Input', colMicEq, y);
   doc.text('Provided By', colProvider, y);
   y += 5;
 
@@ -179,7 +280,6 @@ export function generateTechSpecPdf(
   doc.setFontSize(9);
 
   items.forEach((item, index) => {
-    // Check if we need a new page
     if (y > pageHeight - 30) {
       doc.addPage();
       y = margin;
@@ -204,7 +304,7 @@ export function generateTechSpecPdf(
     doc.text((index + 1).toString(), colNum, y);
     doc.text((iconInfo?.label || item.icon_type).substring(0, 20), colItem, y);
     doc.text((item.label || '-').substring(0, 20), colLabel, y);
-    doc.text((micInfo?.label || item.mic_type || '-').substring(0, 20), colMic, y);
+    doc.text((micInfo?.label || item.mic_type || '-').substring(0, 20), colMicEq, y);
     
     if (item.provided_by === 'venue') {
       doc.setTextColor(80, 100, 180);
@@ -247,8 +347,11 @@ export function generateTechSpecPdf(
   const artistItems = items.filter((i) => i.provided_by === 'artist').length;
   const venueItems = items.filter((i) => i.provided_by === 'venue').length;
   const unspecifiedItems = items.filter((i) => !i.provided_by).length;
+  const totalChannels = channelItems.length;
   
   doc.text(`Total items: ${items.length}`, margin, y);
+  y += 5;
+  doc.text(`Total channels: ${totalChannels}`, margin, y);
   y += 5;
   doc.text(`Artist provides: ${artistItems} items`, margin, y);
   y += 5;

@@ -1,0 +1,150 @@
+import { useMemo } from 'react';
+import { StagePlotItem, STAGE_ICONS, MIC_TYPES, IconType } from '@/types/techSpec';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { StageIcon } from './StageIcon';
+import { Zap, Plug } from 'lucide-react';
+
+interface ChannelListProps {
+  items: StagePlotItem[];
+}
+
+export function ChannelList({ items }: ChannelListProps) {
+  // Filter and sort items that have channel numbers assigned
+  const channelItems = useMemo(() => {
+    return items
+      .filter(item => item.channel_number !== null)
+      .sort((a, b) => (a.channel_number || 0) - (b.channel_number || 0));
+  }, [items]);
+
+  const unassignedItems = useMemo(() => {
+    return items.filter(item => item.channel_number === null);
+  }, [items]);
+
+  if (items.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Channel List</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            No equipment added yet. Add items to the stage plot first.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Channel List / Input List</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {channelItems.length} channels assigned • {unassignedItems.length} unassigned
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-14">Ch</TableHead>
+              <TableHead>Input / Source</TableHead>
+              <TableHead>Mic / DI</TableHead>
+              <TableHead className="w-14 text-center">48V</TableHead>
+              <TableHead className="w-14 text-center">Ins</TableHead>
+              <TableHead>Mon Mixes</TableHead>
+              <TableHead>FX Sends</TableHead>
+              <TableHead className="w-20">Provider</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {channelItems.map((item) => {
+              const iconInfo = STAGE_ICONS.find(i => i.type === item.icon_type);
+              const micInfo = item.mic_type ? MIC_TYPES.find(m => m.value === item.mic_type) : null;
+              const displayLabel = item.label || iconInfo?.label || item.icon_type;
+              
+              return (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono font-bold text-lg">
+                    {item.channel_number}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <StageIcon type={item.icon_type as IconType} size={20} />
+                      <span className="font-medium">{displayLabel}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {micInfo?.label || item.mic_type || '-'}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.phantom_power && (
+                      <Zap className="h-4 w-4 text-yellow-500 mx-auto" />
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.insert_required && (
+                      <Plug className="h-4 w-4 text-blue-500 mx-auto" />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {item.monitor_mixes?.map((mix, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {mix}
+                        </Badge>
+                      ))}
+                      {(!item.monitor_mixes || item.monitor_mixes.length === 0) && (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {item.fx_sends?.map((fx, i) => (
+                        <Badge key={i} variant="outline" className="text-xs">
+                          {fx}
+                        </Badge>
+                      ))}
+                      {(!item.fx_sends || item.fx_sends.length === 0) && (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={item.provided_by === 'venue' ? 'default' : item.provided_by === 'artist' ? 'secondary' : 'outline'}
+                    >
+                      {item.provided_by === 'venue' ? 'Venue' : item.provided_by === 'artist' ? 'Artist' : 'TBD'}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+
+        {unassignedItems.length > 0 && (
+          <div className="p-4 border-t border-border bg-muted/30">
+            <p className="text-sm font-medium text-muted-foreground mb-2">
+              Unassigned Items ({unassignedItems.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {unassignedItems.map((item) => {
+                const iconInfo = STAGE_ICONS.find(i => i.type === item.icon_type);
+                return (
+                  <div key={item.id} className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <StageIcon type={item.icon_type as IconType} size={16} />
+                    <span>{item.label || iconInfo?.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

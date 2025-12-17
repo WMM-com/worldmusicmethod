@@ -572,13 +572,18 @@ export type Database = {
       }
       stage_plot_items: {
         Row: {
+          channel_number: number | null
           created_at: string
+          fx_sends: string[] | null
           icon_type: string
           id: string
+          insert_required: boolean | null
           label: string | null
           mic_type: string | null
+          monitor_mixes: string[] | null
           notes: string | null
           paired_with_id: string | null
+          phantom_power: boolean | null
           position_x: number
           position_y: number
           provided_by: string | null
@@ -587,13 +592,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          channel_number?: number | null
           created_at?: string
+          fx_sends?: string[] | null
           icon_type: string
           id?: string
+          insert_required?: boolean | null
           label?: string | null
           mic_type?: string | null
+          monitor_mixes?: string[] | null
           notes?: string | null
           paired_with_id?: string | null
+          phantom_power?: boolean | null
           position_x?: number
           position_y?: number
           provided_by?: string | null
@@ -602,13 +612,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          channel_number?: number | null
           created_at?: string
+          fx_sends?: string[] | null
           icon_type?: string
           id?: string
+          insert_required?: boolean | null
           label?: string | null
           mic_type?: string | null
+          monitor_mixes?: string[] | null
           notes?: string | null
           paired_with_id?: string | null
+          phantom_power?: boolean | null
           position_x?: number
           position_y?: number
           provided_by?: string | null

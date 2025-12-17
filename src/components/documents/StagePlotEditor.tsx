@@ -9,8 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ArrowLeft, Trash2, Link2, Unlink, Download, RotateCcw, RotateCw } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Trash2, Link2, Unlink, Download, RotateCcw, RotateCw, Zap, Plug } from 'lucide-react';
 import { StageIcon } from './StageIcon';
+import { ChannelList } from './ChannelList';
 import { cn } from '@/lib/utils';
 import { downloadTechSpecPdf } from '@/lib/generateTechSpecPdf';
 
@@ -34,6 +37,8 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
   const [draggingItem, setDraggingItem] = useState<StagePlotItem | null>(null);
   const [pairingMode, setPairingMode] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [monitorMixInput, setMonitorMixInput] = useState('');
+  const [fxSendInput, setFxSendInput] = useState('');
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const handleExportPdf = () => {
@@ -161,6 +166,64 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
         : (selectedItem.rotation + 15) % 360;
       updateItem(selectedItem.id, { rotation: newRotation });
       setSelectedItem({ ...selectedItem, rotation: newRotation });
+    }
+  };
+
+  const handleChannelChange = (value: string) => {
+    if (selectedItem) {
+      const channelNumber = value === '' ? null : parseInt(value, 10);
+      updateItem(selectedItem.id, { channel_number: channelNumber });
+      setSelectedItem({ ...selectedItem, channel_number: channelNumber });
+    }
+  };
+
+  const handlePhantomPowerChange = (checked: boolean) => {
+    if (selectedItem) {
+      updateItem(selectedItem.id, { phantom_power: checked });
+      setSelectedItem({ ...selectedItem, phantom_power: checked });
+    }
+  };
+
+  const handleInsertChange = (checked: boolean) => {
+    if (selectedItem) {
+      updateItem(selectedItem.id, { insert_required: checked });
+      setSelectedItem({ ...selectedItem, insert_required: checked });
+    }
+  };
+
+  const handleAddMonitorMix = () => {
+    if (selectedItem && monitorMixInput.trim()) {
+      const currentMixes = selectedItem.monitor_mixes || [];
+      const newMixes = [...currentMixes, monitorMixInput.trim()];
+      updateItem(selectedItem.id, { monitor_mixes: newMixes });
+      setSelectedItem({ ...selectedItem, monitor_mixes: newMixes });
+      setMonitorMixInput('');
+    }
+  };
+
+  const handleRemoveMonitorMix = (index: number) => {
+    if (selectedItem && selectedItem.monitor_mixes) {
+      const newMixes = selectedItem.monitor_mixes.filter((_, i) => i !== index);
+      updateItem(selectedItem.id, { monitor_mixes: newMixes.length > 0 ? newMixes : null });
+      setSelectedItem({ ...selectedItem, monitor_mixes: newMixes.length > 0 ? newMixes : null });
+    }
+  };
+
+  const handleAddFxSend = () => {
+    if (selectedItem && fxSendInput.trim()) {
+      const currentSends = selectedItem.fx_sends || [];
+      const newSends = [...currentSends, fxSendInput.trim()];
+      updateItem(selectedItem.id, { fx_sends: newSends });
+      setSelectedItem({ ...selectedItem, fx_sends: newSends });
+      setFxSendInput('');
+    }
+  };
+
+  const handleRemoveFxSend = (index: number) => {
+    if (selectedItem && selectedItem.fx_sends) {
+      const newSends = selectedItem.fx_sends.filter((_, i) => i !== index);
+      updateItem(selectedItem.id, { fx_sends: newSends.length > 0 ? newSends : null });
+      setSelectedItem({ ...selectedItem, fx_sends: newSends.length > 0 ? newSends : null });
     }
   };
 
@@ -319,12 +382,17 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <div className={cn(
-                        'p-1.5 rounded-lg',
+                        'p-1.5 rounded-lg relative',
                         item.provided_by === 'artist' ? 'bg-card border border-border' : 
                         item.provided_by === 'venue' ? 'bg-accent/20 border border-accent/50' :
                         'bg-muted border border-border'
                       )}>
                         <StageIcon type={item.icon_type as IconType} size={iconSize} />
+                        {item.channel_number && (
+                          <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            {item.channel_number}
+                          </span>
+                        )}
                       </div>
                       {item.label && (
                         <span className="text-[10px] font-medium bg-background/80 px-1 rounded max-w-[60px] truncate">
@@ -348,188 +416,303 @@ export function StagePlotEditor({ techSpec, onBack }: StagePlotEditorProps) {
         </Card>
 
         {/* Item Properties */}
-        <Card className="lg:h-[600px]">
+        <Card className="lg:h-[600px] overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Properties</CardTitle>
           </CardHeader>
-          <CardContent>
-            {selectedItem ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Label</Label>
-                  <Input
-                    value={selectedItem.label || ''}
-                    onChange={(e) => handleLabelChange(e.target.value)}
-                    placeholder="e.g., Lead Vocal, Kick Drum"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Provided By</Label>
-                  <Select
-                    value={selectedItem.provided_by || 'none'}
-                    onValueChange={handleProvidedByChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Not specified</SelectItem>
-                      <SelectItem value="artist">Artist</SelectItem>
-                      <SelectItem value="venue">Venue</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Rotation</Label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleRotate('left')}
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm text-muted-foreground flex-1 text-center">
-                      {selectedItem.rotation}°
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleRotate('right')}
-                    >
-                      <RotateCw className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {(selectedItem.icon_type === 'mic_tall' || 
-                  selectedItem.icon_type === 'mic_short' ||
-                  selectedItem.icon_type === 'di_box') && (
+          <CardContent className="p-0">
+            <ScrollArea className="h-[520px] px-4 pb-4">
+              {selectedItem ? (
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Mic Type</Label>
+                    <Label>Label</Label>
+                    <Input
+                      value={selectedItem.label || ''}
+                      onChange={(e) => handleLabelChange(e.target.value)}
+                      placeholder="e.g., Lead Vocal, Kick Drum"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      Channel Number
+                      <span className="text-xs text-muted-foreground">(for input list)</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={selectedItem.channel_number ?? ''}
+                      onChange={(e) => handleChannelChange(e.target.value)}
+                      placeholder="e.g., 1, 2, 3..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Provided By</Label>
                     <Select
-                      value={selectedItem.mic_type || ''}
-                      onValueChange={handleMicTypeChange}
+                      value={selectedItem.provided_by || 'none'}
+                      onValueChange={handleProvidedByChange}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select mic type" />
+                        <SelectValue placeholder="Select..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {MIC_TYPES.map((mic) => (
-                          <SelectItem key={mic.value} value={mic.value}>
-                            {mic.label}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="none">Not specified</SelectItem>
+                        <SelectItem value="artist">Artist</SelectItem>
+                        <SelectItem value="venue">Venue</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <Label>Notes</Label>
-                  <Textarea
-                    value={selectedItem.notes || ''}
-                    onChange={(e) => handleNotesChange(e.target.value)}
-                    placeholder="Additional details..."
-                    rows={3}
-                  />
-                </div>
-
-                {selectedItem.icon_type === 'monitor' && (
                   <div className="space-y-2">
-                    <Label>Monitor Pairing</Label>
-                    {selectedItem.paired_with_id ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground flex-1">
-                          Paired with another monitor
-                        </span>
-                        <Button size="sm" variant="outline" onClick={handleUnpair}>
-                          <Unlink className="h-4 w-4 mr-1" />
-                          Unpair
-                        </Button>
-                      </div>
-                    ) : (
+                    <Label>Rotation</Label>
+                    <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="w-full"
-                        onClick={handleStartPairing}
-                        disabled={!!pairingMode}
+                        onClick={() => handleRotate('left')}
                       >
-                        <Link2 className="h-4 w-4 mr-1" />
-                        {pairingMode === selectedItem.id ? 'Click another monitor...' : 'Pair with Monitor'}
+                        <RotateCcw className="h-4 w-4" />
                       </Button>
-                    )}
+                      <span className="text-sm text-muted-foreground flex-1 text-center">
+                        {selectedItem.rotation}°
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRotate('right')}
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                )}
 
-                <div className="pt-4 border-t border-border">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => {
-                      deleteItem(selectedItem.id);
-                      setSelectedItem(null);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Item
-                  </Button>
+                  {(selectedItem.icon_type === 'mic_tall' || 
+                    selectedItem.icon_type === 'mic_short' ||
+                    selectedItem.icon_type === 'di_box') && (
+                    <div className="space-y-2">
+                      <Label>Mic Type</Label>
+                      <Select
+                        value={selectedItem.mic_type || ''}
+                        onValueChange={handleMicTypeChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select mic type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MIC_TYPES.map((mic) => (
+                            <SelectItem key={mic.value} value={mic.value}>
+                              {mic.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Channel properties - shown when channel is assigned */}
+                  {selectedItem.channel_number && (
+                    <>
+                      <div className="pt-2 border-t border-border">
+                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Channel Settings</Label>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="phantom"
+                            checked={selectedItem.phantom_power || false}
+                            onCheckedChange={handlePhantomPowerChange}
+                          />
+                          <Label htmlFor="phantom" className="text-sm flex items-center gap-1 cursor-pointer">
+                            <Zap className="h-3 w-3 text-yellow-500" />
+                            48V Phantom
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="insert"
+                            checked={selectedItem.insert_required || false}
+                            onCheckedChange={handleInsertChange}
+                          />
+                          <Label htmlFor="insert" className="text-sm flex items-center gap-1 cursor-pointer">
+                            <Plug className="h-3 w-3 text-blue-500" />
+                            Insert
+                          </Label>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Monitor Mixes</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={monitorMixInput}
+                            onChange={(e) => setMonitorMixInput(e.target.value)}
+                            placeholder="e.g., Mon 1, IEM L"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddMonitorMix()}
+                          />
+                          <Button size="sm" onClick={handleAddMonitorMix}>Add</Button>
+                        </div>
+                        {selectedItem.monitor_mixes && selectedItem.monitor_mixes.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedItem.monitor_mixes.map((mix, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 text-xs bg-secondary/20 px-2 py-1 rounded cursor-pointer hover:bg-destructive/20"
+                                onClick={() => handleRemoveMonitorMix(i)}
+                              >
+                                {mix} ×
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>FX Sends</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={fxSendInput}
+                            onChange={(e) => setFxSendInput(e.target.value)}
+                            placeholder="e.g., Reverb, Delay"
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddFxSend()}
+                          />
+                          <Button size="sm" onClick={handleAddFxSend}>Add</Button>
+                        </div>
+                        {selectedItem.fx_sends && selectedItem.fx_sends.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedItem.fx_sends.map((fx, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 text-xs bg-accent/20 px-2 py-1 rounded cursor-pointer hover:bg-destructive/20"
+                                onClick={() => handleRemoveFxSend(i)}
+                              >
+                                {fx} ×
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={selectedItem.notes || ''}
+                      onChange={(e) => handleNotesChange(e.target.value)}
+                      placeholder="Additional details..."
+                      rows={2}
+                    />
+                  </div>
+
+                  {selectedItem.icon_type === 'monitor' && (
+                    <div className="space-y-2">
+                      <Label>Monitor Pairing</Label>
+                      {selectedItem.paired_with_id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground flex-1">
+                            Paired with another monitor
+                          </span>
+                          <Button size="sm" variant="outline" onClick={handleUnpair}>
+                            <Unlink className="h-4 w-4 mr-1" />
+                            Unpair
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={handleStartPairing}
+                          disabled={!!pairingMode}
+                        >
+                          <Link2 className="h-4 w-4 mr-1" />
+                          {pairingMode === selectedItem.id ? 'Click another monitor...' : 'Pair with Monitor'}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-border">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => {
+                        deleteItem(selectedItem.id);
+                        setSelectedItem(null);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Item
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">Select an item on the stage to edit its properties</p>
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">Select an item on the stage to edit its properties</p>
+                </div>
+              )}
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
 
-      {/* Equipment List - Consolidated */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Equipment List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {consolidatedItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No equipment added yet</p>
-          ) : (
-            <div className="space-y-1">
-              {consolidatedItems.map((item, index) => {
-                const micInfo = item.mic_type ? MIC_TYPES.find((m) => m.value === item.mic_type) : null;
-                return (
-                  <div
-                    key={index}
-                    className={cn(
-                      'flex items-center gap-3 py-2 px-3 rounded-lg border',
-                      item.provided_by === 'artist' ? 'border-border' : 
-                      item.provided_by === 'venue' ? 'border-accent/50 bg-accent/10' :
-                      'border-border/50'
-                    )}
-                  >
-                    <StageIcon type={item.icon_type} size={24} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {item.count > 1 ? `${item.count}x ` : ''}{item.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {micInfo?.label && `${micInfo.label} · `}
-                        {item.provided_by === 'venue' ? 'Venue provides' : 
-                         item.provided_by === 'artist' ? 'Artist provides' : 
-                         'Provider not specified'}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Channel List and Equipment List */}
+      <Tabs defaultValue="channels" className="w-full">
+        <TabsList>
+          <TabsTrigger value="channels">Channel List</TabsTrigger>
+          <TabsTrigger value="equipment">Equipment List</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="channels" className="mt-4">
+          <ChannelList items={items} />
+        </TabsContent>
+        
+        <TabsContent value="equipment" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Equipment List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {consolidatedItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No equipment added yet</p>
+              ) : (
+                <div className="space-y-1">
+                  {consolidatedItems.map((item, index) => {
+                    const micInfo = item.mic_type ? MIC_TYPES.find((m) => m.value === item.mic_type) : null;
+                    return (
+                      <div
+                        key={index}
+                        className={cn(
+                          'flex items-center gap-3 py-2 px-3 rounded-lg border',
+                          item.provided_by === 'artist' ? 'border-border' : 
+                          item.provided_by === 'venue' ? 'border-accent/50 bg-accent/10' :
+                          'border-border/50'
+                        )}
+                      >
+                        <StageIcon type={item.icon_type} size={24} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">
+                            {item.count > 1 ? `${item.count}x ` : ''}{item.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {micInfo?.label && `${micInfo.label} · `}
+                            {item.provided_by === 'venue' ? 'Venue provides' : 
+                             item.provided_by === 'artist' ? 'Artist provides' : 
+                             'Provider not specified'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
