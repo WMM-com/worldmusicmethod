@@ -4,6 +4,7 @@ import { MapPin, Clock, BookOpen, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourses } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,21 +15,26 @@ export default function Courses() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-6xl mx-auto">
-          <Skeleton className="h-12 w-64 mb-8" />
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map(i => (
-              <Skeleton key={i} className="h-64 rounded-2xl" />
-            ))}
+      <>
+        <SiteHeader />
+        <div className="min-h-screen bg-background p-6">
+          <div className="max-w-6xl mx-auto">
+            <Skeleton className="h-12 w-64 mb-8" />
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <Skeleton key={i} className="h-64 rounded-2xl" />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <SiteHeader />
+      <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="max-w-6xl mx-auto px-6 py-8">
@@ -129,6 +135,7 @@ export default function Courses() {
           </div>
         )}
       </main>
-    </div>
+      </div>
+    </>
   );
 }
