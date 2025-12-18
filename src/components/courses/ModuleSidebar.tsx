@@ -22,6 +22,7 @@ interface ModuleSidebarProps {
   onPracticeSelect: (type: 'rhythm' | 'ear_training') => void;
   onClose: () => void;
   selectedLessonId?: string;
+  embedded?: boolean;
 }
 
 const LESSON_ICONS: Record<string, React.ElementType> = {
@@ -44,7 +45,8 @@ export function ModuleSidebar({
   onLessonSelect,
   onPracticeSelect,
   onClose,
-  selectedLessonId
+  selectedLessonId,
+  embedded = false
 }: ModuleSidebarProps) {
   if (!module) return null;
 
@@ -55,10 +57,13 @@ export function ModuleSidebar({
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, x: 20 }}
+        initial={{ opacity: 0, x: embedded ? 0 : 20 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 20 }}
-        className="w-full max-w-md bg-card border-l border-border h-full flex flex-col"
+        exit={{ opacity: 0, x: embedded ? 0 : 20 }}
+        className={cn(
+          "w-full bg-card flex flex-col",
+          embedded ? "max-w-none" : "max-w-md border-l border-border h-full"
+        )}
       >
         {/* Header */}
         <div className="p-6 border-b border-border">
@@ -76,9 +81,11 @@ export function ModuleSidebar({
                 </p>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="w-5 h-5" />
-            </Button>
+            {!embedded && (
+              <Button variant="ghost" size="icon" onClick={onClose}>
+                <X className="w-5 h-5" />
+              </Button>
+            )}
           </div>
 
           {/* Progress bar */}
