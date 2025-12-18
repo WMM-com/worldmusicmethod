@@ -106,6 +106,77 @@ export type Database = {
           },
         ]
       }
+      country_region_mapping: {
+        Row: {
+          country_code: string
+          country_name: string
+          created_at: string
+          id: string
+          region: Database["public"]["Enums"]["pricing_region"]
+        }
+        Insert: {
+          country_code: string
+          country_name: string
+          created_at?: string
+          id?: string
+          region: Database["public"]["Enums"]["pricing_region"]
+        }
+        Update: {
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          id?: string
+          region?: Database["public"]["Enums"]["pricing_region"]
+        }
+        Relationships: []
+      }
+      course_enrollments: {
+        Row: {
+          course_id: string
+          created_at: string
+          enrolled_at: string
+          enrolled_by: string | null
+          enrollment_type: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          enrolled_at?: string
+          enrolled_by?: string | null
+          enrollment_type?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          enrolled_at?: string
+          enrolled_by?: string | null
+          enrollment_type?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           color_theme: string | null
@@ -522,6 +593,51 @@ export type Database = {
           },
         ]
       }
+      media_library: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          folder: string | null
+          id: string
+          metadata: Json | null
+          mime_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          folder?: string | null
+          id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          folder?: string | null
+          id?: string
+          metadata?: Json | null
+          mime_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       module_lessons: {
         Row: {
           content: string | null
@@ -610,6 +726,85 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      product_regional_pricing: {
+        Row: {
+          created_at: string
+          currency: string
+          discount_percentage: number
+          id: string
+          product_id: string
+          region: Database["public"]["Enums"]["pricing_region"]
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          discount_percentage?: number
+          id?: string
+          product_id: string
+          region: Database["public"]["Enums"]["pricing_region"]
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          discount_percentage?: number
+          id?: string
+          product_id?: string
+          region?: Database["public"]["Enums"]["pricing_region"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_regional_pricing_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          base_price_usd: number
+          course_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          product_type: string
+          updated_at: string
+        }
+        Insert: {
+          base_price_usd?: number
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          product_type?: string
+          updated_at?: string
+        }
+        Update: {
+          base_price_usd?: number
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          product_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -981,6 +1176,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_regional_price: {
+        Args: {
+          p_base_price_usd: number
+          p_region: Database["public"]["Enums"]["pricing_region"]
+        }
+        Returns: {
+          currency: string
+          discount_percentage: number
+          price: number
+        }[]
+      }
       generate_invoice_number: { Args: { _user_id: string }; Returns: string }
       get_income_proof_by_token: {
         Args: { p_token: string }
@@ -1057,6 +1263,16 @@ export type Database = {
         | "software"
         | "other"
       payment_status: "unpaid" | "paid" | "partial" | "overdue"
+      pricing_region:
+        | "africa"
+        | "south_america"
+        | "usa_canada"
+        | "uk"
+        | "north_west_europe"
+        | "east_south_europe"
+        | "asia_lower"
+        | "asia_higher"
+        | "default"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1203,6 +1419,17 @@ export const Constants = {
         "other",
       ],
       payment_status: ["unpaid", "paid", "partial", "overdue"],
+      pricing_region: [
+        "africa",
+        "south_america",
+        "usa_canada",
+        "uk",
+        "north_west_europe",
+        "east_south_europe",
+        "asia_lower",
+        "asia_higher",
+        "default",
+      ],
     },
   },
 } as const
