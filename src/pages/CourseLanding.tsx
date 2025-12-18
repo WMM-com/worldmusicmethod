@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourse } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -57,7 +58,9 @@ export default function CourseLanding() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <SiteHeader />
+      <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative min-h-[70vh] flex items-center">
         {/* Background */}
@@ -364,5 +367,6 @@ export default function CourseLanding() {
         </div>
       </section>
     </div>
+    </>
   );
 }
