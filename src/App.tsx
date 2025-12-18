@@ -18,6 +18,8 @@ import SharedTechSpec from "./pages/SharedTechSpec";
 import Courses from "./pages/Courses";
 import Course from "./pages/Course";
 import CourseLanding from "./pages/CourseLanding";
+import MyCourses from "./pages/MyCourses";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -75,10 +77,11 @@ const App = () => (
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
             <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-            <Route path="/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
+            <Route path="/courses" element={<Courses />} />
             <Route path="/courses/:courseId" element={<CourseLanding />} />
             <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
-            <Route path="/income-proof/:token" element={<IncomeProof />} />
+            <Route path="/my-courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
