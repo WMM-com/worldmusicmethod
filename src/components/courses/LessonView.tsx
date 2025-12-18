@@ -85,6 +85,27 @@ export function LessonView({
           )}
         </motion.div>
 
+        {/* Soundslice Embed - Test embed for first lesson */}
+        {lesson.order_index === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="rounded-2xl overflow-hidden shadow-2xl bg-card">
+              <iframe 
+                src="https://www.soundslice.com/slices/w7kTc/embed/" 
+                width="100%" 
+                height="500" 
+                frameBorder="0" 
+                allowFullScreen
+                className="w-full"
+              />
+            </div>
+          </motion.div>
+        )}
+
         {/* Video Player */}
         {lesson.video_url && (
           <motion.div
