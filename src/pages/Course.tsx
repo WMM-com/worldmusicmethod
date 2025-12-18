@@ -160,13 +160,13 @@ export default function Course() {
         </div>
       </header>
 
-      {/* Main content */}
+      {/* Main content - 3 column layout */}
       <div className="flex h-[calc(100vh-65px)]">
-        {/* Map / List view */}
+        {/* Map / List view - main area */}
         <motion.div 
           className={cn(
             "flex-1 p-6 overflow-auto transition-all duration-300",
-            selectedLessonId && "hidden lg:block lg:w-1/3"
+            selectedLessonId ? "hidden lg:block lg:flex-1" : "flex-1"
           )}
         >
           {viewMode === 'map' ? (
@@ -210,38 +210,51 @@ export default function Course() {
           )}
         </motion.div>
 
-        {/* Module sidebar */}
+        {/* Module sidebar - shows when module selected */}
         <AnimatePresence>
-          {selectedModuleId && !selectedLessonId && (
-            <ModuleSidebar
-              module={selectedModule}
-              completedLessons={completedLessons}
-              onLessonSelect={handleLessonSelect}
-              onPracticeSelect={setPracticeType}
-              onClose={() => setSelectedModuleId(null)}
-              selectedLessonId={selectedLessonId || undefined}
-            />
+          {selectedModuleId && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 'auto', opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              className={cn(
+                "border-l border-border overflow-hidden",
+                selectedLessonId ? "hidden lg:block" : "block"
+              )}
+            >
+              <ModuleSidebar
+                module={selectedModule}
+                completedLessons={completedLessons}
+                onLessonSelect={handleLessonSelect}
+                onPracticeSelect={setPracticeType}
+                onClose={() => setSelectedModuleId(null)}
+                selectedLessonId={selectedLessonId || undefined}
+              />
+            </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Lesson view */}
+        {/* Lesson view - expands when lesson selected */}
         <AnimatePresence>
           {selectedLesson && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 lg:flex-[2] border-l border-border"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="flex-1 lg:flex-[2] border-l border-border overflow-auto"
             >
-              <div className="lg:hidden p-4 border-b border-border">
+              <div className="lg:hidden p-4 border-b border-border flex items-center gap-2">
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => setSelectedLessonId(null)}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to module
+                  Back
                 </Button>
+                <span className="text-sm text-muted-foreground truncate">
+                  {selectedModule?.title}
+                </span>
               </div>
               <LessonView
                 lesson={selectedLesson}
