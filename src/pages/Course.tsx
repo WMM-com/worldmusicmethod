@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Map as MapIcon, List, X } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -18,14 +18,14 @@ import {
 } from '@/hooks/useCourses';
 import { cn } from '@/lib/utils';
 
-type ViewMode = 'map' | 'list';
+type ViewState = 'map' | 'module' | 'lesson';
 type PracticeType = 'rhythm' | 'ear_training' | null;
 
 export default function Course() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   
-  const [viewMode, setViewMode] = useState<ViewMode>('map');
+  const [viewState, setViewState] = useState<ViewState>('map');
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [practiceType, setPracticeType] = useState<PracticeType>(null);
@@ -71,10 +71,23 @@ export default function Course() {
   const handleModuleSelect = (moduleId: string) => {
     setSelectedModuleId(moduleId);
     setSelectedLessonId(null);
+    setViewState('module');
   };
 
   const handleLessonSelect = (lessonId: string) => {
     setSelectedLessonId(lessonId);
+    setViewState('lesson');
+  };
+
+  const handleBackToMap = () => {
+    setViewState('map');
+    setSelectedModuleId(null);
+    setSelectedLessonId(null);
+  };
+
+  const handleBackToModule = () => {
+    setViewState('module');
+    setSelectedLessonId(null);
   };
 
   const handleNavigateLesson = (direction: 'prev' | 'next') => {
@@ -84,7 +97,6 @@ export default function Course() {
     
     if (newIndex >= 0 && newIndex < allLessons.length) {
       const newLesson = allLessons[newIndex];
-      // Find which module this lesson belongs to
       const newModule = course?.modules?.find(m => 
         m.lessons?.some(l => l.id === newLesson.id)
       );
@@ -97,9 +109,11 @@ export default function Course() {
 
   if (courseLoading) {
     return (
-      <div className="min-h-screen bg-background p-6">
-        <Skeleton className="h-12 w-64 mb-6" />
-        <Skeleton className="h-[600px] w-full max-w-2xl mx-auto rounded-3xl" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Skeleton className="h-8 w-48 mx-auto" />
+          <Skeleton className="h-4 w-32 mx-auto" />
+        </div>
       </div>
     );
   }
@@ -119,143 +133,152 @@ export default function Course() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/courses')}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="font-bold text-lg">{course.title}</h1>
-              <p className="text-sm text-muted-foreground">{course.country}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <CourseStats 
-              stats={stats} 
-              totalLessons={totalLessons}
-              completedLessons={completedLessons.size}
-            />
-
-            {/* View toggle */}
-            <div className="flex items-center bg-muted rounded-lg p-1">
-              <Button
-                variant={viewMode === 'map' ? 'secondary' : 'ghost'}
+      {/* MAP VIEW - Full screen immersive */}
+      <AnimatePresence mode="wait">
+        {viewState === 'map' && (
+          <motion.div
+            key="map"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="relative"
+          >
+            {/* Back button overlay */}
+            <div className="fixed top-4 left-4 z-50">
+              <Button 
+                variant="secondary" 
                 size="sm"
-                onClick={() => setViewMode('map')}
+                onClick={() => navigate('/courses')}
+                className="bg-background/80 backdrop-blur-sm border border-border"
               >
-                <MapIcon className="w-4 h-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-              >
-                <List className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                All Courses
               </Button>
             </div>
-          </div>
-        </div>
-      </header>
 
-      {/* Main content - 3 column layout */}
-      <div className="flex h-[calc(100vh-65px)]">
-        {/* Map / List view - main area */}
-        <motion.div 
-          className={cn(
-            "flex-1 p-6 overflow-auto transition-all duration-300",
-            selectedLessonId ? "hidden lg:block lg:flex-1" : "flex-1"
-          )}
-        >
-          {viewMode === 'map' ? (
+            {/* Stats overlay */}
+            <div className="fixed top-4 right-4 z-50">
+              <div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg px-4 py-2">
+                <CourseStats 
+                  stats={stats} 
+                  totalLessons={totalLessons}
+                  completedLessons={completedLessons.size}
+                />
+              </div>
+            </div>
+
             <CourseMap
               modules={course.modules || []}
               completedLessons={completedLessons}
               totalLessonsPerModule={totalLessonsPerModule}
               onModuleSelect={handleModuleSelect}
-              selectedModuleId={selectedModuleId || undefined}
+              courseTitle={course.title}
+              courseCountry={course.country}
             />
-          ) : (
-            <div className="max-w-2xl mx-auto space-y-4">
-              {course.modules?.map((module, i) => (
-                <motion.button
-                  key={module.id}
-                  onClick={() => handleModuleSelect(module.id)}
-                  className={cn(
-                    "w-full p-4 rounded-xl text-left border transition-all",
-                    selectedModuleId === module.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
-                  )}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold">
-                      {i + 1}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{module.title}</h3>
+          </motion.div>
+        )}
+
+        {/* MODULE VIEW - Full screen module details */}
+        {viewState === 'module' && selectedModule && (
+          <motion.div
+            key="module"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="min-h-screen"
+          >
+            {/* Header */}
+            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" size="icon" onClick={handleBackToMap}>
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleBackToMap}
+                      className="gap-2"
+                    >
+                      <MapIcon className="w-4 h-4" />
+                      Map
+                    </Button>
+                    <div>
+                      <h1 className="font-bold text-lg">{selectedModule.title}</h1>
                       <p className="text-sm text-muted-foreground">
-                        {module.lessons?.length || 0} lessons
+                        {selectedModule.lessons?.length || 0} lessons
                       </p>
                     </div>
                   </div>
-                </motion.button>
-              ))}
-            </div>
-          )}
-        </motion.div>
+                </div>
 
-        {/* Module sidebar - shows when module selected */}
-        <AnimatePresence>
-          {selectedModuleId && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 'auto', opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              className={cn(
-                "border-l border-border overflow-hidden",
-                selectedLessonId ? "hidden lg:block" : "block"
-              )}
-            >
+                <CourseStats 
+                  stats={stats} 
+                  totalLessons={totalLessons}
+                  completedLessons={completedLessons.size}
+                />
+              </div>
+            </header>
+
+            {/* Module content - centered */}
+            <div className="max-w-2xl mx-auto p-6">
               <ModuleSidebar
                 module={selectedModule}
                 completedLessons={completedLessons}
                 onLessonSelect={handleLessonSelect}
                 onPracticeSelect={setPracticeType}
-                onClose={() => setSelectedModuleId(null)}
+                onClose={handleBackToMap}
                 selectedLessonId={selectedLessonId || undefined}
+                embedded
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
 
-        {/* Lesson view - expands when lesson selected */}
-        <AnimatePresence>
-          {selectedLesson && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="flex-1 lg:flex-[2] border-l border-border overflow-auto"
-            >
-              <div className="lg:hidden p-4 border-b border-border flex items-center gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setSelectedLessonId(null)}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back
-                </Button>
-                <span className="text-sm text-muted-foreground truncate">
-                  {selectedModule?.title}
-                </span>
+        {/* LESSON VIEW - Full screen lesson content */}
+        {viewState === 'lesson' && selectedLesson && (
+          <motion.div
+            key="lesson"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="min-h-screen"
+          >
+            {/* Header */}
+            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" size="icon" onClick={handleBackToModule}>
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleBackToMap}
+                      className="gap-2"
+                    >
+                      <MapIcon className="w-4 h-4" />
+                      Map
+                    </Button>
+                    <div>
+                      <p className="text-xs text-muted-foreground">{selectedModule?.title}</p>
+                      <h1 className="font-bold">{selectedLesson.title}</h1>
+                    </div>
+                  </div>
+                </div>
+
+                <CourseStats 
+                  stats={stats} 
+                  totalLessons={totalLessons}
+                  completedLessons={completedLessons.size}
+                />
               </div>
+            </header>
+
+            {/* Lesson content */}
+            <div className="max-w-4xl mx-auto">
               <LessonView
                 lesson={selectedLesson}
                 courseId={courseId!}
@@ -264,10 +287,10 @@ export default function Course() {
                 hasPrev={currentLessonIndex > 0}
                 hasNext={currentLessonIndex < allLessons.length - 1}
               />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Practice modals */}
       <Dialog open={practiceType === 'rhythm'} onOpenChange={() => setPracticeType(null)}>
