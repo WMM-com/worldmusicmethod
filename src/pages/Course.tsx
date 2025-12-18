@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Map as MapIcon, X } from 'lucide-react';
+import { ArrowLeft, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { CourseMap } from '@/components/courses/CourseMap';
-import { ModuleSidebar } from '@/components/courses/ModuleSidebar';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { CourseSidebar } from '@/components/courses/CourseSidebar';
+import { CourseDashboard } from '@/components/courses/CourseDashboard';
+import { ModuleOverview } from '@/components/courses/ModuleOverview';
 import { LessonView } from '@/components/courses/LessonView';
-import { CourseStats } from '@/components/courses/CourseStats';
 import { RhythmTrainer } from '@/components/courses/practice/RhythmTrainer';
 import { EarTrainer } from '@/components/courses/practice/EarTrainer';
 import { 
@@ -16,19 +17,22 @@ import {
   useUserCourseProgress, 
   useUserCourseStats 
 } from '@/hooks/useCourses';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
-type ViewState = 'map' | 'module' | 'lesson';
+type ViewState = 'dashboard' | 'module' | 'lesson';
 type PracticeType = 'rhythm' | 'ear_training' | null;
 
 export default function Course() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
-  const [viewState, setViewState] = useState<ViewState>('map');
+  const [viewState, setViewState] = useState<ViewState>('dashboard');
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [practiceType, setPracticeType] = useState<PracticeType>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const { data: course, isLoading: courseLoading } = useCourse(courseId);
   const { data: progress = [] } = useUserCourseProgress(courseId);
@@ -38,21 +42,15 @@ export default function Course() {
     return new Set(progress.filter(p => p.completed).map(p => p.lesson_id));
   }, [progress]);
 
-  const totalLessonsPerModule = useMemo(() => {
-    const map = new Map<string, number>();
-    course?.modules?.forEach(m => {
-      map.set(m.id, m.lessons?.length || 0);
-    });
-    return map;
-  }, [course]);
-
-  const totalLessons = useMemo(() => {
-    return course?.modules?.reduce((sum, m) => sum + (m.lessons?.length || 0), 0) || 0;
-  }, [course]);
+  const modules = course?.modules || [];
 
   const selectedModule = useMemo(() => {
-    return course?.modules?.find(m => m.id === selectedModuleId) || null;
-  }, [course, selectedModuleId]);
+    return modules.find(m => m.id === selectedModuleId) || null;
+  }, [modules, selectedModuleId]);
+
+  const selectedModuleIndex = useMemo(() => {
+    return modules.findIndex(m => m.id === selectedModuleId);
+  }, [modules, selectedModuleId]);
 
   const selectedLesson = useMemo(() => {
     if (!selectedLessonId || !selectedModule) return null;
@@ -60,33 +58,47 @@ export default function Course() {
   }, [selectedModule, selectedLessonId]);
 
   const allLessons = useMemo(() => {
-    return course?.modules?.flatMap(m => m.lessons || []) || [];
-  }, [course]);
+    return modules.flatMap(m => m.lessons || []);
+  }, [modules]);
 
   const currentLessonIndex = useMemo(() => {
     if (!selectedLessonId) return -1;
     return allLessons.findIndex(l => l.id === selectedLessonId);
   }, [allLessons, selectedLessonId]);
 
+  // Find first incomplete lesson
+  const findNextLesson = () => {
+    for (const module of modules) {
+      const lesson = (module.lessons || []).find(l => !completedLessons.has(l.id));
+      if (lesson) return { module, lesson };
+    }
+    return null;
+  };
+
   const handleModuleSelect = (moduleId: string) => {
     setSelectedModuleId(moduleId);
     setSelectedLessonId(null);
     setViewState('module');
+    setSidebarOpen(false);
   };
 
-  const handleLessonSelect = (lessonId: string) => {
+  const handleLessonSelect = (moduleId: string, lessonId: string) => {
+    setSelectedModuleId(moduleId);
     setSelectedLessonId(lessonId);
     setViewState('lesson');
+    setSidebarOpen(false);
   };
 
-  const handleBackToMap = () => {
-    setViewState('map');
+  const handleStartLearning = () => {
+    const next = findNextLesson();
+    if (next) {
+      handleLessonSelect(next.module.id, next.lesson.id);
+    }
+  };
+
+  const handleBackToDashboard = () => {
+    setViewState('dashboard');
     setSelectedModuleId(null);
-    setSelectedLessonId(null);
-  };
-
-  const handleBackToModule = () => {
-    setViewState('module');
     setSelectedLessonId(null);
   };
 
@@ -97,7 +109,7 @@ export default function Course() {
     
     if (newIndex >= 0 && newIndex < allLessons.length) {
       const newLesson = allLessons[newIndex];
-      const newModule = course?.modules?.find(m => 
+      const newModule = modules.find(m => 
         m.lessons?.some(l => l.id === newLesson.id)
       );
       if (newModule) {
@@ -131,154 +143,114 @@ export default function Course() {
     );
   }
 
+  const sidebarContent = (
+    <CourseSidebar
+      modules={modules}
+      completedLessons={completedLessons}
+      currentModuleId={selectedModuleId}
+      currentLessonId={selectedLessonId}
+      onModuleSelect={handleModuleSelect}
+      onLessonSelect={handleLessonSelect}
+      courseTitle={course.title}
+      stats={stats}
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* MAP VIEW - Full screen immersive */}
-      <AnimatePresence mode="wait">
-        {viewState === 'map' && (
-          <motion.div
-            key="map"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="relative"
-          >
-            {/* Back button overlay */}
-            <div className="fixed top-4 left-4 z-50">
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => navigate('/courses')}
-                className="bg-background/80 backdrop-blur-sm border border-border"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                All Courses
-              </Button>
-            </div>
+    <div className="min-h-screen bg-background flex">
+      {/* Desktop sidebar */}
+      {!isMobile && (
+        <aside className="w-80 flex-shrink-0 border-r border-border h-screen sticky top-0 overflow-hidden">
+          {sidebarContent}
+        </aside>
+      )}
 
-            {/* Stats overlay */}
-            <div className="fixed top-4 right-4 z-50">
-              <div className="bg-background/80 backdrop-blur-sm border border-border rounded-lg px-4 py-2">
-                <CourseStats 
-                  stats={stats} 
-                  totalLessons={totalLessons}
-                  completedLessons={completedLessons.size}
-                />
-              </div>
-            </div>
+      {/* Mobile sidebar */}
+      {isMobile && (
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent side="left" className="p-0 w-80">
+            {sidebarContent}
+          </SheetContent>
+        </Sheet>
+      )}
 
-            <CourseMap
-              modules={course.modules || []}
-              completedLessons={completedLessons}
-              totalLessonsPerModule={totalLessonsPerModule}
-              onModuleSelect={handleModuleSelect}
-              courseTitle={course.title}
-              courseCountry={course.country}
-            />
-          </motion.div>
+      {/* Main content */}
+      <main className="flex-1 min-h-screen">
+        {/* Mobile header */}
+        {isMobile && (
+          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur px-4 py-3 flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{course.title}</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => navigate('/courses')}>
+              <X className="w-5 h-5" />
+            </Button>
+          </header>
         )}
 
-        {/* MODULE VIEW - Full screen module details */}
-        {viewState === 'module' && selectedModule && (
-          <motion.div
-            key="module"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="min-h-screen"
-          >
-            {/* Header */}
-            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-4">
-                  <Button variant="ghost" size="icon" onClick={handleBackToMap}>
-                    <ArrowLeft className="w-5 h-5" />
-                  </Button>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleBackToMap}
-                      className="gap-2"
-                    >
-                      <MapIcon className="w-4 h-4" />
-                      Map
-                    </Button>
-                    <div>
-                      <h1 className="font-bold text-lg">{selectedModule.title}</h1>
-                      <p className="text-sm text-muted-foreground">
-                        {selectedModule.lessons?.length || 0} lessons
-                      </p>
-                    </div>
-                  </div>
-                </div>
+        {/* Desktop back button */}
+        {!isMobile && viewState !== 'dashboard' && (
+          <div className="p-4 border-b border-border">
+            <Button variant="ghost" size="sm" onClick={handleBackToDashboard}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Course Dashboard
+            </Button>
+          </div>
+        )}
 
-                <CourseStats 
-                  stats={stats} 
-                  totalLessons={totalLessons}
-                  completedLessons={completedLessons.size}
-                />
-              </div>
-            </header>
-
-            {/* Module content - centered */}
-            <div className="max-w-2xl mx-auto p-6">
-              <ModuleSidebar
-                module={selectedModule}
+        <AnimatePresence mode="wait">
+          {/* Dashboard view */}
+          {viewState === 'dashboard' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <CourseDashboard
+                course={course}
+                stats={stats}
                 completedLessons={completedLessons}
-                onLessonSelect={handleLessonSelect}
-                onPracticeSelect={setPracticeType}
-                onClose={handleBackToMap}
-                selectedLessonId={selectedLessonId || undefined}
-                embedded
+                onStartLearning={handleStartLearning}
+                onModuleSelect={handleModuleSelect}
               />
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
 
-        {/* LESSON VIEW - Full screen lesson content */}
-        {viewState === 'lesson' && selectedLesson && (
-          <motion.div
-            key="lesson"
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="min-h-screen"
-          >
-            {/* Header */}
-            <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-4">
-                  <Button variant="ghost" size="icon" onClick={handleBackToModule}>
-                    <ArrowLeft className="w-5 h-5" />
-                  </Button>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleBackToMap}
-                      className="gap-2"
-                    >
-                      <MapIcon className="w-4 h-4" />
-                      Map
-                    </Button>
-                    <div>
-                      <p className="text-xs text-muted-foreground">{selectedModule?.title}</p>
-                      <h1 className="font-bold">{selectedLesson.title}</h1>
-                    </div>
-                  </div>
-                </div>
+          {/* Module overview */}
+          {viewState === 'module' && selectedModule && (
+            <motion.div
+              key="module"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <ModuleOverview
+                module={selectedModule}
+                moduleIndex={selectedModuleIndex}
+                completedLessons={completedLessons}
+                onLessonSelect={(lessonId) => handleLessonSelect(selectedModule.id, lessonId)}
+                onStartModule={() => {
+                  const lesson = (selectedModule.lessons || []).find(l => !completedLessons.has(l.id)) 
+                    || selectedModule.lessons?.[0];
+                  if (lesson) handleLessonSelect(selectedModule.id, lesson.id);
+                }}
+              />
+            </motion.div>
+          )}
 
-                <CourseStats 
-                  stats={stats} 
-                  totalLessons={totalLessons}
-                  completedLessons={completedLessons.size}
-                />
-              </div>
-            </header>
-
-            {/* Lesson content */}
-            <div className="max-w-4xl mx-auto">
+          {/* Lesson view */}
+          {viewState === 'lesson' && selectedLesson && (
+            <motion.div
+              key="lesson"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="max-w-4xl mx-auto"
+            >
               <LessonView
                 lesson={selectedLesson}
                 courseId={courseId!}
@@ -287,10 +259,10 @@ export default function Course() {
                 hasPrev={currentLessonIndex > 0}
                 hasNext={currentLessonIndex < allLessons.length - 1}
               />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
       {/* Practice modals */}
       <Dialog open={practiceType === 'rhythm'} onOpenChange={() => setPracticeType(null)}>
