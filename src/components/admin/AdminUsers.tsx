@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -22,21 +23,21 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, UserPlus, BookOpen } from 'lucide-react';
+import { Search, BookOpen, ChevronDown, Users } from 'lucide-react';
 
 export function AdminUsers() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', searchQuery],
@@ -74,6 +75,17 @@ export function AdminUsers() {
     },
   });
 
+  const { data: courseGroups } = useQuery({
+    queryKey: ['admin-course-groups'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_groups')
+        .select('*, course_group_courses(course_id)');
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: enrollments } = useQuery({
     queryKey: ['admin-enrollments'],
     queryFn: async () => {
@@ -86,13 +98,23 @@ export function AdminUsers() {
   });
 
   const enrollMutation = useMutation({
-    mutationFn: async ({ userId, courseId }: { userId: string; courseId: string }) => {
-      const { error } = await supabase.from('course_enrollments').insert({
-        user_id: userId,
-        course_id: courseId,
-        enrollment_type: 'manual',
-        enrolled_by: (await supabase.auth.getUser()).data.user?.id,
-      });
+    mutationFn: async ({ userId, courseIds }: { userId: string; courseIds: string[] }) => {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      const existingEnrollments = enrollments?.filter(e => e.user_id === userId).map(e => e.course_id) || [];
+      const newCourseIds = courseIds.filter(id => !existingEnrollments.includes(id));
+
+      if (newCourseIds.length === 0) {
+        throw new Error('User is already enrolled in all selected courses');
+      }
+
+      const { error } = await supabase.from('course_enrollments').insert(
+        newCourseIds.map(courseId => ({
+          user_id: userId,
+          course_id: courseId,
+          enrollment_type: 'manual',
+          enrolled_by: currentUser?.id,
+        }))
+      );
       if (error) throw error;
     },
     onSuccess: () => {
@@ -100,7 +122,8 @@ export function AdminUsers() {
       toast.success('User enrolled successfully');
       setEnrollDialogOpen(false);
       setSelectedUserId(null);
-      setSelectedCourseId('');
+      setSelectedCourseIds([]);
+      setSelectedGroupIds([]);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to enroll user');
@@ -116,10 +139,43 @@ export function AdminUsers() {
     return enrollments?.filter(e => e.user_id === userId) || [];
   };
 
-  const handleEnroll = () => {
-    if (!selectedUserId || !selectedCourseId) return;
-    enrollMutation.mutate({ userId: selectedUserId, courseId: selectedCourseId });
+  const toggleCourse = (courseId: string) => {
+    setSelectedCourseIds(prev =>
+      prev.includes(courseId)
+        ? prev.filter(id => id !== courseId)
+        : [...prev, courseId]
+    );
   };
+
+  const toggleGroup = (groupId: string) => {
+    setSelectedGroupIds(prev =>
+      prev.includes(groupId)
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
+  const getCoursesFromGroups = () => {
+    if (!courseGroups) return [];
+    return courseGroups
+      .filter(g => selectedGroupIds.includes(g.id))
+      .flatMap(g => (g.course_group_courses as any[])?.map(c => c.course_id) || []);
+  };
+
+  const handleEnroll = () => {
+    if (!selectedUserId) return;
+    const groupCourseIds = getCoursesFromGroups();
+    const allCourseIds = [...new Set([...selectedCourseIds, ...groupCourseIds])];
+    
+    if (allCourseIds.length === 0) {
+      toast.error('Please select at least one course or course group');
+      return;
+    }
+    
+    enrollMutation.mutate({ userId: selectedUserId, courseIds: allCourseIds });
+  };
+
+  const selectedCount = selectedCourseIds.length + selectedGroupIds.length;
 
   return (
     <Card>
@@ -201,7 +257,11 @@ export function AdminUsers() {
                     <TableCell>
                       <Dialog open={enrollDialogOpen && selectedUserId === user.id} onOpenChange={(open) => {
                         setEnrollDialogOpen(open);
-                        if (!open) setSelectedUserId(null);
+                        if (!open) {
+                          setSelectedUserId(null);
+                          setSelectedCourseIds([]);
+                          setSelectedGroupIds([]);
+                        }
                       }}>
                         <DialogTrigger asChild>
                           <Button
@@ -213,29 +273,89 @@ export function AdminUsers() {
                             Enroll
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="max-w-md">
                           <DialogHeader>
-                            <DialogTitle>Enroll User in Course</DialogTitle>
+                            <DialogTitle>Enroll User in Courses</DialogTitle>
                             <DialogDescription>
-                              Select a course to enroll {user.full_name || user.email} in.
+                              Select courses or course groups to enroll {user.full_name || user.email}.
                             </DialogDescription>
                           </DialogHeader>
-                          <div className="space-y-4 pt-4">
-                            <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a course" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {courses?.map((course) => (
-                                  <SelectItem key={course.id} value={course.id}>
-                                    {course.title}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          <Tabs defaultValue="courses" className="pt-4">
+                            <TabsList className="grid w-full grid-cols-2">
+                              <TabsTrigger value="courses">Individual Courses</TabsTrigger>
+                              <TabsTrigger value="groups">Course Groups</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="courses" className="space-y-2 max-h-60 overflow-y-auto">
+                              {courses?.map((course) => {
+                                const isEnrolled = userEnrollments.some(e => e.course_id === course.id);
+                                return (
+                                  <div
+                                    key={course.id}
+                                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
+                                  >
+                                    <Checkbox
+                                      id={`course-${course.id}`}
+                                      checked={selectedCourseIds.includes(course.id) || isEnrolled}
+                                      disabled={isEnrolled}
+                                      onCheckedChange={() => toggleCourse(course.id)}
+                                    />
+                                    <label
+                                      htmlFor={`course-${course.id}`}
+                                      className={`flex-1 text-sm cursor-pointer ${isEnrolled ? 'text-muted-foreground' : ''}`}
+                                    >
+                                      {course.title}
+                                      {isEnrolled && <span className="ml-2 text-xs">(enrolled)</span>}
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                              {(!courses || courses.length === 0) && (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No courses available
+                                </p>
+                              )}
+                            </TabsContent>
+                            <TabsContent value="groups" className="space-y-2 max-h-60 overflow-y-auto">
+                              {courseGroups?.map((group) => {
+                                const coursesInGroup = (group.course_group_courses as any[])?.length || 0;
+                                return (
+                                  <div
+                                    key={group.id}
+                                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
+                                  >
+                                    <Checkbox
+                                      id={`group-${group.id}`}
+                                      checked={selectedGroupIds.includes(group.id)}
+                                      onCheckedChange={() => toggleGroup(group.id)}
+                                    />
+                                    <label
+                                      htmlFor={`group-${group.id}`}
+                                      className="flex-1 cursor-pointer"
+                                    >
+                                      <span className="text-sm font-medium">{group.name}</span>
+                                      <span className="text-xs text-muted-foreground ml-2">
+                                        ({coursesInGroup} courses)
+                                      </span>
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                              {(!courseGroups || courseGroups.length === 0) && (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  No course groups available
+                                </p>
+                              )}
+                            </TabsContent>
+                          </Tabs>
+                          <div className="pt-4 space-y-3">
+                            {selectedCount > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                {selectedCourseIds.length} course(s) and {selectedGroupIds.length} group(s) selected
+                              </p>
+                            )}
                             <Button
                               onClick={handleEnroll}
-                              disabled={!selectedCourseId || enrollMutation.isPending}
+                              disabled={selectedCount === 0 || enrollMutation.isPending}
                               className="w-full"
                             >
                               {enrollMutation.isPending ? 'Enrolling...' : 'Enroll User'}
