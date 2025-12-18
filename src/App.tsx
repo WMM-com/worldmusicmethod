@@ -19,6 +19,9 @@ import Courses from "./pages/Courses";
 import Course from "./pages/Course";
 import CourseLanding from "./pages/CourseLanding";
 import MyCourses from "./pages/MyCourses";
+import Checkout from "./pages/Checkout";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancelled from "./pages/PaymentCancelled";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -81,6 +84,9 @@ const App = () => (
             <Route path="/courses/:courseId" element={<CourseLanding />} />
             <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
             <Route path="/my-courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
+            <Route path="/checkout/:productId" element={<Checkout />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
             <Route path="*" element={<NotFound />} />

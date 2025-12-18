@@ -9,21 +9,61 @@ import {
   Music,
   Users,
   Award,
-  Headphones
+  Headphones,
+  ShoppingCart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourse } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function CourseLanding() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: course, isLoading } = useCourse(courseId);
+  const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
+
+  // Fetch product for this course
+  const { data: product } = useQuery({
+    queryKey: ['course-product', courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!courseId,
+  });
+
+  // Check if user is enrolled
+  const { data: isEnrolled } = useQuery({
+    queryKey: ['user-enrollment', courseId, user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase
+        .from('course_enrollments')
+        .select('id')
+        .eq('course_id', courseId!)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!courseId && !!user,
+  });
 
   if (isLoading) {
     return (
@@ -49,10 +89,14 @@ export default function CourseLanding() {
   const totalDuration = course.modules?.reduce((acc, m) => 
     acc + (m.lessons?.reduce((a, l) => a + (l.duration_seconds || 0), 0) || 0), 0) || 0;
 
+  const priceInfo = product ? calculatePrice(product.base_price_usd) : null;
+
   const handleStartCourse = () => {
-    if (user) {
+    if (isEnrolled) {
       navigate(`/courses/${courseId}/learn`);
-    } else {
+    } else if (product) {
+      navigate(`/checkout/${product.id}`);
+    } else if (!user) {
       navigate('/auth');
     }
   };
@@ -104,13 +148,23 @@ export default function CourseLanding() {
 
             <div className="flex flex-wrap gap-4 mb-8">
               <Button size="lg" onClick={handleStartCourse} className="gap-2">
-                <Play className="w-5 h-5" />
-                {user ? 'Start Learning' : 'Enroll Now'}
+                {isEnrolled ? (
+                  <>
+                    <Play className="w-5 h-5" />
+                    Continue Learning
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-5 h-5" />
+                    {priceInfo ? `Enroll for ${formatPrice(priceInfo.price, priceInfo.currency)}` : 'Enroll Now'}
+                  </>
+                )}
               </Button>
-              <Button size="lg" variant="outline" className="gap-2">
-                <Play className="w-5 h-5" />
-                Watch Preview
-              </Button>
+              {priceInfo && priceInfo.discount_percentage > 0 && !isEnrolled && (
+                <Badge variant="secondary" className="self-center">
+                  {priceInfo.discount_percentage}% off in your region
+                </Badge>
+              )}
             </div>
 
             {/* Course stats */}
@@ -170,8 +224,21 @@ export default function CourseLanding() {
                 </li>
               </ul>
 
+              {priceInfo && !isEnrolled && (
+                <div className="mb-4 text-center">
+                  <p className="text-2xl font-bold">
+                    {formatPrice(priceInfo.price, priceInfo.currency)}
+                  </p>
+                  {priceInfo.discount_percentage > 0 && (
+                    <p className="text-sm text-muted-foreground line-through">
+                      ${product?.base_price_usd?.toFixed(2)} USD
+                    </p>
+                  )}
+                </div>
+              )}
+
               <Button className="w-full" size="lg" onClick={handleStartCourse}>
-                {user ? 'Continue Learning' : 'Get Started'}
+                {isEnrolled ? 'Continue Learning' : (priceInfo ? 'Enroll Now' : 'Get Started')}
               </Button>
             </Card>
           </motion.div>
