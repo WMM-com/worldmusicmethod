@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.create-course-checkout]
 verify_jwt = false
+
+[functions.r2-upload]
+verify_jwt = true
+
+[functions.r2-delete]
+verify_jwt = true
