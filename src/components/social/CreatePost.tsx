@@ -111,7 +111,12 @@ export function CreatePost() {
   const handleSubmit = () => {
     if (!content.trim()) return;
     createPostMutation.mutate(
-      { content, imageUrl: mediaUrl || undefined, visibility },
+      { 
+        content, 
+        mediaUrl: mediaUrl || undefined, 
+        mediaType: mediaType || undefined,
+        visibility 
+      },
       {
         onSuccess: () => {
           setContent('');

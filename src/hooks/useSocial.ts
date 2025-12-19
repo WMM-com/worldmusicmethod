@@ -8,8 +8,10 @@ export interface Post {
   user_id: string;
   content: string;
   image_url: string | null;
+  media_type: string | null;
   visibility: string;
   created_at: string;
+  updated_at?: string;
   profiles?: {
     full_name: string | null;
     avatar_url: string | null;
@@ -103,9 +105,10 @@ export function useCreatePost() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ content, imageUrl, visibility }: { 
+    mutationFn: async ({ content, mediaUrl, mediaType, visibility }: { 
       content: string; 
-      imageUrl?: string; 
+      mediaUrl?: string;
+      mediaType?: 'image' | 'video' | 'audio' | null;
       visibility: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
@@ -113,7 +116,8 @@ export function useCreatePost() {
       const { error } = await supabase.from('posts').insert({
         user_id: user.id,
         content,
-        image_url: imageUrl || null,
+        image_url: mediaUrl || null,
+        media_type: mediaType || null,
         visibility,
       });
       if (error) throw error;
@@ -124,6 +128,40 @@ export function useCreatePost() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create post');
+    },
+  });
+}
+
+export function useUpdatePost() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ postId, content, mediaUrl, mediaType }: { 
+      postId: string;
+      content: string; 
+      mediaUrl?: string | null;
+      mediaType?: 'image' | 'video' | 'audio' | null;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase.from('posts')
+        .update({
+          content,
+          image_url: mediaUrl ?? null,
+          media_type: mediaType ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', postId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      toast.success('Post updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update post');
     },
   });
 }
