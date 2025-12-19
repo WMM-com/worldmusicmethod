@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { optimizeImage, optimizeAvatar, optimizeFeedImage } from "@/lib/imageOptimization";
 
 export interface UploadResult {
   success: boolean;
@@ -17,6 +18,10 @@ export interface UploadOptions {
   folder?: string;
   maxSizeBytes?: number;
   allowedTypes?: string[];
+  optimizeImages?: boolean;
+  imageOptimization?: "avatar" | "feed" | "media" | "none";
+  trackInDatabase?: boolean;
+  altText?: string;
 }
 
 const DEFAULT_MAX_SIZE = 10 * 1024 * 1024; // 10MB
@@ -46,6 +51,9 @@ export function useR2Upload() {
         folder,
         maxSizeBytes = DEFAULT_MAX_SIZE,
         allowedTypes = DEFAULT_ALLOWED_TYPES,
+        imageOptimization = "none",
+        trackInDatabase = true,
+        altText,
       } = options;
 
       setIsUploading(true);
@@ -53,22 +61,44 @@ export function useR2Upload() {
       setError(null);
 
       try {
-        // Validate file size
-        if (file.size > maxSizeBytes) {
-          const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024));
-          throw new Error(`File size exceeds ${maxSizeMB}MB limit`);
-        }
-
-        // Validate file type
+        // Validate file type first (before optimization)
         if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
           throw new Error(`File type ${file.type} is not allowed`);
         }
 
-        setProgress(10);
+        setProgress(5);
+
+        // Optimize image if requested
+        let processedFile = file;
+        if (file.type.startsWith("image/") && imageOptimization !== "none") {
+          setProgress(10);
+          
+          switch (imageOptimization) {
+            case "avatar":
+              processedFile = await optimizeAvatar(file);
+              break;
+            case "feed":
+              processedFile = await optimizeFeedImage(file);
+              break;
+            case "media":
+              processedFile = await optimizeImage(file);
+              break;
+          }
+          
+          setProgress(25);
+        }
+
+        // Validate file size after optimization
+        if (processedFile.size > maxSizeBytes) {
+          const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024));
+          throw new Error(`File size exceeds ${maxSizeMB}MB limit`);
+        }
+
+        setProgress(30);
 
         // Convert file to base64
-        const base64Data = await fileToBase64(file);
-        setProgress(30);
+        const base64Data = await fileToBase64(processedFile);
+        setProgress(40);
 
         // Get the current session for auth
         const { data: { session } } = await supabase.auth.getSession();
@@ -76,13 +106,13 @@ export function useR2Upload() {
           throw new Error("You must be logged in to upload files");
         }
 
-        setProgress(40);
+        setProgress(50);
 
         // Call the edge function
         const { data, error: invokeError } = await supabase.functions.invoke("r2-upload", {
           body: {
-            fileName: file.name,
-            fileType: file.type,
+            fileName: processedFile.name,
+            fileType: processedFile.type,
             fileData: base64Data,
             bucket,
             folder,
@@ -95,6 +125,30 @@ export function useR2Upload() {
 
         if (!data.success) {
           throw new Error(data.error || "Upload failed");
+        }
+
+        setProgress(80);
+
+        // Track in database if requested
+        if (trackInDatabase) {
+          const fileCategory = getFileCategory(processedFile.type);
+          
+          await supabase.from("media_library").insert({
+            user_id: session.user.id,
+            file_name: data.fileName,
+            file_url: data.url,
+            file_type: fileCategory,
+            file_size: data.size,
+            mime_type: processedFile.type,
+            folder: folder || (bucket === "admin" ? "admin" : "user-uploads"),
+            alt_text: altText || null,
+            metadata: {
+              bucket,
+              object_key: data.key,
+              original_name: file.name,
+              optimized: imageOptimization !== "none",
+            },
+          });
         }
 
         setProgress(100);
@@ -149,6 +203,12 @@ export function useR2Upload() {
           throw new Error(data.error || "Delete failed");
         }
 
+        // Remove from database tracking - search by file_url containing the objectKey
+        await supabase
+          .from("media_library")
+          .delete()
+          .ilike("file_url", `%${objectKey}%`);
+
         toast({
           title: "File deleted",
           description: "The file has been removed",
@@ -197,4 +257,13 @@ function fileToBase64(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
+}
+
+// Helper to determine file category
+function getFileCategory(mimeType: string): string {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  if (mimeType === "application/pdf") return "document";
+  return "other";
 }

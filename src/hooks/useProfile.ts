@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useR2Upload } from '@/hooks/useR2Upload';
 import { toast } from 'sonner';
 
 export interface UserProfile {
@@ -105,38 +106,38 @@ export function useUpdateBio() {
 export function useUploadAvatar() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { uploadFile } = useR2Upload();
 
   return useMutation({
     mutationFn: async (file: File) => {
       if (!user) throw new Error('Not authenticated');
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
+      // Upload to R2 with avatar optimization
+      const result = await uploadFile(file, {
+        bucket: 'user',
+        folder: 'avatars',
+        imageOptimization: 'avatar',
+        trackInDatabase: true,
+        altText: `${user.email}'s avatar`,
+      });
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('media')
-        .upload(fileName, file, { upsert: true });
+      if (!result) {
+        throw new Error('Failed to upload avatar');
+      }
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('media')
-        .getPublicUrl(fileName);
-
-      // Update profile
+      // Update profile with new avatar URL
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: result.url })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
 
-      return publicUrl;
+      return result.url;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['my-profile'] });
       toast.success('Avatar updated');
     },
     onError: (error: any) => {
