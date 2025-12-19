@@ -9,6 +9,7 @@ export interface Post {
   content: string;
   image_url: string | null;
   media_type: string | null;
+  post_type?: string | null;
   visibility: string;
   created_at: string;
   updated_at?: string;
@@ -105,11 +106,12 @@ export function useCreatePost() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ content, mediaUrl, mediaType, visibility }: { 
+    mutationFn: async ({ content, mediaUrl, mediaType, visibility, postType }: { 
       content: string; 
       mediaUrl?: string;
       mediaType?: 'image' | 'video' | 'audio' | null;
       visibility: string;
+      postType?: 'statement' | 'update' | 'recommendation';
     }) => {
       if (!user) throw new Error('Not authenticated');
       
@@ -119,6 +121,7 @@ export function useCreatePost() {
         image_url: mediaUrl || null,
         media_type: mediaType || null,
         visibility,
+        post_type: postType || 'update',
       });
       if (error) throw error;
     },
