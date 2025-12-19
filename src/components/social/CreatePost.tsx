@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -10,9 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Globe, Users, Image, X } from 'lucide-react';
+import { Globe, Users, Image, X, Upload, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatePost } from '@/hooks/useSocial';
+import { useR2Upload } from '@/hooks/useR2Upload';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,9 +23,11 @@ export function CreatePost() {
   const [content, setContent] = useState('');
   const [visibility, setVisibility] = useState('friends');
   const [imageUrl, setImageUrl] = useState('');
-  const [showImageInput, setShowImageInput] = useState(false);
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const createPostMutation = useCreatePost();
+  const { uploadFile, isUploading, progress } = useR2Upload();
 
   const { data: profile } = useQuery({
     queryKey: ['my-profile', user?.id],
@@ -45,6 +49,30 @@ export function CreatePost() {
     .join('')
     .toUpperCase() || '?';
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadFile(file, {
+      bucket: 'user',
+      folder: 'posts',
+      imageOptimization: 'feed',
+      trackInDatabase: true,
+      altText: 'Post image',
+    });
+
+    if (result) {
+      setImageUrl(result.url);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = () => {
     if (!content.trim()) return;
     createPostMutation.mutate(
@@ -53,7 +81,7 @@ export function CreatePost() {
         onSuccess: () => {
           setContent('');
           setImageUrl('');
-          setShowImageInput(false);
+          setShowImageUpload(false);
         },
       }
     );
@@ -79,35 +107,73 @@ export function CreatePost() {
               className="resize-none"
             />
             
-            {showImageInput && (
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Image URL"
-                  className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
+            {/* Image preview */}
+            {imageUrl && (
+              <div className="relative inline-block">
+                <img 
+                  src={imageUrl} 
+                  alt="Upload preview" 
+                  className="max-h-48 rounded-lg object-cover"
                 />
                 <Button
-                  variant="ghost"
+                  variant="destructive"
                   size="icon"
-                  onClick={() => {
-                    setShowImageInput(false);
-                    setImageUrl('');
-                  }}
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={handleRemoveImage}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               </div>
             )}
+            
+            {/* Upload progress */}
+            {isUploading && (
+              <div className="space-y-2">
+                <Progress value={progress} className="h-2" />
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Uploading... {progress}%
+                </p>
+              </div>
+            )}
+            
+            {/* Image upload area */}
+            {showImageUpload && !imageUrl && !isUploading && (
+              <div 
+                className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Click to upload an image
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  JPG, PNG, GIF up to 10MB
+                </p>
+              </div>
+            )}
+            
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
             
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowImageInput(!showImageInput)}
-                  className={showImageInput ? 'text-primary' : ''}
+                  onClick={() => {
+                    setShowImageUpload(!showImageUpload);
+                    if (showImageUpload) {
+                      handleRemoveImage();
+                    }
+                  }}
+                  className={showImageUpload || imageUrl ? 'text-primary' : ''}
+                  disabled={isUploading}
                 >
                   <Image className="h-4 w-4 mr-2" />
                   Image
@@ -136,7 +202,7 @@ export function CreatePost() {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || createPostMutation.isPending}
+                disabled={!content.trim() || createPostMutation.isPending || isUploading}
               >
                 {createPostMutation.isPending ? 'Posting...' : 'Post'}
               </Button>
