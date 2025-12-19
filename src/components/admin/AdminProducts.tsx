@@ -117,11 +117,13 @@ export function AdminProducts() {
     return regionalPricing?.filter(p => p.product_id === productId) || [];
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(price);
+  const formatPrice = (price: number, currency: string = 'USD') => {
+    const symbols: Record<string, string> = {
+      USD: '$',
+      GBP: '£',
+      EUR: '€',
+    };
+    return `${symbols[currency] || currency}${price.toFixed(2)}`;
   };
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
   BookOpen, 
@@ -10,7 +11,8 @@ import {
   Users,
   Award,
   Headphones,
-  ShoppingCart
+  ShoppingCart,
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,6 +32,19 @@ export default function CourseLanding() {
   const { user } = useAuth();
   const { data: course, isLoading } = useCourse(courseId);
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
+  const [showStickyCTA, setShowStickyCTA] = useState(false);
+
+  // Show sticky CTA when scrolled past hero
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const heroHeight = window.innerHeight * 0.7; // 70vh hero
+      setShowStickyCTA(scrollY > heroHeight);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Fetch product for this course
   const { data: product } = useQuery({
@@ -234,6 +249,9 @@ export default function CourseLanding() {
                       ${product?.base_price_usd?.toFixed(2)} USD
                     </p>
                   )}
+                  <p className="text-xs text-green-600 mt-1">
+                    30-day 110% money-back guarantee
+                  </p>
                 </div>
               )}
 
@@ -434,6 +452,51 @@ export default function CourseLanding() {
         </div>
       </section>
     </div>
+
+    {/* Sticky CTA - appears when scrolled past hero */}
+    <AnimatePresence>
+      {showStickyCTA && priceInfo && !isEnrolled && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border shadow-lg"
+        >
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="hidden sm:block">
+                <p className="text-lg font-bold">
+                  {formatPrice(priceInfo.price, priceInfo.currency)}
+                </p>
+                {priceInfo.discount_percentage > 0 && (
+                  <p className="text-xs text-muted-foreground line-through">
+                    ${product?.base_price_usd?.toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-green-600">
+                <Shield className="w-3.5 h-3.5 shrink-0" />
+                <span className="whitespace-nowrap">30-day 110% money-back</span>
+              </div>
+            </div>
+            <Button 
+              size="default" 
+              onClick={handleStartCourse} 
+              className="gap-2 shrink-0"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {priceInfo ? `Enroll for ${formatPrice(priceInfo.price, priceInfo.currency)}` : 'Enroll Now'}
+              </span>
+              <span className="sm:hidden">
+                {priceInfo ? formatPrice(priceInfo.price, priceInfo.currency) : 'Enroll'}
+              </span>
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
     </>
   );
 }
