@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.r2-delete]
 verify_jwt = true
+
+[functions.r2-presigned-url]
+verify_jwt = true
