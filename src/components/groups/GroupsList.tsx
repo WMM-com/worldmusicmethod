@@ -65,7 +65,7 @@ export function GroupsList() {
           </div>
           
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map(i => (
                 <Skeleton key={i} className="h-48" />
               ))}
@@ -85,7 +85,7 @@ export function GroupsList() {
               } />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {groups?.map((group) => (
                 <GroupCard key={group.id} group={group} />
               ))}
@@ -95,7 +95,7 @@ export function GroupsList() {
         
         <TabsContent value="my-groups" className="mt-4">
           {loadingMy ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {[1, 2].map(i => (
                 <Skeleton key={i} className="h-48" />
               ))}
@@ -109,7 +109,7 @@ export function GroupsList() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {myGroups?.map((group) => (
                 <GroupCard key={group.id} group={group as any} />
               ))}
