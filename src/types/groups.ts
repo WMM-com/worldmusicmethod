@@ -137,6 +137,20 @@ export interface GroupPoll {
   user_votes?: number[];
 }
 
+export interface PinnedAudio {
+  id: string;
+  user_id: string;
+  group_id: string | null;
+  title: string;
+  artist: string | null;
+  audio_url: string;
+  cover_image_url: string | null;
+  section: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const CATEGORY_LABELS: Record<GroupCategory, string> = {
   genre: 'Genre',
   instrument: 'Instrument',

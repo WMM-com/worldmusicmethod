@@ -10,19 +10,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, Users, Lock, EyeOff, Settings, 
-  MessageSquare, Calendar, BarChart3, Pin, Megaphone,
-  Send, ImageIcon, Music, Plus
+  MessageSquare, Calendar, BarChart3, 
+  Send, ImageIcon, Music
 } from 'lucide-react';
 import { 
   useGroup, useGroupMembers, useGroupPosts, useGroupEvents, 
   useGroupPolls, useCreateGroupPost, useJoinGroup, useLeaveGroup,
-  useVoteOnPoll
+  useVoteOnPoll, useUpdateGroup
 } from '@/hooks/useGroups';
+import { useGroupPinnedAudio } from '@/hooks/usePinnedAudio';
 import { CATEGORY_LABELS, type GroupSettings } from '@/types/groups';
 import { formatDistanceToNow, format } from 'date-fns';
 import { CreateEventDialog } from '@/components/groups/CreateEventDialog';
 import { CreatePollDialog } from '@/components/groups/CreatePollDialog';
 import { GroupSettingsDialog } from '@/components/groups/GroupSettingsDialog';
+import { GroupPostCard } from '@/components/groups/GroupPostCard';
+import { InviteMembersDialog } from '@/components/groups/InviteMembersDialog';
+import { GroupCoverUpload } from '@/components/groups/GroupCoverUpload';
+import { PinnedAudioPlayer } from '@/components/groups/PinnedAudioPlayer';
+import { PinAudioDialog } from '@/components/groups/PinAudioDialog';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -34,11 +40,13 @@ export default function GroupDetail() {
   const { data: posts } = useGroupPosts(groupId || '');
   const { data: events } = useGroupEvents(groupId || '');
   const { data: polls } = useGroupPolls(groupId || '');
+  const { data: pinnedAudio } = useGroupPinnedAudio(groupId || '');
   
   const createPost = useCreateGroupPost();
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
   const voteOnPoll = useVoteOnPoll();
+  const updateGroup = useUpdateGroup();
   
   const handleCreatePost = async () => {
     if (!newPostContent.trim() || !groupId) return;
@@ -52,6 +60,14 @@ export default function GroupDetail() {
   const handleVote = (pollId: string, optionIndex: number) => {
     if (!groupId) return;
     voteOnPoll.mutate({ pollId, optionIndex, groupId });
+  };
+  
+  const handleCoverUpload = async (url: string) => {
+    if (!groupId) return;
+    await updateGroup.mutateAsync({
+      groupId,
+      updates: { cover_image_url: url }
+    });
   };
   
   const getInitials = (name: string | null | undefined) => {
@@ -91,7 +107,6 @@ export default function GroupDetail() {
   const isAdmin = group.user_role === 'admin' || group.user_role === 'moderator';
   const settings = (group.settings || {}) as GroupSettings;
   
-  // Check posting permissions
   const canPost = group.is_member && (
     settings.who_can_post === 'all_members' ||
     (settings.who_can_post === 'admins_and_moderators' && isAdmin) ||
@@ -103,12 +118,20 @@ export default function GroupDetail() {
       <SiteHeader />
       <div className="min-h-screen bg-background">
         {/* Cover Image */}
-        <div className="h-48 md:h-64 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 relative">
-          {group.cover_image_url && (
-            <img src={group.cover_image_url} alt="" className="w-full h-full object-cover" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        </div>
+        {isAdmin ? (
+          <GroupCoverUpload 
+            groupId={group.id} 
+            currentCoverUrl={group.cover_image_url} 
+            onUpload={handleCoverUpload}
+          />
+        ) : (
+          <div className="h-48 md:h-64 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 relative">
+            {group.cover_image_url && (
+              <img src={group.cover_image_url} alt="" className="w-full h-full object-cover" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+          </div>
+        )}
         
         <div className="max-w-4xl mx-auto px-4 -mt-16 relative z-10">
           {/* Group Header */}
@@ -144,6 +167,9 @@ export default function GroupDetail() {
                 <div className="flex gap-2 flex-wrap">
                   {group.is_member ? (
                     <>
+                      {isAdmin && group.privacy !== 'public' && (
+                        <InviteMembersDialog groupId={group.id} groupName={group.name} />
+                      )}
                       {isAdmin && (
                         <GroupSettingsDialog 
                           group={group} 
@@ -175,6 +201,13 @@ export default function GroupDetail() {
                 </div>
               </div>
               
+              {/* Pinned Audio */}
+              {group.is_member && pinnedAudio && pinnedAudio.length > 0 && (
+                <div className="mt-4">
+                  <PinnedAudioPlayer audio={pinnedAudio[0]} />
+                </div>
+              )}
+              
               {/* Group Rules */}
               {group.is_member && group.rules && (
                 <div className="mt-4 p-3 bg-muted/50 rounded-lg">
@@ -188,7 +221,7 @@ export default function GroupDetail() {
           {/* Group Content */}
           {group.is_member ? (
             <Tabs defaultValue="posts" className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <TabsList>
                   <TabsTrigger value="posts">
                     <MessageSquare className="h-4 w-4 mr-2" />
@@ -213,7 +246,10 @@ export default function GroupDetail() {
                 </TabsList>
                 
                 {isAdmin && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {settings.allow_audio !== false && (
+                      <PinAudioDialog groupId={group.id} />
+                    )}
                     {settings.allow_events !== false && (
                       <CreateEventDialog groupId={group.id} />
                     )}
@@ -271,50 +307,11 @@ export default function GroupDetail() {
                 
                 {/* Posts List */}
                 {posts?.map((post) => (
-                  <Card key={post.id}>
-                    <CardContent className="pt-4">
-                      <div className="flex items-start gap-3">
-                        <Link to={`/profile/${post.user_id}`}>
-                          <Avatar>
-                            <AvatarImage src={post.profile?.avatar_url || undefined} />
-                            <AvatarFallback>{getInitials(post.profile?.full_name)}</AvatarFallback>
-                          </Avatar>
-                        </Link>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Link to={`/profile/${post.user_id}`} className="font-semibold hover:underline">
-                              {post.profile?.full_name || 'Anonymous'}
-                            </Link>
-                            <span className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                            </span>
-                            {post.is_pinned && <Pin className="h-3 w-3 text-primary" />}
-                            {post.is_announcement && <Megaphone className="h-3 w-3 text-orange-500" />}
-                          </div>
-                          <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
-                          {post.media_url && (
-                            <div className="mt-3">
-                              {post.media_type === 'image' && (
-                                <img src={post.media_url} alt="" className="rounded-lg max-h-96 object-cover" />
-                              )}
-                              {post.media_type === 'audio' && (
-                                <audio src={post.media_url} controls className="w-full" />
-                              )}
-                              {post.media_type === 'video' && (
-                                <video src={post.media_url} controls className="w-full rounded-lg max-h-96" />
-                              )}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                            <button className="hover:text-foreground flex items-center gap-1">
-                              <MessageSquare className="h-4 w-4" />
-                              {post.comment_count || 0}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <GroupPostCard 
+                    key={post.id} 
+                    post={post} 
+                    getInitials={getInitials}
+                  />
                 ))}
                 
                 {posts?.length === 0 && (
