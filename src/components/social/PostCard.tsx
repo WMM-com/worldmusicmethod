@@ -1,11 +1,10 @@
-import { useState, useRef } from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { useState } from 'react';
+import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, X, Upload, Loader2, Image, Video, Music } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,15 +18,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { Post, useAppreciate, useDeletePost, useUpdatePost, useComments, useCreateComment } from '@/hooks/useSocial';
-import { useR2Upload } from '@/hooks/useR2Upload';
+import { Post, Comment, useAppreciate, useDeletePost, useUpdatePost, useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useSocial';
 import { cn } from '@/lib/utils';
 
 interface PostCardProps {
   post: Post;
 }
 
-type MediaType = 'image' | 'video' | 'audio' | null;
+const COMMENT_EDIT_DAYS_LIMIT = 30;
 
 export function PostCard({ post }: PostCardProps) {
   const { user } = useAuth();
@@ -35,17 +33,12 @@ export function PostCard({ post }: PostCardProps) {
   const [commentText, setCommentText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
-  const [editMediaUrl, setEditMediaUrl] = useState(post.image_url);
-  const [editMediaType, setEditMediaType] = useState<MediaType>(post.media_type as MediaType);
-  const [showUpload, setShowUpload] = useState<MediaType>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { data: comments } = useComments(showComments ? post.id : '');
   const appreciateMutation = useAppreciate();
   const deleteMutation = useDeletePost();
   const updateMutation = useUpdatePost();
   const createCommentMutation = useCreateComment();
-  const { uploadFile, isUploading, progress } = useR2Upload();
 
   const isOwner = user?.id === post.user_id;
   const initials = post.profiles?.full_name
@@ -78,67 +71,20 @@ export function PostCard({ post }: PostCardProps) {
 
   const handleEditOpen = () => {
     setEditContent(post.content);
-    setEditMediaUrl(post.image_url);
-    setEditMediaType(post.media_type as MediaType);
-    setShowUpload(null);
     setIsEditing(true);
   };
 
   const handleEditSave = () => {
+    // Only update content, keep media unchanged
     updateMutation.mutate(
       { 
         postId: post.id, 
         content: editContent, 
-        mediaUrl: editMediaUrl, 
-        mediaType: editMediaType 
+        mediaUrl: post.image_url, 
+        mediaType: post.media_type as 'image' | 'video' | 'audio' | null
       },
       { onSuccess: () => setIsEditing(false) }
     );
-  };
-
-  const getAcceptType = (type: MediaType) => {
-    switch (type) {
-      case 'image': return 'image/*';
-      case 'video': return 'video/*';
-      case 'audio': return 'audio/*';
-      default: return '*/*';
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !showUpload) return;
-
-    const result = await uploadFile(file, {
-      bucket: 'user',
-      folder: `posts/${showUpload}`,
-      imageOptimization: showUpload === 'image' ? 'feed' : undefined,
-      trackInDatabase: true,
-      altText: `Post ${showUpload}`,
-    });
-
-    if (result) {
-      setEditMediaUrl(result.url);
-      setEditMediaType(showUpload);
-      setShowUpload(null);
-    }
-  };
-
-  const handleRemoveMedia = () => {
-    setEditMediaUrl(null);
-    setEditMediaType(null);
-    setShowUpload(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleUploadClick = (type: MediaType) => {
-    if (showUpload === type) {
-      setShowUpload(null);
-    } else {
-      setShowUpload(type);
-    }
   };
 
   // Determine media type from URL if not set
@@ -289,7 +235,7 @@ export function PostCard({ post }: PostCardProps) {
         </CardFooter>
       </Card>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - Text only, no media changes allowed */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -304,111 +250,37 @@ export function PostCard({ post }: PostCardProps) {
               className="resize-none"
             />
 
-            {/* Media preview */}
-            {editMediaUrl && (
-              <div className="relative inline-block">
-                {editMediaType === 'image' && (
+            {/* Show existing media as preview only - not editable */}
+            {post.image_url && (
+              <div className="rounded-lg overflow-hidden bg-muted/30 p-2">
+                <p className="text-xs text-muted-foreground mb-2">Media cannot be changed after posting</p>
+                {post.media_type === 'image' || !post.media_type ? (
                   <img 
-                    src={editMediaUrl} 
-                    alt="Upload preview" 
-                    className="max-h-48 rounded-lg object-cover"
+                    src={post.image_url} 
+                    alt="Post media" 
+                    className="max-h-32 rounded object-cover opacity-75"
                   />
-                )}
-                {editMediaType === 'video' && (
+                ) : post.media_type === 'video' ? (
                   <video 
-                    src={editMediaUrl} 
-                    controls 
-                    className="max-h-48 rounded-lg"
+                    src={post.image_url} 
+                    className="max-h-32 rounded opacity-75"
                   />
+                ) : (
+                  <audio src={post.image_url} controls className="w-full opacity-75" />
                 )}
-                {editMediaType === 'audio' && (
-                  <audio src={editMediaUrl} controls className="w-full" />
-                )}
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6"
-                  onClick={handleRemoveMedia}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
               </div>
             )}
 
-            {/* Upload progress */}
-            {isUploading && (
-              <div className="space-y-2">
-                <Progress value={progress} className="h-2" />
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Uploading... {progress}%
-                </p>
-              </div>
-            )}
-
-            {/* Upload area */}
-            {showUpload && !editMediaUrl && !isUploading && (
-              <div 
-                className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => fileInputRef.current?.click()}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditing(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleEditSave}
+                disabled={!editContent.trim() || updateMutation.isPending}
               >
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Click to upload {showUpload === 'image' ? 'an image' : showUpload === 'video' ? 'a video' : 'audio'}
-                </p>
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={getAcceptType(showUpload)}
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleUploadClick('image')}
-                  className={showUpload === 'image' || editMediaType === 'image' ? 'text-primary' : ''}
-                  disabled={isUploading}
-                >
-                  <Image className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleUploadClick('video')}
-                  className={showUpload === 'video' || editMediaType === 'video' ? 'text-primary' : ''}
-                  disabled={isUploading}
-                >
-                  <Video className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleUploadClick('audio')}
-                  className={showUpload === 'audio' || editMediaType === 'audio' ? 'text-primary' : ''}
-                  disabled={isUploading}
-                >
-                  <Music className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleEditSave}
-                  disabled={!editContent.trim() || updateMutation.isPending || isUploading}
-                >
-                  {updateMutation.isPending ? 'Saving...' : 'Save'}
-                </Button>
-              </div>
+                {updateMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -417,14 +289,36 @@ export function PostCard({ post }: PostCardProps) {
   );
 }
 
-function CommentItem({ comment }: { comment: any }) {
+function CommentItem({ comment }: { comment: Comment }) {
+  const { user } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  
   const appreciateMutation = useAppreciate();
+  const updateCommentMutation = useUpdateComment();
+  const deleteCommentMutation = useDeleteComment();
+  
+  const isOwner = user?.id === comment.user_id;
+  const daysSinceCreated = differenceInDays(new Date(), new Date(comment.created_at));
+  const canEdit = isOwner && daysSinceCreated <= COMMENT_EDIT_DAYS_LIMIT;
   
   const initials = comment.profiles?.full_name
     ?.split(' ')
     .map((n: string) => n[0])
     .join('')
     .toUpperCase() || '?';
+
+  const handleSaveEdit = () => {
+    if (!editContent.trim()) return;
+    updateCommentMutation.mutate(
+      { commentId: comment.id, content: editContent },
+      { onSuccess: () => setIsEditing(false) }
+    );
+  };
+
+  const handleDelete = () => {
+    deleteCommentMutation.mutate(comment.id);
+  };
 
   return (
     <div className="flex gap-2">
@@ -433,22 +327,86 @@ function CommentItem({ comment }: { comment: any }) {
         <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
-        <div className="bg-accent/30 rounded-lg px-3 py-2">
-          <p className="font-medium text-sm">{comment.profiles?.full_name || 'Unknown'}</p>
-          <p className="text-sm">{comment.content}</p>
-        </div>
-        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-          <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
-          <button
-            onClick={() => appreciateMutation.mutate({
-              commentId: comment.id,
-              remove: comment.user_appreciated,
-            })}
-            className={cn('hover:underline', comment.user_appreciated && 'text-primary font-medium')}
-          >
-            Appreciate {comment.appreciation_count > 0 && `(${comment.appreciation_count})`}
-          </button>
-        </div>
+        {isEditing ? (
+          <div className="space-y-2">
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={2}
+              className="min-h-[60px] resize-none text-sm"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={!editContent.trim() || updateCommentMutation.isPending}
+              >
+                {updateCommentMutation.isPending ? 'Saving...' : 'Save'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditContent(comment.content);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="bg-accent/30 rounded-lg px-3 py-2">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-sm">{comment.profiles?.full_name || 'Unknown'}</p>
+                {isOwner && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1">
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {canEdit ? (
+                        <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                          <Pencil className="h-3 w-3 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem disabled className="text-xs">
+                          <Pencil className="h-3 w-3 mr-2" />
+                          Edit (expired after 30 days)
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem
+                        onClick={handleDelete}
+                        className="text-destructive"
+                        disabled={deleteCommentMutation.isPending}
+                      >
+                        <Trash2 className="h-3 w-3 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              <p className="text-sm">{comment.content}</p>
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+              <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
+              <button
+                onClick={() => appreciateMutation.mutate({
+                  commentId: comment.id,
+                  remove: comment.user_appreciated,
+                })}
+                className={cn('hover:underline', comment.user_appreciated && 'text-primary font-medium')}
+              >
+                Appreciate {comment.appreciation_count > 0 && `(${comment.appreciation_count})`}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

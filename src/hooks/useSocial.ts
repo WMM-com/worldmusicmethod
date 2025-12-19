@@ -252,6 +252,55 @@ export function useCreateComment() {
   });
 }
 
+export function useUpdateComment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ commentId, content }: { commentId: string; content: string }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase.from('comments')
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq('id', commentId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+      toast.success('Comment updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update comment');
+    },
+  });
+}
+
+export function useDeleteComment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (commentId: string) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      const { error } = await supabase.from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      toast.success('Comment deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete comment');
+    },
+  });
+}
+
 export function useAppreciate() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
