@@ -1680,6 +1680,138 @@ export type Database = {
           },
         ]
       }
+      profile_gallery: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          image_url: string
+          order_index: number
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          order_index?: number
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          order_index?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profile_projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          external_url: string | null
+          id: string
+          image_url: string | null
+          order_index: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string | null
+          order_index?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string | null
+          order_index?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profile_sections: {
+        Row: {
+          content: Json | null
+          created_at: string
+          id: string
+          is_visible: boolean | null
+          order_index: number
+          section_type: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          is_visible?: boolean | null
+          order_index?: number
+          section_type: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          id?: string
+          is_visible?: boolean | null
+          order_index?: number
+          section_type?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profile_tabs: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_visible: boolean | null
+          order_index: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_visible?: boolean | null
+          order_index?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_visible?: boolean | null
+          order_index?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -1687,17 +1819,27 @@ export type Database = {
           bank_details: string | null
           bio: string | null
           business_name: string | null
+          cover_image_url: string | null
           created_at: string
           default_currency: string | null
           email: string
           full_name: string | null
           id: string
+          is_public: boolean | null
           logo_url: string | null
+          paypal_email: string | null
           phone: string | null
+          profile_layout: Json | null
+          profile_type: string | null
+          social_links: Json | null
+          tagline: string | null
           tax_country: string | null
           tax_id: string | null
+          tip_jar_enabled: boolean | null
           updated_at: string
+          username: string | null
           vat_number: string | null
+          website_url: string | null
         }
         Insert: {
           address?: string | null
@@ -1705,17 +1847,27 @@ export type Database = {
           bank_details?: string | null
           bio?: string | null
           business_name?: string | null
+          cover_image_url?: string | null
           created_at?: string
           default_currency?: string | null
           email: string
           full_name?: string | null
           id: string
+          is_public?: boolean | null
           logo_url?: string | null
+          paypal_email?: string | null
           phone?: string | null
+          profile_layout?: Json | null
+          profile_type?: string | null
+          social_links?: Json | null
+          tagline?: string | null
           tax_country?: string | null
           tax_id?: string | null
+          tip_jar_enabled?: boolean | null
           updated_at?: string
+          username?: string | null
           vat_number?: string | null
+          website_url?: string | null
         }
         Update: {
           address?: string | null
@@ -1723,17 +1875,27 @@ export type Database = {
           bank_details?: string | null
           bio?: string | null
           business_name?: string | null
+          cover_image_url?: string | null
           created_at?: string
           default_currency?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          is_public?: boolean | null
           logo_url?: string | null
+          paypal_email?: string | null
           phone?: string | null
+          profile_layout?: Json | null
+          profile_type?: string | null
+          social_links?: Json | null
+          tagline?: string | null
           tax_country?: string | null
           tax_id?: string | null
+          tip_jar_enabled?: boolean | null
           updated_at?: string
+          username?: string | null
           vat_number?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
@@ -2114,6 +2276,24 @@ export type Database = {
           include_tax_calculations: boolean
           owner_user_id: string
           share_id: string
+        }[]
+      }
+      get_public_profile: {
+        Args: { p_username: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          business_name: string
+          cover_image_url: string
+          full_name: string
+          id: string
+          paypal_email: string
+          profile_type: string
+          social_links: Json
+          tagline: string
+          tip_jar_enabled: boolean
+          username: string
+          website_url: string
         }[]
       }
       get_shared_contract: {
