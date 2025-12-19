@@ -25,6 +25,7 @@ export interface UploadOptions {
 }
 
 const DEFAULT_MAX_SIZE = 100 * 1024 * 1024; // 100MB for video/audio
+const EDGE_FUNCTION_MAX_SIZE = 25 * 1024 * 1024; // 25MB - edge function memory limit
 const DEFAULT_ALLOWED_TYPES = [
   "image/jpeg",
   "image/png",
@@ -100,6 +101,12 @@ export function useR2Upload() {
         if (processedFile.size > maxSizeBytes) {
           const maxSizeMB = Math.round(maxSizeBytes / (1024 * 1024));
           throw new Error(`File size exceeds ${maxSizeMB}MB limit`);
+        }
+
+        // Check if file exceeds edge function memory limit
+        if (processedFile.size > EDGE_FUNCTION_MAX_SIZE) {
+          const maxSizeMB = Math.round(EDGE_FUNCTION_MAX_SIZE / (1024 * 1024));
+          throw new Error(`File too large for upload. Maximum size is ${maxSizeMB}MB. Please compress or reduce the file size.`);
         }
 
         setProgress(30);

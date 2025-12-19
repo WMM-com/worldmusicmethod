@@ -23,7 +23,7 @@ type MediaType = 'image' | 'video' | 'audio' | null;
 export function CreatePost() {
   const { user } = useAuth();
   const [content, setContent] = useState('');
-  const [visibility, setVisibility] = useState('friends');
+  const [visibility, setVisibility] = useState('public');
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<MediaType>(null);
   const [showUpload, setShowUpload] = useState<MediaType>(null);

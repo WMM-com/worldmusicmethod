@@ -20,7 +20,7 @@ export default function Social() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: posts, isLoading } = useFeed();
   
-  const activeTab = searchParams.get('tab') || 'groups';
+  const activeTab = searchParams.get('tab') || 'feed';
   
   const setActiveTab = (tab: string) => {
     setSearchParams({ tab });
@@ -72,17 +72,17 @@ export default function Social() {
         <main className="max-w-6xl mx-auto px-4 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full max-w-md grid-cols-3">
-              <TabsTrigger value="groups" className="flex items-center gap-2">
-                <UsersRound className="h-4 w-4" />
-                Groups
+              <TabsTrigger value="feed" className="flex items-center gap-2">
+                <Newspaper className="h-4 w-4" />
+                Feed
               </TabsTrigger>
               <TabsTrigger value="members" className="flex items-center gap-2">
                 <UserSearch className="h-4 w-4" />
                 Members
               </TabsTrigger>
-              <TabsTrigger value="feed" className="flex items-center gap-2">
-                <Newspaper className="h-4 w-4" />
-                Feed
+              <TabsTrigger value="groups" className="flex items-center gap-2">
+                <UsersRound className="h-4 w-4" />
+                Groups
               </TabsTrigger>
             </TabsList>
             
