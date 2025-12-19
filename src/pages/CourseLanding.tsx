@@ -38,11 +38,13 @@ export default function CourseLanding() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
-      const heroHeight = window.innerHeight * 0.7; // 70vh hero
-      setShowStickyCTA(scrollY > heroHeight);
+      setShowStickyCTA(scrollY > 300); // Show after 300px scroll
     };
 
-    window.addEventListener('scroll', handleScroll);
+    // Check initial scroll position
+    handleScroll();
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 

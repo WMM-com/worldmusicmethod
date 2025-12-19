@@ -90,11 +90,21 @@ export function CreatePost() {
 
   const handleUploadClick = (type: MediaType) => {
     if (showUpload === type) {
+      // Toggle off - only reset if same type clicked
       setShowUpload(null);
-      handleRemoveMedia();
+      setMediaUrl('');
+      setMediaType(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } else {
+      // Switch to new type
+      setMediaUrl('');
+      setMediaType(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setShowUpload(type);
-      handleRemoveMedia();
     }
   };
 
