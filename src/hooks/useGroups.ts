@@ -195,6 +195,41 @@ export function useCreateGroup() {
   });
 }
 
+// Update group
+export function useUpdateGroup() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ groupId, updates }: { 
+      groupId: string; 
+      updates: { 
+        name?: string; 
+        description?: string; 
+        cover_image_url?: string;
+        rules?: string;
+        welcome_message?: string;
+        settings?: Record<string, boolean | string>;
+      } 
+    }) => {
+      const { error } = await supabase
+        .from('groups')
+        .update(updates as Parameters<typeof supabase.from<'groups'>>[0])
+        .eq('id', groupId);
+      
+      if (error) throw error;
+      return groupId;
+    },
+    onSuccess: (groupId) => {
+      queryClient.invalidateQueries({ queryKey: ['group', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      toast.success('Group updated!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 // Join group (public)
 export function useJoinGroup() {
   const queryClient = useQueryClient();

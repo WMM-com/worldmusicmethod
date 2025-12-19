@@ -1509,6 +1509,56 @@ export type Database = {
         }
         Relationships: []
       }
+      pinned_audio: {
+        Row: {
+          artist: string | null
+          audio_url: string
+          cover_image_url: string | null
+          created_at: string
+          group_id: string | null
+          id: string
+          is_active: boolean | null
+          section: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artist?: string | null
+          audio_url: string
+          cover_image_url?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          section?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artist?: string | null
+          audio_url?: string
+          cover_image_url?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          section?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_audio_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           content: string
