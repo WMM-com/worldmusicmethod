@@ -104,11 +104,17 @@ export function useR2Upload() {
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve(true);
             } else {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
+              console.error("R2 direct upload failed:", xhr.status, xhr.statusText, xhr.responseText);
+              // Fall back to edge function upload on CORS/network error
+              reject(new Error(`CORS_OR_NETWORK_ERROR`));
             }
           };
 
-          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.onerror = () => {
+            console.error("R2 direct upload network error - likely CORS issue");
+            reject(new Error("CORS_OR_NETWORK_ERROR"));
+          };
+          
           xhr.ontimeout = () => reject(new Error("Upload timed out"));
 
           xhr.open("PUT", presignedData.uploadUrl);
@@ -297,7 +303,29 @@ export function useR2Upload() {
         
         if (processedFile.size > DIRECT_UPLOAD_THRESHOLD) {
           console.log(`Using direct upload for ${(processedFile.size / 1024 / 1024).toFixed(1)}MB file`);
-          result = await uploadDirect(processedFile, options);
+          try {
+            result = await uploadDirect(processedFile, options);
+          } catch (directErr) {
+            // If direct upload fails due to CORS, fall back to edge function for smaller files
+            if (directErr instanceof Error && directErr.message === "CORS_OR_NETWORK_ERROR") {
+              const maxEdgeFunctionSize = 20 * 1024 * 1024; // 20MB limit for edge function
+              if (processedFile.size <= maxEdgeFunctionSize) {
+                console.log("Direct upload failed (CORS), falling back to edge function");
+                toast({
+                  title: "Switching upload method",
+                  description: "Using alternative upload method...",
+                });
+                result = await uploadViaEdgeFunction(processedFile, options);
+              } else {
+                throw new Error(
+                  "Direct upload failed. Your R2 bucket may need CORS configuration. " +
+                  "Please enable CORS for your bucket to allow browser uploads, or use files under 20MB."
+                );
+              }
+            } else {
+              throw directErr;
+            }
+          }
         } else {
           console.log(`Using edge function upload for ${(processedFile.size / 1024).toFixed(1)}KB file`);
           result = await uploadViaEdgeFunction(processedFile, options);
