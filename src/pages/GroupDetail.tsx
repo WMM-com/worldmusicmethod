@@ -11,14 +11,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, Users, Lock, EyeOff, Settings, 
   MessageSquare, Calendar, BarChart3, Pin, Megaphone,
-  Send, ImageIcon, Music
+  Send, ImageIcon, Music, Plus
 } from 'lucide-react';
 import { 
   useGroup, useGroupMembers, useGroupPosts, useGroupEvents, 
-  useGroupPolls, useCreateGroupPost, useJoinGroup, useLeaveGroup 
+  useGroupPolls, useCreateGroupPost, useJoinGroup, useLeaveGroup,
+  useVoteOnPoll
 } from '@/hooks/useGroups';
-import { CATEGORY_LABELS } from '@/types/groups';
+import { CATEGORY_LABELS, type GroupSettings } from '@/types/groups';
 import { formatDistanceToNow, format } from 'date-fns';
+import { CreateEventDialog } from '@/components/groups/CreateEventDialog';
+import { CreatePollDialog } from '@/components/groups/CreatePollDialog';
+import { GroupSettingsDialog } from '@/components/groups/GroupSettingsDialog';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -34,6 +38,7 @@ export default function GroupDetail() {
   const createPost = useCreateGroupPost();
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
+  const voteOnPoll = useVoteOnPoll();
   
   const handleCreatePost = async () => {
     if (!newPostContent.trim() || !groupId) return;
@@ -42,6 +47,11 @@ export default function GroupDetail() {
       content: newPostContent,
     });
     setNewPostContent('');
+  };
+  
+  const handleVote = (pollId: string, optionIndex: number) => {
+    if (!groupId) return;
+    voteOnPoll.mutate({ pollId, optionIndex, groupId });
   };
   
   const getInitials = (name: string | null | undefined) => {
@@ -79,6 +89,14 @@ export default function GroupDetail() {
   }
   
   const isAdmin = group.user_role === 'admin' || group.user_role === 'moderator';
+  const settings = (group.settings || {}) as GroupSettings;
+  
+  // Check posting permissions
+  const canPost = group.is_member && (
+    settings.who_can_post === 'all_members' ||
+    (settings.who_can_post === 'admins_and_moderators' && isAdmin) ||
+    (settings.who_can_post === 'admins_only' && group.user_role === 'admin')
+  );
   
   return (
     <>
@@ -96,9 +114,9 @@ export default function GroupDetail() {
           {/* Group Header */}
           <Card className="mb-6">
             <CardContent className="pt-6">
-              <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate('/community')}>
+              <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate('/community?tab=groups')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Community
+                Back to Groups
               </Button>
               
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -123,14 +141,19 @@ export default function GroupDetail() {
                   )}
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {group.is_member ? (
                     <>
                       {isAdmin && (
-                        <Button variant="outline" size="sm">
-                          <Settings className="h-4 w-4 mr-2" />
-                          Manage
-                        </Button>
+                        <GroupSettingsDialog 
+                          group={group} 
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <Settings className="h-4 w-4 mr-2" />
+                              Settings
+                            </Button>
+                          }
+                        />
                       )}
                       <Button 
                         variant="outline" 
@@ -151,74 +174,117 @@ export default function GroupDetail() {
                   )}
                 </div>
               </div>
+              
+              {/* Group Rules */}
+              {group.is_member && group.rules && (
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium text-sm mb-1">Group Rules</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{group.rules}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
           
           {/* Group Content */}
           {group.is_member ? (
             <Tabs defaultValue="posts" className="space-y-4">
-              <TabsList>
-                <TabsTrigger value="posts">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Posts
-                </TabsTrigger>
-                <TabsTrigger value="members">
-                  <Users className="h-4 w-4 mr-2" />
-                  Members
-                </TabsTrigger>
-                <TabsTrigger value="events">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Events
-                </TabsTrigger>
-                <TabsTrigger value="polls">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Polls
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between">
+                <TabsList>
+                  <TabsTrigger value="posts">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Posts
+                  </TabsTrigger>
+                  <TabsTrigger value="members">
+                    <Users className="h-4 w-4 mr-2" />
+                    Members
+                  </TabsTrigger>
+                  {settings.allow_events !== false && (
+                    <TabsTrigger value="events">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      Events
+                    </TabsTrigger>
+                  )}
+                  {settings.allow_polls !== false && (
+                    <TabsTrigger value="polls">
+                      <BarChart3 className="h-4 w-4 mr-2" />
+                      Polls
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+                
+                {isAdmin && (
+                  <div className="flex gap-2">
+                    {settings.allow_events !== false && (
+                      <CreateEventDialog groupId={group.id} />
+                    )}
+                    {settings.allow_polls !== false && (
+                      <CreatePollDialog groupId={group.id} />
+                    )}
+                  </div>
+                )}
+              </div>
               
               <TabsContent value="posts" className="space-y-4">
                 {/* Create Post */}
-                <Card>
-                  <CardContent className="pt-4">
-                    <Textarea
-                      placeholder="Share something with the group..."
-                      value={newPostContent}
-                      onChange={(e) => setNewPostContent(e.target.value)}
-                      rows={3}
-                    />
-                    <div className="flex justify-between items-center mt-3">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <ImageIcon className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Music className="h-4 w-4" />
+                {canPost && (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <Textarea
+                        placeholder="Share something with the group..."
+                        value={newPostContent}
+                        onChange={(e) => setNewPostContent(e.target.value)}
+                        rows={3}
+                      />
+                      <div className="flex justify-between items-center mt-3">
+                        <div className="flex gap-2">
+                          {settings.allow_images !== false && (
+                            <Button variant="ghost" size="sm">
+                              <ImageIcon className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {settings.allow_audio !== false && (
+                            <Button variant="ghost" size="sm">
+                              <Music className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <Button 
+                          size="sm" 
+                          onClick={handleCreatePost}
+                          disabled={!newPostContent.trim() || createPost.isPending}
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Post
                         </Button>
                       </div>
-                      <Button 
-                        size="sm" 
-                        onClick={handleCreatePost}
-                        disabled={!newPostContent.trim() || createPost.isPending}
-                      >
-                        <Send className="h-4 w-4 mr-2" />
-                        Post
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {!canPost && group.is_member && (
+                  <Card>
+                    <CardContent className="py-6 text-center text-muted-foreground">
+                      Only {settings.who_can_post === 'admins_only' ? 'admins' : 'admins and moderators'} can post in this group
+                    </CardContent>
+                  </Card>
+                )}
                 
                 {/* Posts List */}
                 {posts?.map((post) => (
                   <Card key={post.id}>
                     <CardContent className="pt-4">
                       <div className="flex items-start gap-3">
-                        <Avatar>
-                          <AvatarImage src={post.profile?.avatar_url || undefined} />
-                          <AvatarFallback>{getInitials(post.profile?.full_name)}</AvatarFallback>
-                        </Avatar>
+                        <Link to={`/profile/${post.user_id}`}>
+                          <Avatar>
+                            <AvatarImage src={post.profile?.avatar_url || undefined} />
+                            <AvatarFallback>{getInitials(post.profile?.full_name)}</AvatarFallback>
+                          </Avatar>
+                        </Link>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold">{post.profile?.full_name || 'Anonymous'}</span>
+                            <Link to={`/profile/${post.user_id}`} className="font-semibold hover:underline">
+                              {post.profile?.full_name || 'Anonymous'}
+                            </Link>
                             <span className="text-sm text-muted-foreground">
                               {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                             </span>
@@ -233,6 +299,9 @@ export default function GroupDetail() {
                               )}
                               {post.media_type === 'audio' && (
                                 <audio src={post.media_url} controls className="w-full" />
+                              )}
+                              {post.media_type === 'video' && (
+                                <video src={post.media_url} controls className="w-full rounded-lg max-h-96" />
                               )}
                             </div>
                           )}
@@ -287,97 +356,123 @@ export default function GroupDetail() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="events" className="space-y-4">
-                {events?.map((event) => (
-                  <Card key={event.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="text-center bg-primary/10 rounded-lg p-2 min-w-[60px]">
-                          <div className="text-xs text-primary font-medium">
-                            {format(new Date(event.start_time), 'MMM')}
-                          </div>
-                          <div className="text-2xl font-bold">
-                            {format(new Date(event.start_time), 'd')}
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold">{event.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(event.start_time), 'EEEE, h:mm a')}
-                          </p>
-                          {event.location && (
-                            <p className="text-sm text-muted-foreground">{event.location}</p>
-                          )}
-                          {event.description && (
-                            <p className="mt-2 text-sm">{event.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {events?.length === 0 && (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">No upcoming events</h3>
-                      <p className="text-muted-foreground">Events will appear here when created</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="polls" className="space-y-4">
-                {polls?.map((poll) => (
-                  <Card key={poll.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{poll.question}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {poll.options.map((option, index) => {
-                          const voteCount = poll.votes?.find(v => v.option_index === index)?.count || 0;
-                          const totalVotes = poll.votes?.reduce((sum, v) => sum + v.count, 0) || 0;
-                          const percentage = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
-                          const hasVoted = poll.user_votes?.includes(index);
-                          
-                          return (
-                            <div 
-                              key={index}
-                              className={`relative p-3 rounded-lg border ${hasVoted ? 'border-primary' : ''}`}
-                            >
-                              <div 
-                                className="absolute inset-0 bg-primary/10 rounded-lg"
-                                style={{ width: `${percentage}%` }}
-                              />
-                              <div className="relative flex justify-between">
-                                <span>{option}</span>
-                                <span className="text-sm text-muted-foreground">{percentage}%</span>
-                              </div>
+              {settings.allow_events !== false && (
+                <TabsContent value="events" className="space-y-4">
+                  {events?.map((event) => (
+                    <Card key={event.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-4">
+                          <div className="text-center bg-primary/10 rounded-lg p-2 min-w-[60px]">
+                            <div className="text-xs text-primary font-medium">
+                              {format(new Date(event.start_time), 'MMM')}
                             </div>
-                          );
-                        })}
-                      </div>
-                      {poll.ends_at && (
-                        <p className="text-xs text-muted-foreground mt-3">
-                          Ends {formatDistanceToNow(new Date(poll.ends_at), { addSuffix: true })}
+                            <div className="text-2xl font-bold">
+                              {format(new Date(event.start_time), 'd')}
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold">{event.title}</h4>
+                              {event.event_type && (
+                                <Badge variant="outline" className="text-xs">{event.event_type.replace('_', ' ')}</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(event.start_time), 'EEEE, h:mm a')}
+                              {event.end_time && ` - ${format(new Date(event.end_time), 'h:mm a')}`}
+                            </p>
+                            {event.location && (
+                              <p className="text-sm text-muted-foreground">{event.location}</p>
+                            )}
+                            {event.description && (
+                              <p className="mt-2 text-sm">{event.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  {events?.length === 0 && (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold mb-2">No upcoming events</h3>
+                        <p className="text-muted-foreground mb-4">
+                          {isAdmin ? 'Create an event for your group members' : 'Events will appear here when created'}
                         </p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {polls?.length === 0 && (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">No polls yet</h3>
-                      <p className="text-muted-foreground">Polls will appear here when created</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
+                        {isAdmin && <CreateEventDialog groupId={group.id} />}
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+              )}
+              
+              {settings.allow_polls !== false && (
+                <TabsContent value="polls" className="space-y-4">
+                  {polls?.map((poll) => {
+                    const totalVotes = poll.votes?.reduce((sum, v) => sum + v.count, 0) || 0;
+                    
+                    return (
+                      <Card key={poll.id}>
+                        <CardHeader>
+                          <CardTitle className="text-lg">{poll.question}</CardTitle>
+                          {poll.is_multiple_choice && (
+                            <p className="text-sm text-muted-foreground">Select multiple options</p>
+                          )}
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            {poll.options.map((option, index) => {
+                              const voteCount = poll.votes?.find(v => v.option_index === index)?.count || 0;
+                              const percentage = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+                              const hasVoted = poll.user_votes?.includes(index);
+                              const canVote = !poll.user_votes?.length || poll.is_multiple_choice;
+                              
+                              return (
+                                <button 
+                                  key={index}
+                                  onClick={() => canVote && handleVote(poll.id, index)}
+                                  disabled={!canVote || voteOnPoll.isPending}
+                                  className={`relative w-full p-3 rounded-lg border text-left transition-colors ${
+                                    hasVoted ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                                  } ${canVote ? 'cursor-pointer' : 'cursor-default'}`}
+                                >
+                                  <div 
+                                    className="absolute inset-0 bg-primary/10 rounded-lg transition-all"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                  <div className="relative flex justify-between">
+                                    <span>{option}</span>
+                                    <span className="text-sm text-muted-foreground">{percentage}% ({voteCount})</span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-3">
+                            {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+                            {poll.ends_at && ` • Ends ${formatDistanceToNow(new Date(poll.ends_at), { addSuffix: true })}`}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                  
+                  {polls?.length === 0 && (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold mb-2">No polls yet</h3>
+                        <p className="text-muted-foreground mb-4">
+                          {isAdmin ? 'Create a poll to gather opinions' : 'Polls will appear here when created'}
+                        </p>
+                        {isAdmin && <CreatePollDialog groupId={group.id} />}
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
+              )}
             </Tabs>
           ) : (
             <Card>
