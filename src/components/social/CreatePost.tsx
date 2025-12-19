@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -11,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Globe, Users, Image, Video, Music, X, Upload, Loader2 } from 'lucide-react';
+import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatePost } from '@/hooks/useSocial';
 import { useR2Upload } from '@/hooks/useR2Upload';
@@ -19,16 +21,39 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 type MediaType = 'image' | 'video' | 'audio' | null;
+type PostType = 'statement' | 'update' | 'recommendation';
+
+const POST_TYPE_CONFIG = {
+  statement: {
+    label: 'Statement',
+    icon: Megaphone,
+    verification: 'I verify this represents my genuine beliefs and is worth public discourse',
+    color: 'border-l-amber-500',
+  },
+  update: {
+    label: 'Update',
+    icon: RefreshCw,
+    verification: 'I verify this update is relevant for my audience to know about',
+    color: 'border-l-sky-500',
+  },
+  recommendation: {
+    label: 'Recommendation',
+    icon: Star,
+    verification: 'I verify this is a legitimate recommendation and I wholeheartedly believe this to be of the highest quality and that others will be interested in this',
+    color: 'border-l-emerald-500',
+  },
+};
 
 export function CreatePost() {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [visibility, setVisibility] = useState('public');
+  const [postType, setPostType] = useState<PostType>('update');
+  const [verified, setVerified] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<MediaType>(null);
   const [showUpload, setShowUpload] = useState<MediaType>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
   const createPostMutation = useCreatePost();
   const { uploadFile, isUploading, progress } = useR2Upload();
 
@@ -109,21 +134,28 @@ export function CreatePost() {
   };
 
   const handleSubmit = () => {
-    if (!content.trim()) return;
+    if (!content.trim() || !verified) return;
     createPostMutation.mutate(
       { 
         content, 
         mediaUrl: mediaUrl || undefined, 
         mediaType: mediaType || undefined,
-        visibility 
+        visibility,
+        postType,
       },
       {
         onSuccess: () => {
           setContent('');
+          setVerified(false);
           handleRemoveMedia();
         },
       }
     );
+  };
+
+  const handlePostTypeChange = (type: PostType) => {
+    setPostType(type);
+    setVerified(false);
   };
 
   if (!user) return null;
@@ -214,6 +246,41 @@ export function CreatePost() {
               onChange={handleFileSelect}
             />
             
+            {/* Post Type Selection */}
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(POST_TYPE_CONFIG) as PostType[]).map((type) => {
+                const config = POST_TYPE_CONFIG[type];
+                const Icon = config.icon;
+                return (
+                  <Button
+                    key={type}
+                    variant={postType === type ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handlePostTypeChange(type)}
+                    className="gap-1.5"
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {config.label}
+                  </Button>
+                );
+              })}
+            </div>
+
+            {/* Verification Checkbox */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
+              <Checkbox 
+                id="verify" 
+                checked={verified} 
+                onCheckedChange={(checked) => setVerified(checked === true)}
+              />
+              <Label 
+                htmlFor="verify" 
+                className="text-sm leading-relaxed cursor-pointer text-muted-foreground"
+              >
+                {POST_TYPE_CONFIG[postType].verification}
+              </Label>
+            </div>
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <Button
@@ -270,7 +337,7 @@ export function CreatePost() {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || createPostMutation.isPending || isUploading}
+                disabled={!content.trim() || !verified || createPostMutation.isPending || isUploading}
               >
                 {createPostMutation.isPending ? 'Posting...' : 'Post'}
               </Button>

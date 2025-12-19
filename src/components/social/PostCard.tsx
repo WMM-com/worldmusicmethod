@@ -4,7 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,27 @@ interface PostCardProps {
 }
 
 const COMMENT_EDIT_DAYS_LIMIT = 30;
+
+const POST_TYPE_CONFIG = {
+  statement: {
+    label: 'Statement',
+    icon: Megaphone,
+    borderColor: 'border-l-amber-500',
+    badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  },
+  update: {
+    label: 'Update',
+    icon: RefreshCw,
+    borderColor: 'border-l-sky-500',
+    badgeClass: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
+  },
+  recommendation: {
+    label: 'Recommendation',
+    icon: Star,
+    borderColor: 'border-l-emerald-500',
+    badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  },
+};
 
 export function PostCard({ post }: PostCardProps) {
   const { user } = useAuth();
@@ -90,9 +112,13 @@ export function PostCard({ post }: PostCardProps) {
   // Determine media type from URL if not set
   const displayMediaType = post.media_type || (post.image_url ? 'image' : null);
 
+  const postType = (post.post_type as keyof typeof POST_TYPE_CONFIG) || 'update';
+  const typeConfig = POST_TYPE_CONFIG[postType];
+  const TypeIcon = typeConfig.icon;
+
   return (
     <>
-      <Card className="overflow-hidden">
+      <Card className={cn("overflow-hidden border-l-4", typeConfig.borderColor)}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -101,7 +127,13 @@ export function PostCard({ post }: PostCardProps) {
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{post.profiles?.full_name || 'Unknown'}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{post.profiles?.full_name || 'Unknown'}</p>
+                  <Badge variant="outline" className={cn("text-xs gap-1 py-0", typeConfig.badgeClass)}>
+                    <TypeIcon className="h-3 w-3" />
+                    {typeConfig.label}
+                  </Badge>
+                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
                   <span>·</span>
