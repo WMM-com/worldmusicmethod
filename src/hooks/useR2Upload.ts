@@ -24,8 +24,8 @@ export interface UploadOptions {
   altText?: string;
 }
 
-const DEFAULT_MAX_SIZE = 100 * 1024 * 1024; // 100MB for video/audio
-const EDGE_FUNCTION_MAX_SIZE = 25 * 1024 * 1024; // 25MB - edge function memory limit
+const DEFAULT_MAX_SIZE = 500 * 1024 * 1024; // 500MB for large video files
+const DIRECT_UPLOAD_THRESHOLD = 10 * 1024 * 1024; // 10MB - use direct upload for larger files
 const DEFAULT_ALLOWED_TYPES = [
   "image/jpeg",
   "image/png",
@@ -53,16 +53,203 @@ export function useR2Upload() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Direct upload using pre-signed URL (for large files - fastest method)
+  const uploadDirect = useCallback(
+    async (file: File, options: UploadOptions): Promise<UploadResult | null> => {
+      const { bucket, folder, trackInDatabase = true, altText } = options;
+
+      try {
+        setProgress(10);
+
+        // Get session for auth
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("You must be logged in to upload files");
+        }
+
+        setProgress(15);
+
+        // Request pre-signed URL from edge function
+        const { data: presignedData, error: presignedError } = await supabase.functions.invoke(
+          "r2-presigned-url",
+          {
+            body: {
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+              bucket,
+              folder,
+            },
+          }
+        );
+
+        if (presignedError || !presignedData?.success) {
+          throw new Error(presignedError?.message || presignedData?.error || "Failed to get upload URL");
+        }
+
+        setProgress(25);
+
+        // Upload directly to R2 using XMLHttpRequest for progress tracking
+        const uploadResult = await new Promise<boolean>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = 25 + (event.loaded / event.total) * 65;
+              setProgress(Math.round(percentComplete));
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(true);
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.ontimeout = () => reject(new Error("Upload timed out"));
+
+          xhr.open("PUT", presignedData.uploadUrl);
+          xhr.setRequestHeader("Content-Type", file.type);
+          xhr.timeout = 300000; // 5 minute timeout for large files
+          xhr.send(file);
+        });
+
+        if (!uploadResult) {
+          throw new Error("Upload failed");
+        }
+
+        setProgress(90);
+
+        // Track in database if requested
+        if (trackInDatabase) {
+          const fileCategory = getFileCategory(file.type);
+          
+          await supabase.from("media_library").insert({
+            user_id: session.user.id,
+            file_name: presignedData.fileName,
+            file_url: presignedData.publicUrl,
+            file_type: fileCategory,
+            file_size: file.size,
+            mime_type: file.type,
+            folder: folder || (bucket === "admin" ? "admin" : "user-uploads"),
+            alt_text: altText || null,
+            metadata: {
+              bucket,
+              object_key: presignedData.objectKey,
+              original_name: file.name,
+              upload_method: "direct",
+            },
+          });
+        }
+
+        setProgress(100);
+
+        return {
+          success: true,
+          url: presignedData.publicUrl,
+          key: presignedData.objectKey,
+          bucket: presignedData.bucket,
+          fileName: presignedData.fileName,
+          fileType: file.type,
+          size: file.size,
+        };
+      } catch (err) {
+        throw err;
+      }
+    },
+    []
+  );
+
+  // Base64 upload through edge function (for small files)
+  const uploadViaEdgeFunction = useCallback(
+    async (file: File, options: UploadOptions): Promise<UploadResult | null> => {
+      const { bucket, folder, trackInDatabase = true, altText } = options;
+
+      try {
+        setProgress(30);
+
+        // Convert file to base64
+        const base64Data = await fileToBase64(file);
+        setProgress(40);
+
+        // Get session for auth
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("You must be logged in to upload files");
+        }
+
+        setProgress(50);
+
+        // Call the edge function
+        const { data, error: invokeError } = await supabase.functions.invoke("r2-upload", {
+          body: {
+            fileName: file.name,
+            fileType: file.type,
+            fileData: base64Data,
+            bucket,
+            folder,
+          },
+        });
+
+        if (invokeError) {
+          throw new Error(invokeError.message || "Upload failed");
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || "Upload failed");
+        }
+
+        setProgress(80);
+
+        // Track in database if requested
+        if (trackInDatabase) {
+          const fileCategory = getFileCategory(file.type);
+          
+          await supabase.from("media_library").insert({
+            user_id: session.user.id,
+            file_name: data.fileName,
+            file_url: data.url,
+            file_type: fileCategory,
+            file_size: data.size,
+            mime_type: file.type,
+            folder: folder || (bucket === "admin" ? "admin" : "user-uploads"),
+            alt_text: altText || null,
+            metadata: {
+              bucket,
+              object_key: data.key,
+              original_name: file.name,
+              upload_method: "edge-function",
+            },
+          });
+        }
+
+        setProgress(100);
+
+        return {
+          success: true,
+          url: data.url,
+          key: data.key,
+          bucket: data.bucket,
+          fileName: data.fileName,
+          fileType: data.fileType,
+          size: data.size,
+        };
+      } catch (err) {
+        throw err;
+      }
+    },
+    []
+  );
+
   const uploadFile = useCallback(
     async (file: File, options: UploadOptions): Promise<UploadResult | null> => {
       const {
-        bucket,
-        folder,
         maxSizeBytes = DEFAULT_MAX_SIZE,
         allowedTypes = DEFAULT_ALLOWED_TYPES,
         imageOptimization = "none",
-        trackInDatabase = true,
-        altText,
       } = options;
 
       setIsUploading(true);
@@ -70,7 +257,7 @@ export function useR2Upload() {
       setError(null);
 
       try {
-        // Validate file type first (before optimization)
+        // Validate file type first
         if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
           throw new Error(`File type ${file.type} is not allowed`);
         }
@@ -94,7 +281,7 @@ export function useR2Upload() {
               break;
           }
           
-          setProgress(25);
+          setProgress(20);
         }
 
         // Validate file size after optimization
@@ -103,80 +290,18 @@ export function useR2Upload() {
           throw new Error(`File size exceeds ${maxSizeMB}MB limit`);
         }
 
-        // Check if file exceeds edge function memory limit
-        if (processedFile.size > EDGE_FUNCTION_MAX_SIZE) {
-          const maxSizeMB = Math.round(EDGE_FUNCTION_MAX_SIZE / (1024 * 1024));
-          throw new Error(`File too large for upload. Maximum size is ${maxSizeMB}MB. Please compress or reduce the file size.`);
+        // Choose upload method based on file size
+        // Large files use direct upload (pre-signed URL) for speed
+        // Small files use edge function (simpler, works well for small payloads)
+        let result: UploadResult | null;
+        
+        if (processedFile.size > DIRECT_UPLOAD_THRESHOLD) {
+          console.log(`Using direct upload for ${(processedFile.size / 1024 / 1024).toFixed(1)}MB file`);
+          result = await uploadDirect(processedFile, options);
+        } else {
+          console.log(`Using edge function upload for ${(processedFile.size / 1024).toFixed(1)}KB file`);
+          result = await uploadViaEdgeFunction(processedFile, options);
         }
-
-        setProgress(30);
-
-        // Convert file to base64
-        const base64Data = await fileToBase64(processedFile);
-        setProgress(40);
-
-        // Get the current session for auth
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("You must be logged in to upload files");
-        }
-
-        setProgress(50);
-
-        // Call the edge function
-        const { data, error: invokeError } = await supabase.functions.invoke("r2-upload", {
-          body: {
-            fileName: processedFile.name,
-            fileType: processedFile.type,
-            fileData: base64Data,
-            bucket,
-            folder,
-          },
-        });
-
-        if (invokeError) {
-          throw new Error(invokeError.message || "Upload failed");
-        }
-
-        if (!data.success) {
-          throw new Error(data.error || "Upload failed");
-        }
-
-        setProgress(80);
-
-        // Track in database if requested
-        if (trackInDatabase) {
-          const fileCategory = getFileCategory(processedFile.type);
-          
-          await supabase.from("media_library").insert({
-            user_id: session.user.id,
-            file_name: data.fileName,
-            file_url: data.url,
-            file_type: fileCategory,
-            file_size: data.size,
-            mime_type: processedFile.type,
-            folder: folder || (bucket === "admin" ? "admin" : "user-uploads"),
-            alt_text: altText || null,
-            metadata: {
-              bucket,
-              object_key: data.key,
-              original_name: file.name,
-              optimized: imageOptimization !== "none",
-            },
-          });
-        }
-
-        setProgress(100);
-
-        const result: UploadResult = {
-          success: true,
-          url: data.url,
-          key: data.key,
-          bucket: data.bucket,
-          fileName: data.fileName,
-          fileType: data.fileType,
-          size: data.size,
-        };
 
         return result;
       } catch (err) {
@@ -192,7 +317,7 @@ export function useR2Upload() {
         setIsUploading(false);
       }
     },
-    [toast]
+    [toast, uploadDirect, uploadViaEdgeFunction]
   );
 
   const deleteFile = useCallback(
@@ -218,7 +343,7 @@ export function useR2Upload() {
           throw new Error(data.error || "Delete failed");
         }
 
-        // Remove from database tracking - search by file_url containing the objectKey
+        // Remove from database tracking
         await supabase
           .from("media_library")
           .delete()
@@ -265,7 +390,6 @@ function fileToBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Remove the data URL prefix (e.g., "data:image/png;base64,")
       const base64 = result.split(",")[1];
       resolve(base64);
     };
