@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Brain, BookOpen, LogOut, User, Settings, Menu, X, Shield } from 'lucide-react';
+import { Brain, BookOpen, LogOut, User, Settings, Menu, X, Shield, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -45,6 +45,7 @@ export function SiteHeader() {
 
   const navLinks = [
     { href: '/courses', label: 'World Music Method' },
+    { href: '/community', label: 'Community' },
     { href: '/', label: 'Left Brain' },
   ];
 
