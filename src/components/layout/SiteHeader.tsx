@@ -8,9 +8,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Brain, BookOpen, LogOut, User, Settings, Menu, X, Shield, Users } from 'lucide-react';
+import { Brain, BookOpen, LogOut, User, Settings, Menu, X, Shield, MessageSquare } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function SiteHeader() {
   const navigate = useNavigate();
@@ -74,8 +75,13 @@ export function SiteHeader() {
           </nav>
 
           {/* Right side - Auth buttons or User menu */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2">
             {user ? (
+              <>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/messages')}>
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+              <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -99,6 +105,10 @@ export function SiteHeader() {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/my-courses')}>
                     <BookOpen className="mr-2 h-4 w-4" />
                     My Courses
@@ -123,6 +133,7 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             ) : (
               <>
                 <Button variant="ghost" onClick={() => navigate('/auth')}>

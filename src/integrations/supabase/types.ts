@@ -53,6 +53,33 @@ export type Database = {
           },
         ]
       }
+      availability_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slots: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slots?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slots?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_connections: {
         Row: {
           access_token: string | null
@@ -189,6 +216,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          participant_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_ids: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: []
       }
       country_region_mapping: {
         Row: {
@@ -936,6 +987,39 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          message_type: string | null
+          metadata: Json | null
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: []
+      }
       module_lessons: {
         Row: {
           content: string | null
@@ -985,6 +1069,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          from_user_id: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          reference_id: string | null
+          reference_type: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       other_income: {
         Row: {
@@ -1148,6 +1271,7 @@ export type Database = {
           address: string | null
           avatar_url: string | null
           bank_details: string | null
+          bio: string | null
           business_name: string | null
           created_at: string
           default_currency: string | null
@@ -1165,6 +1289,7 @@ export type Database = {
           address?: string | null
           avatar_url?: string | null
           bank_details?: string | null
+          bio?: string | null
           business_name?: string | null
           created_at?: string
           default_currency?: string | null
@@ -1182,6 +1307,7 @@ export type Database = {
           address?: string | null
           avatar_url?: string | null
           bank_details?: string | null
+          bio?: string | null
           business_name?: string | null
           created_at?: string
           default_currency?: string | null
