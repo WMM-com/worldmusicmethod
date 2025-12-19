@@ -130,7 +130,7 @@
 
   h1, h2 {
     font-family: 'Marcellus SC', serif;
-    font-weight: 400;
+    font-weight: 400 !important;
     letter-spacing: 0.02em;
   }
 
