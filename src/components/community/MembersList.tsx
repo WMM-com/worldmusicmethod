@@ -28,9 +28,9 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
   
   const handleMessage = async () => {
     if (!user) return;
-    const conversation = await createConversation.mutateAsync(member.id);
-    if (conversation) {
-      navigate(`/messages?conversation=${conversation.id}`);
+    const conversationId = await createConversation.mutateAsync(member.id);
+    if (conversationId) {
+      navigate(`/messages?conversation=${conversationId}`);
     }
   };
   
