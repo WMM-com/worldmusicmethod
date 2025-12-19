@@ -5,17 +5,58 @@ import { useUserProfile, useUserPosts, useUserStats, useUpdateBio, useUploadAvat
 import { useFriendships, useSendFriendRequest } from '@/hooks/useSocial';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  useExtendedProfile, 
+  useUpdateExtendedProfile, 
+  useProfileSections, 
+  useCreateSection, 
+  useUpdateSection, 
+  useDeleteSection,
+  useReorderSections 
+} from '@/hooks/useProfilePortfolio';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { PostCard } from '@/components/social/PostCard';
 import { ImageCropper } from '@/components/ui/image-cropper';
-import { User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText } from 'lucide-react';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { BioSection } from '@/components/profile/sections/BioSection';
+import { SpotifyEmbed } from '@/components/profile/sections/SpotifyEmbed';
+import { YouTubeEmbed } from '@/components/profile/sections/YouTubeEmbed';
+import { GallerySection } from '@/components/profile/sections/GallerySection';
+import { ProjectsSection } from '@/components/profile/sections/ProjectsSection';
+import { EventsEmbed } from '@/components/profile/sections/EventsEmbed';
+import { SocialFeedEmbed } from '@/components/profile/sections/SocialFeedEmbed';
+import { CustomTabsSection } from '@/components/profile/sections/CustomTabsSection';
+import { 
+  User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
+  Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
+  Calendar, Share2, Layout, DollarSign, Globe, Lock
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
+
+const SECTION_TYPES = [
+  { type: 'spotify', label: 'Spotify Playlist', icon: Music },
+  { type: 'youtube', label: 'YouTube Videos', icon: Video },
+  { type: 'gallery', label: 'Image Gallery', icon: Image },
+  { type: 'events', label: 'Events Calendar', icon: Calendar },
+  { type: 'social_feed', label: 'Social Feed', icon: Share2 },
+  { type: 'projects', label: 'Projects', icon: Layout },
+  { type: 'custom_tabs', label: 'Custom Tabs', icon: FileText },
+];
 
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>();
@@ -26,20 +67,27 @@ export default function Profile() {
   const profileId = userId || user?.id;
 
   const { data: profile, isLoading: profileLoading } = useUserProfile(profileId);
+  const { data: extendedProfile } = useExtendedProfile(profileId);
   const { data: posts, isLoading: postsLoading } = useUserPosts(profileId!);
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
+  const { data: sections, isLoading: sectionsLoading } = useProfileSections(profileId);
   
   const updateBio = useUpdateBio();
   const uploadAvatar = useUploadAvatar();
   const sendFriendRequest = useSendFriendRequest();
   const createConversation = useCreateConversation();
+  const updateExtendedProfile = useUpdateExtendedProfile();
+  const createSection = useCreateSection();
+  const updateSection = useUpdateSection();
+  const deleteSection = useDeleteSection();
 
-  const [isEditingBio, setIsEditingBio] = useState(false);
-  const [bio, setBio] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
+  const [cropType, setCropType] = useState<'avatar' | 'cover'>('avatar');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const isFriend = friendships?.friends.some(
     f => f.user_id === profileId || f.friend_id === profileId
@@ -49,42 +97,47 @@ export default function Profile() {
   );
 
   const handleAvatarClick = () => {
-    if (isOwnProfile) {
+    if (isOwnProfile && isEditing) {
+      setCropType('avatar');
       fileInputRef.current?.click();
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverClick = () => {
+    if (isOwnProfile && isEditing) {
+      setCropType('cover');
+      coverInputRef.current?.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
     const file = e.target.files?.[0];
     if (file) {
-      // Create a URL for the cropper
       const imageUrl = URL.createObjectURL(file);
       setCropImageSrc(imageUrl);
+      setCropType(type);
       setCropperOpen(true);
     }
-    // Reset the input
-    if (fileInputRef.current) {
+    if (type === 'avatar' && fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+    if (type === 'cover' && coverInputRef.current) {
+      coverInputRef.current.value = '';
     }
   };
 
   const handleCropComplete = async (croppedBlob: Blob) => {
-    // Convert blob to file
-    const file = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
-    await uploadAvatar.mutateAsync(file);
-    // Clean up the URL
+    const file = new File([croppedBlob], `${cropType}.jpg`, { type: 'image/jpeg' });
+    if (cropType === 'avatar') {
+      await uploadAvatar.mutateAsync(file);
+    } else {
+      // For cover, we'd need to implement cover upload
+      // For now, using the same avatar upload mechanism but updating cover_image_url
+      await uploadAvatar.mutateAsync(file);
+      // TODO: Implement separate cover upload
+    }
     URL.revokeObjectURL(cropImageSrc);
     setCropImageSrc('');
-  };
-
-  const handleSaveBio = async () => {
-    await updateBio.mutateAsync(bio);
-    setIsEditingBio(false);
-  };
-
-  const handleStartBioEdit = () => {
-    setBio(profile?.bio || '');
-    setIsEditingBio(true);
   };
 
   const handleMessage = async () => {
@@ -93,14 +146,76 @@ export default function Profile() {
     navigate('/messages', { state: { conversationId } });
   };
 
+  const handleTogglePublic = async () => {
+    await updateExtendedProfile.mutateAsync({ 
+      is_public: !extendedProfile?.is_public 
+    });
+    toast.success(extendedProfile?.is_public ? 'Profile is now private' : 'Profile is now public');
+  };
+
+  const handleAddSection = async (sectionType: string) => {
+    const sectionLabels: Record<string, string> = {
+      spotify: 'Music',
+      youtube: 'Videos',
+      gallery: 'Gallery',
+      events: 'Events',
+      social_feed: 'Social',
+      projects: 'Projects',
+      custom_tabs: 'Info',
+    };
+    
+    await createSection.mutateAsync({
+      section_type: sectionType,
+      title: sectionLabels[sectionType] || sectionType,
+    });
+  };
+
+  const handleUpdateSection = async (sectionId: string, content: Record<string, any>) => {
+    await updateSection.mutateAsync({ id: sectionId, content });
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    await deleteSection.mutateAsync(sectionId);
+    toast.success('Section removed');
+  };
+
+  const renderSection = (section: any) => {
+    const props = {
+      section,
+      isEditing,
+      onUpdate: (content: Record<string, any>) => handleUpdateSection(section.id, content),
+      onDelete: () => handleDeleteSection(section.id),
+    };
+
+    switch (section.section_type) {
+      case 'spotify':
+        return <SpotifyEmbed key={section.id} {...props} />;
+      case 'youtube':
+        return <YouTubeEmbed key={section.id} {...props} />;
+      case 'gallery':
+        return <GallerySection key={section.id} {...props} userId={profileId!} />;
+      case 'events':
+        return <EventsEmbed key={section.id} {...props} />;
+      case 'social_feed':
+        return <SocialFeedEmbed key={section.id} {...props} />;
+      case 'projects':
+        return <ProjectsSection key={section.id} {...props} userId={profileId!} />;
+      case 'custom_tabs':
+        return <CustomTabsSection key={section.id} {...props} userId={profileId!} />;
+      default:
+        return null;
+    }
+  };
+
   if (profileLoading) {
     return (
       <>
         <SiteHeader />
         <div className="min-h-screen bg-background">
-          <div className="max-w-4xl mx-auto px-4 py-8">
-            <Skeleton className="h-48 w-full mb-4" />
-            <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <Skeleton className="h-32 w-full mb-4" />
+            <Skeleton className="h-48 w-full" />
           </div>
         </div>
       </>
@@ -126,180 +241,332 @@ export default function Profile() {
     <>
       <SiteHeader />
       <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Profile Header */}
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-                {/* Avatar */}
-                <div className="relative">
-                  <Avatar
-                    className={`h-32 w-32 ${isOwnProfile ? 'cursor-pointer' : ''}`}
-                    onClick={handleAvatarClick}
-                  >
-                    <AvatarImage src={profile.avatar_url || undefined} />
-                    <AvatarFallback className="text-4xl">
-                      <User className="h-12 w-12" />
-                    </AvatarFallback>
-                  </Avatar>
-                  {isOwnProfile && (
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+        {/* Cover Image */}
+        <div 
+          className={`relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
+          onClick={handleCoverClick}
+          style={extendedProfile?.cover_image_url ? {
+            backgroundImage: `url(${extendedProfile.cover_image_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          } : undefined}
+        >
+          {isEditing && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+              <div className="text-white text-center">
+                <Camera className="h-8 w-8 mx-auto mb-2" />
+                <span>Change Cover</span>
+              </div>
+            </div>
+          )}
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFileChange(e, 'cover')}
+          />
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Profile Header Card - overlapping cover */}
+          <div className="-mt-16 sm:-mt-20 relative z-10">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-end">
+                  {/* Avatar */}
+                  <div className="relative -mt-20 sm:-mt-24">
+                    <Avatar
+                      className={`h-32 w-32 sm:h-40 sm:w-40 border-4 border-background ${isEditing ? 'cursor-pointer' : ''}`}
                       onClick={handleAvatarClick}
                     >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </div>
+                      <AvatarImage src={profile.avatar_url || undefined} />
+                      <AvatarFallback className="text-4xl bg-muted">
+                        <User className="h-12 w-12" />
+                      </AvatarFallback>
+                    </Avatar>
+                    {isEditing && (
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute bottom-0 right-0 h-10 w-10 rounded-full"
+                        onClick={handleAvatarClick}
+                      >
+                        <Camera className="h-5 w-5" />
+                      </Button>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileChange(e, 'avatar')}
+                    />
+                  </div>
 
-                {/* Profile Info */}
-                <div className="flex-1 text-center sm:text-left">
-                  <h1 className="text-2xl font-bold mb-1">
-                    {profile.full_name || 'Anonymous'}
-                  </h1>
-                  {profile.business_name && (
-                    <p className="text-muted-foreground mb-2">{profile.business_name}</p>
-                  )}
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
-                  </p>
-
-                  {/* Stats */}
-                  <div className="flex gap-6 justify-center sm:justify-start mb-4">
-                    <div className="text-center">
-                      <span className="font-bold text-lg">{stats?.posts || 0}</span>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <FileText className="h-3 w-3" /> Posts
-                      </p>
+                  {/* Profile Info */}
+                  <div className="flex-1 text-center sm:text-left pb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                      <h1 className="text-2xl sm:text-3xl font-bold">
+                        {profile.full_name || 'Anonymous'}
+                      </h1>
+                      {extendedProfile?.is_public ? (
+                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0">
+                          <Globe className="h-3 w-3 mr-1" /> Public
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="w-fit mx-auto sm:mx-0">
+                          <Lock className="h-3 w-3 mr-1" /> Private
+                        </Badge>
+                      )}
                     </div>
-                    <div className="text-center">
-                      <span className="font-bold text-lg">{stats?.friends || 0}</span>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Users className="h-3 w-3" /> Friends
-                      </p>
+                    
+                    {extendedProfile?.tagline && (
+                      <p className="text-lg text-muted-foreground mb-1">{extendedProfile.tagline}</p>
+                    )}
+                    
+                    {profile.business_name && (
+                      <p className="text-muted-foreground mb-2">{profile.business_name}</p>
+                    )}
+                    
+                    {extendedProfile?.username && (
+                      <p className="text-sm text-muted-foreground mb-2">@{extendedProfile.username}</p>
+                    )}
+
+                    {/* Stats */}
+                    <div className="flex gap-6 justify-center sm:justify-start mt-4">
+                      <div className="text-center">
+                        <span className="font-bold text-lg">{stats?.posts || 0}</span>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <FileText className="h-3 w-3" /> Posts
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <span className="font-bold text-lg">{stats?.friends || 0}</span>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Friends
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  {!isOwnProfile && (
-                    <div className="flex gap-2 justify-center sm:justify-start">
-                      <Button onClick={handleMessage} variant="outline">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Message
-                      </Button>
-                      {isFriend ? (
-                        <Badge variant="secondary" className="h-9 px-3 flex items-center">
-                          <Check className="h-4 w-4 mr-1" />
-                          Friends
-                        </Badge>
-                      ) : hasPendingRequest ? (
-                        <Badge variant="outline" className="h-9 px-3 flex items-center">
-                          Request Sent
-                        </Badge>
-                      ) : (
-                        <Button onClick={() => sendFriendRequest.mutate(profileId!)}>
-                          <UserPlus className="h-4 w-4 mr-2" />
-                          Add Friend
+                  <div className="flex flex-wrap gap-2 justify-center sm:justify-end pb-4">
+                    {isOwnProfile ? (
+                      <>
+                        <Button
+                          variant={isEditing ? "default" : "outline"}
+                          onClick={() => setIsEditing(!isEditing)}
+                        >
+                          {isEditing ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" /> Done Editing
+                            </>
+                          ) : (
+                            <>
+                              <Edit2 className="h-4 w-4 mr-2" /> Edit Profile
+                            </>
+                          )}
                         </Button>
-                      )}
-                    </div>
-                  )}
+                        <Button variant="outline" onClick={() => navigate('/settings')}>
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button onClick={handleMessage} variant="outline">
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Message
+                        </Button>
+                        {isFriend ? (
+                          <Badge variant="secondary" className="h-9 px-3 flex items-center">
+                            <Check className="h-4 w-4 mr-1" />
+                            Friends
+                          </Badge>
+                        ) : hasPendingRequest ? (
+                          <Badge variant="outline" className="h-9 px-3 flex items-center">
+                            Request Sent
+                          </Badge>
+                        ) : (
+                          <Button onClick={() => sendFriendRequest.mutate(profileId!)}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Add Friend
+                          </Button>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Tip Jar */}
+                    {!isOwnProfile && extendedProfile?.tip_jar_enabled && extendedProfile?.paypal_email && (
+                      <Button 
+                        variant="outline"
+                        onClick={() => window.open(`https://paypal.me/${extendedProfile.paypal_email}`, '_blank')}
+                      >
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Tip
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Bio */}
-              <div className="mt-6 pt-6 border-t border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">About</h3>
-                  {isOwnProfile && !isEditingBio && (
-                    <Button variant="ghost" size="sm" onClick={handleStartBioEdit}>
-                      <Edit2 className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
-                {isEditingBio ? (
-                  <div className="space-y-2">
-                    <Textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Tell us about yourself..."
-                      className="min-h-[100px]"
-                    />
-                    <div className="flex gap-2">
-                      <Button onClick={handleSaveBio} disabled={updateBio.isPending}>
-                        Save
-                      </Button>
-                      <Button variant="ghost" onClick={() => setIsEditingBio(false)}>
-                        Cancel
-                      </Button>
+                {/* Edit Mode Controls */}
+                {isOwnProfile && isEditing && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <div className="flex flex-wrap gap-4 items-center">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="public-profile"
+                          checked={extendedProfile?.is_public || false}
+                          onCheckedChange={handleTogglePublic}
+                        />
+                        <Label htmlFor="public-profile">Public Profile</Label>
+                      </div>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Section
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {SECTION_TYPES.map(({ type, label, icon: Icon }) => (
+                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
+                              <Icon className="h-4 w-4 mr-2" />
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
-                ) : (
-                  <p className="text-muted-foreground">
-                    {profile.bio || (isOwnProfile ? 'Add a bio to tell others about yourself.' : 'No bio yet.')}
-                  </p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Activity Feed */}
-          <h2 className="text-xl font-bold mb-4">Public Posts</h2>
-          <div className="space-y-4">
-            {postsLoading ? (
-              <>
-                <Skeleton className="h-48" />
-                <Skeleton className="h-48" />
-              </>
-            ) : posts?.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center">
-                  <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">No public posts yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              posts?.map((post) => (
-                <PostCard 
-                  key={post.id} 
-                  post={{
-                    ...post,
-                    profiles: {
-                      full_name: profile.full_name,
-                      avatar_url: profile.avatar_url,
-                    },
-                    user_appreciated: false,
-                  }} 
-                />
-              ))
-            )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Image Cropper Dialog */}
-          <ImageCropper
-            open={cropperOpen}
-            onClose={() => {
-              setCropperOpen(false);
-              URL.revokeObjectURL(cropImageSrc);
-              setCropImageSrc('');
-            }}
-            imageSrc={cropImageSrc}
-            onCropComplete={handleCropComplete}
-            aspectRatio={1}
-            circularCrop={true}
-            title="Crop Profile Picture"
-          />
+          {/* Main Content */}
+          <div className="py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Bio & Sections */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Bio Section */}
+              {extendedProfile && (
+                <BioSection profile={extendedProfile} isEditing={isEditing} />
+              )}
+
+              {/* Dynamic Sections */}
+              {sectionsLoading ? (
+                <Skeleton className="h-48" />
+              ) : (
+                sections?.map(renderSection)
+              )}
+
+              {/* Posts Section */}
+              <Card>
+                <CardContent className="pt-6">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Posts
+                  </h2>
+                  <div className="space-y-4">
+                    {postsLoading ? (
+                      <>
+                        <Skeleton className="h-32" />
+                        <Skeleton className="h-32" />
+                      </>
+                    ) : posts?.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">No posts yet</p>
+                    ) : (
+                      posts?.map((post) => (
+                        <PostCard 
+                          key={post.id} 
+                          post={{
+                            ...post,
+                            profiles: {
+                              full_name: profile.full_name,
+                              avatar_url: profile.avatar_url,
+                            },
+                            user_appreciated: false,
+                          }} 
+                        />
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Quick Info */}
+            <div className="space-y-6">
+              {/* Social Links */}
+              {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <Share2 className="h-4 w-4" />
+                      Links
+                    </h3>
+                    <div className="space-y-2">
+                      {extendedProfile.website_url && (
+                        <a 
+                          href={extendedProfile.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-primary hover:underline"
+                        >
+                          <Globe className="h-4 w-4" />
+                          Website
+                        </a>
+                      )}
+                      {Object.entries(extendedProfile.social_links as Record<string, string>).map(([platform, url]) => (
+                        <a 
+                          key={platform}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-primary hover:underline capitalize"
+                        >
+                          <Share2 className="h-4 w-4" />
+                          {platform}
+                        </a>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Member Info */}
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="font-semibold mb-4">Info</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
+                  </p>
+                  {extendedProfile?.profile_type && (
+                    <Badge variant="outline" className="mt-2 capitalize">
+                      {extendedProfile.profile_type}
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
+
+        {/* Image Cropper Dialog */}
+        <ImageCropper
+          open={cropperOpen}
+          onClose={() => {
+            setCropperOpen(false);
+            URL.revokeObjectURL(cropImageSrc);
+            setCropImageSrc('');
+          }}
+          imageSrc={cropImageSrc}
+          onCropComplete={handleCropComplete}
+          aspectRatio={cropType === 'avatar' ? 1 : 16/5}
+          circularCrop={cropType === 'avatar'}
+          title={cropType === 'avatar' ? 'Crop Profile Picture' : 'Crop Cover Image'}
+        />
       </div>
     </>
   );
