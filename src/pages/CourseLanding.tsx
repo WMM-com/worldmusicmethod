@@ -455,7 +455,7 @@ export default function CourseLanding() {
 
     {/* Sticky CTA - appears when scrolled past hero */}
     <AnimatePresence>
-      {showStickyCTA && priceInfo && !isEnrolled && (
+      {showStickyCTA && !isEnrolled && (
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -465,16 +465,18 @@ export default function CourseLanding() {
         >
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="hidden sm:block">
-                <p className="text-lg font-bold">
-                  {formatPrice(priceInfo.price, priceInfo.currency)}
-                </p>
-                {priceInfo.discount_percentage > 0 && (
-                  <p className="text-xs text-muted-foreground line-through">
-                    ${product?.base_price_usd?.toFixed(2)}
+              {priceInfo && (
+                <div className="hidden sm:block">
+                  <p className="text-lg font-bold">
+                    {formatPrice(priceInfo.price, priceInfo.currency)}
                   </p>
-                )}
-              </div>
+                  {priceInfo.discount_percentage > 0 && (
+                    <p className="text-xs text-muted-foreground line-through">
+                      ${product?.base_price_usd?.toFixed(2)}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-1.5 text-xs text-green-600">
                 <Shield className="w-3.5 h-3.5 shrink-0" />
                 <span className="whitespace-nowrap">30-day 110% money-back</span>
