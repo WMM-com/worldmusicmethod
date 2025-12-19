@@ -31,11 +31,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Package, DollarSign, Plus } from 'lucide-react';
+import { Package, DollarSign, Plus, Pencil, Tag } from 'lucide-react';
+import { ProductEditDialog } from './ProductEditDialog';
+import { BulkPriceEditor } from './BulkPriceEditor';
 
 export function AdminProducts() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [basePrice, setBasePrice] = useState('');
@@ -126,138 +129,164 @@ export function AdminProducts() {
     createMutation.mutate();
   };
 
+  const isSaleActive = (product: any) => {
+    if (!product.sale_price_usd) return false;
+    if (!product.sale_ends_at) return true;
+    return new Date(product.sale_ends_at) > new Date();
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Products & Pricing</CardTitle>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Product</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Product Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Premium Music Course"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Product description..."
-                  rows={2}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <BulkPriceEditor
+            products={products || []}
+            trigger={
+              <Button variant="outline">
+                <Pencil className="h-4 w-4 mr-2" />
+                Bulk Edit Prices
+              </Button>
+            }
+          />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Product</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="price">Base Price (USD)</Label>
+                  <Label htmlFor="name">Product Name</Label>
                   <Input
-                    id="price"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={basePrice}
-                    onChange={(e) => setBasePrice(e.target.value)}
-                    placeholder="99.00"
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Premium Music Course"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="type">Product Type</Label>
-                  <Select value={productType} onValueChange={setProductType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="course">Course</SelectItem>
-                      <SelectItem value="membership">Membership</SelectItem>
-                      <SelectItem value="bundle">Bundle</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Product description..."
+                    rows={2}
+                  />
                 </div>
-              </div>
-              {productType === 'course' && (
-                <div className="space-y-2">
-                  <Label htmlFor="course">Link to Course</Label>
-                  <Select value={courseId} onValueChange={setCourseId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a course (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courses?.map((course) => (
-                        <SelectItem key={course.id} value={course.id}>
-                          {course.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Base Price (USD)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={basePrice}
+                      onChange={(e) => setBasePrice(e.target.value)}
+                      placeholder="99.00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Product Type</Label>
+                    <Select value={productType} onValueChange={setProductType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="course">Course</SelectItem>
+                        <SelectItem value="membership">Membership</SelectItem>
+                        <SelectItem value="bundle">Bundle</SelectItem>
+                        <SelectItem value="private_lesson">Private Lesson</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              )}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="active">Active</Label>
-                <Switch
-                  id="active"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Creating...' : 'Create Product'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                {productType === 'course' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="course">Link to Course</Label>
+                    <Select value={courseId} onValueChange={setCourseId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a course (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses?.map((course) => (
+                          <SelectItem key={course.id} value={course.id}>
+                            {course.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="active">Active</Label>
+                  <Switch
+                    id="active"
+                    checked={isActive}
+                    onCheckedChange={setIsActive}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? 'Creating...' : 'Create Product'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
+        <ProductEditDialog
+          product={editingProduct}
+          open={!!editingProduct}
+          onOpenChange={(open) => !open && setEditingProduct(null)}
+        />
+        
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Product</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Base Price (USD)</TableHead>
+              <TableHead>Price</TableHead>
               <TableHead>Regional Pricing</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
+              <TableHead className="w-20">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : products?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No products yet
                 </TableCell>
               </TableRow>
             ) : (
               products?.map((product) => {
                 const prices = getRegionalPrices(product.id);
+                const onSale = isSaleActive(product);
                 
                 return (
-                  <TableRow key={product.id}>
+                  <TableRow key={product.id} className="cursor-pointer hover:bg-accent/5">
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -277,9 +306,23 @@ export function AdminProducts() {
                       <Badge variant="outline">{product.product_type}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        {formatPrice(product.base_price_usd)}
+                      <div className="flex items-center gap-2">
+                        {onSale ? (
+                          <>
+                            <span className="line-through text-muted-foreground text-sm">
+                              {formatPrice(product.base_price_usd)}
+                            </span>
+                            <span className="font-semibold text-primary">
+                              {formatPrice(product.sale_price_usd)}
+                            </span>
+                            <Badge variant="destructive" className="text-xs">
+                              <Tag className="h-3 w-3 mr-1" />
+                              SALE
+                            </Badge>
+                          </>
+                        ) : (
+                          <span>{formatPrice(product.base_price_usd)}</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -307,6 +350,15 @@ export function AdminProducts() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(product.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingProduct(product)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
