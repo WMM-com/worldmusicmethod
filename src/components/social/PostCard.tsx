@@ -51,6 +51,13 @@ export function PostCard({ post }: PostCardProps) {
     );
   };
 
+  const handleCommentKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleComment();
+    }
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -161,7 +168,8 @@ export function PostCard({ post }: PostCardProps) {
               <Textarea
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Write a comment..."
+                onKeyDown={handleCommentKeyDown}
+                placeholder="Write a comment... (Enter to post)"
                 rows={1}
                 className="min-h-[40px] resize-none"
               />

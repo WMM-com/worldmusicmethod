@@ -4,6 +4,7 @@ import { PostCard } from '@/components/social/PostCard';
 import { FriendsList } from '@/components/social/FriendsList';
 import { GroupsList } from '@/components/groups/GroupsList';
 import { MembersList } from '@/components/community/MembersList';
+import { PendingInvitesBanner } from '@/components/groups/PendingInvitesBanner';
 import { useFeed } from '@/hooks/useSocial';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -117,6 +118,7 @@ export default function Social() {
             </TabsContent>
             
             <TabsContent value="groups">
+              <PendingInvitesBanner />
               <GroupsList />
             </TabsContent>
             

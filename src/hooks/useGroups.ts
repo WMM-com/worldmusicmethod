@@ -490,6 +490,103 @@ export function useCreateGroupPostComment() {
   });
 }
 
+// Delete group post
+export function useDeleteGroupPost() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ postId, groupId }: { postId: string; groupId: string }) => {
+      const { error } = await supabase
+        .from('group_posts')
+        .delete()
+        .eq('id', postId);
+      
+      if (error) throw error;
+      return groupId;
+    },
+    onSuccess: (groupId) => {
+      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+      toast.success('Post deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// Update group post
+export function useUpdateGroupPost() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ postId, groupId, content }: { postId: string; groupId: string; content: string }) => {
+      const { error } = await supabase
+        .from('group_posts')
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq('id', postId);
+      
+      if (error) throw error;
+      return groupId;
+    },
+    onSuccess: (groupId) => {
+      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+      toast.success('Post updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// Delete group post comment
+export function useDeleteGroupPostComment() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ commentId, postId }: { commentId: string; postId: string }) => {
+      const { error } = await supabase
+        .from('group_post_comments')
+        .delete()
+        .eq('id', commentId);
+      
+      if (error) throw error;
+      return postId;
+    },
+    onSuccess: (postId) => {
+      queryClient.invalidateQueries({ queryKey: ['group-post-comments', postId] });
+      queryClient.invalidateQueries({ queryKey: ['group-posts'] });
+      toast.success('Comment deleted');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// Update group post comment (30 day limit enforced in UI)
+export function useUpdateGroupPostComment() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ commentId, postId, content }: { commentId: string; postId: string; content: string }) => {
+      const { error } = await supabase
+        .from('group_post_comments')
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq('id', commentId);
+      
+      if (error) throw error;
+      return postId;
+    },
+    onSuccess: (postId) => {
+      queryClient.invalidateQueries({ queryKey: ['group-post-comments', postId] });
+      toast.success('Comment updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 // Fetch join requests (for admins)
 export function useGroupJoinRequests(groupId: string) {
   return useQuery({
