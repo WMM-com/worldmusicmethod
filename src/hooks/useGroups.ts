@@ -202,18 +202,18 @@ export function useUpdateGroup() {
   return useMutation({
     mutationFn: async ({ groupId, updates }: { 
       groupId: string; 
-      updates: { 
-        name?: string; 
-        description?: string; 
-        cover_image_url?: string;
-        rules?: string;
-        welcome_message?: string;
-        settings?: Record<string, boolean | string>;
-      } 
+      updates: Partial<{
+        name: string; 
+        description: string; 
+        cover_image_url: string;
+        rules: string;
+        welcome_message: string;
+        settings: Record<string, boolean | string>;
+      }>
     }) => {
       const { error } = await supabase
         .from('groups')
-        .update(updates as Parameters<typeof supabase.from<'groups'>>[0])
+        .update(updates)
         .eq('id', groupId);
       
       if (error) throw error;
