@@ -239,8 +239,8 @@ export default function Checkout() {
                 </div>
 
                 {/* Money back guarantee */}
-                <p className="text-center text-sm text-muted-foreground mt-4">
-                  30-day money-back guarantee
+                <p className="text-center text-sm text-green-600 mt-4 font-medium">
+                  30-day 110% money-back guarantee
                 </p>
               </Card>
             </div>
