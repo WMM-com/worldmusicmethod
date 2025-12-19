@@ -653,6 +653,133 @@ export type Database = {
           },
         ]
       }
+      lesson_bookings: {
+        Row: {
+          availability_id: string | null
+          created_at: string
+          currency: string | null
+          duration_minutes: number
+          id: string
+          notes: string | null
+          payment_status: string | null
+          price: number | null
+          scheduled_at: string
+          status: string
+          student_id: string
+          tutor_id: string
+          updated_at: string
+        }
+        Insert: {
+          availability_id?: string | null
+          created_at?: string
+          currency?: string | null
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          payment_status?: string | null
+          price?: number | null
+          scheduled_at: string
+          status?: string
+          student_id: string
+          tutor_id: string
+          updated_at?: string
+        }
+        Update: {
+          availability_id?: string | null
+          created_at?: string
+          currency?: string | null
+          duration_minutes?: number
+          id?: string
+          notes?: string | null
+          payment_status?: string | null
+          price?: number | null
+          scheduled_at?: string
+          status?: string
+          student_id?: string
+          tutor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_bookings_availability_id_fkey"
+            columns: ["availability_id"]
+            isOneToOne: false
+            referencedRelation: "tutor_availability"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_conversations: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          student_id: string
+          tutor_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          student_id: string
+          tutor_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          student_id?: string
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_conversations_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          message: string
+          message_type: string | null
+          metadata: Json | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message: string
+          message_type?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string | null
+          metadata?: Json | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
       media_library: {
         Row: {
           alt_text: string | null
@@ -832,6 +959,9 @@ export type Database = {
           is_active: boolean | null
           name: string
           product_type: string
+          sale_ends_at: string | null
+          sale_price_usd: number | null
+          tutor_id: string | null
           updated_at: string
         }
         Insert: {
@@ -843,6 +973,9 @@ export type Database = {
           is_active?: boolean | null
           name: string
           product_type?: string
+          sale_ends_at?: string | null
+          sale_price_usd?: number | null
+          tutor_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -854,6 +987,9 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           product_type?: string
+          sale_ends_at?: string | null
+          sale_price_usd?: number | null
+          tutor_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1078,6 +1214,39 @@ export type Database = {
           stage_width?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      tutor_availability: {
+        Row: {
+          available_at: string
+          booking_token: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          is_booked: boolean | null
+          tutor_id: string
+          updated_at: string
+        }
+        Insert: {
+          available_at: string
+          booking_token?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_booked?: boolean | null
+          tutor_id: string
+          updated_at?: string
+        }
+        Update: {
+          available_at?: string
+          booking_token?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          is_booked?: boolean | null
+          tutor_id?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
 import { AdminMedia } from '@/components/admin/AdminMedia';
+import { AdminCourseGroups } from '@/components/admin/AdminCourseGroups';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminDashboard() {
@@ -199,6 +200,10 @@ export default function AdminDashboard() {
                 <Image className="h-4 w-4" />
                 Media
               </TabsTrigger>
+              <TabsTrigger value="groups" className="gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Course Groups
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -212,6 +217,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="media">
               <AdminMedia />
+            </TabsContent>
+            <TabsContent value="groups">
+              <AdminCourseGroups />
             </TabsContent>
           </Tabs>
         </main>
