@@ -41,8 +41,8 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id, email: user.email });
 
     // Parse request body
-    const { productId, courseId, region, priceAmount, currency } = await req.json();
-    logStep("Request body parsed", { productId, courseId, region, priceAmount, currency });
+    const { productId, courseId, region, priceAmount, currency, couponCode } = await req.json();
+    logStep("Request body parsed", { productId, courseId, region, priceAmount, currency, couponCode });
 
     if (!productId || !priceAmount) {
       throw new Error("Missing required fields: productId and priceAmount");
@@ -71,8 +71,8 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://worldmusicmethod.com";
 
-    // Create checkout session with dynamic pricing
-    const session = await stripe.checkout.sessions.create({
+    // Build checkout session options
+    const sessionOptions: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
@@ -91,6 +91,7 @@ serve(async (req) => {
       mode: "payment",
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&course_id=${courseId || ""}`,
       cancel_url: `${origin}/payment-cancelled?product_id=${productId}`,
+      allow_promotion_codes: true, // Enable Stripe's built-in coupon/promo code field
       metadata: {
         product_id: productId,
         course_id: courseId || "",
@@ -104,7 +105,39 @@ serve(async (req) => {
           user_id: user.id,
         },
       },
-    });
+      // Enable multiple payment methods
+      payment_method_types: ['card'],
+    };
+
+    // If a specific coupon code was provided, try to apply it as a discount
+    if (couponCode) {
+      try {
+        // Try to find the coupon in Stripe
+        const coupons = await stripe.coupons.list({ limit: 100 });
+        const matchingCoupon = coupons.data.find(
+          (c: Stripe.Coupon) => c.name?.toUpperCase() === couponCode.toUpperCase() || c.id.toUpperCase() === couponCode.toUpperCase()
+        );
+        
+        if (matchingCoupon) {
+          sessionOptions.discounts = [{ coupon: matchingCoupon.id }];
+          logStep("Coupon applied", { couponId: matchingCoupon.id });
+        } else {
+          // Try finding a promotion code instead
+          const promoCodes = await stripe.promotionCodes.list({ code: couponCode, limit: 1 });
+          if (promoCodes.data.length > 0 && promoCodes.data[0].active) {
+            sessionOptions.discounts = [{ promotion_code: promoCodes.data[0].id }];
+            logStep("Promotion code applied", { promoCodeId: promoCodes.data[0].id });
+          } else {
+            logStep("Coupon not found, user can enter manually", { couponCode });
+          }
+        }
+      } catch (couponError) {
+        logStep("Coupon lookup failed, continuing without", { error: String(couponError) });
+      }
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
