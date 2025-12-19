@@ -1,0 +1,322 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { useEffect } from 'react';
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  message_type: string;
+  metadata: Record<string, any>;
+  read_at: string | null;
+  created_at: string;
+  sender_profile?: {
+    full_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export interface Conversation {
+  id: string;
+  participant_ids: string[];
+  last_message_at: string;
+  created_at: string;
+  participants?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  }[];
+  last_message?: Message;
+  unread_count?: number;
+}
+
+export function useConversations() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['conversations', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data: conversations, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .contains('participant_ids', [user.id])
+        .order('last_message_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Get all participant IDs
+      const allParticipantIds = [...new Set(conversations.flatMap(c => c.participant_ids))];
+      
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', allParticipantIds);
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Get last message and unread count for each conversation
+      const conversationsWithDetails = await Promise.all(
+        conversations.map(async (conv) => {
+          const { data: lastMessage } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conv.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id)
+            .neq('sender_id', user.id)
+            .is('read_at', null);
+
+          return {
+            ...conv,
+            participants: conv.participant_ids
+              .filter((id: string) => id !== user.id)
+              .map((id: string) => profilesMap.get(id))
+              .filter(Boolean),
+            last_message: lastMessage,
+            unread_count: count || 0,
+          };
+        })
+      );
+
+      return conversationsWithDetails as Conversation[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useMessages(conversationId: string) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['messages', conversationId],
+    queryFn: async () => {
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const senderIds = [...new Set(messages.map(m => m.sender_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', senderIds);
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      return messages.map(m => ({
+        ...m,
+        sender_profile: profilesMap.get(m.sender_id),
+      })) as Message[];
+    },
+    enabled: !!conversationId,
+  });
+
+  // Subscribe to realtime messages
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`messages:${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, queryClient]);
+
+  // Mark messages as read
+  useEffect(() => {
+    if (!user || !conversationId || !query.data) return;
+
+    const unreadMessages = query.data.filter(
+      m => m.sender_id !== user.id && !m.read_at
+    );
+
+    if (unreadMessages.length > 0) {
+      supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('conversation_id', conversationId)
+        .neq('sender_id', user.id)
+        .is('read_at', null)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        });
+    }
+  }, [user, conversationId, query.data, queryClient]);
+
+  return query;
+}
+
+export function useSendMessage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      conversationId,
+      content,
+      messageType = 'text',
+      metadata = {},
+    }: {
+      conversationId: string;
+      content: string;
+      messageType?: string;
+      metadata?: Record<string, any>;
+    }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const { error: messageError } = await supabase.from('messages').insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content,
+        message_type: messageType,
+        metadata,
+      });
+
+      if (messageError) throw messageError;
+
+      // Update conversation last_message_at
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', variables.conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to send message');
+    },
+  });
+}
+
+export function useCreateConversation() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (participantId: string) => {
+      if (!user) throw new Error('Not authenticated');
+
+      // Check if conversation already exists
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .contains('participant_ids', [user.id, participantId]);
+
+      const existingConv = existing?.find(c => 
+        c.id && supabase
+          .from('conversations')
+          .select('participant_ids')
+          .eq('id', c.id)
+          .single()
+      );
+
+      if (existing && existing.length > 0) {
+        // Find the one that matches exactly
+        for (const conv of existing) {
+          const { data } = await supabase
+            .from('conversations')
+            .select('participant_ids')
+            .eq('id', conv.id)
+            .single();
+          
+          if (data?.participant_ids.length === 2 &&
+              data.participant_ids.includes(user.id) &&
+              data.participant_ids.includes(participantId)) {
+            return conv.id;
+          }
+        }
+      }
+
+      // Create new conversation
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({
+          participant_ids: [user.id, participantId],
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    },
+  });
+}
+
+export function useAvailabilityTemplates() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['availability-templates', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+
+      const { data, error } = await supabase
+        .from('availability_templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useCreateAvailabilityTemplate() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ name, slots }: { name: string; slots: any[] }) => {
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase.from('availability_templates').insert({
+        user_id: user.id,
+        name,
+        slots,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['availability-templates'] });
+      toast.success('Template saved');
+    },
+  });
+}
