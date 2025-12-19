@@ -2,18 +2,28 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { CreatePost } from '@/components/social/CreatePost';
 import { PostCard } from '@/components/social/PostCard';
 import { FriendsList } from '@/components/social/FriendsList';
+import { GroupsList } from '@/components/groups/GroupsList';
+import { MembersList } from '@/components/community/MembersList';
 import { useFeed } from '@/hooks/useSocial';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Users } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Newspaper, UsersRound, UserSearch } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 
 export default function Social() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: posts, isLoading } = useFeed();
+  
+  const activeTab = searchParams.get('tab') || 'feed';
+  
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -26,7 +36,7 @@ export default function Social() {
       <>
         <SiteHeader />
         <div className="min-h-screen bg-background">
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto px-4 py-8">
             <Skeleton className="h-32 w-full mb-4" />
             <Skeleton className="h-48 w-full mb-4" />
             <Skeleton className="h-48 w-full" />
@@ -43,7 +53,7 @@ export default function Social() {
       <SiteHeader />
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card">
-          <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="max-w-6xl mx-auto px-4 py-8">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Users className="h-5 w-5 text-primary" />
@@ -56,37 +66,64 @@ export default function Social() {
           </div>
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Feed */}
-            <div className="lg:col-span-2 space-y-4">
-              <CreatePost />
-              
-              {isLoading ? (
-                <>
-                  <Skeleton className="h-48" />
-                  <Skeleton className="h-48" />
-                </>
-              ) : posts?.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="font-semibold mb-2">No posts yet</h3>
-                    <p className="text-muted-foreground">
-                      Be the first to share something, or add friends to see their posts.
-                    </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                posts?.map((post) => <PostCard key={post.id} post={post} />)
-              )}
-            </div>
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full max-w-md grid-cols-3">
+              <TabsTrigger value="feed" className="flex items-center gap-2">
+                <Newspaper className="h-4 w-4" />
+                Feed
+              </TabsTrigger>
+              <TabsTrigger value="groups" className="flex items-center gap-2">
+                <UsersRound className="h-4 w-4" />
+                Groups
+              </TabsTrigger>
+              <TabsTrigger value="members" className="flex items-center gap-2">
+                <UserSearch className="h-4 w-4" />
+                Members
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="feed">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Feed */}
+                <div className="lg:col-span-2 space-y-4">
+                  <CreatePost />
+                  
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-48" />
+                      <Skeleton className="h-48" />
+                    </>
+                  ) : posts?.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold mb-2">No posts yet</h3>
+                        <p className="text-muted-foreground">
+                          Be the first to share something, or add friends to see their posts.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    posts?.map((post) => <PostCard key={post.id} post={post} />)
+                  )}
+                </div>
 
-            {/* Sidebar */}
-            <div className="space-y-4">
-              <FriendsList />
-            </div>
-          </div>
+                {/* Sidebar */}
+                <div className="space-y-4">
+                  <FriendsList />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="groups">
+              <GroupsList />
+            </TabsContent>
+            
+            <TabsContent value="members">
+              <MembersList />
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
     </>

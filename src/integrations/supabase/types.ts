@@ -1029,8 +1029,11 @@ export type Database = {
           location: string | null
           name: string
           privacy: Database["public"]["Enums"]["group_privacy"]
+          rules: string | null
+          settings: Json | null
           subcategory: string | null
           updated_at: string
+          welcome_message: string | null
         }
         Insert: {
           category?: Database["public"]["Enums"]["group_category"]
@@ -1042,8 +1045,11 @@ export type Database = {
           location?: string | null
           name: string
           privacy?: Database["public"]["Enums"]["group_privacy"]
+          rules?: string | null
+          settings?: Json | null
           subcategory?: string | null
           updated_at?: string
+          welcome_message?: string | null
         }
         Update: {
           category?: Database["public"]["Enums"]["group_category"]
@@ -1055,8 +1061,11 @@ export type Database = {
           location?: string | null
           name?: string
           privacy?: Database["public"]["Enums"]["group_privacy"]
+          rules?: string | null
+          settings?: Json | null
           subcategory?: string | null
           updated_at?: string
+          welcome_message?: string | null
         }
         Relationships: []
       }

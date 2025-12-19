@@ -55,6 +55,7 @@ export function useGroups(searchQuery?: string, category?: GroupCategory) {
       
       return data.map(g => ({
         ...g,
+        settings: g.settings as unknown as Group['settings'],
         member_count: countMap.get(g.id) || 0,
         is_member: userMemberships.has(g.id),
       })) as Group[];
@@ -134,6 +135,7 @@ export function useGroup(groupId: string) {
       
       return {
         ...data,
+        settings: data.settings as unknown as Group['settings'],
         member_count: count || 0,
         is_member,
         user_role,

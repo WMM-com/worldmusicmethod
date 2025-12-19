@@ -2,6 +2,19 @@ export type GroupPrivacy = 'public' | 'private' | 'secret';
 export type GroupCategory = 'genre' | 'instrument' | 'collaboration' | 'learning' | 'networking' | 'local' | 'production' | 'other';
 export type GroupMemberRole = 'admin' | 'moderator' | 'member';
 
+export type WhoCanPost = 'all_members' | 'admins_only' | 'admins_and_moderators';
+
+export interface GroupSettings {
+  who_can_post: WhoCanPost;
+  allow_polls: boolean;
+  allow_events: boolean;
+  allow_images: boolean;
+  allow_videos: boolean;
+  allow_audio: boolean;
+  require_post_approval: boolean;
+  allow_member_invites: boolean;
+}
+
 export interface Group {
   id: string;
   name: string;
@@ -14,6 +27,9 @@ export interface Group {
   created_by: string;
   created_at: string;
   updated_at: string;
+  settings?: GroupSettings;
+  rules?: string | null;
+  welcome_message?: string | null;
   member_count?: number;
   is_member?: boolean;
 }
