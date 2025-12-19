@@ -24,17 +24,25 @@ export interface UploadOptions {
   altText?: string;
 }
 
-const DEFAULT_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const DEFAULT_MAX_SIZE = 100 * 1024 * 1024; // 100MB for video/audio
 const DEFAULT_ALLOWED_TYPES = [
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
   "image/svg+xml",
+  "image/heic",
   "video/mp4",
   "video/webm",
+  "video/quicktime",
+  "video/x-m4v",
   "audio/mpeg",
   "audio/wav",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
+  "audio/ogg",
+  "audio/webm",
   "application/pdf",
 ];
 
