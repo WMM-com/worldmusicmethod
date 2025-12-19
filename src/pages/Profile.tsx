@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PostCard } from '@/components/social/PostCard';
+import { ImageCropper } from '@/components/ui/image-cropper';
 import { User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -36,6 +37,8 @@ export default function Profile() {
 
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bio, setBio] = useState('');
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isFriend = friendships?.friends.some(
@@ -54,8 +57,24 @@ export default function Profile() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      await uploadAvatar.mutateAsync(file);
+      // Create a URL for the cropper
+      const imageUrl = URL.createObjectURL(file);
+      setCropImageSrc(imageUrl);
+      setCropperOpen(true);
     }
+    // Reset the input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    // Convert blob to file
+    const file = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+    await uploadAvatar.mutateAsync(file);
+    // Clean up the URL
+    URL.revokeObjectURL(cropImageSrc);
+    setCropImageSrc('');
   };
 
   const handleSaveBio = async () => {
@@ -265,6 +284,21 @@ export default function Profile() {
               ))
             )}
           </div>
+
+          {/* Image Cropper Dialog */}
+          <ImageCropper
+            open={cropperOpen}
+            onClose={() => {
+              setCropperOpen(false);
+              URL.revokeObjectURL(cropImageSrc);
+              setCropImageSrc('');
+            }}
+            imageSrc={cropImageSrc}
+            onCropComplete={handleCropComplete}
+            aspectRatio={1}
+            circularCrop={true}
+            title="Crop Profile Picture"
+          />
         </div>
       </div>
     </>
