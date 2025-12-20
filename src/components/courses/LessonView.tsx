@@ -9,11 +9,11 @@ import {
   ChevronRight,
   Award
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useMarkLessonComplete } from '@/hooks/useCourses';
 import { toast } from 'sonner';
+import { SoundsliceEmbed } from './SoundsliceEmbed';
 import type { ModuleLesson } from '@/types/course';
 
 interface LessonViewProps {
@@ -93,16 +93,10 @@ export function LessonView({
             transition={{ delay: 0.1 }}
             className="mb-8"
           >
-            <div className="rounded-2xl overflow-hidden shadow-2xl bg-card">
-              <iframe 
-                src="https://www.soundslice.com/slices/w7kTc/embed/" 
-                width="100%" 
-                height="500" 
-                frameBorder="0" 
-                allowFullScreen
-                className="w-full"
-              />
-            </div>
+            <SoundsliceEmbed 
+              sliceIdOrUrl="w7kTc"
+              height={500}
+            />
           </motion.div>
         )}
 
