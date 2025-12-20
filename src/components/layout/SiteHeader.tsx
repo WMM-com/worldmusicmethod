@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,16 +9,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Brain, BookOpen, LogOut, User, Settings, Menu, X, Shield, MessageSquare } from 'lucide-react';
+import { BookOpen, LogOut, User, Settings, Menu, X, Shield, MessageSquare, ShoppingCart } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import siteLogo from '@/assets/world-music-method-logo.png';
 
 export function SiteHeader() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const { getItemCount } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const cartItemCount = getItemCount();
 
   useEffect(() => {
     async function checkAdminRole() {
@@ -55,10 +59,12 @@ export function SiteHeader() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-              <Brain className="h-5 w-5 text-primary-foreground" />
-            </div>
+          <Link to="/" className="flex items-center">
+            <img 
+              src={siteLogo} 
+              alt="World Music Method" 
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -78,6 +84,20 @@ export function SiteHeader() {
           <div className="hidden md:flex items-center gap-2">
             {user ? (
               <>
+              {/* Cart button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate('/cart')}
+                className="relative"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-secondary text-secondary-foreground text-xs flex items-center justify-center font-bold">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Button>
               <Button variant="ghost" size="icon" onClick={() => navigate('/messages')}>
                 <MessageSquare className="h-5 w-5" />
               </Button>
@@ -136,6 +156,20 @@ export function SiteHeader() {
               </>
             ) : (
               <>
+                {/* Cart button for non-logged in users */}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => navigate('/cart')}
+                  className="relative"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-secondary text-secondary-foreground text-xs flex items-center justify-center font-bold">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </Button>
                 <Button variant="ghost" onClick={() => navigate('/auth')}>
                   Login
                 </Button>
