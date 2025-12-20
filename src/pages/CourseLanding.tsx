@@ -29,6 +29,13 @@ import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+// Resource item type
+interface ResourceItem {
+  image: string;
+  title: string;
+  description: string;
+}
+
 // Course-specific content configuration
 const COURSE_CONFIG: Record<string, {
   heroBackground: string;
@@ -39,8 +46,9 @@ const COURSE_CONFIG: Record<string, {
   expert?: {
     name: string;
     image: string;
-    bio: string;
+    bio: string[];
   };
+  resources?: ResourceItem[];
 }> = {
   // Peruvian Guitar Styles course config
   'peruvian-guitar-styles': {
@@ -52,14 +60,35 @@ const COURSE_CONFIG: Record<string, {
     expert: {
       name: 'Camilo Menjura',
       image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Camilo-Menjura.jpg',
-      bio: `Born in Bogotá, Camilo Menjura is a guitarist, arranger, and composer recognized for his deep mastery of Latin American folk music. His journey began by learning Colombian folk styles by ear before formally studying classical guitar at one of Colombia's top music academies.
-
-Camilo's expertise extends across multiple traditions, from Andean, Cuban, and Brazilian folk to intricate classical and jazz arrangements. His rare ability to translate complex multi-instrumental textures into rich solo guitar performances has made him a sought-after performer and educator.
-
-Twice awarded UK Latin Musician of the Year, Camilo has performed at WOMAD, The Mali Festival of the Desert, and international music festivals worldwide. As the leader of London's World Music Choir, his work celebrates the global power of music.
-
-In this course, Camilo shares not just technique, but the deep cultural essence and emotion that define Peruvian guitar.`
-    }
+      bio: [
+        "Born in Bogotá, Camilo Menjura is a guitarist, arranger, and composer recognized for his deep mastery of Latin American folk music. His journey began by learning Colombian folk styles by ear before formally studying classical guitar at one of Colombia's top music academies.",
+        "Camilo's expertise extends across multiple traditions, from Andean, Cuban, and Brazilian folk to intricate classical and jazz arrangements. His rare ability to translate complex multi-instrumental textures into rich solo guitar performances has made him a sought-after performer and educator.",
+        "Twice awarded UK Latin Musician of the Year, Camilo has performed at WOMAD, The Mali Festival of the Desert, and international music festivals worldwide. As the leader of London's World Music Choir, his work celebrates the global power of music.",
+        "In this course, Camilo shares not just technique, but the deep cultural essence and emotion that define Peruvian guitar."
+      ]
+    },
+    resources: [
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-4.png',
+        title: 'Peruvian Guitar Styles',
+        description: "60 minutes of detailed lessons teaching you to be proficient in some of Peru's popular and folkloric genres including Wayñu, Carnavalito and Waltz."
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-2.png',
+        title: 'Interactive On-screen Notation',
+        description: 'Learning new skills is easier with our innovative, interactive tools. Access on-screen notation, tablature, slow motion and more.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-5.png',
+        title: 'Landó Masterclass',
+        description: 'Take your study further with a 1 hour masterclass in the guitar styles played within the popular Afro-Peruvian style Landó.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-1.png',
+        title: 'Festejo Masterclass',
+        description: "Camilo Menjura's Festejo masterclass will take you deeper into understanding this coastal genre known for accompanying one of Peru's famed dance styles."
+      }
+    ]
   }
 };
 
@@ -192,7 +221,6 @@ export default function CourseLanding() {
                 }}
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/70" />
           </div>
 
           <div className="relative max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
@@ -350,11 +378,14 @@ export default function CourseLanding() {
                   {courseConfig?.expert && (
                     <TabsTrigger value="expert">Meet Your Expert</TabsTrigger>
                   )}
+                  {courseConfig?.resources && (
+                    <TabsTrigger value="resources">Resources</TabsTrigger>
+                  )}
                 </TabsList>
 
                 <TabsContent value="course">
-                  <div className="max-w-4xl">
-                    <h2 className="text-2xl font-bold mb-6">Could Your Guitar Sound More Melodic?</h2>
+                  <div className="w-full">
+                    <h2 className="text-3xl font-bold mb-6 text-center">Could Your Guitar Sound More Melodic?</h2>
                     <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
                       <p>
                         Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
@@ -400,14 +431,35 @@ export default function CourseLanding() {
                         />
                       </div>
                       <div className="md:col-span-2">
-                        <h2 className="text-2xl font-bold mb-2">Meet Your Expert</h2>
+                        <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
                         <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
-                        <div className="prose prose-lg dark:prose-invert max-w-none">
-                          {courseConfig.expert.bio.split('\n\n').map((paragraph, i) => (
+                        <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
+                          {courseConfig.expert.bio.map((paragraph, i) => (
                             <p key={i}>{paragraph}</p>
                           ))}
                         </div>
                       </div>
+                    </div>
+                  </TabsContent>
+                )}
+
+                {courseConfig?.resources && (
+                  <TabsContent value="resources">
+                    <h2 className="text-3xl font-bold mb-8 text-center">The Ultimate Learning Experience</h2>
+                    <div className="grid md:grid-cols-2 gap-8">
+                      {courseConfig.resources.map((resource, i) => (
+                        <div key={i} className="flex gap-6 items-start">
+                          <img 
+                            src={resource.image}
+                            alt={resource.title}
+                            className="w-32 h-32 object-cover rounded-lg shrink-0"
+                          />
+                          <div>
+                            <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
+                            <p className="text-muted-foreground">{resource.description}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </TabsContent>
                 )}
@@ -587,7 +639,7 @@ export default function CourseLanding() {
         <DialogContent className="max-w-4xl p-0 bg-black border-none">
           <button
             onClick={() => setShowVideoModal(false)}
-            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5 text-white" />
           </button>
