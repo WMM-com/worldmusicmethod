@@ -139,6 +139,92 @@ const SECTIONS = [
   { id: 'faq', label: 'FAQ' }
 ];
 
+// Navigation wheel component
+const NavigationWheel = ({ 
+  sections, 
+  activeSection, 
+  onNavigate,
+  visible 
+}: { 
+  sections: typeof SECTIONS;
+  activeSection: string;
+  onNavigate: (id: string) => void;
+  visible: boolean;
+}) => {
+  const activeIndex = sections.findIndex(s => s.id === activeSection);
+  
+  const cycleUp = () => {
+    const newIndex = activeIndex > 0 ? activeIndex - 1 : sections.length - 1;
+    onNavigate(sections[newIndex].id);
+  };
+  
+  const cycleDown = () => {
+    const newIndex = activeIndex < sections.length - 1 ? activeIndex + 1 : 0;
+    onNavigate(sections[newIndex].id);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <motion.nav
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 20 }}
+      className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-center"
+    >
+      {/* Up arrow */}
+      <button
+        onClick={cycleUp}
+        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Previous section"
+      >
+        <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
+      </button>
+
+      {/* Section labels wheel */}
+      <div className="relative h-32 w-24 overflow-hidden">
+        <div className="absolute inset-0 flex flex-col items-end justify-center">
+          {sections.map((section, index) => {
+            const distance = index - activeIndex;
+            const isActive = distance === 0;
+            const isVisible = Math.abs(distance) <= 1;
+            
+            if (!isVisible) return null;
+            
+            return (
+              <motion.button
+                key={section.id}
+                onClick={() => onNavigate(section.id)}
+                initial={false}
+                animate={{
+                  y: distance * 28,
+                  opacity: isActive ? 1 : 0.4,
+                  scale: isActive ? 1 : 0.85,
+                }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className={`absolute right-0 text-right text-sm font-medium whitespace-nowrap transition-colors ${
+                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {section.label}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Down arrow */}
+      <button
+        onClick={cycleDown}
+        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Next section"
+      >
+        <ChevronRight className="w-5 h-5 rotate-90" />
+      </button>
+    </motion.nav>
+  );
+};
+
 // Helper to get config by course title/slug
 const getCourseConfig = (courseTitle?: string) => {
   if (!courseTitle) return null;
@@ -156,6 +242,7 @@ export default function CourseLanding() {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showNavWheel, setShowNavWheel] = useState(false);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -167,7 +254,9 @@ export default function CourseLanding() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
+      const heroHeight = window.innerHeight * 0.7; // 70vh hero
       setShowStickyCTA(scrollY > 300);
+      setShowNavWheel(scrollY > heroHeight - 100);
 
       // Find active section
       const sectionPositions = SECTIONS.map(section => {
@@ -350,38 +439,22 @@ export default function CourseLanding() {
         {!sidebarOpen && (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg p-2 shadow-lg hidden lg:flex items-center justify-center hover:bg-muted transition-colors"
+            className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg px-3 py-2 shadow-lg hidden lg:flex items-center gap-2 hover:bg-muted transition-colors"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
+            <span className="text-sm font-medium">View Curriculum</span>
           </button>
         )}
 
-        {/* Right Sidebar - Page Navigation (Overlay - doesn't push content) */}
-        <nav className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:block">
-          <div className="bg-card/90 backdrop-blur-sm border border-border/50 rounded-full py-4 px-2 shadow-lg">
-            <div className="flex flex-col items-center gap-1">
-              {SECTIONS.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => scrollToSection(section.id)}
-                  className="group relative p-2"
-                  title={section.label}
-                >
-                  {/* Tooltip on hover */}
-                  <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-card border border-border rounded text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
-                    {section.label}
-                  </span>
-                  {/* Dot indicator */}
-                  <div className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    activeSection === section.id 
-                      ? 'bg-primary scale-125' 
-                      : 'bg-muted-foreground/40 group-hover:bg-muted-foreground'
-                  }`} />
-                </button>
-              ))}
-            </div>
-          </div>
-        </nav>
+        {/* Right Sidebar - Page Navigation Wheel (Overlay - appears after hero) */}
+        <AnimatePresence>
+          <NavigationWheel
+            sections={SECTIONS}
+            activeSection={activeSection}
+            onNavigate={scrollToSection}
+            visible={showNavWheel}
+          />
+        </AnimatePresence>
 
         {/* Main Content - no right margin since nav is overlay */}
         <main className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''}`}>
@@ -560,7 +633,7 @@ export default function CourseLanding() {
             ref={el => sectionRefs.current['overview'] = el}
             className="py-20 bg-background"
           >
-            <div className="max-w-4xl mx-auto px-6">
+            <div className="max-w-6xl mx-auto px-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -615,7 +688,7 @@ export default function CourseLanding() {
             ref={el => sectionRefs.current['outcomes'] = el}
             className="py-20 bg-background border-t border-border/30"
           >
-            <div className="max-w-4xl mx-auto px-6">
+            <div className="max-w-6xl mx-auto px-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -698,7 +771,7 @@ export default function CourseLanding() {
               ref={el => sectionRefs.current['expert'] = el}
               className="py-20 bg-background border-t border-border/30"
             >
-              <div className="max-w-4xl mx-auto px-6">
+              <div className="max-w-6xl mx-auto px-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -733,7 +806,7 @@ export default function CourseLanding() {
               ref={el => sectionRefs.current['resources'] = el}
               className="py-20 bg-background border-t border-border/30"
             >
-              <div className="max-w-4xl mx-auto px-6">
+              <div className="max-w-6xl mx-auto px-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -766,21 +839,17 @@ export default function CourseLanding() {
               ref={el => sectionRefs.current['faq'] = el}
               className="py-20 bg-background border-t border-border/30"
             >
-              <div className="max-w-3xl mx-auto px-6">
+              <div className="max-w-6xl mx-auto px-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                 >
                   <div className="text-center mb-12">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
-                      <HelpCircle className="w-5 h-5 text-primary" />
-                      <span className="text-primary font-medium">Common Questions</span>
-                    </div>
                     <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-w-3xl mx-auto">
                     {courseConfig.faqs.map((faq, i) => (
                       <motion.div
                         key={i}
@@ -811,7 +880,7 @@ export default function CourseLanding() {
 
           {/* CTA Section */}
           <section className="py-24 bg-background border-t border-border/30">
-            <div className="max-w-4xl mx-auto px-6 text-center">
+            <div className="max-w-6xl mx-auto px-6 text-center">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
