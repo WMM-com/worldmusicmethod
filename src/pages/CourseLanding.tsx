@@ -130,12 +130,12 @@ const COURSE_CONFIG: Record<string, {
   }
 };
 
-// Section IDs for navigation - new order
+// Section IDs for navigation - shortened labels
 const SECTIONS = [
-  { id: 'overview', label: 'Course Description' },
-  { id: 'outcomes', label: 'Key Learning Outcomes' },
-  { id: 'expert', label: 'Meet Your Tutor' },
-  { id: 'resources', label: 'Ultimate Learning Experience' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'outcomes', label: 'Outcomes' },
+  { id: 'expert', label: 'Your Expert' },
+  { id: 'resources', label: 'Resources' },
   { id: 'faq', label: 'FAQ' }
 ];
 
@@ -300,7 +300,7 @@ export default function CourseLanding() {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed left-0 top-16 bottom-0 w-80 bg-card border-r border-border z-40 overflow-y-auto hidden lg:block"
+              className="fixed left-0 top-16 bottom-0 w-80 bg-card border-r border-border z-40 overflow-y-auto overflow-x-hidden hidden lg:block"
             >
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
@@ -309,16 +309,16 @@ export default function CourseLanding() {
                 </Button>
               </div>
               <div className="p-2">
-                <Accordion type="single" collapsible className="space-y-1">
+                <Accordion type="single" collapsible defaultValue={course.modules?.[0]?.id} className="space-y-1">
                   {course.modules?.map((module, i) => (
                     <AccordionItem key={module.id} value={module.id} className="border-none">
                       <AccordionTrigger className="hover:no-underline hover:bg-muted/50 px-3 py-2 rounded-md text-sm">
-                        <div className="flex items-center gap-3 text-left">
+                        <div className="flex items-start gap-3 text-left">
                           <div className="w-7 h-7 bg-primary/10 rounded flex items-center justify-center shrink-0 text-xs font-bold text-primary">
                             {i + 1}
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{module.title}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium break-words whitespace-normal">{module.title}</p>
                             <p className="text-xs text-muted-foreground">
                               {module.lessons?.length || 0} lessons
                             </p>
@@ -330,10 +330,10 @@ export default function CourseLanding() {
                           {module.lessons?.map((lesson) => (
                             <div 
                               key={lesson.id}
-                              className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-default"
+                              className="flex items-start gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-default"
                             >
-                              <Play className="w-3 h-3" />
-                              <span className="truncate">{lesson.title}</span>
+                              <Play className="w-3 h-3 shrink-0 mt-0.5" />
+                              <span className="break-words whitespace-normal">{lesson.title}</span>
                             </div>
                           ))}
                         </div>
@@ -356,32 +356,35 @@ export default function CourseLanding() {
           </button>
         )}
 
-        {/* Right Sidebar - Page Navigation */}
-        <nav className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-2">
-          {SECTIONS.map((section, index) => (
-            <button
-              key={section.id}
-              onClick={() => scrollToSection(section.id)}
-              className={`group flex items-center gap-3 transition-all ${
-                activeSection === section.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'
-              }`}
-            >
-              <span className={`text-xs font-medium text-right w-32 transition-colors ${
-                activeSection === section.id ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-              }`}>
-                {section.label}
-              </span>
-              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
-                activeSection === section.id 
-                  ? 'bg-primary scale-125' 
-                  : 'bg-muted-foreground/30 group-hover:bg-muted-foreground/50'
-              }`} />
-            </button>
-          ))}
+        {/* Right Sidebar - Page Navigation (Overlay - doesn't push content) */}
+        <nav className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:block">
+          <div className="bg-card/90 backdrop-blur-sm border border-border/50 rounded-full py-4 px-2 shadow-lg">
+            <div className="flex flex-col items-center gap-1">
+              {SECTIONS.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className="group relative p-2"
+                  title={section.label}
+                >
+                  {/* Tooltip on hover */}
+                  <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-card border border-border rounded text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
+                    {section.label}
+                  </span>
+                  {/* Dot indicator */}
+                  <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    activeSection === section.id 
+                      ? 'bg-primary scale-125' 
+                      : 'bg-muted-foreground/40 group-hover:bg-muted-foreground'
+                  }`} />
+                </button>
+              ))}
+            </div>
+          </div>
         </nav>
 
-        {/* Main Content */}
-        <main className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''} lg:mr-44`}>
+        {/* Main Content - no right margin since nav is overlay */}
+        <main className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''}`}>
           {/* Hero Section */}
           <section className="relative min-h-[70vh] flex items-center">
             {/* Background Image */}
