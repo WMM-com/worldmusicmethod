@@ -223,8 +223,8 @@ const NavigationWheel = ({
           </button>
 
           {/* Section labels wheel */}
-          <div className="relative h-32 w-24 overflow-hidden">
-            <div className="absolute inset-0 flex flex-col items-end justify-center">
+          <div className="relative h-32 w-28 overflow-hidden">
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
               {sections.map((section, index) => {
                 const distance = index - activeIndex;
                 const isActive = distance === 0;
@@ -243,7 +243,7 @@ const NavigationWheel = ({
                       scale: isActive ? 1 : 0.85,
                     }}
                     transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                    className={`absolute right-0 text-right text-sm font-medium whitespace-nowrap transition-colors ${
+                    className={`absolute text-center text-sm font-medium whitespace-nowrap transition-colors ${
                       isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -443,6 +443,20 @@ export default function CourseLanding() {
                   <X className="w-4 h-4 text-primary-foreground" />
                 </button>
               </div>
+              
+              {/* Watch Preview button in sidebar */}
+              {courseConfig?.trailerVideo && (
+                <button
+                  onClick={() => setShowVideoModal(true)}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-primary hover:bg-muted/50 transition-colors border-b border-border"
+                >
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Play className="w-3.5 h-3.5 text-primary fill-primary ml-0.5" />
+                  </div>
+                  Watch Preview
+                </button>
+              )}
+              
               <div className="p-2">
                 <Accordion type="single" collapsible defaultValue={course.modules?.[0]?.id} className="space-y-1">
                   {course.modules?.map((module, i) => (
@@ -651,10 +665,13 @@ export default function CourseLanding() {
                     
                     {/* Play button overlay */}
                     {courseConfig?.trailerVideo && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
                         <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                           <Play className="w-6 h-6 text-primary fill-primary ml-1" />
                         </div>
+                        <span className="mt-2 px-3 py-1 bg-black/60 rounded text-white text-xs font-medium">
+                          Watch Preview
+                        </span>
                       </div>
                     )}
                   </div>
@@ -694,12 +711,8 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold mb-8">
-                  <span className="block">Sing.</span>
-                  <span className="block">Play.</span>
-                  <span className="block">World.</span>
-                </h2>
-                <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+                <h2 className="text-3xl font-bold mb-8">Sing. Play. World.</h2>
+                <div className="prose prose-lg dark:prose-invert max-w-none mb-8 space-y-6">
                   {courseConfig?.courseOverview ? (
                     courseConfig.courseOverview.map((paragraph, i) => (
                       <p key={i}>{paragraph}</p>
@@ -713,7 +726,10 @@ export default function CourseLanding() {
                       </p>
                       <p>
                         In Peru, music is a conversation, between past and present, the instruments, between 
-                        the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
+                        the dancer and the rhythm.
+                      </p>
+                      <p>
+                        Huayño's soaring melodies climb and tumble like the Andean 
                         landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
                         and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
                       </p>
@@ -878,7 +894,7 @@ export default function CourseLanding() {
                         <img 
                           src={resource.image}
                           alt={resource.title}
-                          className="w-full md:w-56 h-auto object-contain rounded-lg shrink-0"
+                          className="w-full md:w-72 h-auto object-contain rounded-lg shrink-0"
                         />
                         <div>
                           <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
