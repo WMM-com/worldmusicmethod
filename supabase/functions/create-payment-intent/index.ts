@@ -68,11 +68,12 @@ serve(async (req) => {
       console.log("[CREATE-PAYMENT-INTENT] New customer created", { customerId });
     }
 
-    // Create payment intent
+    // Create card-only payment intent (no Link / express checkout)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: "usd",
       customer: customerId,
+      payment_method_types: ["card"],
       metadata: {
         product_id: productId,
         product_name: product.name,
@@ -82,9 +83,6 @@ serve(async (req) => {
         full_name: fullName,
         coupon_code: couponCode || "",
         stripe_discount: stripeDiscount.toFixed(2),
-      },
-      automatic_payment_methods: {
-        enabled: true,
       },
     });
 

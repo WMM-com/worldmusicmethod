@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -24,9 +23,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const ENV_STRIPE_PUBLISHABLE_KEY =
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ??
-  'pk_live_51HAd2gHARcZGg8nmEa4kAGVQ3qgGAxhSAzBzfxs4UsEOPNVnTablwMChnLOGxWKj5qI1Zb2DpqudmLk3HLncDEOZ00MeNyHns3';
+const ENV_STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
 
 const STRIPE_PUBLISHABLE_KEY_STORAGE = 'stripe_publishable_key';
 
@@ -335,8 +332,12 @@ const StripeCardForm = ({
       requestPayerEmail: true,
     });
 
-    pr.canMakePayment().then(result => {
-      if (result) {
+    pr.canMakePayment().then((result) => {
+      // Stripe can return { link: true } here, which shows a "Link" express checkout button.
+      // Only show this section for Apple Pay / Google Pay.
+      const wallets = result as any;
+      const hasApplePayOrGooglePay = Boolean(wallets?.applePay || wallets?.googlePay);
+      if (hasApplePayOrGooglePay) {
         setPaymentRequest(pr);
         setCanMakePayment(true);
       }
@@ -815,11 +816,7 @@ function CheckoutContent({
             </div>
           )}
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid lg:grid-cols-2 gap-8"
-          >
+          <div className="grid lg:grid-cols-2 gap-8">
             {/* Billing Details */}
             <div>
               <h2 className="text-lg font-semibold mb-6 uppercase tracking-wide text-muted-foreground">
@@ -1128,7 +1125,7 @@ function CheckoutContent({
                 </div>
               </Card>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </>
