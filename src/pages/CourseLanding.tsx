@@ -218,6 +218,223 @@ const COURSE_CONFIG: Record<string, {
         answer: "Yes! If you'd like access to all of our courses, you can start a membership."
       }
     ]
+  },
+  // Tuareg Guitar Philosophy course config
+  'tuareg-guitar-philosophy': {
+    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/10/Bombino-1.jpg',
+    courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/10/Bombino-1.jpg',
+    trailerVideo: '',
+    stylesImageDesktop: '',
+    stylesImageMobile: '',
+    overviewHeading: 'Tradition, Technique, and the Spirit of Desert Music',
+    instrumentTag: 'Guitar',
+    courseOverview: [
+      "Tuareg Guitar Philosophy invites you into the heart of the Sahara's sound world, guided by internationally acclaimed guitarist Bombino. This course is more than a step-by-step method, it is a journey through desert traditions, improvisation, rhythm, and the philosophy that makes Tuareg guitar one of the most distinctive musical voices on the planet.",
+      "Across six modules, you will gain access to Bombino's personal techniques, his approach to tone and expression, and the cultural roots that shape his music. From learning the foundational hammer-on and pull-off phrasing to exploring desert rhythms, improvisation, and healing sounds, you will develop not only technical fluency but also a deeper understanding of Tuareg musical identity.",
+      "The course blends guitar demonstrations with rich cultural context, drawing from Bombino's experiences performing worldwide, composing celebrated songs, and carrying forward the traditions of the Sahara. Each lesson combines notation, tab, and ear-based learning, while encouraging you to improvise and create in the spirit of desert music.",
+      "Whether you are an adventurous guitarist, a lover of African music, or simply curious about how rhythm and melody become one in the Sahara, this course equips you with tools, inspiration, and philosophy to play and think like a Tuareg guitarist."
+    ],
+    courseIncludes: [
+      'Synced Notation & Tab',
+      'Downloadable PDF Notation',
+      'Sahel Backing Tracks',
+      'Rhythmic Insights'
+    ],
+    learningOutcomes: [
+      { title: 'Technical Fluency', items: ['Execute hammer-on and pull-off techniques with precision', 'Apply right-hand phrasing to shape tone and emotion', 'Play rhythm and lead parts together with desert-inspired fluency'] },
+      { title: 'Cultural & Musical Understanding', items: ['Recognize the role of the Tendé drum and its influence on Tuareg guitar rhythms', 'Identify how different Nigerien musical cultures contribute to Tuareg guitar', 'Understand the symbolic power of the guitar in desert communities'] },
+      { title: 'Creative Expression', items: ['Compose and improvise melodies within Tuareg scales and grooves', "Apply Bombino's improvisational philosophy to develop your own sound"] },
+      { title: 'Advanced Application', items: ['Perform traditional and fast-paced Tuareg grooves with confidence', 'Integrate Tuareg musical principles into your own compositions and performances'] }
+    ],
+    expert: {
+      name: 'Bombino',
+      image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/10/Bombino-1.jpg',
+      bio: [
+        "Bombino (Omara Moctar), born in Agadez, Niger, is one of the world's most celebrated Tuareg guitarists and songwriters. Growing up in the Sahara, he learned music by ear, inspired by the traditions of his people and the sounds of global guitar legends. Forced into exile during political unrest, he spent years in Algeria and Burkina Faso, refining his style and absorbing diverse influences before returning to share his music with the world.",
+        "His rise to international recognition began when filmmaker Ron Wyman created a documentary about him, catapulting Bombino from desert stages to global tours. Since then, Bombino has recorded critically acclaimed albums, collaborated with artists such as Dan Auerbach of The Black Keys, and earned a Grammy nomination, the first ever for a Nigerien artist.",
+        "Despite his success, Bombino remains deeply connected to the Sahara. His music carries themes of resilience, freedom, and healing, often blending tradition with modern expression. With a fluid guitar style that merges hypnotic rhythm, soaring melody, and improvisation, he is celebrated not only as a musician but as a voice of his culture.",
+        "Through this course, Bombino shares not only his techniques but his philosophy: that the guitar is both an instrument of expression and a symbol of unity in the desert."
+      ]
+    },
+    resources: [
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/10/Bombino-1.jpg',
+        title: 'Tuareg Guitar Philosophy',
+        description: "Engage with immersive lessons exploring the sound, style, and spirit of Tuareg guitar. Learn about Bombino's unique phrasing, desert rhythms, and the cultural philosophy that shapes this powerful music tradition."
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-2.png',
+        title: 'Interactive On-Screen Notation',
+        description: "Follow along with crystal-clear notation and tablature synced directly to the videos. With virtual fretboards, slow-motion playback, and looping tools, you'll master every detail of Bombino's style at your own pace."
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/10/Bombino-1.jpg',
+        title: 'Rhythmic Insights',
+        description: "Corey Wilhelm, Bombino's drummer for over 12 years, breaks down the calabash and drum kit patterns that drive Tuareg music. These rhythm studies give you a complete foundation for understanding how percussion and guitar interlock."
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/10/Bombino-1.jpg',
+        title: 'Sahel Backing Tracks',
+        description: 'Jam with Bombino over interactive backing track playalong versions of songs from the 2023 Sahel album. Play guitar along with the chord charts for Tuareg songs including Aitma, Darfuq and Si Chilan.'
+      }
+    ],
+    faqs: [
+      {
+        question: 'Is there PDF notation and tab?',
+        answer: 'Yes, each course includes notation and tab synchronised to the video lessons, which can also be downloaded as PDFs.'
+      },
+      {
+        question: 'How long do I have to complete the course?',
+        answer: 'Once enrolled, you have lifetime access, so you can complete the course at your own pace.'
+      },
+      {
+        question: 'Do you offer memberships?',
+        answer: "Yes! If you'd like access to all of our courses, you can start a membership."
+      }
+    ]
+  },
+  // African Bass: Egypt & Zimbabwe course config
+  'african-bass-masterclass-egypt-zimbabwe': {
+    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/Right-Hand-Edd-Bass-18.02_32_18_22.Still001.jpg',
+    courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/Right-Hand-Edd-Bass-18.02_32_18_22.Still001.jpg',
+    trailerVideo: '',
+    stylesImageDesktop: '',
+    stylesImageMobile: '',
+    overviewHeading: 'Unexpected. Redefine Your Groove.',
+    instrumentTag: 'Bass',
+    courseOverview: [
+      "The African Bass Masterclass: Egypt & Zimbabwe offers a dynamic exploration of bass styles from two distinct musical regions of the continent, North and Southern Africa. From the intricate, modal-infused grooves of Egypt to the deeply rooted, rhythmically driven traditions of Zimbabwe and Congo, this course takes you on a journey through both ancient pulse and modern adaptation.",
+      "It is designed for intermediate to advanced players and it features immersive, regionally focused modules where you'll build the skills needed to create authentic basslines and develop the musical insight to improvise, compose, and collaborate across genres. You'll explore Egyptian rhythmic structures, Middle Eastern modes like Hijazz, Zimbabwean Chimurenga patterns, traditional Shona grooves, and Congolese Sebene phrasing. Each module is accompanied by hands-on exercises, breakdowns, and backing tracks.",
+      "This is more than a technique course. You'll gain cultural context, historical insight, and a deeper understanding of how bass functions not just as accompaniment, but as a driving force in African music. Each lesson connects theory to feel, offering you the tools to express yourself with groove, creativity, and confidence.",
+      "Whether you're a jazz player expanding your vocabulary, a session bassist exploring new rhythmic textures, or a curious learner drawn to African music traditions, this course equips you with the skills and knowledge to bring depth, energy, and authenticity to every note you play."
+    ],
+    courseIncludes: [
+      'Synced Notation & Tab',
+      'Downloadable PDF Notation',
+      'Authentic African Backing Tracks',
+      'Chimurenga Masterclass'
+    ],
+    learningOutcomes: [
+      { title: 'Rhythmic Mastery', items: ['Recognize and perform complex African rhythms such as Maqsum, Saidi, and Masmoudi Saghir', 'Execute 12/8 rhythmic patterns found in Zimbabwean Chimurenga music', 'Develop time-keeping and pulse awareness through extended groove-based exercises'] },
+      { title: 'Modal and Scale Fluency', items: ['Identify and apply Middle Eastern modes like Hijazz in bass improvisation', 'Adapt scales and melodic phrasing to match traditional African tonal frameworks', 'Modulate key signatures fluently while maintaining stylistic integrity'] },
+      { title: 'Cultural & Musical Adaptability', items: ['Analyze regional characteristics of Egyptian, Congolese, and Zimbabwean bass styles', 'Reproduce culturally specific ornamentation and groove development techniques', 'Apply African stylistic techniques across modern genres like funk, jazz, and gospel'] },
+      { title: 'Creative Application', items: ['Compose and improvise original basslines using call-and-response principles', 'Integrate African rhythmic and melodic elements into collaborative or solo projects', 'Respond musically to backing tracks with authentic phrasing and groove awareness'] }
+    ],
+    expert: {
+      name: 'Edd Bateman',
+      image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/Right-Hand-Edd-Bass-18.02_32_18_22.Still001.jpg',
+      bio: [
+        "At 14 years old, Edd Bateman was playing heavy metal basslines in his bedroom when his mother interrupted with an unexpected opportunity. A Zimbabwean Sungura and Chimurenga dance band, Chimanimani, had just arrived in England and needed a bass player immediately. With barely a week to prepare, Edd took the gig. Within a month, he found himself playing African nightclubs in London, university venues, and even Glastonbury Festival. He stayed with Chimanimani for six years, learning the intricacies of Zimbabwean bass firsthand.",
+        "In his early 20s, Edd's focus shifted to West Africa, where he began intensive training with the Cissokho family of griots in Senegal. Performing marathon five-hour shows alongside Solo Cissokho, Seckou Keita, Sadio Cissokho, and the Jalikunda family, he absorbed the deep rhythmic traditions of Mbalax and Mandinka music. Guest appearances with Cheikh Lô, Orchestra Baobab, and Super Diamono solidified his reputation as a versatile and instinctive player.",
+        "With thousands of concerts to his name, Edd has led bands blending African and global styles, including London Astrobeat Orchestra and Edd Bateman's West African Love Affair. In 2020, recognizing the lack of structured learning for African bass guitar, he founded World Music Method, an online platform dedicated to sharing the techniques and traditions of African and world music.",
+        "In 2024, Edd was called in at the last minute to tour with Sahara Desert Blues virtuoso Bombino, stepping onto the stage without rehearsal. In 2025, he expanded his musical journey to India and Pakistan, performing alongside Ustad Shafqat Ali Khan and leading members of the Sham Chaurasi Gharana. His deep foundation in African music allowed him to adapt instantly, navigating unfamiliar repertoire on the spot, a skill that defines a truly masterful bass player."
+      ]
+    },
+    resources: [
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/Right-Hand-Edd-Bass-18.02_32_18_22.Still001.jpg',
+        title: 'African Bass Masterclass: Egypt & Zimbabwe',
+        description: 'Immersive lessons teaching you to master bass styles from North and Southern Africa. Explore the modal grooves of Egypt, the rhythmic traditions of Zimbabwe, and a bonus module including rich phrasing of Congo to redefine your bass playing.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-2.png',
+        title: 'Interactive On-Screen Notation',
+        description: 'Learn faster and more effectively with our on-screen notation and tablature. Use virtual fretboards, slow motion, and looping to break down each exercise step by step.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/Right-Hand-Edd-Bass-18.02_32_18_22.Still001.jpg',
+        title: 'Authentic African Backing Tracks',
+        description: 'Put your skills into practice with region-specific backing tracks. Groove to Egyptian rhythms, Zimbabwean Chimurenga, and Congolese Sebene feels while developing authentic phrasing and timing.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/Right-Hand-Edd-Bass-18.02_32_18_22.Still001.jpg',
+        title: 'Chimurenga Masterclass',
+        description: "Learn from the best. Watch legendary Zimbabwean guitarist Gilbert Zvamaida's exclusive World Music Method masterclass and learn about the Chimurenga genre from Thomas Mapfumo's right hand guitarist."
+      }
+    ],
+    faqs: [
+      {
+        question: 'Is there PDF notation and tab?',
+        answer: 'Yes, each course includes notation and tab synchronised to the video lessons, which can also be downloaded as PDFs.'
+      },
+      {
+        question: 'How long do I have to complete the course?',
+        answer: 'Once enrolled, you have lifetime access, so you can complete the course at your own pace.'
+      },
+      {
+        question: 'Do you offer memberships?',
+        answer: "Yes! If you'd like access to all of our courses, you can start a membership."
+      }
+    ]
+  },
+  // Contrary Motion For Guitar course config
+  'contrary-motion-for-guitar': {
+    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/CMG-Cover-Image.jpg',
+    courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/CMG-Cover-Image.jpg',
+    trailerVideo: '',
+    stylesImageDesktop: '',
+    stylesImageMobile: '',
+    overviewHeading: 'Unlock Melodic Depth and Harmonic Balance',
+    instrumentTag: 'Guitar',
+    courseOverview: [
+      "Contrary Motion for Guitar is a deep dive into one of the most expressive and overlooked aspects of guitar playing: the art of movement between intervals. This course breaks down the technical foundations, right-hand mechanics, and the creative possibilities of contrary motion to help you expand your phrasing and compositional voice.",
+      "Through carefully structured lessons, you'll explore intervals across the fretboard, develop right-hand fluency, and learn how masters of African and classical traditions have used contrary motion and sixths to craft iconic lines. You'll practice these concepts in progressive exercises before applying them to create your own musical ideas.",
+      "This course is not about copying licks, it's about understanding the mechanics of the guitar and unlocking a new way of thinking about harmony and melody. With Niwel's guidance, you'll discover how to connect theory, technique, and creativity into one seamless approach.",
+      "Whether you're a classical guitarist, an improviser, or a songwriter searching for new textures, this course will give you the tools to create lines that move with clarity, contrast, and musical depth."
+    ],
+    courseIncludes: [
+      'Synced Notation & Tab',
+      'Downloadable PDF Notation',
+      '5+ Hours of Lessons',
+      'Masterclass Session'
+    ],
+    learningOutcomes: [
+      { title: 'Build Interval Foundations', items: ['Identify and play intervals across the fretboard with accuracy', 'Recognize the role of intervals in shaping harmony and melodic lines', 'Apply interval exercises to strengthen both hands'] },
+      { title: 'Develop Right-Hand Technique', items: ['Execute chord-based and interval-based picking patterns with control', 'Strengthen finger independence and dexterity in the right hand', 'Understand how muscle coordination and finger mechanics impact technique'] },
+      { title: 'Master the 6th Interval', items: ['Use the interval of a 6th in creating melodic and harmonic ideas', 'Practice across positions to achieve fretboard fluency', "Draw inspiration from Franco Luambo's use of 6ths in African guitar music"] },
+      { title: 'Expand Contrary Motion', items: ['Combine 3rds, 6ths, and other intervals in contrary motion', 'Apply classical approaches of contrary motion to guitar playing', 'Experiment with intervallic variation to create musical tension and release'] },
+      { title: 'Create Musical Lines', items: ['Build complete melodic lines using intervals in contrary motion', 'Integrate 2nds, 3rds, and 6ths into improvisation and composition', 'Transform technical exercises into creative tools for writing guitar parts'] }
+    ],
+    expert: {
+      name: 'Niwel Tsumbu',
+      image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/CMG-Cover-Image.jpg',
+      bio: [
+        "Niwel Tsumbu is an internationally acclaimed guitarist and composer whose work bridges African traditions, European classical music, and contemporary improvisation. Originally from the Democratic Republic of Congo, he has developed a unique voice on the guitar that blends rhythmic intricacy with lyrical expressiveness.",
+        "Over the past two decades, Niwel has performed at major festivals, collaborated with global artists, and released music that showcases his mastery of melody and groove. His teaching reflects not just technical expertise, but a deep understanding of how guitar can be both a solo instrument and a voice within an ensemble.",
+        "In this course, Niwel shares his personal approach to intervals and contrary motion, concepts he has refined through years of study and performance. His guidance will help you move beyond exercises into music-making, giving you tools to develop your own style while connecting to a broader tradition of guitar artistry."
+      ]
+    },
+    resources: [
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/CMG-Cover-Image.jpg',
+        title: 'Contrary Motion for Guitar',
+        description: '5+ hours of in-depth lessons exploring intervals, 6ths, and contrary motion. Learn how to blend classical concepts with African guitar traditions to create rich, expressive musical lines.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-2.png',
+        title: 'Interactive On-Screen Notation',
+        description: 'Follow along with precision using our interactive tools. Access on-screen notation, tablature, virtual fretboards, slow motion, and looping to master each exercise at your own pace.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/09/CMG-Cover-Image.jpg',
+        title: 'Niwel Tsumbu – Masterclass',
+        description: "Join Niwel's next masterclass or revisit the recording. This session is a great opportunity to connect and get your questions answered in order to take your guitar technique even further."
+      }
+    ],
+    faqs: [
+      {
+        question: 'Is there PDF notation and tab?',
+        answer: 'Yes, each course includes notation and tab synchronised to the video lessons, which can also be downloaded as PDFs.'
+      },
+      {
+        question: 'How long do I have to complete the course?',
+        answer: 'Once enrolled, you have lifetime access, so you can complete the course at your own pace.'
+      },
+      {
+        question: 'Do you offer memberships?',
+        answer: "Yes! If you'd like access to all of our courses, you can start a membership."
+      }
+    ]
   }
 };
 
