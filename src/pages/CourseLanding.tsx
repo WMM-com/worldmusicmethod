@@ -888,20 +888,25 @@ export default function CourseLanding() {
                   viewport={{ once: true }}
                 >
                   <h2 className="text-3xl font-bold mb-12 text-center">The Ultimate Learning Experience</h2>
-                  <div className="grid md:grid-cols-2 gap-10 md:divide-x divide-border">
-                    {courseConfig.resources.map((resource, i) => (
-                      <div key={i} className={`flex flex-col md:flex-row gap-6 items-start ${i % 2 === 1 ? 'md:pl-10' : ''}`}>
-                        <img 
-                          src={resource.image}
-                          alt={resource.title}
-                          className="w-full md:w-72 h-auto object-contain rounded-lg shrink-0"
-                        />
-                        <div>
-                          <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
-                          <p className="text-muted-foreground text-sm">{resource.description}</p>
+                  <div className="relative">
+                    {/* Single vertical divider line */}
+                    <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-border" />
+                    
+                    <div className="grid md:grid-cols-2 gap-8">
+                      {courseConfig.resources.map((resource, i) => (
+                        <div key={i} className="flex flex-col md:flex-row gap-4 items-start">
+                          <img 
+                            src={resource.image}
+                            alt={resource.title}
+                            className="w-full md:w-72 h-auto object-contain rounded-lg shrink-0"
+                          />
+                          <div>
+                            <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
+                            <p className="text-muted-foreground text-sm">{resource.description}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </motion.div>
               </div>
