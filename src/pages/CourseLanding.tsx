@@ -127,6 +127,72 @@ const COURSE_CONFIG: Record<string, {
         answer: 'Yes! If you\'d like access to all of our courses, you can start a membership.'
       }
     ]
+  },
+  // Senegalese Drum Kit - Origins course config
+  'senegalese-drum-kit-–-origins': {
+    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins.jpg',
+    courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins.jpg',
+    trailerVideo: '',
+    stylesImageDesktop: '',
+    stylesImageMobile: '',
+    courseOverview: [
+      "Senegalese drumming is one of the most complex and electrifying rhythmic traditions in the world. Its patterns are built on syncopations, accents, and phrasing that challenge even highly experienced African musicians not because of speed or power, but because of an intricate internal logic that is rarely taught in a clear, structured way. This course breaks that barrier. You'll learn the foundations of Wolof, Mandinka, and Diola rhythms with precise counting, notation, and drum tab so you can finally understand exactly how these grooves work and how they translate onto the drum kit.",
+      "This course which is led by Matar Ndiongue, one of the most respected drummers from the Casamance region, takes you inside the rhythmic language behind styles such as Lamboul, Kaolack, Sankour Badin, Diambadong, Bougarabou, and Ekonkon. Each rhythm is demonstrated slowly, shown with the band, and supported by PDF notation, on-screen guidance, and close-up camera work.",
+      "Senegalese music does not follow standard Western song structures. Instead, the drummer drives the narrative: cueing changes, shaping dynamics, communicating transitions, and maintaining the forward motion of the music. This course shows you not only what to play, but why specific fills, accents, and signals matter, and how to use them in real musical situations.",
+      "By the end of the journey, you'll understand the origins of these rhythms, how they evolved onto the modern drum kit, and how to perform them with authenticity, confidence, and cultural awareness."
+    ],
+    courseIncludes: [
+      'Synced Notation & Tab',
+      'Downloadable PDF Notation',
+      'Full Band Masterclasses',
+      'Professional Backing Tracks'
+    ],
+    expert: {
+      name: 'Matar Ndiongue',
+      image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Matar-Ndiongue.jpg',
+      bio: [
+        "Matar Ndiongue is one of the leading drum-kit interpreters of Senegalese traditional rhythms, known for his rare ability to translate complex Wolof, Mandinka, and Diola percussion patterns onto the modern drum kit with clarity, authenticity, and power.",
+        "Born and raised in Ziguinchor, Casamance, Matar began his musical life as a traditional percussionist, performing at baptisms, weddings, naming ceremonies, and community gatherings. His deep grounding in Sabar, Serouba, Bougarabou, and other traditions shaped his instinctive understanding of pulse, feel, and communication.",
+        "In 2003, Matar transitioned from hand percussion to drum kit, bringing with him the phrasing and energy of Senegal's traditional ensembles. Today, he is widely recognised as one of the region's most skilled drummers, performing with respected artists including Solo Cissokho, Pene 2, Wassa Kouyaté, and Jalikunda Cissokho.",
+        "In recent years, Matar has also begun releasing his own music under the stage name Pa Matar, blending modern drum-kit grooves with traditional Senegalese rhythmic identity."
+      ]
+    },
+    resources: [
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-1.png',
+        title: 'Senegalese Drum Kit - Origins',
+        description: 'Comprehensive lessons covering six essential rhythms: Lamboul, Kaolack, Sankour Badin, Diambadong, Bougarabou and Ekonkon with step-by-step instruction.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-2.png',
+        title: 'Interactive On-screen Notation',
+        description: 'Access on-screen notation, tablature, slow motion and more with our innovative Soundslice integration.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-3.png',
+        title: 'Full Band Masterclass',
+        description: 'See how Senegalese bands connect and communicate on stage with masterclass footage filmed in Senegal.'
+      },
+      {
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-4.png',
+        title: 'African Backing Tracks',
+        description: 'Practice your grooves with professionally recorded backing tracks featuring authentic percussion, bass, keys, and guitar.'
+      }
+    ],
+    faqs: [
+      {
+        question: 'Is there PDF notation and tab?',
+        answer: 'Yes, each course includes notation and tab synchronised to the video lessons, which can also be downloaded as PDFs.'
+      },
+      {
+        question: 'How long do I have to complete the course?',
+        answer: 'Once enrolled, you have lifetime access, so you can complete the course at your own pace.'
+      },
+      {
+        question: 'Do you offer memberships?',
+        answer: "Yes! If you'd like access to all of our courses, you can start a membership."
+      }
+    ]
   }
 };
 
