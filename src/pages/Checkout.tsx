@@ -24,7 +24,9 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const ENV_STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const ENV_STRIPE_PUBLISHABLE_KEY =
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ??
+  'pk_live_51HAd2gHARcZGg8nmEa4kAGVQ3qgGAxhSAzBzfxs4UsEOPNVnTablwMChnLOGxWKj5qI1Zb2DpqudmLk3HLncDEOZ00MeNyHns3';
 
 const STRIPE_PUBLISHABLE_KEY_STORAGE = 'stripe_publishable_key';
 
