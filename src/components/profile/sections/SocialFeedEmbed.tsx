@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,14 @@ export function SocialFeedEmbed({ section, isEditing, onUpdate, onDelete }: Soci
   const [editing, setEditing] = useState(false);
   const [platform, setPlatform] = useState(section.content?.platform || 'instagram');
   const [embedCode, setEmbedCode] = useState(section.content?.embedCode || '');
+
+  const sanitizeEmbedCode = (code: string): string => {
+    return DOMPurify.sanitize(code, {
+      ALLOWED_TAGS: ['iframe', 'blockquote', 'a', 'div', 'span', 'p', 'img', 'time'],
+      ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'class', 'style', 'href', 'target', 'rel', 'alt', 'data-instgrm-captioned', 'data-instgrm-permalink', 'data-instgrm-version', 'cite', 'datetime', 'allowfullscreen', 'loading'],
+      ALLOW_DATA_ATTR: true,
+    });
+  };
 
   const handleSave = () => {
     onUpdate({ platform, embedCode });
@@ -95,7 +104,7 @@ export function SocialFeedEmbed({ section, isEditing, onUpdate, onDelete }: Soci
           </div>
         ) : section.content?.embedCode ? (
           <div 
-            dangerouslySetInnerHTML={{ __html: section.content.embedCode }}
+            dangerouslySetInnerHTML={{ __html: sanitizeEmbedCode(section.content.embedCode) }}
             className="social-embed flex justify-center"
           />
         ) : (
