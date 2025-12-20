@@ -403,6 +403,7 @@ function CheckoutContent() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="bg-background pr-10"
+                          minLength={8}
                         />
                         <Button
                           type="button"
@@ -414,6 +415,9 @@ function CheckoutContent() {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
+                      {password && password.length < 8 && (
+                        <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                      )}
                     </div>
                     <Button onClick={handleLogin} className="w-full" disabled={isLoggingIn}>
                       {isLoggingIn ? (
@@ -466,7 +470,7 @@ function CheckoutContent() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">
-                        Create account password <span className="text-destructive">*</span>
+                        Create account password (min 8 characters) <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Input
@@ -475,6 +479,7 @@ function CheckoutContent() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="bg-background pr-10"
+                          minLength={8}
                         />
                         <Button
                           type="button"
@@ -486,6 +491,9 @@ function CheckoutContent() {
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
+                      {password && password.length < 8 && (
+                        <p className="text-xs text-destructive">Password must be at least 8 characters</p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Your account will be created when you complete your purchase
                       </p>
@@ -637,7 +645,7 @@ function CheckoutContent() {
                         couponCode={appliedCoupon?.code}
                         amount={basePrice}
                         onSuccess={handleSuccess}
-                        disabled={!user && (!email || !password)}
+                        disabled={!user && (!email || !password || password.length < 8)}
                       />
                     </div>
                   )}
