@@ -139,7 +139,7 @@ const SECTIONS = [
   { id: 'faq', label: 'FAQ' }
 ];
 
-// Navigation wheel component
+// Navigation wheel component with hover/scroll visibility
 const NavigationWheel = ({ 
   sections, 
   activeSection, 
@@ -151,7 +151,31 @@ const NavigationWheel = ({
   onNavigate: (id: string) => void;
   visible: boolean;
 }) => {
+  const [isHovering, setIsHovering] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeIndex = sections.findIndex(s => s.id === activeSection);
+  
+  // Track scrolling state
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolling(true);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 1500); // Hide after 1.5s of no scrolling
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const cycleUp = () => {
     const newIndex = activeIndex > 0 ? activeIndex - 1 : sections.length - 1;
@@ -165,63 +189,82 @@ const NavigationWheel = ({
 
   if (!visible) return null;
 
+  const shouldShow = isHovering || isScrolling;
+
   return (
-    <motion.nav
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-center"
-    >
-      {/* Up arrow */}
-      <button
-        onClick={cycleUp}
-        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Previous section"
+    <>
+      {/* Hover detection zone on right side of screen */}
+      <div 
+        className="fixed right-0 top-0 bottom-0 w-24 z-40 hidden lg:block"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      />
+      <motion.nav
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ 
+          opacity: shouldShow ? 1 : 0, 
+          x: shouldShow ? 0 : 20,
+          pointerEvents: shouldShow ? 'auto' : 'none'
+        }}
+        transition={{ duration: 0.2 }}
+        className="fixed right-6 top-1/2 -translate-y-1/2 z-50 hidden lg:flex flex-col items-center"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
       >
-        <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
-      </button>
+        {/* Solid background card */}
+        <div className="bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3">
+          {/* Up arrow */}
+          <button
+            onClick={cycleUp}
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors w-full flex justify-center"
+            aria-label="Previous section"
+          >
+            <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
+          </button>
 
-      {/* Section labels wheel */}
-      <div className="relative h-32 w-24 overflow-hidden">
-        <div className="absolute inset-0 flex flex-col items-end justify-center">
-          {sections.map((section, index) => {
-            const distance = index - activeIndex;
-            const isActive = distance === 0;
-            const isVisible = Math.abs(distance) <= 1;
-            
-            if (!isVisible) return null;
-            
-            return (
-              <motion.button
-                key={section.id}
-                onClick={() => onNavigate(section.id)}
-                initial={false}
-                animate={{
-                  y: distance * 28,
-                  opacity: isActive ? 1 : 0.4,
-                  scale: isActive ? 1 : 0.85,
-                }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className={`absolute right-0 text-right text-sm font-medium whitespace-nowrap transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {section.label}
-              </motion.button>
-            );
-          })}
+          {/* Section labels wheel */}
+          <div className="relative h-32 w-24 overflow-hidden">
+            <div className="absolute inset-0 flex flex-col items-end justify-center">
+              {sections.map((section, index) => {
+                const distance = index - activeIndex;
+                const isActive = distance === 0;
+                const isVisible = Math.abs(distance) <= 1;
+                
+                if (!isVisible) return null;
+                
+                return (
+                  <motion.button
+                    key={section.id}
+                    onClick={() => onNavigate(section.id)}
+                    initial={false}
+                    animate={{
+                      y: distance * 28,
+                      opacity: isActive ? 1 : 0.4,
+                      scale: isActive ? 1 : 0.85,
+                    }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                    className={`absolute right-0 text-right text-sm font-medium whitespace-nowrap transition-colors ${
+                      isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {section.label}
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Down arrow */}
+          <button
+            onClick={cycleDown}
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors w-full flex justify-center"
+            aria-label="Next section"
+          >
+            <ChevronRight className="w-5 h-5 rotate-90" />
+          </button>
         </div>
-      </div>
-
-      {/* Down arrow */}
-      <button
-        onClick={cycleDown}
-        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Next section"
-      >
-        <ChevronRight className="w-5 h-5 rotate-90" />
-      </button>
-    </motion.nav>
+      </motion.nav>
+    </>
   );
 };
 
@@ -393,9 +436,12 @@ export default function CourseLanding() {
             >
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
+                <button 
+                  onClick={() => setSidebarOpen(false)}
+                  className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4 text-primary-foreground" />
+                </button>
               </div>
               <div className="p-2">
                 <Accordion type="single" collapsible defaultValue={course.modules?.[0]?.id} className="space-y-1">
@@ -430,6 +476,15 @@ export default function CourseLanding() {
                     </AccordionItem>
                   ))}
                 </Accordion>
+              </div>
+              {/* Bottom close button */}
+              <div className="p-4 border-t border-border flex justify-center">
+                <button 
+                  onClick={() => setSidebarOpen(false)}
+                  className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4 text-primary-foreground" />
+                </button>
               </div>
             </motion.aside>
           )}
@@ -483,7 +538,7 @@ export default function CourseLanding() {
               )}
             </div>
 
-            <div className="relative max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-[70%_30%] gap-8 items-center w-full">
+            <div className="relative max-w-6xl mx-auto px-6 lg:pr-12 py-20 grid lg:grid-cols-[70%_30%] gap-8 items-center w-full">
               {/* Left: Text content - 70% */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -639,7 +694,11 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold mb-8">Could Your Guitar Sound More Melodic?</h2>
+                <h2 className="text-3xl font-bold mb-8">
+                  <span className="block">Sing.</span>
+                  <span className="block">Play.</span>
+                  <span className="block">World.</span>
+                </h2>
                 <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
                   {courseConfig?.courseOverview ? (
                     courseConfig.courseOverview.map((paragraph, i) => (
@@ -786,7 +845,7 @@ export default function CourseLanding() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <h2 className="text-3xl font-bold mb-2">Meet Your Tutor</h2>
+                      <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
                       <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
                       <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
                         {courseConfig.expert.bio.map((paragraph, i) => (
@@ -819,7 +878,7 @@ export default function CourseLanding() {
                         <img 
                           src={resource.image}
                           alt={resource.title}
-                          className="w-full md:w-40 h-auto object-contain rounded-lg shrink-0"
+                          className="w-full md:w-56 h-auto object-contain rounded-lg shrink-0"
                         />
                         <div>
                           <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
