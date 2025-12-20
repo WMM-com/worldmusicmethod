@@ -89,12 +89,30 @@ function useStripePublishableKey(debugEnabled: boolean) {
   return { pk, setPk, source } as const;
 }
 
-const hslFromCssVar = (varName: string, fallbackHsl: string) => {
-  if (typeof window === 'undefined') return fallbackHsl;
+const normalizeStripeHsl = (input: string) => {
+  const v = input.trim();
+
+  // Pass through non-HSL formats (hex/rgb/etc)
+  if (v.startsWith('#') || v.startsWith('rgb')) return v;
+
+  const inner = v.startsWith('hsl(') && v.endsWith(')') ? v.slice(4, -1) : v;
+  const noAlpha = inner.split('/')[0].trim();
+  const parts = noAlpha.split(/\s+/).filter(Boolean);
+
+  // Stripe Elements' style parser is stricter than the browser and may not accept
+  // space-separated CSS Color Level 4 syntax like: hsl(210 40% 98%).
+  // Normalize to comma-separated: hsl(210, 40%, 98%).
+  if (parts.length >= 3) return `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+
+  return v;
+};
+
+const stripeColorFromCssVar = (varName: string, fallback: string) => {
+  if (typeof window === 'undefined') return normalizeStripeHsl(fallback);
   const rootVal = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
   const bodyVal = getComputedStyle(document.body).getPropertyValue(varName).trim();
-  const val = rootVal || bodyVal;
-  return val ? `hsl(${val})` : fallbackHsl;
+  const raw = (rootVal || bodyVal || fallback).trim();
+  return normalizeStripeHsl(raw);
 };
 
 const getStripeCardElementStyle = () =>
@@ -102,15 +120,15 @@ const getStripeCardElementStyle = () =>
     base: {
       fontSize: '16px',
       fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-      color: hslFromCssVar('--foreground', 'hsl(0 0% 10%)'),
+      color: stripeColorFromCssVar('--foreground', '0 0% 10%'),
       '::placeholder': {
-        color: hslFromCssVar('--muted-foreground', 'hsl(0 0% 45%)'),
+        color: stripeColorFromCssVar('--muted-foreground', '0 0% 45%'),
       },
-      iconColor: hslFromCssVar('--secondary', 'hsl(54 82% 44%)'),
+      iconColor: stripeColorFromCssVar('--secondary', '54 82% 44%'),
     },
     invalid: {
-      color: hslFromCssVar('--destructive', 'hsl(355 74% 43%)'),
-      iconColor: hslFromCssVar('--destructive', 'hsl(355 74% 43%)'),
+      color: stripeColorFromCssVar('--destructive', '355 74% 43%'),
+      iconColor: stripeColorFromCssVar('--destructive', '355 74% 43%'),
     },
   }) as const;
 
