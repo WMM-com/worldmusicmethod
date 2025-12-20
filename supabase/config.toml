@@ -20,3 +20,12 @@ verify_jwt = true
 
 [functions.r2-presigned-url]
 verify_jwt = true
+
+[functions.get-stripe-publishable-key]
+verify_jwt = false
+
+[functions.create-payment-intent]
+verify_jwt = false
+
+[functions.complete-stripe-payment]
+verify_jwt = false

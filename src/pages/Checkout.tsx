@@ -13,138 +13,22 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
-import { 
-  Elements,
-  CardNumberElement,
-  CardExpiryElement,
-  CardCvcElement,
-  PaymentRequestButtonElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js';
-
-const ENV_STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
-
-const STRIPE_PUBLISHABLE_KEY_STORAGE = 'stripe_publishable_key';
-
-const getStripeDebugEnabled = () => {
-  if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return Boolean(
-    import.meta.env.DEV ||
-      params.has('stripeDebug') ||
-      window.localStorage.getItem('stripeDebug') === '1'
-  );
-};
-
-function useStripePublishableKey(debugEnabled: boolean) {
-  const [pk, setPkState] = useState<string | null>(ENV_STRIPE_PUBLISHABLE_KEY ?? null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // 1) Prefer build-time key if present
-    if (ENV_STRIPE_PUBLISHABLE_KEY) return;
-
-    // 2) Then allow local override (debug mode persists the key)
-    const stored = window.localStorage.getItem(STRIPE_PUBLISHABLE_KEY_STORAGE);
-    if (stored) {
-      setPkState(stored);
-      return;
-    }
-
-    // 3) Finally, fetch from backend (publishable key is safe to expose)
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-stripe-publishable-key');
-        if (error) throw error;
-        const fetched = (data as any)?.publishableKey as string | undefined;
-        if (!cancelled && fetched && fetched.startsWith('pk_')) {
-          setPkState(fetched);
-        }
-      } catch {
-        // If this fails, the UI will show the configuration message.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const setPk = (next: string | null) => {
-    setPkState(next);
-
-    // Only persist user-provided keys in debug mode.
-    if (!debugEnabled) return;
-    if (typeof window === 'undefined') return;
-
-    if (next) window.localStorage.setItem(STRIPE_PUBLISHABLE_KEY_STORAGE, next);
-    else window.localStorage.removeItem(STRIPE_PUBLISHABLE_KEY_STORAGE);
-  };
-
-  const source = ENV_STRIPE_PUBLISHABLE_KEY ? 'env' : pk ? 'localStorage' : 'none';
-
-  return { pk, setPk, source } as const;
-}
-
-const normalizeStripeHsl = (input: string) => {
-  const v = input.trim();
-
-  // Pass through non-HSL formats (hex/rgb/etc)
-  if (v.startsWith('#') || v.startsWith('rgb')) return v;
-
-  const inner = v.startsWith('hsl(') && v.endsWith(')') ? v.slice(4, -1) : v;
-  const noAlpha = inner.split('/')[0].trim();
-  const parts = noAlpha.split(/\s+/).filter(Boolean);
-
-  // Stripe Elements' style parser is stricter than the browser and may not accept
-  // space-separated CSS Color Level 4 syntax like: hsl(210 40% 98%).
-  // Normalize to comma-separated: hsl(210, 40%, 98%).
-  if (parts.length >= 3) return `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
-
-  return v;
-};
-
-const stripeColorFromCssVar = (varName: string, fallback: string) => {
-  if (typeof window === 'undefined') return normalizeStripeHsl(fallback);
-  const rootVal = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-  const bodyVal = getComputedStyle(document.body).getPropertyValue(varName).trim();
-  const raw = (rootVal || bodyVal || fallback).trim();
-  return normalizeStripeHsl(raw);
-};
-
-const getStripeCardElementStyle = () =>
-  ({
-    base: {
-      fontSize: '16px',
-      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-      color: stripeColorFromCssVar('--foreground', '0 0% 10%'),
-      '::placeholder': {
-        color: stripeColorFromCssVar('--muted-foreground', '0 0% 45%'),
-      },
-      iconColor: stripeColorFromCssVar('--secondary', '54 82% 44%'),
-    },
-    invalid: {
-      color: stripeColorFromCssVar('--destructive', '355 74% 43%'),
-      iconColor: stripeColorFromCssVar('--destructive', '355 74% 43%'),
-    },
-  }) as const;
+import { Elements } from '@stripe/react-stripe-js';
+import { StripeCardFields } from '@/components/checkout/StripeCardFields';
 
 type PaymentMethod = 'card' | 'paypal';
 
-// PayPal Popup Button Component
-const PayPalButton = ({ 
-  productId, 
-  email, 
-  fullName, 
+// PayPal Button Component
+const PayPalButton = ({
+  productId,
+  email,
+  fullName,
   password,
   couponCode,
   amount,
   onSuccess,
-  disabled 
-}: { 
+  disabled,
+}: {
   productId: string;
   email: string;
   fullName: string;
@@ -178,51 +62,34 @@ const PayPalButton = ({
       if (error) throw error;
 
       if (data?.approveUrl) {
-        // Open PayPal in popup window
         const width = 450;
         const height = 600;
         const left = window.screenX + (window.outerWidth - width) / 2;
         const top = window.screenY + (window.outerHeight - height) / 2;
-        
+
         const popup = window.open(
           data.approveUrl,
           'PayPal',
           `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
         );
 
-        // Store order data for capture
-        const orderData = {
-          orderId: data.orderId,
-          password,
-          productId,
-        };
+        const orderData = { orderId: data.orderId, password, productId };
 
-        // Poll for popup close and check for success
         const pollTimer = setInterval(async () => {
           if (popup?.closed) {
             clearInterval(pollTimer);
-            
-            // Check if there's a success indicator in sessionStorage
             const successData = sessionStorage.getItem('paypal_success');
             if (successData) {
               sessionStorage.removeItem('paypal_success');
               const parsed = JSON.parse(successData);
-              
-              // Capture the PayPal order
               try {
-                const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
-                  body: {
-                    orderId: parsed.orderId || orderData.orderId,
-                    password: orderData.password,
-                  },
+                const { error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
+                  body: { orderId: parsed.orderId || orderData.orderId, password: orderData.password },
                 });
-
                 if (captureError) throw captureError;
-                
                 toast.success('Payment successful!');
                 onSuccess();
               } catch (captureErr: any) {
-                console.error('PayPal capture error:', captureErr);
                 toast.error(captureErr.message || 'Failed to complete PayPal payment');
               }
             }
@@ -230,10 +97,8 @@ const PayPalButton = ({
           }
         }, 500);
 
-        // Listen for message from popup
-        const messageHandler = async (event: MessageEvent) => {
+        const messageHandler = (event: MessageEvent) => {
           if (event.origin !== window.location.origin) return;
-          
           if (event.data.type === 'paypal_success') {
             window.removeEventListener('message', messageHandler);
             sessionStorage.setItem('paypal_success', JSON.stringify({ orderId: event.data.orderId }));
@@ -243,7 +108,6 @@ const PayPalButton = ({
         window.addEventListener('message', messageHandler);
       }
     } catch (err: any) {
-      console.error('PayPal error:', err);
       toast.error(err.message || 'Failed to start PayPal checkout');
       setIsLoading(false);
     }
@@ -270,430 +134,56 @@ const PayPalButton = ({
   );
 };
 
-// Stripe Card Form Component with Apple Pay / Google Pay
-const StripeCardForm = ({
-  productId,
-  email,
-  fullName,
-  password,
-  couponCode,
-  originalAmount,
-  discountedAmount,
-  onSuccess,
-  stripeDebugEnabled,
-  stripePublishableKey,
-  setStripePublishableKey,
-}: {
-  productId: string;
-  email: string;
-  fullName: string;
-  password: string;
-  couponCode?: string;
-  originalAmount: number;
-  discountedAmount: number;
-  onSuccess: () => void;
-  stripeDebugEnabled: boolean;
-  stripePublishableKey: string | null;
-  setStripePublishableKey: (pk: string | null) => void;
-}) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [cardFieldError, setCardFieldError] = useState<string | null>(null);
-  const [paymentRequest, setPaymentRequest] = useState<any>(null);
-  const [canMakePayment, setCanMakePayment] = useState(false);
-  const [themeKey, setThemeKey] = useState(0);
-  const [pkDraft, setPkDraft] = useState('');
-
-  const [elementsDebug, setElementsDebug] = useState(() => ({
-    number: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
-    expiry: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
-    cvc: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
-  }));
-
-  const updateDebug = (
-    key: 'number' | 'expiry' | 'cvc',
-    patch: Partial<(typeof elementsDebug)['number']>
-  ) => {
-    setElementsDebug((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], ...patch },
-    }));
-  };
+// Hook to get Stripe publishable key
+function useStripePublishableKey() {
+  const [pk, setPk] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    let cancelled = false;
 
-    const observer = new MutationObserver(() => setThemeKey((k) => k + 1));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-
-    return () => observer.disconnect();
-  }, []);
-
-  const stripeElementOptions = useMemo(
-    () => ({
-      style: getStripeCardElementStyle(),
-    }),
-    [themeKey]
-  );
-
-  // Create payment intent
-  useEffect(() => {
-    const createIntent = async () => {
-      if (!productId) return;
-      
+    (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-          body: { productId, email: email || 'pending@checkout.com', fullName: fullName || 'Pending', couponCode },
-        });
-
-        if (error) throw error;
-        setClientSecret(data.clientSecret);
-      } catch (err: any) {
-        console.error('Payment intent error:', err);
-        setError(err.message);
-      }
-    };
-
-    createIntent();
-  }, [productId, couponCode]);
-
-  // Setup Apple Pay / Google Pay
-  useEffect(() => {
-    if (!stripe || !discountedAmount) return;
-
-    const pr = stripe.paymentRequest({
-      country: 'US',
-      currency: 'usd',
-      total: {
-        label: 'Total',
-        amount: Math.round(discountedAmount * 100),
-      },
-      requestPayerName: true,
-      requestPayerEmail: true,
-    });
-
-    pr.canMakePayment().then((result) => {
-      // Stripe can return { link: true } here, which shows a "Link" express checkout button.
-      // Only show this section for Apple Pay / Google Pay.
-      const wallets = result as any;
-      const hasApplePayOrGooglePay = Boolean(wallets?.applePay || wallets?.googlePay);
-      if (hasApplePayOrGooglePay) {
-        setPaymentRequest(pr);
-        setCanMakePayment(true);
-      }
-    });
-
-    pr.on('paymentmethod', async (ev) => {
-      if (!clientSecret) {
-        ev.complete('fail');
-        return;
-      }
-
-      const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(
-        clientSecret,
-        { payment_method: ev.paymentMethod.id },
-        { handleActions: false }
-      );
-
-      if (confirmError) {
-        ev.complete('fail');
-        toast.error(confirmError.message);
-        return;
-      }
-
-      ev.complete('success');
-
-      if (paymentIntent?.status === 'requires_action') {
-        const { error: actionError } = await stripe.confirmCardPayment(clientSecret);
-        if (actionError) {
-          toast.error(actionError.message);
+        // Try environment variable first
+        const envKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+        if (envKey && envKey.startsWith('pk_')) {
+          setPk(envKey);
+          setLoading(false);
           return;
         }
+
+        // Try localStorage
+        const stored = localStorage.getItem('stripe_publishable_key');
+        if (stored && stored.startsWith('pk_')) {
+          setPk(stored);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch from backend
+        const { data, error } = await supabase.functions.invoke('get-stripe-publishable-key');
+        if (error) throw error;
+        const fetched = data?.publishableKey as string | undefined;
+        if (!cancelled && fetched && fetched.startsWith('pk_')) {
+          setPk(fetched);
+        }
+      } catch (err) {
+        console.error('Failed to get Stripe publishable key:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
+    })();
 
-      // Complete payment
-      try {
-        const { error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
-          body: { paymentIntentId: paymentIntent?.id, password: password || 'TempPass123!' },
-        });
-        if (completeError) throw completeError;
-        toast.success('Payment successful!');
-        onSuccess();
-      } catch (err: any) {
-        toast.error(err.message || 'Failed to complete payment');
-      }
-    });
-  }, [stripe, discountedAmount, clientSecret, password, onSuccess]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  return { pk, loading };
+}
 
-    if (!stripe || !elements || !clientSecret) {
-      return;
-    }
-
-    if (!email) {
-      toast.error('Please enter your email address');
-      return;
-    }
-
-    setIsProcessing(true);
-    setError(null);
-    setCardFieldError(null);
-
-    try {
-      const cardNumberElement = elements.getElement(CardNumberElement);
-      if (!cardNumberElement) throw new Error('Card number element not found');
-
-      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardNumberElement,
-          billing_details: {
-            name: fullName || email,
-            email: email,
-          },
-        },
-      });
-
-      if (paymentError) {
-        throw new Error(paymentError.message);
-      }
-
-      if (paymentIntent?.status === 'succeeded') {
-        const { error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
-          body: { paymentIntentId: paymentIntent.id, password },
-        });
-
-        if (completeError) throw completeError;
-
-        toast.success('Payment successful!');
-        onSuccess();
-      }
-    } catch (err: any) {
-      console.error('Payment error:', err);
-      setError(err.message);
-      toast.error(err.message || 'Payment failed');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const savings = originalAmount - discountedAmount;
-
-  if (!stripePublishableKey) {
-    return (
-      <div className="space-y-4">
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
-          <p className="font-medium text-foreground">Card payments aren’t configured yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            This app build is missing a Stripe publishable key, so card inputs can’t mount (they’ll look like empty boxes).
-          </p>
-
-          {stripeDebugEnabled ? (
-            <div className="mt-3 space-y-2">
-              <Label htmlFor="stripe-pk">Stripe publishable key</Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id="stripe-pk"
-                  placeholder="pk_test_… or pk_live_…"
-                  value={pkDraft}
-                  onChange={(e) => setPkDraft(e.target.value)}
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    const next = pkDraft.trim();
-                    if (!next.startsWith('pk_')) {
-                      toast.error('That doesn’t look like a Stripe publishable key (should start with pk_)');
-                      return;
-                    }
-                    setStripePublishableKey(next);
-                    toast.success('Stripe publishable key saved for this browser (debug)');
-                  }}
-                >
-                  Use key
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Tip: add <code>?stripeDebug=1</code> to the checkout URL to keep debug panels visible.
-              </p>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Add <code>?stripeDebug=1</code> to the URL to enable the on-page Stripe debug + key entry.
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Apple Pay / Google Pay */}
-      {canMakePayment && paymentRequest && (
-        <div className="space-y-3">
-          <PaymentRequestButtonElement
-            options={{
-              paymentRequest,
-              style: {
-                paymentRequestButton: {
-                  type: 'default',
-                  theme: 'dark',
-                  height: '48px',
-                },
-              },
-            }}
-          />
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or pay with card</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-          <Check className="h-4 w-4" />
-          <span className="text-sm font-medium">Save 1% with card payment</span>
-          <span className="text-xs text-green-600 dark:text-green-500">
-            (You save {formatPrice(savings, 'USD')})
-          </span>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {stripeDebugEnabled && (
-          <div className="rounded-md border border-border bg-card/60 p-3 text-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-medium text-foreground">Stripe debug</p>
-              <p className="text-muted-foreground">
-                pk: <span className="text-foreground">{stripePublishableKey ? 'set' : 'unset'}</span> · stripe:{' '}
-                <span className="text-foreground">{stripe ? 'ready' : 'not-ready'}</span> · elements:{' '}
-                <span className="text-foreground">{elements ? 'ready' : 'not-ready'}</span> · clientSecret:{' '}
-                <span className="text-foreground">{clientSecret ? 'set' : 'unset'}</span>
-              </p>
-            </div>
-            <div className="mt-2 grid gap-1 text-muted-foreground">
-              {(['number', 'expiry', 'cvc'] as const).map((k) => (
-                <div key={k} className="flex flex-wrap items-center gap-2">
-                  <span className="w-14 uppercase">{k}</span>
-                  <span>mounted: {elementsDebug[k].mounted ? 'yes' : 'no'}</span>
-                  <span>focused: {elementsDebug[k].focused ? 'yes' : 'no'}</span>
-                  <span>empty: {elementsDebug[k].empty ? 'yes' : 'no'}</span>
-                  <span>complete: {elementsDebug[k].complete ? 'yes' : 'no'}</span>
-                  {elementsDebug[k].error && <span className="text-destructive">error: {elementsDebug[k].error}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label>Card number</Label>
-          <div
-            className="min-h-[42px] cursor-text rounded-md border border-input bg-background p-3"
-            onClick={() => elements?.getElement(CardNumberElement)?.focus()}
-          >
-            <CardNumberElement
-              options={stripeElementOptions}
-              onReady={() => updateDebug('number', { mounted: true })}
-              onFocus={() => updateDebug('number', { focused: true })}
-              onBlur={() => updateDebug('number', { focused: false })}
-              onChange={(e) => {
-                updateDebug('number', { complete: e.complete, empty: e.empty, error: e.error?.message ?? null });
-                setCardFieldError(e.error?.message ?? null);
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>Expiry</Label>
-            <div
-              className="min-h-[42px] cursor-text rounded-md border border-input bg-background p-3"
-              onClick={() => elements?.getElement(CardExpiryElement)?.focus()}
-            >
-              <CardExpiryElement
-                options={stripeElementOptions}
-                onReady={() => updateDebug('expiry', { mounted: true })}
-                onFocus={() => updateDebug('expiry', { focused: true })}
-                onBlur={() => updateDebug('expiry', { focused: false })}
-                onChange={(e) => {
-                  updateDebug('expiry', { complete: e.complete, empty: e.empty, error: e.error?.message ?? null });
-                  setCardFieldError(e.error?.message ?? null);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>CVC</Label>
-            <div
-              className="min-h-[42px] cursor-text rounded-md border border-input bg-background p-3"
-              onClick={() => elements?.getElement(CardCvcElement)?.focus()}
-            >
-              <CardCvcElement
-                options={stripeElementOptions}
-                onReady={() => updateDebug('cvc', { mounted: true })}
-                onFocus={() => updateDebug('cvc', { focused: true })}
-                onBlur={() => updateDebug('cvc', { focused: false })}
-                onChange={(e) => {
-                  updateDebug('cvc', { complete: e.complete, empty: e.empty, error: e.error?.message ?? null });
-                  setCardFieldError(e.error?.message ?? null);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {(cardFieldError || error) && (
-          <p className="text-sm text-destructive">{cardFieldError || error}</p>
-        )}
-
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={isProcessing || !stripe || !clientSecret}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Processing...
-            </>
-          ) : (
-            <>
-              <CreditCard className="h-4 w-4 mr-2" />
-              Pay {formatPrice(discountedAmount, 'USD')}
-            </>
-          )}
-        </Button>
-      </form>
-    </div>
-  );
-};
-
-// Main Checkout Component
-function CheckoutContent({
-  stripeDebugEnabled,
-  stripePublishableKey,
-  setStripePublishableKey,
-}: {
-  stripeDebugEnabled: boolean;
-  stripePublishableKey: string | null;
-  setStripePublishableKey: (pk: string | null) => void;
-}) {
+// Main Checkout Content
+function CheckoutContent() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { user, signIn } = useAuth();
@@ -703,7 +193,7 @@ function CheckoutContent({
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
-  
+
   // Account creation state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -712,42 +202,35 @@ function CheckoutContent({
   const [showPassword, setShowPassword] = useState(false);
   const [isReturningCustomer, setIsReturningCustomer] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
-  
-  const { isLoading: geoLoading, calculatePrice } = useGeoPricing();
 
-  // Fetch product details (single product checkout)
+  const { isLoading: geoLoading } = useGeoPricing();
+
+  // Fetch product details
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ['checkout-product', productId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
-        .select(`
-          *,
-          courses:course_id (id, title, description, cover_image_url)
-        `)
+        .select(`*, courses:course_id (id, title, description, cover_image_url)`)
         .eq('id', productId)
         .eq('is_active', true)
         .maybeSingle();
-      
       if (error) throw error;
       return data;
     },
     enabled: !!productId,
   });
 
-  // Determine if we're in cart mode or single product mode
   const isCartMode = !productId && cartItems.length > 0;
-  const checkoutProduct = isCartMode ? null : product;
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
-    
     setIsValidatingCoupon(true);
     try {
       setAppliedCoupon({ code: couponCode.trim().toUpperCase(), discount: 0 });
       toast.success('Coupon will be applied at checkout');
       setShowCouponInput(false);
-    } catch (err) {
+    } catch {
       toast.error('Invalid coupon code');
     } finally {
       setIsValidatingCoupon(false);
@@ -760,9 +243,7 @@ function CheckoutContent({
   };
 
   const handleSuccess = () => {
-    if (isCartMode) {
-      clearCart();
-    }
+    if (isCartMode) clearCart();
     navigate('/payment-success');
   };
 
@@ -771,7 +252,6 @@ function CheckoutContent({
       toast.error('Please enter your email and password');
       return;
     }
-
     setIsLoggingIn(true);
     try {
       const { error } = await signIn(email, password);
@@ -830,16 +310,21 @@ function CheckoutContent({
     );
   }
 
-  // Calculate prices
-  const basePrice = isCartMode 
+  const basePrice = isCartMode
     ? cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
     : product?.base_price_usd || 0;
-  const stripeDiscount = basePrice * 0.01; // 1% discount for card
+  const stripeDiscount = basePrice * 0.01;
   const cardPrice = basePrice - stripeDiscount;
-  const isCourse = isCartMode 
-    ? cartItems.some(item => item.productType === 'course')
+  const isCourse = isCartMode
+    ? cartItems.some((item) => item.productType === 'course')
     : product?.product_type === 'course';
   const fullName = `${firstName} ${lastName}`.trim();
+
+  const debugEnabled =
+    typeof window !== 'undefined' &&
+    (import.meta.env.DEV ||
+      new URLSearchParams(window.location.search).has('stripeDebug') ||
+      localStorage.getItem('stripeDebug') === '1');
 
   return (
     <>
@@ -851,7 +336,7 @@ function CheckoutContent({
             <div className="mb-6 p-3 bg-muted/50 rounded-lg flex items-center gap-2">
               <Lock className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Returning customer?</span>
-              <button 
+              <button
                 onClick={() => setIsReturningCustomer(true)}
                 className="text-sm text-secondary hover:underline font-medium"
               >
@@ -866,15 +351,15 @@ function CheckoutContent({
               <h2 className="text-lg font-semibold mb-6 uppercase tracking-wide text-muted-foreground">
                 Billing Details
               </h2>
-              
+
               <Card className="p-6">
                 {user ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       Logged in as <strong>{user.email}</strong>
                     </p>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={async () => {
                         await supabase.auth.signOut();
@@ -888,16 +373,17 @@ function CheckoutContent({
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground">Sign in to your account</p>
-                      <button 
+                      <button
                         onClick={() => setIsReturningCustomer(false)}
                         className="text-sm text-secondary hover:underline font-medium"
                       >
                         Create new account
                       </button>
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email address <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="email">
+                        Email address <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id="email"
                         type="email"
@@ -906,9 +392,10 @@ function CheckoutContent({
                         className="bg-background"
                       />
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="password">
+                        Password <span className="text-destructive">*</span>
+                      </Label>
                       <div className="relative">
                         <Input
                           id="password"
@@ -928,12 +415,7 @@ function CheckoutContent({
                         </Button>
                       </div>
                     </div>
-
-                    <Button 
-                      onClick={handleLogin} 
-                      className="w-full"
-                      disabled={isLoggingIn}
-                    >
+                    <Button onClick={handleLogin} className="w-full" disabled={isLoggingIn}>
                       {isLoggingIn ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -948,7 +430,9 @@ function CheckoutContent({
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName">First name <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="firstName">
+                          First name <span className="text-destructive">*</span>
+                        </Label>
                         <Input
                           id="firstName"
                           value={firstName}
@@ -957,7 +441,9 @@ function CheckoutContent({
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName">Last name <span className="text-destructive">*</span></Label>
+                        <Label htmlFor="lastName">
+                          Last name <span className="text-destructive">*</span>
+                        </Label>
                         <Input
                           id="lastName"
                           value={lastName}
@@ -966,9 +452,10 @@ function CheckoutContent({
                         />
                       </div>
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email address <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="email">
+                        Email address <span className="text-destructive">*</span>
+                      </Label>
                       <Input
                         id="email"
                         type="email"
@@ -977,9 +464,10 @@ function CheckoutContent({
                         className="bg-background"
                       />
                     </div>
-                    
                     <div className="space-y-2">
-                      <Label htmlFor="password">Create account password <span className="text-destructive">*</span></Label>
+                      <Label htmlFor="password">
+                        Create account password <span className="text-destructive">*</span>
+                      </Label>
                       <div className="relative">
                         <Input
                           id="password"
@@ -1012,7 +500,7 @@ function CheckoutContent({
               <h2 className="text-lg font-semibold mb-6 uppercase tracking-wide text-muted-foreground">
                 Your Order
               </h2>
-              
+
               <Card className="p-6">
                 {/* Product rows */}
                 <div className="space-y-3 pb-4 border-b border-border">
@@ -1039,7 +527,7 @@ function CheckoutContent({
                 {/* Coupon section */}
                 <div className="py-4 border-b border-border">
                   {!showCouponInput && !appliedCoupon && (
-                    <button 
+                    <button
                       onClick={() => setShowCouponInput(true)}
                       className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
                     >
@@ -1056,8 +544,8 @@ function CheckoutContent({
                         onChange={(e) => setCouponCode(e.target.value)}
                         className="flex-1"
                       />
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={handleApplyCoupon}
                         disabled={isValidatingCoupon || !couponCode.trim()}
@@ -1088,8 +576,8 @@ function CheckoutContent({
                       type="button"
                       onClick={() => setPaymentMethod('card')}
                       className={`p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                        paymentMethod === 'card' 
-                          ? 'border-primary bg-primary/5' 
+                        paymentMethod === 'card'
+                          ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-muted-foreground'
                       }`}
                     >
@@ -1100,8 +588,8 @@ function CheckoutContent({
                       type="button"
                       onClick={() => setPaymentMethod('paypal')}
                       className={`p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
-                        paymentMethod === 'paypal' 
-                          ? 'border-primary bg-primary/5' 
+                        paymentMethod === 'paypal'
+                          ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-muted-foreground'
                       }`}
                     >
@@ -1111,22 +599,30 @@ function CheckoutContent({
                   </div>
                 </div>
 
-                {/* Payment form based on selection */}
+                {/* Payment form */}
                 <div className="py-6">
                   {paymentMethod === 'card' ? (
-                    <StripeCardForm
-                      productId={productId || cartItems[0]?.productId || ''}
-                      email={user?.email || email}
-                      fullName={fullName || user?.email || email}
-                      password={password}
-                      couponCode={appliedCoupon?.code}
-                      originalAmount={basePrice}
-                      discountedAmount={cardPrice}
-                      onSuccess={handleSuccess}
-                      stripeDebugEnabled={stripeDebugEnabled}
-                      stripePublishableKey={stripePublishableKey}
-                      setStripePublishableKey={setStripePublishableKey}
-                    />
+                    <>
+                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mb-4">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <Check className="h-4 w-4" />
+                          <span className="text-sm font-medium">Save 1% with card payment</span>
+                          <span className="text-xs text-green-600 dark:text-green-500">
+                            (You save {formatPrice(stripeDiscount, 'USD')})
+                          </span>
+                        </div>
+                      </div>
+                      <StripeCardFields
+                        productId={productId || cartItems[0]?.productId || ''}
+                        email={user?.email || email}
+                        fullName={fullName || user?.email || email}
+                        password={password}
+                        couponCode={appliedCoupon?.code}
+                        amount={cardPrice}
+                        onSuccess={handleSuccess}
+                        debugEnabled={debugEnabled}
+                      />
+                    </>
                   ) : (
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">
@@ -1152,7 +648,7 @@ function CheckoutContent({
                     <ShieldCheck className="h-4 w-4" />
                     <span>Secure checkout</span>
                   </div>
-                  
+
                   {isCourse && (
                     <p className="text-center text-sm text-green-600 font-medium">
                       30-Day 110% Money Back Guarantee
@@ -1160,11 +656,21 @@ function CheckoutContent({
                   )}
 
                   <div className="flex justify-center gap-2">
-                    <div className="w-10 h-6 bg-[#1A1F71] rounded text-white text-[8px] flex items-center justify-center font-bold">VISA</div>
-                    <div className="w-10 h-6 bg-[#EB001B] rounded text-white text-[8px] flex items-center justify-center font-bold">MC</div>
-                    <div className="w-10 h-6 bg-[#006FCF] rounded text-white text-[8px] flex items-center justify-center font-bold">AMEX</div>
-                    <div className="w-10 h-6 bg-black rounded text-white text-[8px] flex items-center justify-center font-bold"> Pay</div>
-                    <div className="w-10 h-6 bg-[#FFC439] rounded text-[#003087] text-[6px] flex items-center justify-center font-bold italic">PayPal</div>
+                    <div className="w-10 h-6 bg-[#1A1F71] rounded text-white text-[8px] flex items-center justify-center font-bold">
+                      VISA
+                    </div>
+                    <div className="w-10 h-6 bg-[#EB001B] rounded text-white text-[8px] flex items-center justify-center font-bold">
+                      MC
+                    </div>
+                    <div className="w-10 h-6 bg-[#006FCF] rounded text-white text-[8px] flex items-center justify-center font-bold">
+                      AMEX
+                    </div>
+                    <div className="w-10 h-6 bg-black rounded text-white text-[8px] flex items-center justify-center font-bold">
+                      Pay
+                    </div>
+                    <div className="w-10 h-6 bg-[#FFC439] rounded text-[#003087] text-[6px] flex items-center justify-center font-bold italic">
+                      PayPal
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -1177,21 +683,40 @@ function CheckoutContent({
 }
 
 export default function Checkout() {
-  const stripeDebugEnabled = useMemo(() => getStripeDebugEnabled(), []);
-  const { pk: stripePublishableKey, setPk: setStripePublishableKey } = useStripePublishableKey(stripeDebugEnabled);
+  const { pk, loading } = useStripePublishableKey();
 
-  const stripePromise = useMemo(
-    () => (stripePublishableKey ? loadStripe(stripePublishableKey) : null),
-    [stripePublishableKey]
-  );
+  const stripePromise = useMemo(() => (pk ? loadStripe(pk) : null), [pk]);
+
+  if (loading) {
+    return (
+      <>
+        <SiteHeader />
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </>
+    );
+  }
+
+  if (!pk) {
+    return (
+      <>
+        <SiteHeader />
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center max-w-md p-6">
+            <h1 className="text-xl font-bold mb-2">Payment Not Available</h1>
+            <p className="text-muted-foreground">
+              Card payments are not configured. Please contact support.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
-    <Elements stripe={stripePromise} key={stripePublishableKey ?? 'no-stripe-pk'}>
-      <CheckoutContent
-        stripeDebugEnabled={stripeDebugEnabled}
-        stripePublishableKey={stripePublishableKey}
-        setStripePublishableKey={setStripePublishableKey}
-      />
+    <Elements stripe={stripePromise} key={pk}>
+      <CheckoutContent />
     </Elements>
   );
 }
