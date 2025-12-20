@@ -36,6 +36,7 @@ interface StripeCardFieldsProps {
   amount: number;
   onSuccess: () => void;
   debugEnabled?: boolean;
+  isLoggedIn?: boolean;
 }
 
 export function StripeCardFields({
@@ -47,6 +48,7 @@ export function StripeCardFields({
   amount,
   onSuccess,
   debugEnabled = false,
+  isLoggedIn = false,
 }: StripeCardFieldsProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -167,30 +169,27 @@ export function StripeCardFields({
         </div>
       )}
 
-      {/* Card Number */}
+      {/* Card details - single row layout */}
       <div className="space-y-2">
-        <Label htmlFor="card-number">Card number</Label>
-        <div
-          id="card-number"
-          className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-3"
-        >
-          <CardNumberElement
-            options={{ style: CARD_ELEMENT_STYLE }}
-            onReady={() => {
-              console.log('[StripeCardFields] CardNumberElement ready');
-              setMounted((prev) => ({ ...prev, number: true }));
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Expiry & CVC */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="card-expiry">Expiry</Label>
+        <Label htmlFor="card-number">Card details</Label>
+        <div className="flex rounded-md border border-gray-300 bg-white overflow-hidden">
+          {/* Card number - takes up more space */}
+          <div
+            id="card-number"
+            className="flex-1 min-h-[44px] px-3 py-3 border-r border-gray-300"
+          >
+            <CardNumberElement
+              options={{ style: CARD_ELEMENT_STYLE }}
+              onReady={() => {
+                console.log('[StripeCardFields] CardNumberElement ready');
+                setMounted((prev) => ({ ...prev, number: true }));
+              }}
+            />
+          </div>
+          {/* Expiry */}
           <div
             id="card-expiry"
-            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-3"
+            className="w-20 min-h-[44px] px-3 py-3 border-r border-gray-300"
           >
             <CardExpiryElement
               options={{ style: CARD_ELEMENT_STYLE }}
@@ -200,12 +199,10 @@ export function StripeCardFields({
               }}
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="card-cvc">CVC</Label>
+          {/* CVC */}
           <div
             id="card-cvc"
-            className="min-h-[44px] rounded-md border border-gray-300 bg-white px-3 py-3"
+            className="w-16 min-h-[44px] px-3 py-3"
           >
             <CardCvcElement
               options={{ style: CARD_ELEMENT_STYLE }}
@@ -224,7 +221,7 @@ export function StripeCardFields({
         type="submit"
         size="lg"
         className="w-full"
-        disabled={isProcessing || !stripe || !clientSecret}
+        disabled={isProcessing || !stripe || !clientSecret || !email || (!isLoggedIn && !password)}
       >
         {isProcessing ? (
           <>
