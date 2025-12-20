@@ -24,10 +24,46 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
-const stripePromise = STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(STRIPE_PUBLISHABLE_KEY)
-  : Promise.resolve(null);
+const ENV_STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+
+const STRIPE_PUBLISHABLE_KEY_STORAGE = 'stripe_publishable_key';
+
+const getStripeDebugEnabled = () => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return Boolean(
+    import.meta.env.DEV ||
+      params.has('stripeDebug') ||
+      window.localStorage.getItem('stripeDebug') === '1'
+  );
+};
+
+function useStripePublishableKey(debugEnabled: boolean) {
+  const [pk, setPkState] = useState<string | null>(ENV_STRIPE_PUBLISHABLE_KEY ?? null);
+
+  useEffect(() => {
+    if (ENV_STRIPE_PUBLISHABLE_KEY) return;
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(STRIPE_PUBLISHABLE_KEY_STORAGE);
+    if (stored) setPkState(stored);
+  }, []);
+
+  const setPk = (next: string | null) => {
+    setPkState(next);
+
+    // Only persist user-provided keys in debug mode.
+    if (!debugEnabled) return;
+    if (typeof window === 'undefined') return;
+
+    if (next) window.localStorage.setItem(STRIPE_PUBLISHABLE_KEY_STORAGE, next);
+    else window.localStorage.removeItem(STRIPE_PUBLISHABLE_KEY_STORAGE);
+  };
+
+  const source = ENV_STRIPE_PUBLISHABLE_KEY ? 'env' : pk ? 'localStorage' : 'none';
+
+  return { pk, setPk, source } as const;
+}
+
 const hslFromCssVar = (varName: string, fallbackHsl: string) => {
   if (typeof window === 'undefined') return fallbackHsl;
   const rootVal = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
@@ -201,6 +237,9 @@ const StripeCardForm = ({
   originalAmount,
   discountedAmount,
   onSuccess,
+  stripeDebugEnabled,
+  stripePublishableKey,
+  setStripePublishableKey,
 }: {
   productId: string;
   email: string;
@@ -210,6 +249,9 @@ const StripeCardForm = ({
   originalAmount: number;
   discountedAmount: number;
   onSuccess: () => void;
+  stripeDebugEnabled: boolean;
+  stripePublishableKey: string | null;
+  setStripePublishableKey: (pk: string | null) => void;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -220,6 +262,7 @@ const StripeCardForm = ({
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [canMakePayment, setCanMakePayment] = useState(false);
   const [themeKey, setThemeKey] = useState(0);
+  const [pkDraft, setPkDraft] = useState('');
 
   const [elementsDebug, setElementsDebug] = useState(() => ({
     number: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
@@ -394,6 +437,55 @@ const StripeCardForm = ({
 
   const savings = originalAmount - discountedAmount;
 
+  if (!stripePublishableKey) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+          <p className="font-medium text-foreground">Card payments aren’t configured yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            This app build is missing a Stripe publishable key, so card inputs can’t mount (they’ll look like empty boxes).
+          </p>
+
+          {stripeDebugEnabled ? (
+            <div className="mt-3 space-y-2">
+              <Label htmlFor="stripe-pk">Stripe publishable key</Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="stripe-pk"
+                  placeholder="pk_test_… or pk_live_…"
+                  value={pkDraft}
+                  onChange={(e) => setPkDraft(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    const next = pkDraft.trim();
+                    if (!next.startsWith('pk_')) {
+                      toast.error('That doesn’t look like a Stripe publishable key (should start with pk_)');
+                      return;
+                    }
+                    setStripePublishableKey(next);
+                    toast.success('Stripe publishable key saved for this browser (debug)');
+                  }}
+                >
+                  Use key
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tip: add <code>?stripeDebug=1</code> to the checkout URL to keep debug panels visible.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Add <code>?stripeDebug=1</code> to the URL to enable the on-page Stripe debug + key entry.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Apple Pay / Google Pay */}
@@ -433,12 +525,12 @@ const StripeCardForm = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {import.meta.env.DEV && (
+        {stripeDebugEnabled && (
           <div className="rounded-md border border-border bg-card/60 p-3 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-medium text-foreground">Stripe debug (dev)</p>
+              <p className="font-medium text-foreground">Stripe debug</p>
               <p className="text-muted-foreground">
-                pk: <span className="text-foreground">{STRIPE_PUBLISHABLE_KEY ? 'set' : 'unset'}</span> · stripe:{' '}
+                pk: <span className="text-foreground">{stripePublishableKey ? 'set' : 'unset'}</span> · stripe:{' '}
                 <span className="text-foreground">{stripe ? 'ready' : 'not-ready'}</span> · elements:{' '}
                 <span className="text-foreground">{elements ? 'ready' : 'not-ready'}</span> · clientSecret:{' '}
                 <span className="text-foreground">{clientSecret ? 'set' : 'unset'}</span>
@@ -461,7 +553,10 @@ const StripeCardForm = ({
 
         <div className="space-y-2">
           <Label>Card number</Label>
-          <div className="p-3 border border-input rounded-md bg-background min-h-[42px] cursor-text">
+          <div
+            className="min-h-[42px] cursor-text rounded-md border border-input bg-background p-3"
+            onClick={() => elements?.getElement(CardNumberElement)?.focus()}
+          >
             <CardNumberElement
               options={stripeElementOptions}
               onReady={() => updateDebug('number', { mounted: true })}
@@ -478,7 +573,10 @@ const StripeCardForm = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label>Expiry</Label>
-            <div className="p-3 border border-input rounded-md bg-background min-h-[42px] cursor-text">
+            <div
+              className="min-h-[42px] cursor-text rounded-md border border-input bg-background p-3"
+              onClick={() => elements?.getElement(CardExpiryElement)?.focus()}
+            >
               <CardExpiryElement
                 options={stripeElementOptions}
                 onReady={() => updateDebug('expiry', { mounted: true })}
@@ -494,7 +592,10 @@ const StripeCardForm = ({
 
           <div className="space-y-2">
             <Label>CVC</Label>
-            <div className="p-3 border border-input rounded-md bg-background min-h-[42px] cursor-text">
+            <div
+              className="min-h-[42px] cursor-text rounded-md border border-input bg-background p-3"
+              onClick={() => elements?.getElement(CardCvcElement)?.focus()}
+            >
               <CardCvcElement
                 options={stripeElementOptions}
                 onReady={() => updateDebug('cvc', { mounted: true })}
@@ -537,7 +638,15 @@ const StripeCardForm = ({
 };
 
 // Main Checkout Component
-function CheckoutContent() {
+function CheckoutContent({
+  stripeDebugEnabled,
+  stripePublishableKey,
+  setStripePublishableKey,
+}: {
+  stripeDebugEnabled: boolean;
+  stripePublishableKey: string | null;
+  setStripePublishableKey: (pk: string | null) => void;
+}) {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { user, signIn } = useAuth();
@@ -971,6 +1080,9 @@ function CheckoutContent() {
                       originalAmount={basePrice}
                       discountedAmount={cardPrice}
                       onSuccess={handleSuccess}
+                      stripeDebugEnabled={stripeDebugEnabled}
+                      stripePublishableKey={stripePublishableKey}
+                      setStripePublishableKey={setStripePublishableKey}
                     />
                   ) : (
                     <div className="space-y-4">
@@ -1022,9 +1134,21 @@ function CheckoutContent() {
 }
 
 export default function Checkout() {
+  const stripeDebugEnabled = useMemo(() => getStripeDebugEnabled(), []);
+  const { pk: stripePublishableKey, setPk: setStripePublishableKey } = useStripePublishableKey(stripeDebugEnabled);
+
+  const stripePromise = useMemo(
+    () => (stripePublishableKey ? loadStripe(stripePublishableKey) : null),
+    [stripePublishableKey]
+  );
+
   return (
-    <Elements stripe={stripePromise}>
-      <CheckoutContent />
+    <Elements stripe={stripePromise} key={stripePublishableKey ?? 'no-stripe-pk'}>
+      <CheckoutContent
+        stripeDebugEnabled={stripeDebugEnabled}
+        stripePublishableKey={stripePublishableKey}
+        setStripePublishableKey={setStripePublishableKey}
+      />
     </Elements>
   );
 }
