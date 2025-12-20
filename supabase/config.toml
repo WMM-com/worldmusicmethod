@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.complete-stripe-payment]
 verify_jwt = false
+
+[functions.scrape-wordpress-course]
+verify_jwt = false
