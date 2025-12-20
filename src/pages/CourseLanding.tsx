@@ -42,8 +42,8 @@ const COURSE_CONFIG: Record<string, {
     bio: string;
   };
 }> = {
-  // Peruvian Guitar course config
-  'peruvian-guitar': {
+  // Peruvian Guitar Styles course config
+  'peruvian-guitar-styles': {
     heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Peruvian-Guitar-2-1.jpg',
     courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/04/Peruvian-Guitar-1.jpg',
     trailerVideo: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Argentinian-Guitar-Trailer.mp4',
