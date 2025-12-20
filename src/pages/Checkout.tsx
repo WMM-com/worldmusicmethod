@@ -13,11 +13,19 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { 
+  Elements, 
+  CardElement, 
+  PaymentRequestButtonElement,
+  useStripe, 
+  useElements 
+} from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
-// PayPal Button Component
+type PaymentMethod = 'card' | 'paypal';
+
+// PayPal Popup Button Component
 const PayPalButton = ({ 
   productId, 
   email, 
@@ -61,18 +69,73 @@ const PayPalButton = ({
       if (error) throw error;
 
       if (data?.approveUrl) {
-        // Store data in sessionStorage for capture after redirect
-        sessionStorage.setItem('paypal_order', JSON.stringify({
+        // Open PayPal in popup window
+        const width = 450;
+        const height = 600;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        
+        const popup = window.open(
+          data.approveUrl,
+          'PayPal',
+          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+
+        // Store order data for capture
+        const orderData = {
           orderId: data.orderId,
           password,
           productId,
-        }));
-        window.location.href = data.approveUrl;
+        };
+
+        // Poll for popup close and check for success
+        const pollTimer = setInterval(async () => {
+          if (popup?.closed) {
+            clearInterval(pollTimer);
+            
+            // Check if there's a success indicator in sessionStorage
+            const successData = sessionStorage.getItem('paypal_success');
+            if (successData) {
+              sessionStorage.removeItem('paypal_success');
+              const parsed = JSON.parse(successData);
+              
+              // Capture the PayPal order
+              try {
+                const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
+                  body: {
+                    orderId: parsed.orderId || orderData.orderId,
+                    password: orderData.password,
+                  },
+                });
+
+                if (captureError) throw captureError;
+                
+                toast.success('Payment successful!');
+                onSuccess();
+              } catch (captureErr: any) {
+                console.error('PayPal capture error:', captureErr);
+                toast.error(captureErr.message || 'Failed to complete PayPal payment');
+              }
+            }
+            setIsLoading(false);
+          }
+        }, 500);
+
+        // Listen for message from popup
+        const messageHandler = async (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          
+          if (event.data.type === 'paypal_success') {
+            window.removeEventListener('message', messageHandler);
+            sessionStorage.setItem('paypal_success', JSON.stringify({ orderId: event.data.orderId }));
+            popup?.close();
+          }
+        };
+        window.addEventListener('message', messageHandler);
       }
     } catch (err: any) {
       console.error('PayPal error:', err);
       toast.error(err.message || 'Failed to start PayPal checkout');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -80,7 +143,7 @@ const PayPalButton = ({
   return (
     <Button
       type="button"
-      variant="outline"
+      size="lg"
       className="w-full h-12 bg-[#FFC439] hover:bg-[#f0b429] text-[#003087] border-[#FFC439] font-bold"
       onClick={handlePayPal}
       disabled={disabled || isLoading}
@@ -91,14 +154,14 @@ const PayPalButton = ({
         <span className="flex items-center gap-2">
           <span className="text-[#003087] font-bold italic">Pay</span>
           <span className="text-[#009CDE] font-bold italic">Pal</span>
-          <span className="text-sm font-normal ml-2">({formatPrice(amount, 'USD')})</span>
+          <span className="text-sm font-normal ml-2">Pay {formatPrice(amount, 'USD')}</span>
         </span>
       )}
     </Button>
   );
 };
 
-// Stripe Card Form Component
+// Stripe Card Form Component with Apple Pay / Google Pay
 const StripeCardForm = ({
   productId,
   email,
@@ -125,15 +188,17 @@ const StripeCardForm = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [canMakePayment, setCanMakePayment] = useState(false);
 
-  // Create payment intent when form is ready
+  // Create payment intent
   useEffect(() => {
     const createIntent = async () => {
-      if (!email || !fullName || !productId) return;
+      if (!productId) return;
       
       try {
         const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-          body: { productId, email, fullName, couponCode },
+          body: { productId, email: email || 'pending@checkout.com', fullName: fullName || 'Pending', couponCode },
         });
 
         if (error) throw error;
@@ -144,10 +209,72 @@ const StripeCardForm = ({
       }
     };
 
-    if (email && fullName) {
-      createIntent();
-    }
-  }, [productId, email, fullName, couponCode]);
+    createIntent();
+  }, [productId, couponCode]);
+
+  // Setup Apple Pay / Google Pay
+  useEffect(() => {
+    if (!stripe || !discountedAmount) return;
+
+    const pr = stripe.paymentRequest({
+      country: 'US',
+      currency: 'usd',
+      total: {
+        label: 'Total',
+        amount: Math.round(discountedAmount * 100),
+      },
+      requestPayerName: true,
+      requestPayerEmail: true,
+    });
+
+    pr.canMakePayment().then(result => {
+      if (result) {
+        setPaymentRequest(pr);
+        setCanMakePayment(true);
+      }
+    });
+
+    pr.on('paymentmethod', async (ev) => {
+      if (!clientSecret) {
+        ev.complete('fail');
+        return;
+      }
+
+      const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(
+        clientSecret,
+        { payment_method: ev.paymentMethod.id },
+        { handleActions: false }
+      );
+
+      if (confirmError) {
+        ev.complete('fail');
+        toast.error(confirmError.message);
+        return;
+      }
+
+      ev.complete('success');
+
+      if (paymentIntent?.status === 'requires_action') {
+        const { error: actionError } = await stripe.confirmCardPayment(clientSecret);
+        if (actionError) {
+          toast.error(actionError.message);
+          return;
+        }
+      }
+
+      // Complete payment
+      try {
+        const { error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
+          body: { paymentIntentId: paymentIntent?.id, password: password || 'TempPass123!' },
+        });
+        if (completeError) throw completeError;
+        toast.success('Payment successful!');
+        onSuccess();
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to complete payment');
+      }
+    });
+  }, [stripe, discountedAmount, clientSecret, password, onSuccess]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,8 +310,7 @@ const StripeCardForm = ({
       }
 
       if (paymentIntent?.status === 'succeeded') {
-        // Complete the payment and create user account
-        const { data, error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
+        const { error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
           body: { paymentIntentId: paymentIntent.id, password },
         });
 
@@ -205,8 +331,34 @@ const StripeCardForm = ({
   const savings = originalAmount - discountedAmount;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mb-4">
+    <div className="space-y-4">
+      {/* Apple Pay / Google Pay */}
+      {canMakePayment && paymentRequest && (
+        <div className="space-y-3">
+          <PaymentRequestButtonElement
+            options={{
+              paymentRequest,
+              style: {
+                paymentRequestButton: {
+                  type: 'default',
+                  theme: 'dark',
+                  height: '48px',
+                },
+              },
+            }}
+          />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or pay with card</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
           <Check className="h-4 w-4" />
           <span className="text-sm font-medium">Save 1% with card payment</span>
@@ -216,47 +368,55 @@ const StripeCardForm = ({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Card Details</Label>
-        <div className="p-3 border border-input rounded-md bg-background">
-          <CardElement
-            options={{
-              style: {
-                base: {
-                  fontSize: '16px',
-                  color: '#424770',
-                  '::placeholder': { color: '#aab7c4' },
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Card Details</Label>
+          <div className="p-3 border border-input rounded-md bg-background min-h-[42px]">
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    fontFamily: 'system-ui, sans-serif',
+                    '::placeholder': { color: '#aab7c4' },
+                    iconColor: '#666EE8',
+                  },
+                  invalid: { 
+                    color: '#9e2146',
+                    iconColor: '#9e2146',
+                  },
                 },
-                invalid: { color: '#9e2146' },
-              },
-            }}
-          />
+                hidePostalCode: false,
+              }}
+            />
+          </div>
         </div>
-      </div>
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-
-      <Button
-        type="submit"
-        size="lg"
-        className="w-full"
-        disabled={disabled || isProcessing || !stripe || !clientSecret}
-      >
-        {isProcessing ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Processing...
-          </>
-        ) : (
-          <>
-            <CreditCard className="h-4 w-4 mr-2" />
-            Pay {formatPrice(discountedAmount, 'USD')} with Card
-          </>
+        {error && (
+          <p className="text-sm text-destructive">{error}</p>
         )}
-      </Button>
-    </form>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={disabled || isProcessing || !stripe || !clientSecret}
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Pay {formatPrice(discountedAmount, 'USD')}
+            </>
+          )}
+        </Button>
+      </form>
+    </div>
   );
 };
 
@@ -269,6 +429,7 @@ function CheckoutContent() {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
   
   // Account creation state
   const [firstName, setFirstName] = useState('');
@@ -571,41 +732,68 @@ function CheckoutContent() {
                   )}
                 </div>
 
-                {/* Payment methods */}
-                <div className="py-6 space-y-4">
-                  {/* Card payment with Stripe */}
-                  <StripeCardForm
-                    productId={productId!}
-                    email={email}
-                    fullName={fullName || email}
-                    password={password}
-                    couponCode={appliedCoupon?.code}
-                    originalAmount={basePrice}
-                    discountedAmount={cardPrice}
-                    onSuccess={handleSuccess}
-                    disabled={!isFormValid}
-                  />
-
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Or</span>
-                    </div>
+                {/* Payment method selection */}
+                <div className="py-4 border-b border-border">
+                  <Label className="mb-3 block">Payment Method</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('card')}
+                      className={`p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                        paymentMethod === 'card' 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
+                    >
+                      <CreditCard className="h-5 w-5" />
+                      <span className="font-medium">Card</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('paypal')}
+                      className={`p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                        paymentMethod === 'paypal' 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-muted-foreground'
+                      }`}
+                    >
+                      <span className="text-[#003087] font-bold italic">Pay</span>
+                      <span className="text-[#009CDE] font-bold italic">Pal</span>
+                    </button>
                   </div>
+                </div>
 
-                  {/* PayPal */}
-                  <PayPalButton
-                    productId={productId!}
-                    email={email}
-                    fullName={fullName || email}
-                    password={password}
-                    couponCode={appliedCoupon?.code}
-                    amount={basePrice}
-                    onSuccess={handleSuccess}
-                    disabled={!isFormValid}
-                  />
+                {/* Payment form based on selection */}
+                <div className="py-6">
+                  {paymentMethod === 'card' ? (
+                    <StripeCardForm
+                      productId={productId!}
+                      email={email}
+                      fullName={fullName || email}
+                      password={password}
+                      couponCode={appliedCoupon?.code}
+                      originalAmount={basePrice}
+                      discountedAmount={cardPrice}
+                      onSuccess={handleSuccess}
+                      disabled={!isFormValid}
+                    />
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        You'll be redirected to PayPal to complete your purchase.
+                      </p>
+                      <PayPalButton
+                        productId={productId!}
+                        email={email}
+                        fullName={fullName || email}
+                        password={password}
+                        couponCode={appliedCoupon?.code}
+                        amount={basePrice}
+                        onSuccess={handleSuccess}
+                        disabled={!isFormValid}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Security & guarantee */}
@@ -625,6 +813,7 @@ function CheckoutContent() {
                     <div className="w-10 h-6 bg-[#1A1F71] rounded text-white text-[8px] flex items-center justify-center font-bold">VISA</div>
                     <div className="w-10 h-6 bg-[#EB001B] rounded text-white text-[8px] flex items-center justify-center font-bold">MC</div>
                     <div className="w-10 h-6 bg-[#006FCF] rounded text-white text-[8px] flex items-center justify-center font-bold">AMEX</div>
+                    <div className="w-10 h-6 bg-black rounded text-white text-[8px] flex items-center justify-center font-bold"> Pay</div>
                     <div className="w-10 h-6 bg-[#FFC439] rounded text-[#003087] text-[6px] flex items-center justify-center font-bold italic">PayPal</div>
                   </div>
                 </div>
