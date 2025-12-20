@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -48,8 +49,8 @@ const PayPalButton = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const handlePayPal = async () => {
-    if (!email || !password || !fullName) {
-      toast.error('Please fill in all required fields');
+    if (!email) {
+      toast.error('Please enter your email address');
       return;
     }
 
@@ -171,7 +172,6 @@ const StripeCardForm = ({
   originalAmount,
   discountedAmount,
   onSuccess,
-  disabled,
 }: {
   productId: string;
   email: string;
@@ -181,7 +181,6 @@ const StripeCardForm = ({
   originalAmount: number;
   discountedAmount: number;
   onSuccess: () => void;
-  disabled: boolean;
 }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -283,8 +282,8 @@ const StripeCardForm = ({
       return;
     }
 
-    if (!email || !password || !fullName) {
-      toast.error('Please fill in all required fields');
+    if (!email) {
+      toast.error('Please enter your email address');
       return;
     }
 
@@ -299,7 +298,7 @@ const StripeCardForm = ({
         payment_method: {
           card: cardElement,
           billing_details: {
-            name: fullName,
+            name: fullName || email,
             email: email,
           },
         },
@@ -377,14 +376,14 @@ const StripeCardForm = ({
                 style: {
                   base: {
                     fontSize: '16px',
-                    color: '#424770',
+                    color: '#f5f5f5',
                     fontFamily: 'system-ui, sans-serif',
-                    '::placeholder': { color: '#aab7c4' },
-                    iconColor: '#666EE8',
+                    '::placeholder': { color: '#6b7280' },
+                    iconColor: '#CCC016',
                   },
                   invalid: { 
-                    color: '#9e2146',
-                    iconColor: '#9e2146',
+                    color: '#ef4444',
+                    iconColor: '#ef4444',
                   },
                 },
                 hidePostalCode: false,
@@ -401,7 +400,7 @@ const StripeCardForm = ({
           type="submit"
           size="lg"
           className="w-full"
-          disabled={disabled || isProcessing || !stripe || !clientSecret}
+          disabled={isProcessing || !stripe || !clientSecret}
         >
           {isProcessing ? (
             <>
@@ -424,7 +423,8 @@ const StripeCardForm = ({
 function CheckoutContent() {
   const { productId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signIn } = useAuth();
+  const { items: cartItems, clearCart } = useCart();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
@@ -438,10 +438,11 @@ function CheckoutContent() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isReturningCustomer, setIsReturningCustomer] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   
   const { isLoading: geoLoading, calculatePrice } = useGeoPricing();
 
-  // Fetch product details
+  // Fetch product details (single product checkout)
   const { data: product, isLoading: productLoading } = useQuery({
     queryKey: ['checkout-product', productId],
     queryFn: async () => {
@@ -460,6 +461,10 @@ function CheckoutContent() {
     },
     enabled: !!productId,
   });
+
+  // Determine if we're in cart mode or single product mode
+  const isCartMode = !productId && cartItems.length > 0;
+  const checkoutProduct = isCartMode ? null : product;
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -482,7 +487,32 @@ function CheckoutContent() {
   };
 
   const handleSuccess = () => {
+    if (isCartMode) {
+      clearCart();
+    }
     navigate('/payment-success');
+  };
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      toast.error('Please enter your email and password');
+      return;
+    }
+
+    setIsLoggingIn(true);
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast.error(error.message || 'Failed to sign in');
+      } else {
+        toast.success('Signed in successfully');
+        setIsReturningCustomer(false);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to sign in');
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   if (productLoading || geoLoading) {
@@ -499,7 +529,21 @@ function CheckoutContent() {
     );
   }
 
-  if (!product) {
+  if (!productId && cartItems.length === 0) {
+    return (
+      <>
+        <SiteHeader />
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
+            <Button onClick={() => navigate('/courses')}>Browse Courses</Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (productId && !product) {
     return (
       <>
         <SiteHeader />
@@ -513,12 +557,16 @@ function CheckoutContent() {
     );
   }
 
-  const basePrice = product.base_price_usd;
+  // Calculate prices
+  const basePrice = isCartMode 
+    ? cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    : product?.base_price_usd || 0;
   const stripeDiscount = basePrice * 0.01; // 1% discount for card
   const cardPrice = basePrice - stripeDiscount;
-  const isCourse = product.product_type === 'course';
+  const isCourse = isCartMode 
+    ? cartItems.some(item => item.productType === 'course')
+    : product?.product_type === 'course';
   const fullName = `${firstName} ${lastName}`.trim();
-  const isFormValid = email && password && (isReturningCustomer || (firstName && lastName));
 
   return (
     <>
@@ -532,7 +580,7 @@ function CheckoutContent() {
               <span className="text-sm text-muted-foreground">Returning customer?</span>
               <button 
                 onClick={() => setIsReturningCustomer(true)}
-                className="text-sm text-primary hover:underline"
+                className="text-sm text-secondary hover:underline font-medium"
               >
                 Click here to login
               </button>
@@ -573,7 +621,7 @@ function CheckoutContent() {
                       <p className="text-sm text-muted-foreground">Sign in to your account</p>
                       <button 
                         onClick={() => setIsReturningCustomer(false)}
-                        className="text-sm text-primary hover:underline"
+                        className="text-sm text-secondary hover:underline font-medium"
                       >
                         Create new account
                       </button>
@@ -611,6 +659,21 @@ function CheckoutContent() {
                         </Button>
                       </div>
                     </div>
+
+                    <Button 
+                      onClick={handleLogin} 
+                      className="w-full"
+                      disabled={isLoggingIn}
+                    >
+                      {isLoggingIn ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Signing in...
+                        </>
+                      ) : (
+                        'Login'
+                      )}
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -682,10 +745,26 @@ function CheckoutContent() {
               </h2>
               
               <Card className="p-6">
-                {/* Product row */}
-                <div className="flex justify-between items-start pb-4 border-b border-border">
-                  <p className="font-medium">{product.name}</p>
-                  <p className="font-semibold">{formatPrice(basePrice, 'USD')}</p>
+                {/* Product rows */}
+                <div className="space-y-3 pb-4 border-b border-border">
+                  {isCartMode ? (
+                    cartItems.map((item) => (
+                      <div key={item.productId} className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          {item.quantity > 1 && (
+                            <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                          )}
+                        </div>
+                        <p className="font-semibold">{formatPrice(item.price * item.quantity, 'USD')}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between items-start">
+                      <p className="font-medium">{product?.name}</p>
+                      <p className="font-semibold">{formatPrice(basePrice, 'USD')}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Coupon section */}
@@ -767,15 +846,14 @@ function CheckoutContent() {
                 <div className="py-6">
                   {paymentMethod === 'card' ? (
                     <StripeCardForm
-                      productId={productId!}
-                      email={email}
-                      fullName={fullName || email}
+                      productId={productId || cartItems[0]?.productId || ''}
+                      email={user?.email || email}
+                      fullName={fullName || user?.email || email}
                       password={password}
                       couponCode={appliedCoupon?.code}
                       originalAmount={basePrice}
                       discountedAmount={cardPrice}
                       onSuccess={handleSuccess}
-                      disabled={!isFormValid}
                     />
                   ) : (
                     <div className="space-y-4">
@@ -783,14 +861,14 @@ function CheckoutContent() {
                         You'll be redirected to PayPal to complete your purchase.
                       </p>
                       <PayPalButton
-                        productId={productId!}
-                        email={email}
-                        fullName={fullName || email}
+                        productId={productId || cartItems[0]?.productId || ''}
+                        email={user?.email || email}
+                        fullName={fullName || user?.email || email}
                         password={password}
                         couponCode={appliedCoupon?.code}
                         amount={basePrice}
                         onSuccess={handleSuccess}
-                        disabled={!isFormValid}
+                        disabled={!email}
                       />
                     </div>
                   )}

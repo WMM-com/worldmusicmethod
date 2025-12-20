@@ -184,8 +184,12 @@
     animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Link styling */
+  /* Link styling - brand yellow */
   .link {
+    @apply text-secondary hover:underline transition-all;
+  }
+
+  a:not([class]) {
     @apply text-secondary hover:underline transition-all;
   }
 }

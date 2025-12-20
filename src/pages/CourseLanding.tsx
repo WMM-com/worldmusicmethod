@@ -26,8 +26,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourse } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 // Resource item type
@@ -259,6 +261,7 @@ export default function CourseLanding() {
     acc + (m.lessons?.reduce((a, l) => a + (l.duration_seconds || 0), 0) || 0), 0) || 0;
 
   const priceInfo = product ? calculatePrice(product.base_price_usd) : null;
+  const { addToCart } = useCart();
 
   const handleStartCourse = () => {
     if (isEnrolled) {
@@ -267,6 +270,19 @@ export default function CourseLanding() {
       navigate(`/checkout/${product.id}`);
     } else if (!user) {
       navigate('/auth');
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (product) {
+      addToCart({
+        productId: product.id,
+        name: product.name,
+        price: product.base_price_usd,
+        courseId: product.course_id || undefined,
+        productType: product.product_type,
+      });
+      toast.success('Added to cart!');
     }
   };
 
