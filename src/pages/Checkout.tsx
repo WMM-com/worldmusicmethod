@@ -24,8 +24,10 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const stripePromise = STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(STRIPE_PUBLISHABLE_KEY)
+  : Promise.resolve(null);
 const hslFromCssVar = (varName: string, fallbackHsl: string) => {
   if (typeof window === 'undefined') return fallbackHsl;
   const rootVal = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
@@ -436,7 +438,8 @@ const StripeCardForm = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium text-foreground">Stripe debug (dev)</p>
               <p className="text-muted-foreground">
-                stripe: <span className="text-foreground">{stripe ? 'ready' : 'not-ready'}</span> · elements:{' '}
+                pk: <span className="text-foreground">{STRIPE_PUBLISHABLE_KEY ? 'set' : 'unset'}</span> · stripe:{' '}
+                <span className="text-foreground">{stripe ? 'ready' : 'not-ready'}</span> · elements:{' '}
                 <span className="text-foreground">{elements ? 'ready' : 'not-ready'}</span> · clientSecret:{' '}
                 <span className="text-foreground">{clientSecret ? 'set' : 'unset'}</span>
               </p>
