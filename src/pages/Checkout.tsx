@@ -621,6 +621,7 @@ function CheckoutContent() {
                         amount={cardPrice}
                         onSuccess={handleSuccess}
                         debugEnabled={debugEnabled}
+                        isLoggedIn={!!user}
                       />
                     </>
                   ) : (
@@ -628,7 +629,7 @@ function CheckoutContent() {
                       <p className="text-sm text-muted-foreground">
                         You'll be redirected to PayPal to complete your purchase.
                       </p>
-                      <PayPalButton
+                    <PayPalButton
                         productId={productId || cartItems[0]?.productId || ''}
                         email={user?.email || email}
                         fullName={fullName || user?.email || email}
@@ -636,7 +637,7 @@ function CheckoutContent() {
                         couponCode={appliedCoupon?.code}
                         amount={basePrice}
                         onSuccess={handleSuccess}
-                        disabled={!email}
+                        disabled={!user && (!email || !password)}
                       />
                     </div>
                   )}
@@ -715,7 +716,15 @@ export default function Checkout() {
   }
 
   return (
-    <Elements stripe={stripePromise} key={pk}>
+    <Elements 
+      stripe={stripePromise} 
+      key={pk}
+      options={{
+        appearance: { theme: 'stripe' },
+        // Disable Link (save payment info) feature
+        loader: 'auto',
+      }}
+    >
       <CheckoutContent />
     </Elements>
   );
