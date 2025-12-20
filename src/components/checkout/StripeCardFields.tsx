@@ -189,7 +189,7 @@ export function StripeCardFields({
           {/* Expiry */}
           <div
             id="card-expiry"
-            className="w-20 min-h-[44px] px-3 py-3 border-r border-gray-300"
+            className="w-24 min-h-[44px] px-3 py-3 border-r border-gray-300"
           >
             <CardExpiryElement
               options={{ style: CARD_ELEMENT_STYLE }}
@@ -221,7 +221,7 @@ export function StripeCardFields({
         type="submit"
         size="lg"
         className="w-full"
-        disabled={isProcessing || !stripe || !clientSecret || !email || (!isLoggedIn && !password)}
+        disabled={isProcessing || !stripe || !clientSecret || !email || (!isLoggedIn && (!password || password.length < 8))}
       >
         {isProcessing ? (
           <>
