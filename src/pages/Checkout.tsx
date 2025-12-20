@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock } from 'lucide-react';
+import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,28 +12,273 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-export default function Checkout() {
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+
+// PayPal Button Component
+const PayPalButton = ({ 
+  productId, 
+  email, 
+  fullName, 
+  password,
+  couponCode,
+  amount,
+  onSuccess,
+  disabled 
+}: { 
+  productId: string;
+  email: string;
+  fullName: string;
+  password: string;
+  couponCode?: string;
+  amount: number;
+  onSuccess: () => void;
+  disabled: boolean;
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePayPal = async () => {
+    if (!email || !password || !fullName) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-paypal-order', {
+        body: {
+          productId,
+          email,
+          fullName,
+          couponCode,
+          returnUrl: `${window.location.origin}/payment-success?method=paypal`,
+          cancelUrl: `${window.location.origin}/checkout/${productId}`,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.approveUrl) {
+        // Store data in sessionStorage for capture after redirect
+        sessionStorage.setItem('paypal_order', JSON.stringify({
+          orderId: data.orderId,
+          password,
+          productId,
+        }));
+        window.location.href = data.approveUrl;
+      }
+    } catch (err: any) {
+      console.error('PayPal error:', err);
+      toast.error(err.message || 'Failed to start PayPal checkout');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="w-full h-12 bg-[#FFC439] hover:bg-[#f0b429] text-[#003087] border-[#FFC439] font-bold"
+      onClick={handlePayPal}
+      disabled={disabled || isLoading}
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <span className="flex items-center gap-2">
+          <span className="text-[#003087] font-bold italic">Pay</span>
+          <span className="text-[#009CDE] font-bold italic">Pal</span>
+          <span className="text-sm font-normal ml-2">({formatPrice(amount, 'USD')})</span>
+        </span>
+      )}
+    </Button>
+  );
+};
+
+// Stripe Card Form Component
+const StripeCardForm = ({
+  productId,
+  email,
+  fullName,
+  password,
+  couponCode,
+  originalAmount,
+  discountedAmount,
+  onSuccess,
+  disabled,
+}: {
+  productId: string;
+  email: string;
+  fullName: string;
+  password: string;
+  couponCode?: string;
+  originalAmount: number;
+  discountedAmount: number;
+  onSuccess: () => void;
+  disabled: boolean;
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Create payment intent when form is ready
+  useEffect(() => {
+    const createIntent = async () => {
+      if (!email || !fullName || !productId) return;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+          body: { productId, email, fullName, couponCode },
+        });
+
+        if (error) throw error;
+        setClientSecret(data.clientSecret);
+      } catch (err: any) {
+        console.error('Payment intent error:', err);
+        setError(err.message);
+      }
+    };
+
+    if (email && fullName) {
+      createIntent();
+    }
+  }, [productId, email, fullName, couponCode]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!stripe || !elements || !clientSecret) {
+      return;
+    }
+
+    if (!email || !password || !fullName) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error('Card element not found');
+
+      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: fullName,
+            email: email,
+          },
+        },
+      });
+
+      if (paymentError) {
+        throw new Error(paymentError.message);
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        // Complete the payment and create user account
+        const { data, error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
+          body: { paymentIntentId: paymentIntent.id, password },
+        });
+
+        if (completeError) throw completeError;
+
+        toast.success('Payment successful!');
+        onSuccess();
+      }
+    } catch (err: any) {
+      console.error('Payment error:', err);
+      setError(err.message);
+      toast.error(err.message || 'Payment failed');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const savings = originalAmount - discountedAmount;
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mb-4">
+        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+          <Check className="h-4 w-4" />
+          <span className="text-sm font-medium">Save 1% with card payment</span>
+          <span className="text-xs text-green-600 dark:text-green-500">
+            (You save {formatPrice(savings, 'USD')})
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Card Details</Label>
+        <div className="p-3 border border-input rounded-md bg-background">
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: '16px',
+                  color: '#424770',
+                  '::placeholder': { color: '#aab7c4' },
+                },
+                invalid: { color: '#9e2146' },
+              },
+            }}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={disabled || isProcessing || !stripe || !clientSecret}
+      >
+        {isProcessing ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <CreditCard className="h-4 w-4 mr-2" />
+            Pay {formatPrice(discountedAmount, 'USD')} with Card
+          </>
+        )}
+      </Button>
+    </form>
+  );
+};
+
+// Main Checkout Component
+function CheckoutContent() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isProcessing, setIsProcessing] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
   
-  // Account creation state (for guests)
+  // Account creation state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Returning customer login
   const [isReturningCustomer, setIsReturningCustomer] = useState(false);
   
-  const { region, isLoading: geoLoading, calculatePrice } = useGeoPricing();
+  const { isLoading: geoLoading, calculatePrice } = useGeoPricing();
 
   // Fetch product details
   const { data: product, isLoading: productLoading } = useQuery({
@@ -75,80 +320,8 @@ export default function Checkout() {
     setCouponCode('');
   };
 
-  const handleCheckout = async () => {
-    // If not logged in, create account first
-    if (!user) {
-      if (!email || !password) {
-        toast.error('Please enter your email and password');
-        return;
-      }
-      
-      if (isReturningCustomer) {
-        // Login existing user
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) {
-          toast.error(error.message || 'Login failed');
-          return;
-        }
-      } else {
-        // Create new account
-        if (!firstName || !lastName) {
-          toast.error('Please enter your name');
-          return;
-        }
-        
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/payment-success`,
-            data: {
-              first_name: firstName,
-              last_name: lastName,
-            },
-          },
-        });
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast.error('Email already registered. Click "Returning customer?" to sign in.');
-            setIsReturningCustomer(true);
-          } else {
-            toast.error(error.message || 'Account creation failed');
-          }
-          return;
-        }
-      }
-    }
-
-    setIsProcessing(true);
-    try {
-      const priceInfo = calculatePrice(product?.base_price_usd || 0);
-      
-      const { data, error } = await supabase.functions.invoke('create-course-checkout', {
-        body: {
-          productId: product?.id,
-          courseId: product?.course_id,
-          region,
-          priceAmount: Math.round(priceInfo.price * 100),
-          currency: priceInfo.currency.toLowerCase(),
-          couponCode: appliedCoupon?.code,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (err: any) {
-      console.error('Checkout error:', err);
-      toast.error(err.message || 'Failed to start checkout');
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleSuccess = () => {
+    navigate('/payment-success');
   };
 
   if (productLoading || geoLoading) {
@@ -179,8 +352,12 @@ export default function Checkout() {
     );
   }
 
-  const priceInfo = calculatePrice(product.base_price_usd);
+  const basePrice = product.base_price_usd;
+  const stripeDiscount = basePrice * 0.01; // 1% discount for card
+  const cardPrice = basePrice - stripeDiscount;
   const isCourse = product.product_type === 'course';
+  const fullName = `${firstName} ${lastName}`.trim();
+  const isFormValid = email && password && (isReturningCustomer || (firstName && lastName));
 
   return (
     <>
@@ -199,63 +376,6 @@ export default function Checkout() {
                 Click here to login
               </button>
             </div>
-          )}
-
-          {/* Coupon toggle */}
-          {!showCouponInput && !appliedCoupon && (
-            <div className="mb-6">
-              <button 
-                onClick={() => setShowCouponInput(true)}
-                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
-              >
-                <Tag className="h-4 w-4" />
-                Have a coupon? Click here to enter your code
-              </button>
-            </div>
-          )}
-
-          {/* Coupon input */}
-          {showCouponInput && !appliedCoupon && (
-            <Card className="p-4 mb-6">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter coupon code"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                  className="flex-1"
-                />
-                <Button 
-                  variant="outline" 
-                  onClick={handleApplyCoupon}
-                  disabled={isValidatingCoupon || !couponCode.trim()}
-                >
-                  {isValidatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setShowCouponInput(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Card>
-          )}
-
-          {/* Applied coupon */}
-          {appliedCoupon && (
-            <Card className="p-4 mb-6 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                    Coupon {appliedCoupon.code} applied
-                  </span>
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleRemoveCoupon}>
-                  Remove
-                </Button>
-              </div>
-            </Card>
           )}
 
           <motion.div
@@ -403,72 +523,96 @@ export default function Checkout() {
               <Card className="p-6">
                 {/* Product row */}
                 <div className="flex justify-between items-start pb-4 border-b border-border">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground uppercase mb-2">Product</p>
-                    <p className="font-medium">{product.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground uppercase mb-2">Total</p>
-                    <p className="font-semibold">{formatPrice(priceInfo.price, priceInfo.currency)}</p>
-                  </div>
+                  <p className="font-medium">{product.name}</p>
+                  <p className="font-semibold">{formatPrice(basePrice, 'USD')}</p>
                 </div>
 
-                {/* Subtotal & Total */}
-                <div className="py-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatPrice(priceInfo.price, priceInfo.currency)}</span>
-                  </div>
+                {/* Coupon section */}
+                <div className="py-4 border-b border-border">
+                  {!showCouponInput && !appliedCoupon && (
+                    <button 
+                      onClick={() => setShowCouponInput(true)}
+                      className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2"
+                    >
+                      <Tag className="h-4 w-4" />
+                      Have a coupon?
+                    </button>
+                  )}
+
+                  {showCouponInput && !appliedCoupon && (
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleApplyCoupon}
+                        disabled={isValidatingCoupon || !couponCode.trim()}
+                      >
+                        {isValidatingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+                  )}
+
                   {appliedCoupon && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Coupon: {appliedCoupon.code}</span>
-                      <span className="text-green-600">Applied at checkout</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-green-600" />
+                        <span className="text-sm text-green-600">{appliedCoupon.code}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={handleRemoveCoupon}>
+                        Remove
+                      </Button>
                     </div>
                   )}
-                  <div className="flex justify-between font-semibold pt-2 border-t border-border">
-                    <span>Total</span>
-                    <span>{formatPrice(priceInfo.price, priceInfo.currency)}</span>
-                  </div>
                 </div>
 
-                {/* Payment methods info */}
-                <div className="py-4 border-t border-border">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Credit/Debit Cards</span>
-                    <div className="flex gap-1 ml-auto">
-                      <div className="w-8 h-5 bg-[#1A1F71] rounded text-white text-[8px] flex items-center justify-center font-bold">VISA</div>
-                      <div className="w-8 h-5 bg-[#EB001B] rounded text-white text-[8px] flex items-center justify-center font-bold">MC</div>
-                      <div className="w-8 h-5 bg-[#006FCF] rounded text-white text-[8px] flex items-center justify-center font-bold">AMEX</div>
+                {/* Payment methods */}
+                <div className="py-6 space-y-4">
+                  {/* Card payment with Stripe */}
+                  <StripeCardForm
+                    productId={productId!}
+                    email={email}
+                    fullName={fullName || email}
+                    password={password}
+                    couponCode={appliedCoupon?.code}
+                    originalAmount={basePrice}
+                    discountedAmount={cardPrice}
+                    onSuccess={handleSuccess}
+                    disabled={!isFormValid}
+                  />
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">Or</span>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Pay securely with Stripe. Apple Pay & Google Pay also supported.
-                  </p>
-                </div>
 
-                {/* Checkout button */}
-                <Button 
-                  size="lg" 
-                  className="w-full mt-4"
-                  onClick={handleCheckout}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    'Complete Purchase'
-                  )}
-                </Button>
+                  {/* PayPal */}
+                  <PayPalButton
+                    productId={productId!}
+                    email={email}
+                    fullName={fullName || email}
+                    password={password}
+                    couponCode={appliedCoupon?.code}
+                    amount={basePrice}
+                    onSuccess={handleSuccess}
+                    disabled={!isFormValid}
+                  />
+                </div>
 
                 {/* Security & guarantee */}
-                <div className="mt-4 space-y-2">
+                <div className="pt-4 border-t border-border space-y-3">
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                     <ShieldCheck className="h-4 w-4" />
-                    <span>Secure checkout powered by Stripe</span>
+                    <span>Secure checkout</span>
                   </div>
                   
                   {isCourse && (
@@ -476,6 +620,13 @@ export default function Checkout() {
                       30-Day 110% Money Back Guarantee
                     </p>
                   )}
+
+                  <div className="flex justify-center gap-2">
+                    <div className="w-10 h-6 bg-[#1A1F71] rounded text-white text-[8px] flex items-center justify-center font-bold">VISA</div>
+                    <div className="w-10 h-6 bg-[#EB001B] rounded text-white text-[8px] flex items-center justify-center font-bold">MC</div>
+                    <div className="w-10 h-6 bg-[#006FCF] rounded text-white text-[8px] flex items-center justify-center font-bold">AMEX</div>
+                    <div className="w-10 h-6 bg-[#FFC439] rounded text-[#003087] text-[6px] flex items-center justify-center font-bold italic">PayPal</div>
+                  </div>
                 </div>
               </Card>
             </div>
@@ -483,5 +634,13 @@ export default function Checkout() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function Checkout() {
+  return (
+    <Elements stripe={stripePromise}>
+      <CheckoutContent />
+    </Elements>
   );
 }
