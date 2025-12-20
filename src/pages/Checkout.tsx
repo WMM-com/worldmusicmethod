@@ -470,7 +470,7 @@ function CheckoutContent() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">
-                        Create account password (min 8 characters) <span className="text-destructive">*</span>
+                        Create account password <span className="text-destructive">*</span>
                       </Label>
                       <div className="relative">
                         <Input

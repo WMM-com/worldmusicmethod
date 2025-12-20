@@ -7,6 +7,7 @@ import {
   Clock, 
   CheckCircle, 
   ChevronRight,
+  ChevronLeft,
   Music,
   Users,
   Award,
@@ -15,7 +16,8 @@ import {
   Shield,
   X,
   FileText,
-  HelpCircle
+  HelpCircle,
+  Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -128,13 +130,12 @@ const COURSE_CONFIG: Record<string, {
   }
 };
 
-// Section IDs for navigation
+// Section IDs for navigation - new order
 const SECTIONS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'expert', label: 'Expert' },
-  { id: 'resources', label: 'Resources' },
-  { id: 'outcomes', label: 'Outcomes' },
-  { id: 'content', label: 'Content' },
+  { id: 'overview', label: 'Course Description' },
+  { id: 'outcomes', label: 'Key Learning Outcomes' },
+  { id: 'expert', label: 'Meet Your Tutor' },
+  { id: 'resources', label: 'Ultimate Learning Experience' },
   { id: 'faq', label: 'FAQ' }
 ];
 
@@ -154,6 +155,7 @@ export default function CourseLanding() {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -290,480 +292,270 @@ export default function CourseLanding() {
     <>
       <SiteHeader />
       <div className="min-h-screen bg-background">
-        {/* Hero Section */}
-        <section className="relative min-h-[70vh] flex items-center">
-          {/* Background Image */}
-          <div className="absolute inset-0">
-            {courseConfig?.heroBackground ? (
-              <div 
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${courseConfig.heroBackground})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-            ) : course.cover_image_url && (
-              <div 
-                className="absolute inset-0 opacity-20"
-                style={{
-                  backgroundImage: `url(${course.cover_image_url})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center'
-                }}
-              />
-            )}
-          </div>
-
-          <div className="relative max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: Text content */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+        {/* Left Sidebar - Course Curriculum */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.aside
+              initial={{ x: -320, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -320, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed left-0 top-16 bottom-0 w-80 bg-card border-r border-border z-40 overflow-y-auto hidden lg:block"
             >
-              <div className="flex items-center gap-2 mb-4">
-                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                  Guitar
-                </span>
-                <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
-                  {course.country}
-                </span>
-              </div>
-
-              <h1 className="text-4xl lg:text-5xl font-bold mb-4 leading-tight">
-                {course.title}
-              </h1>
-
-              <p className="text-lg text-muted-foreground mb-6 max-w-xl">
-                {course.description || `From Huayño to the Peruvian Waltz, immerse yourself in Andean culture and develop new guitar talents.`}
-              </p>
-
-              {/* Course stats - only show here */}
-              <div className="flex flex-wrap gap-6 text-sm mb-6">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-primary" />
-                  <span>{course.modules?.length || 0} Modules</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Play className="w-4 h-4 text-primary" />
-                  <span>{totalLessons} Lessons</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <span>{Math.round(totalDuration / 60)} min</span>
-                </div>
-              </div>
-
-              {/* Price display */}
-              {priceInfo && !isEnrolled && (
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-3xl font-bold">
-                      {formatPrice(priceInfo.price, priceInfo.currency)}
-                    </span>
-                    {priceInfo.discount_percentage > 0 && (
-                      <span className="text-lg text-muted-foreground line-through">
-                        ${product?.base_price_usd?.toFixed(2)} USD
-                      </span>
-                    )}
-                  </div>
-                  {priceInfo.discount_percentage > 0 && (
-                    <Badge variant="secondary" className="mt-2">
-                      {priceInfo.discount_percentage}% off in your region
-                    </Badge>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-4 mb-6">
-                <Button size="lg" onClick={handleStartCourse} className="gap-2">
-                  {isEnrolled ? (
-                    <>
-                      <Play className="w-5 h-5" />
-                      Continue Learning
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-5 h-5" />
-                      Enroll Now
-                    </>
-                  )}
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
+                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+                  <ChevronLeft className="w-4 h-4" />
                 </Button>
               </div>
-
-              {/* Money-back guarantee */}
-              {!isEnrolled && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <Shield className="w-4 h-4" />
-                  <span>30-Day 110% Money Back Guarantee</span>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Right: Course card with video play - Desktop only */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="hidden lg:block"
-            >
-              <Card className="p-6 bg-card/80 backdrop-blur border-border/50">
-                {/* Course image with play button overlay */}
-                <div 
-                  className="relative w-full aspect-video rounded-lg mb-6 overflow-hidden cursor-pointer group"
-                  onClick={() => courseConfig?.trailerVideo && setShowVideoModal(true)}
-                >
-                  {courseConfig?.courseImage || course.cover_image_url ? (
-                    <img 
-                      src={courseConfig?.courseImage || course.cover_image_url} 
-                      alt={course.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                      <Music className="w-16 h-16 text-primary/30" />
-                    </div>
-                  )}
-                  
-                  {/* Play button overlay */}
-                  {courseConfig?.trailerVideo && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
-                      <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <Play className="w-8 h-8 text-primary fill-primary ml-1" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <h3 className="font-semibold mb-4">This Course Includes:</h3>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-center gap-3 text-sm">
-                    <FileText className="w-4 h-4 text-primary" />
-                    Synced Notation & Tab
-                  </li>
-                  <li className="flex items-center gap-3 text-sm">
-                    <FileText className="w-4 h-4 text-primary" />
-                    Downloadable PDF Notation
-                  </li>
-                  <li className="flex items-center gap-3 text-sm">
-                    <CheckCircle className="w-4 h-4 text-primary" />
-                    Lifetime Access
-                  </li>
-                  <li className="flex items-center gap-3 text-sm">
-                    <Users className="w-4 h-4 text-primary" />
-                    Student Community
-                  </li>
-                </ul>
-              </Card>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Section Progress Navigation */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="flex items-center gap-1 py-3 overflow-x-auto">
-              {SECTIONS.map((section, index) => (
-                <button
-                  key={section.id}
-                  onClick={() => scrollToSection(section.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
-                    activeSection === section.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                    activeSection === section.id
-                      ? 'bg-primary-foreground/20'
-                      : 'bg-muted'
-                  }`}>
-                    {index + 1}
-                  </span>
-                  {section.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Course Overview Section */}
-        <section 
-          ref={el => sectionRefs.current['overview'] = el}
-          className="py-20 bg-background"
-        >
-          <div className="max-w-6xl mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl font-bold mb-8 text-center">Could Your Guitar Sound More Melodic?</h2>
-              <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-                {courseConfig?.courseOverview ? (
-                  courseConfig.courseOverview.map((paragraph, i) => (
-                    <p key={i}>{paragraph}</p>
-                  ))
-                ) : (
-                  <>
-                    <p>
-                      Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
-                      comes from blending them into one seamless voice. The best players don't just play the 
-                      notes; they make the instrument sing.
-                    </p>
-                    <p>
-                      In Peru, music is a conversation, between past and present, the instruments, between 
-                      the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
-                      landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
-                      and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* Responsive styles image */}
-              {courseConfig && (
-                <div className="mt-16">
-                  {/* Desktop/Tablet image */}
-                  <img 
-                    src={courseConfig.stylesImageDesktop}
-                    alt="Peruvian Guitar Styles"
-                    className="hidden md:block w-full h-auto rounded-lg"
-                  />
-                  {/* Mobile image */}
-                  <img 
-                    src={courseConfig.stylesImageMobile}
-                    alt="Peruvian Guitar Styles"
-                    className="md:hidden w-full h-auto rounded-lg"
-                  />
-                </div>
-              )}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Meet Your Expert Section */}
-        {courseConfig?.expert && (
-          <section 
-            ref={el => sectionRefs.current['expert'] = el}
-            className="py-20 bg-background border-t border-border/30"
-          >
-            <div className="max-w-6xl mx-auto px-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-              >
-                <div className="grid md:grid-cols-3 gap-8 items-start">
-                  <div className="md:col-span-1">
-                    <img 
-                      src={courseConfig.expert.image}
-                      alt={courseConfig.expert.name}
-                      className="w-full aspect-[3/4] object-cover rounded-lg"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
-                    <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
-                    <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
-                      {courseConfig.expert.bio.map((paragraph, i) => (
-                        <p key={i}>{paragraph}</p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </section>
-        )}
-
-        {/* Resources Section */}
-        {courseConfig?.resources && (
-          <section 
-            ref={el => sectionRefs.current['resources'] = el}
-            className="py-20 bg-background border-t border-border/30"
-          >
-            <div className="max-w-6xl mx-auto px-6">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-              >
-                <h2 className="text-3xl font-bold mb-12 text-center">The Ultimate Learning Experience</h2>
-                <div className="grid md:grid-cols-2 gap-10">
-                  {courseConfig.resources.map((resource, i) => (
-                    <div key={i} className="flex flex-col md:flex-row gap-6 items-start">
-                      <img 
-                        src={resource.image}
-                        alt={resource.title}
-                        className="w-full md:w-52 h-auto object-contain rounded-lg shrink-0"
-                      />
-                      <div>
-                        <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
-                        <p className="text-muted-foreground">{resource.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-          </section>
-        )}
-
-        {/* Learning Outcomes */}
-        <section 
-          ref={el => sectionRefs.current['outcomes'] = el}
-          className="py-20 bg-background border-t border-border/30"
-        >
-          <div className="max-w-6xl mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl font-bold mb-4">Key Learning Outcomes</h2>
-              <p className="text-muted-foreground">By the end of this course, you will be able to:</p>
-            </motion.div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                {
-                  icon: Music,
-                  title: 'Master Essential Peruvian Guitar Styles',
-                  items: [
-                    'Develop an authentic feel for Huayño, Carnavalito, Waltz, Festejo, and Landó',
-                    'Learn strumming and fingerstyle techniques specific to each genre'
-                  ]
-                },
-                {
-                  icon: Award,
-                  title: 'Enhance Your Technical & Musical Skills',
-                  items: [
-                    'Build precision in syncopated rhythms and dynamic phrasing',
-                    'Combine chord-melody playing with intricate bass movements'
-                  ]
-                },
-                {
-                  icon: Headphones,
-                  title: 'Deepen Your Understanding of Peruvian Music',
-                  items: [
-                    'Explore the historical and cultural significance behind each style',
-                    "Understand the guitar's role in Andean, Creole, and Afro-Peruvian traditions"
-                  ]
-                },
-                {
-                  icon: CheckCircle,
-                  title: 'Play With Authenticity and Confidence',
-                  items: [
-                    'Learn directly from a specialist in Latin American folk guitar',
-                    'Develop a versatile repertoire suited for both solo and ensemble performance'
-                  ]
-                }
-              ].map((outcome, i) => (
-                <motion.div
-                  key={outcome.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <Card className="p-6 h-full">
-                    <div className="flex items-start gap-4">
-                      <div className="p-3 bg-primary/10 rounded-lg shrink-0">
-                        <outcome.icon className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold mb-3">{outcome.title}</h3>
-                        <ul className="space-y-2">
-                          {outcome.items.map((item, j) => (
-                            <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
-                              <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Course Content */}
-        <section 
-          ref={el => sectionRefs.current['content'] = el}
-          className="py-20 bg-background border-t border-border/30"
-        >
-          <div className="max-w-6xl mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl font-bold mb-4">Course Content</h2>
-            </motion.div>
-
-            <div className="max-w-4xl mx-auto">
-              <Accordion type="single" collapsible className="space-y-4">
-                {course.modules?.map((module, i) => (
-                  <motion.div
-                    key={module.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <AccordionItem value={module.id} className="border rounded-lg bg-card px-4">
-                      <AccordionTrigger className="hover:no-underline py-4">
-                        <div className="flex items-center gap-4 text-left">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
-                            <span className="font-bold text-primary">{i + 1}</span>
+              <div className="p-2">
+                <Accordion type="single" collapsible className="space-y-1">
+                  {course.modules?.map((module, i) => (
+                    <AccordionItem key={module.id} value={module.id} className="border-none">
+                      <AccordionTrigger className="hover:no-underline hover:bg-muted/50 px-3 py-2 rounded-md text-sm">
+                        <div className="flex items-center gap-3 text-left">
+                          <div className="w-7 h-7 bg-primary/10 rounded flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                            {i + 1}
                           </div>
-                          <div>
-                            <h3 className="font-semibold">{module.title}</h3>
-                            <p className="text-sm text-muted-foreground">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{module.title}</p>
+                            <p className="text-xs text-muted-foreground">
                               {module.lessons?.length || 0} lessons
-                              {module.estimated_duration && ` • ${module.estimated_duration} min`}
                             </p>
                           </div>
                         </div>
                       </AccordionTrigger>
-                      <AccordionContent className="pb-4">
-                        <div className="pl-14 space-y-2">
-                          {module.lessons?.map((lesson, j) => (
+                      <AccordionContent className="pb-1">
+                        <div className="ml-10 space-y-0.5">
+                          {module.lessons?.map((lesson) => (
                             <div 
                               key={lesson.id}
-                              className="flex items-center gap-3 py-2 text-sm"
+                              className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-default"
                             >
-                              <Play className="w-4 h-4 text-muted-foreground" />
-                              <span>{lesson.title}</span>
-                              {lesson.duration_seconds && (
-                                <span className="text-muted-foreground ml-auto">
-                                  {Math.floor(lesson.duration_seconds / 60)}:{String(lesson.duration_seconds % 60).padStart(2, '0')}
-                                </span>
-                              )}
+                              <Play className="w-3 h-3" />
+                              <span className="truncate">{lesson.title}</span>
                             </div>
                           ))}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
-                  </motion.div>
-                ))}
-              </Accordion>
-            </div>
-          </div>
-        </section>
+                  ))}
+                </Accordion>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
-        {/* FAQ Section */}
-        {courseConfig?.faqs && (
+        {/* Sidebar Toggle Button (when closed) */}
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg p-2 shadow-lg hidden lg:flex items-center justify-center hover:bg-muted transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Right Sidebar - Page Navigation */}
+        <nav className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col gap-2">
+          {SECTIONS.map((section, index) => (
+            <button
+              key={section.id}
+              onClick={() => scrollToSection(section.id)}
+              className={`group flex items-center gap-3 transition-all ${
+                activeSection === section.id ? 'opacity-100' : 'opacity-60 hover:opacity-100'
+              }`}
+            >
+              <span className={`text-xs font-medium text-right w-32 transition-colors ${
+                activeSection === section.id ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+              }`}>
+                {section.label}
+              </span>
+              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                activeSection === section.id 
+                  ? 'bg-primary scale-125' 
+                  : 'bg-muted-foreground/30 group-hover:bg-muted-foreground/50'
+              }`} />
+            </button>
+          ))}
+        </nav>
+
+        {/* Main Content */}
+        <main className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : ''} lg:mr-44`}>
+          {/* Hero Section */}
+          <section className="relative min-h-[70vh] flex items-center">
+            {/* Background Image */}
+            <div className="absolute inset-0">
+              {courseConfig?.heroBackground ? (
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `url(${courseConfig.heroBackground})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+              ) : course.cover_image_url && (
+                <div 
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    backgroundImage: `url(${course.cover_image_url})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+              )}
+            </div>
+
+            <div className="relative max-w-6xl mx-auto px-6 py-20 grid lg:grid-cols-[70%_30%] gap-8 items-center w-full">
+              {/* Left: Text content - 70% */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                    Guitar
+                  </span>
+                  <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
+                    {course.country}
+                  </span>
+                </div>
+
+                <h1 className="text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                  {course.title}
+                </h1>
+
+                <p className="text-lg text-muted-foreground mb-6 max-w-xl">
+                  {course.description || `From Huayño to the Peruvian Waltz, immerse yourself in Andean culture and develop new guitar talents.`}
+                </p>
+
+                {/* Course stats */}
+                <div className="flex flex-wrap gap-6 text-sm mb-6">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-primary" />
+                    <span>{course.modules?.length || 0} Modules</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Play className="w-4 h-4 text-primary" />
+                    <span>{totalLessons} Lessons</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <span>{Math.round(totalDuration / 60)} min</span>
+                  </div>
+                </div>
+
+                {/* Price display */}
+                {priceInfo && !isEnrolled && (
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-3xl font-bold">
+                        {formatPrice(priceInfo.price, priceInfo.currency)}
+                      </span>
+                      {priceInfo.discount_percentage > 0 && (
+                        <span className="text-lg text-muted-foreground line-through">
+                          ${product?.base_price_usd?.toFixed(2)} USD
+                        </span>
+                      )}
+                    </div>
+                    {priceInfo.discount_percentage > 0 && (
+                      <Badge variant="secondary" className="mt-2">
+                        {priceInfo.discount_percentage}% off in your region
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-4 mb-6">
+                  <Button size="lg" onClick={handleStartCourse} className="gap-2">
+                    {isEnrolled ? (
+                      <>
+                        <Play className="w-5 h-5" />
+                        Continue Learning
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-5 h-5" />
+                        Enroll Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Money-back guarantee */}
+                {!isEnrolled && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <Shield className="w-4 h-4" />
+                    <span>30-Day 110% Money Back Guarantee</span>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Right: Course card with video play - 30% */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="hidden lg:block"
+              >
+                <Card className="p-4 bg-card/80 backdrop-blur border-border/50">
+                  {/* Course image with play button overlay */}
+                  <div 
+                    className="relative w-full aspect-video rounded-lg mb-4 overflow-hidden cursor-pointer group"
+                    onClick={() => courseConfig?.trailerVideo && setShowVideoModal(true)}
+                  >
+                    {courseConfig?.courseImage || course.cover_image_url ? (
+                      <img 
+                        src={courseConfig?.courseImage || course.cover_image_url} 
+                        alt={course.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                        <Music className="w-12 h-12 text-primary/30" />
+                      </div>
+                    )}
+                    
+                    {/* Play button overlay */}
+                    {courseConfig?.trailerVideo && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-primary fill-primary ml-1" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <h3 className="font-semibold text-sm mb-3">This Course Includes:</h3>
+                  <ul className="space-y-2 text-xs">
+                    <li className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-primary" />
+                      Synced Notation & Tab
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <FileText className="w-3.5 h-3.5 text-primary" />
+                      Downloadable PDF Notation
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-primary" />
+                      Lifetime Access
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                      Student Community
+                    </li>
+                  </ul>
+                </Card>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Course Description Section */}
           <section 
-            ref={el => sectionRefs.current['faq'] = el}
-            className="py-20 bg-background border-t border-border/30"
+            ref={el => sectionRefs.current['overview'] = el}
+            className="py-20 bg-background"
           >
             <div className="max-w-4xl mx-auto px-6">
               <motion.div
@@ -771,73 +563,280 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <div className="text-center mb-12">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
-                    <HelpCircle className="w-5 h-5 text-primary" />
-                    <span className="text-primary font-medium">Common Questions</span>
-                  </div>
-                  <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+                <h2 className="text-3xl font-bold mb-8">Could Your Guitar Sound More Melodic?</h2>
+                <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+                  {courseConfig?.courseOverview ? (
+                    courseConfig.courseOverview.map((paragraph, i) => (
+                      <p key={i}>{paragraph}</p>
+                    ))
+                  ) : (
+                    <>
+                      <p>
+                        Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
+                        comes from blending them into one seamless voice. The best players don't just play the 
+                        notes; they make the instrument sing.
+                      </p>
+                      <p>
+                        In Peru, music is a conversation, between past and present, the instruments, between 
+                        the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
+                        landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
+                        and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
+                      </p>
+                    </>
+                  )}
                 </div>
 
-                <div className="space-y-4">
-                  {courseConfig.faqs.map((faq, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 10 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.1 }}
-                    >
-                      <Card className="overflow-hidden">
-                        <Accordion type="single" collapsible>
-                          <AccordionItem value={`faq-${i}`} className="border-none">
-                            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50">
-                              <span className="text-left font-semibold">{faq.question}</span>
-                            </AccordionTrigger>
-                            <AccordionContent className="px-6 pb-4">
-                              <p className="text-muted-foreground">{faq.answer}</p>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
+                {/* Responsive styles image */}
+                {courseConfig && (
+                  <div className="mt-12">
+                    {/* Desktop/Tablet image */}
+                    <img 
+                      src={courseConfig.stylesImageDesktop}
+                      alt="Peruvian Guitar Styles"
+                      className="hidden md:block w-full h-auto rounded-lg"
+                    />
+                    {/* Mobile image */}
+                    <img 
+                      src={courseConfig.stylesImageMobile}
+                      alt="Peruvian Guitar Styles"
+                      className="md:hidden w-full h-auto rounded-lg"
+                    />
+                  </div>
+                )}
               </motion.div>
             </div>
           </section>
-        )}
 
-        {/* CTA Section */}
-        <section className="py-24 bg-background border-t border-border/30">
-          <div className="max-w-6xl mx-auto px-6 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
+          {/* Key Learning Outcomes */}
+          <section 
+            ref={el => sectionRefs.current['outcomes'] = el}
+            className="py-20 bg-background border-t border-border/30"
+          >
+            <div className="max-w-4xl mx-auto px-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-center mb-12"
+              >
+                <h2 className="text-3xl font-bold mb-4">Key Learning Outcomes</h2>
+                <p className="text-muted-foreground">By the end of this course, you will be able to:</p>
+              </motion.div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {[
+                  {
+                    icon: Music,
+                    title: 'Master Essential Peruvian Guitar Styles',
+                    items: [
+                      'Develop an authentic feel for Huayño, Carnavalito, Waltz, Festejo, and Landó',
+                      'Learn strumming and fingerstyle techniques specific to each genre'
+                    ]
+                  },
+                  {
+                    icon: Award,
+                    title: 'Enhance Your Technical & Musical Skills',
+                    items: [
+                      'Build precision in syncopated rhythms and dynamic phrasing',
+                      'Combine chord-melody playing with intricate bass movements'
+                    ]
+                  },
+                  {
+                    icon: Headphones,
+                    title: 'Deepen Your Understanding of Peruvian Music',
+                    items: [
+                      'Explore the historical and cultural significance behind each style',
+                      "Understand the guitar's role in Andean, Creole, and Afro-Peruvian traditions"
+                    ]
+                  },
+                  {
+                    icon: CheckCircle,
+                    title: 'Play With Authenticity and Confidence',
+                    items: [
+                      'Learn directly from a specialist in Latin American folk guitar',
+                      'Develop a versatile repertoire suited for both solo and ensemble performance'
+                    ]
+                  }
+                ].map((outcome, i) => (
+                  <motion.div
+                    key={outcome.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <Card className="p-6 h-full">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-primary/10 rounded-lg shrink-0">
+                          <outcome.icon className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold mb-3">{outcome.title}</h3>
+                          <ul className="space-y-2">
+                            {outcome.items.map((item, j) => (
+                              <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Meet Your Tutor Section */}
+          {courseConfig?.expert && (
+            <section 
+              ref={el => sectionRefs.current['expert'] = el}
+              className="py-20 bg-background border-t border-border/30"
             >
-              <h2 className="text-3xl font-bold mb-4">Ready to Start Your Journey?</h2>
-              <p className="text-lg text-muted-foreground mb-8">
-                Join students from around the world learning authentic Peruvian guitar styles.
-              </p>
-              {priceInfo && !isEnrolled && (
-                <p className="text-2xl font-bold mb-4">
-                  {formatPrice(priceInfo.price, priceInfo.currency)}
+              <div className="max-w-4xl mx-auto px-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="grid md:grid-cols-3 gap-8 items-start">
+                    <div className="md:col-span-1">
+                      <img 
+                        src={courseConfig.expert.image}
+                        alt={courseConfig.expert.name}
+                        className="w-full aspect-[3/4] object-cover rounded-lg"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <h2 className="text-3xl font-bold mb-2">Meet Your Tutor</h2>
+                      <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
+                      <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
+                        {courseConfig.expert.bio.map((paragraph, i) => (
+                          <p key={i}>{paragraph}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+          )}
+
+          {/* The Ultimate Learning Experience Section */}
+          {courseConfig?.resources && (
+            <section 
+              ref={el => sectionRefs.current['resources'] = el}
+              className="py-20 bg-background border-t border-border/30"
+            >
+              <div className="max-w-4xl mx-auto px-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                >
+                  <h2 className="text-3xl font-bold mb-12 text-center">The Ultimate Learning Experience</h2>
+                  <div className="grid md:grid-cols-2 gap-10">
+                    {courseConfig.resources.map((resource, i) => (
+                      <div key={i} className="flex flex-col md:flex-row gap-6 items-start">
+                        <img 
+                          src={resource.image}
+                          alt={resource.title}
+                          className="w-full md:w-40 h-auto object-contain rounded-lg shrink-0"
+                        />
+                        <div>
+                          <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
+                          <p className="text-muted-foreground text-sm">{resource.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+          )}
+
+          {/* FAQ Section */}
+          {courseConfig?.faqs && (
+            <section 
+              ref={el => sectionRefs.current['faq'] = el}
+              className="py-20 bg-background border-t border-border/30"
+            >
+              <div className="max-w-3xl mx-auto px-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                >
+                  <div className="text-center mb-12">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
+                      <HelpCircle className="w-5 h-5 text-primary" />
+                      <span className="text-primary font-medium">Common Questions</span>
+                    </div>
+                    <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    {courseConfig.faqs.map((faq, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.1 }}
+                      >
+                        <Card className="overflow-hidden">
+                          <Accordion type="single" collapsible>
+                            <AccordionItem value={`faq-${i}`} className="border-none">
+                              <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50">
+                                <span className="text-left font-semibold">{faq.question}</span>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-6 pb-4">
+                                <p className="text-muted-foreground">{faq.answer}</p>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            </section>
+          )}
+
+          {/* CTA Section */}
+          <section className="py-24 bg-background border-t border-border/30">
+            <div className="max-w-4xl mx-auto px-6 text-center">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <h2 className="text-3xl font-bold mb-4">Ready to Start Your Journey?</h2>
+                <p className="text-lg text-muted-foreground mb-8">
+                  Join students from around the world learning authentic Peruvian guitar styles.
                 </p>
-              )}
-              <Button size="lg" onClick={handleStartCourse} className="gap-2">
-                <Play className="w-5 h-5" />
-                {isEnrolled ? 'Continue Learning' : 'Enroll Now'}
-              </Button>
-              {!isEnrolled && (
-                <p className="text-sm text-green-600 mt-4 flex items-center justify-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  30-Day 110% Money Back Guarantee
-                </p>
-              )}
-            </motion.div>
-          </div>
-        </section>
+                {priceInfo && !isEnrolled && (
+                  <p className="text-2xl font-bold mb-4">
+                    {formatPrice(priceInfo.price, priceInfo.currency)}
+                  </p>
+                )}
+                <Button size="lg" onClick={handleStartCourse} className="gap-2">
+                  <Play className="w-5 h-5" />
+                  {isEnrolled ? 'Continue Learning' : 'Enroll Now'}
+                </Button>
+                {!isEnrolled && (
+                  <p className="text-sm text-green-600 mt-4 flex items-center justify-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    30-Day 110% Money Back Guarantee
+                  </p>
+                )}
+              </motion.div>
+            </div>
+          </section>
+        </main>
       </div>
 
       {/* Video Modal */}
