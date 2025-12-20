@@ -41,10 +41,36 @@ function useStripePublishableKey(debugEnabled: boolean) {
   const [pk, setPkState] = useState<string | null>(ENV_STRIPE_PUBLISHABLE_KEY ?? null);
 
   useEffect(() => {
-    if (ENV_STRIPE_PUBLISHABLE_KEY) return;
     if (typeof window === 'undefined') return;
+
+    // 1) Prefer build-time key if present
+    if (ENV_STRIPE_PUBLISHABLE_KEY) return;
+
+    // 2) Then allow local override (debug mode persists the key)
     const stored = window.localStorage.getItem(STRIPE_PUBLISHABLE_KEY_STORAGE);
-    if (stored) setPkState(stored);
+    if (stored) {
+      setPkState(stored);
+      return;
+    }
+
+    // 3) Finally, fetch from backend (publishable key is safe to expose)
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-stripe-publishable-key');
+        if (error) throw error;
+        const fetched = (data as any)?.publishableKey as string | undefined;
+        if (!cancelled && fetched && fetched.startsWith('pk_')) {
+          setPkState(fetched);
+        }
+      } catch {
+        // If this fails, the UI will show the configuration message.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setPk = (next: string | null) => {
