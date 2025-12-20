@@ -711,7 +711,7 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold mb-8">Sing. Play. World.</h2>
+                <h2 className="text-3xl font-bold mb-8 text-center">Could Your Guitar Sound More Melodic?</h2>
                 <div className="prose prose-lg dark:prose-invert max-w-none mb-8 space-y-6">
                   {courseConfig?.courseOverview ? (
                     courseConfig.courseOverview.map((paragraph, i) => (
@@ -888,9 +888,9 @@ export default function CourseLanding() {
                   viewport={{ once: true }}
                 >
                   <h2 className="text-3xl font-bold mb-12 text-center">The Ultimate Learning Experience</h2>
-                  <div className="grid md:grid-cols-2 gap-10">
+                  <div className="grid md:grid-cols-2 gap-10 md:divide-x divide-border">
                     {courseConfig.resources.map((resource, i) => (
-                      <div key={i} className="flex flex-col md:flex-row gap-6 items-start">
+                      <div key={i} className={`flex flex-col md:flex-row gap-6 items-start ${i % 2 === 1 ? 'md:pl-10' : ''}`}>
                         <img 
                           src={resource.image}
                           alt={resource.title}
