@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,12 +26,20 @@ export function EventsEmbed({ section, isEditing, onUpdate, onDelete }: EventsEm
     setEditing(false);
   };
 
+  const sanitizeEmbedCode = (code: string): string => {
+    return DOMPurify.sanitize(code, {
+      ALLOWED_TAGS: ['iframe', 'blockquote', 'a', 'div', 'span', 'p', 'img'],
+      ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'class', 'style', 'href', 'target', 'rel', 'alt', 'data-widget-id', 'data-artist', 'allowfullscreen', 'loading'],
+      ALLOW_DATA_ATTR: true,
+    });
+  };
+
   const renderEmbed = () => {
     if (section.content?.embedCode) {
-      // For custom embed codes (Bandsintown, Songkick widgets)
+      // For custom embed codes (Bandsintown, Songkick widgets) - sanitized
       return (
         <div 
-          dangerouslySetInnerHTML={{ __html: section.content.embedCode }}
+          dangerouslySetInnerHTML={{ __html: sanitizeEmbedCode(section.content.embedCode) }}
           className="events-embed"
         />
       );
