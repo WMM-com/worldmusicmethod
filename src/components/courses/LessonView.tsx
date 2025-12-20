@@ -85,8 +85,8 @@ export function LessonView({
           )}
         </motion.div>
 
-        {/* Soundslice Embed - Test embed for first lesson */}
-        {lesson.order_index === 0 && (
+        {/* Soundslice Embed - if video_url is a short Soundslice ID (5-6 chars) */}
+        {lesson.video_url && lesson.video_url.length <= 10 && !lesson.video_url.includes('/') && !lesson.video_url.includes('.') && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -94,14 +94,15 @@ export function LessonView({
             className="mb-8"
           >
             <SoundsliceEmbed 
-              sliceIdOrUrl="w7kTc"
+              sliceIdOrUrl={lesson.video_url}
+              preset="drum"
               height={500}
             />
           </motion.div>
         )}
 
-        {/* Video Player */}
-        {lesson.video_url && (
+        {/* Video Player - only for actual video URLs */}
+        {lesson.video_url && (lesson.video_url.includes('/') || lesson.video_url.includes('.')) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}

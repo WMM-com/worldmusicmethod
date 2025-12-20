@@ -47,6 +47,12 @@ interface FAQItem {
   answer: string;
 }
 
+// Learning outcome type
+interface LearningOutcome {
+  title: string;
+  items: string[];
+}
+
 // Course-specific content configuration
 const COURSE_CONFIG: Record<string, {
   heroBackground: string;
@@ -55,6 +61,7 @@ const COURSE_CONFIG: Record<string, {
   stylesImageDesktop: string;
   stylesImageMobile: string;
   courseOverview: string[];
+  overviewHeading?: string;
   expert?: {
     name: string;
     image: string;
@@ -63,6 +70,8 @@ const COURSE_CONFIG: Record<string, {
   resources?: ResourceItem[];
   courseIncludes?: string[];
   faqs?: FAQItem[];
+  learningOutcomes?: LearningOutcome[];
+  instrumentTag?: string;
 }> = {
   // Peruvian Guitar Styles course config
   'peruvian-guitar-styles': {
@@ -71,6 +80,8 @@ const COURSE_CONFIG: Record<string, {
     trailerVideo: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Argentinian-Guitar-Trailer.mp4',
     stylesImageDesktop: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-7.png',
     stylesImageMobile: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-6.png',
+    overviewHeading: 'Could Your Guitar Sound More Melodic?',
+    instrumentTag: 'Guitar',
     courseOverview: [
       "Most guitarists think in terms of rhythm and lead, chords and melody - but true mastery comes from blending them into one seamless voice. The best players don't just play the notes; they make the instrument sing.",
       "In Peru, music is a conversation, between past and present, the instruments, between the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion. These styles aren't just techniques to learn, they're new ways to shape melody, control dynamics, and bring life to every note you play.",
@@ -80,6 +91,12 @@ const COURSE_CONFIG: Record<string, {
     courseIncludes: [
       'Synced Notation & Tab',
       'Downloadable PDF Notation'
+    ],
+    learningOutcomes: [
+      { title: 'Master Essential Peruvian Guitar Styles', items: ['Develop an authentic feel for Huayño, Carnavalito, Waltz, Festejo, and Landó', 'Learn strumming and fingerstyle techniques specific to each genre'] },
+      { title: 'Enhance Your Technical & Musical Skills', items: ['Build precision in syncopated rhythms and dynamic phrasing', 'Combine chord-melody playing with intricate bass movements'] },
+      { title: 'Deepen Your Understanding of Peruvian Music', items: ['Explore the historical and cultural significance behind each style', "Understand the guitar's role in Andean, Creole, and Afro-Peruvian traditions"] },
+      { title: 'Play With Authenticity and Confidence', items: ['Learn directly from a specialist in Latin American folk guitar', 'Develop a versatile repertoire suited for both solo and ensemble performance'] }
     ],
     expert: {
       name: 'Camilo Menjura',
@@ -130,11 +147,13 @@ const COURSE_CONFIG: Record<string, {
   },
   // Senegalese Drum Kit - Origins course config
   'senegalese-drum-kit-–-origins': {
-    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins.jpg',
+    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins-Hero.jpg',
     courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins.jpg',
     trailerVideo: '',
-    stylesImageDesktop: '',
-    stylesImageMobile: '',
+    stylesImageDesktop: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-Horizontal.png',
+    stylesImageMobile: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-Vertical.png',
+    overviewHeading: 'Senegalese Rhythm Mastery: Tradition, Technique & Translation',
+    instrumentTag: 'Drum Kit & Percussion',
     courseOverview: [
       "Senegalese drumming is one of the most complex and electrifying rhythmic traditions in the world. Its patterns are built on syncopations, accents, and phrasing that challenge even highly experienced African musicians not because of speed or power, but because of an intricate internal logic that is rarely taught in a clear, structured way. This course breaks that barrier. You'll learn the foundations of Wolof, Mandinka, and Diola rhythms with precise counting, notation, and drum tab so you can finally understand exactly how these grooves work and how they translate onto the drum kit.",
       "This course which is led by Matar Ndiongue, one of the most respected drummers from the Casamance region, takes you inside the rhythmic language behind styles such as Lamboul, Kaolack, Sankour Badin, Diambadong, Bougarabou, and Ekonkon. Each rhythm is demonstrated slowly, shown with the band, and supported by PDF notation, on-screen guidance, and close-up camera work.",
@@ -146,6 +165,12 @@ const COURSE_CONFIG: Record<string, {
       'Downloadable PDF Notation',
       'Full Band Masterclasses',
       'Professional Backing Tracks'
+    ],
+    learningOutcomes: [
+      { title: 'Master Core Senegalese Drum Kit Foundations', items: ['Identify and count the key rhythmic structures used in Wolof, Mandinka, and Diola traditions', 'Translate traditional percussion ensemble patterns into clear, playable drum-kit parts', 'Perform six essential rhythms: Lamboul, Kaolack, Sankour Badin, Diambadong, Bougarabou and Ekonkon with accuracy and stylistic awareness'] },
+      { title: 'Develop Technical & Musical Control', items: ['Build complete grooves step-by-step, from foundational pulses to full-speed performance', 'Apply variations, fills, signals, and transitions appropriate to each style', 'Maintain hi-hat pulse, internal subdivision, and ensemble alignment when playing complex syncopations'] },
+      { title: 'Lead & Communicate Within an Ensemble', items: ['Use cues, accents, and bakk-based call-and-response techniques to guide a band', 'Shape dynamics, energy, and phrasing to drive musical direction in non-Western song structures', 'Recognise when to add intensity, when to pull back, and how to support other instruments effectively'] },
+      { title: 'Understand Cultural & Historical Context', items: ['Explain how traditional percussion (Sabar, Serouba, Bougarabou) informs modern Senegalese drum-kit interpretation', 'Demonstrate awareness of regional distinctions between Wolof, Mandinka, and Diola rhythmic languages', 'Connect technical skills with the cultural origins and purpose of each rhythm'] }
     ],
     expert: {
       name: 'Matar Ndiongue',
@@ -627,7 +652,7 @@ export default function CourseLanding() {
               >
                 <div className="flex items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                    Guitar
+                    {courseConfig?.instrumentTag || 'Music'}
                   </span>
                   <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
                     {course.country}
@@ -777,7 +802,7 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold mb-8 text-center">Could Your Guitar Sound More Melodic?</h2>
+                <h2 className="text-3xl font-bold mb-8 text-center">{courseConfig?.overviewHeading || 'Course Overview'}</h2>
                 <div className="prose prose-lg dark:prose-invert max-w-none mb-8 space-y-6">
                   {courseConfig?.courseOverview ? (
                     courseConfig.courseOverview.map((paragraph, i) => (
@@ -804,20 +829,22 @@ export default function CourseLanding() {
                 </div>
 
                 {/* Responsive styles image */}
-                {courseConfig && (
+                {courseConfig?.stylesImageDesktop && (
                   <div className="mt-12">
                     {/* Desktop/Tablet image */}
                     <img 
                       src={courseConfig.stylesImageDesktop}
-                      alt="Peruvian Guitar Styles"
+                      alt={course.title}
                       className="hidden md:block w-full h-auto rounded-lg"
                     />
                     {/* Mobile image */}
-                    <img 
-                      src={courseConfig.stylesImageMobile}
-                      alt="Peruvian Guitar Styles"
-                      className="md:hidden w-full h-auto rounded-lg"
-                    />
+                    {courseConfig.stylesImageMobile && (
+                      <img 
+                        src={courseConfig.stylesImageMobile}
+                        alt={course.title}
+                        className="md:hidden w-full h-auto rounded-lg"
+                      />
+                    )}
                   </div>
                 )}
               </motion.div>
@@ -841,67 +868,43 @@ export default function CourseLanding() {
               </motion.div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                {[
-                  {
-                    icon: Music,
-                    title: 'Master Essential Peruvian Guitar Styles',
-                    items: [
-                      'Develop an authentic feel for Huayño, Carnavalito, Waltz, Festejo, and Landó',
-                      'Learn strumming and fingerstyle techniques specific to each genre'
-                    ]
-                  },
-                  {
-                    icon: Award,
-                    title: 'Enhance Your Technical & Musical Skills',
-                    items: [
-                      'Build precision in syncopated rhythms and dynamic phrasing',
-                      'Combine chord-melody playing with intricate bass movements'
-                    ]
-                  },
-                  {
-                    icon: Headphones,
-                    title: 'Deepen Your Understanding of Peruvian Music',
-                    items: [
-                      'Explore the historical and cultural significance behind each style',
-                      "Understand the guitar's role in Andean, Creole, and Afro-Peruvian traditions"
-                    ]
-                  },
-                  {
-                    icon: CheckCircle,
-                    title: 'Play With Authenticity and Confidence',
-                    items: [
-                      'Learn directly from a specialist in Latin American folk guitar',
-                      'Develop a versatile repertoire suited for both solo and ensemble performance'
-                    ]
-                  }
-                ].map((outcome, i) => (
-                  <motion.div
-                    key={outcome.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <Card className="p-6 h-full">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-primary/10 rounded-lg shrink-0">
-                          <outcome.icon className="w-6 h-6 text-primary" />
+                {(courseConfig?.learningOutcomes || [
+                  { title: 'Master Core Techniques', items: ['Develop fundamental skills for this style', 'Learn essential patterns and approaches'] },
+                  { title: 'Enhance Your Musical Skills', items: ['Build precision in rhythmic and dynamic phrasing', 'Combine various techniques effectively'] },
+                  { title: 'Deepen Your Understanding', items: ['Explore the cultural significance behind each style', 'Understand the role of your instrument in this tradition'] },
+                  { title: 'Play With Authenticity', items: ['Learn directly from specialist instructors', 'Develop a versatile repertoire'] }
+                ]).map((outcome, i) => {
+                  const icons = [Music, Award, Headphones, CheckCircle];
+                  const IconComponent = icons[i % icons.length];
+                  return (
+                    <motion.div
+                      key={outcome.title}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                    >
+                      <Card className="p-6 h-full">
+                        <div className="flex items-start gap-4">
+                          <div className="p-3 bg-primary/10 rounded-lg shrink-0">
+                            <IconComponent className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold mb-3">{outcome.title}</h3>
+                            <ul className="space-y-2">
+                              {outcome.items.map((item, j) => (
+                                <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                  <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold mb-3">{outcome.title}</h3>
-                          <ul className="space-y-2">
-                            {outcome.items.map((item, j) => (
-                              <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
+                      </Card>
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           </section>
