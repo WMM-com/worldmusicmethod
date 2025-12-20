@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, Check } from 'lucide-react';
@@ -23,6 +23,31 @@ import {
 } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+
+const hslFromCssVar = (varName: string, fallbackHsl: string) => {
+  if (typeof window === 'undefined') return fallbackHsl;
+  const rootVal = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  const bodyVal = getComputedStyle(document.body).getPropertyValue(varName).trim();
+  const val = rootVal || bodyVal;
+  return val ? `hsl(${val})` : fallbackHsl;
+};
+
+const getStripeCardElementStyle = () =>
+  ({
+    base: {
+      fontSize: '16px',
+      fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      color: hslFromCssVar('--foreground', 'hsl(0 0% 10%)'),
+      '::placeholder': {
+        color: hslFromCssVar('--muted-foreground', 'hsl(0 0% 45%)'),
+      },
+      iconColor: hslFromCssVar('--secondary', 'hsl(54 82% 44%)'),
+    },
+    invalid: {
+      color: hslFromCssVar('--destructive', 'hsl(355 74% 43%)'),
+      iconColor: hslFromCssVar('--destructive', 'hsl(355 74% 43%)'),
+    },
+  }) as const;
 
 type PaymentMethod = 'card' | 'paypal';
 
@@ -189,6 +214,25 @@ const StripeCardForm = ({
   const [error, setError] = useState<string | null>(null);
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [canMakePayment, setCanMakePayment] = useState(false);
+  const [themeKey, setThemeKey] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const observer = new MutationObserver(() => setThemeKey((k) => k + 1));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const cardElementOptions = useMemo(
+    () => ({
+      style: getStripeCardElementStyle(),
+      hidePostalCode: false,
+    }),
+    [themeKey]
+  );
 
   // Create payment intent
   useEffect(() => {
