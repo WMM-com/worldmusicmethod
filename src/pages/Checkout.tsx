@@ -15,11 +15,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
 import { 
-  Elements, 
-  CardElement, 
+  Elements,
+  CardNumberElement,
+  CardExpiryElement,
+  CardCvcElement,
   PaymentRequestButtonElement,
-  useStripe, 
-  useElements 
+  useStripe,
+  useElements,
 } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
@@ -212,9 +214,26 @@ const StripeCardForm = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cardFieldError, setCardFieldError] = useState<string | null>(null);
   const [paymentRequest, setPaymentRequest] = useState<any>(null);
   const [canMakePayment, setCanMakePayment] = useState(false);
   const [themeKey, setThemeKey] = useState(0);
+
+  const [elementsDebug, setElementsDebug] = useState(() => ({
+    number: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
+    expiry: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
+    cvc: { mounted: false, focused: false, complete: false, empty: true, error: null as string | null },
+  }));
+
+  const updateDebug = (
+    key: 'number' | 'expiry' | 'cvc',
+    patch: Partial<(typeof elementsDebug)['number']>
+  ) => {
+    setElementsDebug((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], ...patch },
+    }));
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -226,10 +245,9 @@ const StripeCardForm = ({
     return () => observer.disconnect();
   }, []);
 
-  const cardElementOptions = useMemo(
+  const stripeElementOptions = useMemo(
     () => ({
       style: getStripeCardElementStyle(),
-      hidePostalCode: false,
     }),
     [themeKey]
   );
@@ -321,7 +339,7 @@ const StripeCardForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!stripe || !elements || !clientSecret) {
       return;
     }
@@ -333,14 +351,15 @@ const StripeCardForm = ({
 
     setIsProcessing(true);
     setError(null);
+    setCardFieldError(null);
 
     try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Card element not found');
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) throw new Error('Card number element not found');
 
       const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: cardElement,
+          card: cardNumberElement,
           billing_details: {
             name: fullName || email,
             email: email,
@@ -412,32 +431,83 @@ const StripeCardForm = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {import.meta.env.DEV && (
+          <div className="rounded-md border border-border bg-card/60 p-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-medium text-foreground">Stripe debug (dev)</p>
+              <p className="text-muted-foreground">
+                stripe: <span className="text-foreground">{stripe ? 'ready' : 'not-ready'}</span> · elements:{' '}
+                <span className="text-foreground">{elements ? 'ready' : 'not-ready'}</span> · clientSecret:{' '}
+                <span className="text-foreground">{clientSecret ? 'set' : 'unset'}</span>
+              </p>
+            </div>
+            <div className="mt-2 grid gap-1 text-muted-foreground">
+              {(['number', 'expiry', 'cvc'] as const).map((k) => (
+                <div key={k} className="flex flex-wrap items-center gap-2">
+                  <span className="w-14 uppercase">{k}</span>
+                  <span>mounted: {elementsDebug[k].mounted ? 'yes' : 'no'}</span>
+                  <span>focused: {elementsDebug[k].focused ? 'yes' : 'no'}</span>
+                  <span>empty: {elementsDebug[k].empty ? 'yes' : 'no'}</span>
+                  <span>complete: {elementsDebug[k].complete ? 'yes' : 'no'}</span>
+                  {elementsDebug[k].error && <span className="text-destructive">error: {elementsDebug[k].error}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
-          <Label>Card Details</Label>
-          <div className="p-3 border border-input rounded-md bg-background min-h-[42px]">
-            <CardElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: '16px',
-                    color: '#f5f5f5',
-                    fontFamily: 'system-ui, sans-serif',
-                    '::placeholder': { color: '#6b7280' },
-                    iconColor: '#CCC016',
-                  },
-                  invalid: { 
-                    color: '#ef4444',
-                    iconColor: '#ef4444',
-                  },
-                },
-                hidePostalCode: false,
+          <Label>Card number</Label>
+          <div className="p-3 border border-input rounded-md bg-background min-h-[42px] cursor-text">
+            <CardNumberElement
+              options={stripeElementOptions}
+              onReady={() => updateDebug('number', { mounted: true })}
+              onFocus={() => updateDebug('number', { focused: true })}
+              onBlur={() => updateDebug('number', { focused: false })}
+              onChange={(e) => {
+                updateDebug('number', { complete: e.complete, empty: e.empty, error: e.error?.message ?? null });
+                setCardFieldError(e.error?.message ?? null);
               }}
             />
           </div>
         </div>
 
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Expiry</Label>
+            <div className="p-3 border border-input rounded-md bg-background min-h-[42px] cursor-text">
+              <CardExpiryElement
+                options={stripeElementOptions}
+                onReady={() => updateDebug('expiry', { mounted: true })}
+                onFocus={() => updateDebug('expiry', { focused: true })}
+                onBlur={() => updateDebug('expiry', { focused: false })}
+                onChange={(e) => {
+                  updateDebug('expiry', { complete: e.complete, empty: e.empty, error: e.error?.message ?? null });
+                  setCardFieldError(e.error?.message ?? null);
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>CVC</Label>
+            <div className="p-3 border border-input rounded-md bg-background min-h-[42px] cursor-text">
+              <CardCvcElement
+                options={stripeElementOptions}
+                onReady={() => updateDebug('cvc', { mounted: true })}
+                onFocus={() => updateDebug('cvc', { focused: true })}
+                onBlur={() => updateDebug('cvc', { focused: false })}
+                onChange={(e) => {
+                  updateDebug('cvc', { complete: e.complete, empty: e.empty, error: e.error?.message ?? null });
+                  setCardFieldError(e.error?.message ?? null);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {(cardFieldError || error) && (
+          <p className="text-sm text-destructive">{cardFieldError || error}</p>
         )}
 
         <Button
