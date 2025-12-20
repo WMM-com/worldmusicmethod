@@ -1,27 +1,101 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
+/**
+ * Instrument preset types for Soundslice embeds.
+ * Each preset applies specific settings optimized for that instrument.
+ * 
+ * To change settings for ALL lessons of a type, just edit the preset below.
+ */
+export type SoundslicePreset = 
+  | 'guitar'      // Guitar, bass, vocals
+  | 'bass'        // Same as guitar
+  | 'vocals'      // Same as guitar
+  | 'flute'       // No fretboard, no transposition
+  | 'drum'        // No transposition
+  | 'backing'     // Backing tracks - minimal UI
+  | 'default';    // Basic settings
+
+/**
+ * Preset configurations for each instrument type.
+ * Edit these to change settings for ALL embeds using that preset.
+ */
+const SOUNDSLICE_PRESETS: Record<SoundslicePreset, Record<string, string | number>> = {
+  // Guitar, Bass, Vocals - Side video layout with fretboard
+  guitar: {
+    enable_waveform: 0,
+    force_side_video: 1,
+    side_video_width: '60p',
+    layout: 1,
+    narrow_video_height: '50p',
+  },
+  bass: {
+    enable_waveform: 0,
+    force_side_video: 1,
+    side_video_width: '60p',
+    layout: 1,
+    narrow_video_height: '50p',
+  },
+  vocals: {
+    enable_waveform: 0,
+    force_side_video: 1,
+    side_video_width: '60p',
+    layout: 1,
+    narrow_video_height: '50p',
+  },
+  // Flute - No fretboard or transposition
+  flute: {
+    enable_waveform: 0,
+    enable_fretboard: 0,
+    enable_transposition: 0,
+    force_side_video: 1,
+    side_video_width: '60p',
+    layout: 1,
+    narrow_video_height: '50p',
+  },
+  // Drum - No transposition
+  drum: {
+    enable_waveform: 0,
+    force_side_video: 1,
+    side_video_width: '60p',
+    layout: 1,
+    narrow_video_height: '50p',
+    enable_transposition: 0,
+  },
+  // Backing tracks - Minimal UI with settings panel
+  backing: {
+    enable_waveform: 0,
+    enable_fretboard: 0,
+    settings: 1,
+  },
+  // Default - basic embed
+  default: {},
+};
+
 interface SoundsliceEmbedProps {
   /** The Soundslice slice ID or full embed URL */
   sliceIdOrUrl: string;
+  /** Instrument preset to apply (determines default settings) */
+  preset?: SoundslicePreset;
   /** Height of the embed in pixels */
   height?: number;
-  /** Additional URL parameters */
+  /** Additional URL parameters (override preset settings) */
   params?: Record<string, string | number | boolean>;
   /** Custom CSS classes for the container */
   className?: string;
 }
 
 /**
- * Soundslice embed component with automatic user ID tracking.
+ * Soundslice embed component with automatic user ID tracking and instrument presets.
  * 
- * Passes the authenticated user's ID to Soundslice via the `u` parameter
- * for accurate unique user counting in their Licensing plan.
+ * Presets provide centralized settings for each instrument type.
+ * To change all guitar lessons, just edit SOUNDSLICE_PRESETS.guitar above.
  * 
  * @see https://soundslice.com/help/en/embedding/basics/231/unique-user-counting
  */
 export function SoundsliceEmbed({
   sliceIdOrUrl,
+  preset = 'default',
   height = 500,
   params = {},
   className = ''
@@ -42,23 +116,28 @@ export function SoundsliceEmbed({
       baseUrl = `https://www.soundslice.com/slices/${sliceIdOrUrl}/embed`;
     }
 
-    // Build URL parameters
+    // Build URL parameters - start with preset, then override with custom params
+    const presetParams = SOUNDSLICE_PRESETS[preset] || {};
     const urlParams = new URLSearchParams();
     
+    // Apply preset parameters first
+    Object.entries(presetParams).forEach(([key, value]) => {
+      urlParams.set(key, String(value));
+    });
+
     // Add user ID for unique user tracking (recommended by Soundslice)
-    // Using the Supabase user ID which is unique and non-PII
     if (user?.id) {
       urlParams.set('u', user.id);
     }
 
-    // Add any additional custom parameters
+    // Override with any custom parameters
     Object.entries(params).forEach(([key, value]) => {
       urlParams.set(key, String(value));
     });
 
     const queryString = urlParams.toString();
     return queryString ? `${baseUrl}/?${queryString}` : `${baseUrl}/`;
-  }, [sliceIdOrUrl, user?.id, params]);
+  }, [sliceIdOrUrl, preset, user?.id, params]);
 
   return (
     <div className={`rounded-2xl overflow-hidden shadow-2xl bg-card ${className}`}>
