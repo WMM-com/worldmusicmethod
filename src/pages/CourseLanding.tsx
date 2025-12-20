@@ -147,11 +147,11 @@ const COURSE_CONFIG: Record<string, {
   },
   // Senegalese Drum Kit - Origins course config
   'senegalese-drum-kit-–-origins': {
-    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins-Hero.jpg',
-    courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Senegalese-Drum-Kit-Origins.jpg',
-    trailerVideo: '',
-    stylesImageDesktop: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-Horizontal.png',
-    stylesImageMobile: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-Vertical.png',
+    heroBackground: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/Cover-Image-2-scaled.jpg',
+    courseImage: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/Cover-Image-2-scaled.jpg',
+    trailerVideo: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/SENEGALESE-DRUM-KIT-TRAILER.mp4',
+    stylesImageDesktop: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/New-Project-4-1.png',
+    stylesImageMobile: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/Senegalese-Drum-Kit-Rhythms-Horizontal-Vertical-1.png',
     overviewHeading: 'Senegalese Rhythm Mastery: Tradition, Technique & Translation',
     instrumentTag: 'Drum Kit & Percussion',
     courseOverview: [
@@ -174,7 +174,7 @@ const COURSE_CONFIG: Record<string, {
     ],
     expert: {
       name: 'Matar Ndiongue',
-      image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Matar-Ndiongue.jpg',
+      image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/Meet-Your-Tutor.jpg',
       bio: [
         "Matar Ndiongue is one of the leading drum-kit interpreters of Senegalese traditional rhythms, known for his rare ability to translate complex Wolof, Mandinka, and Diola percussion patterns onto the modern drum kit with clarity, authenticity, and power.",
         "Born and raised in Ziguinchor, Casamance, Matar began his musical life as a traditional percussionist, performing at baptisms, weddings, naming ceremonies, and community gatherings. His deep grounding in Sabar, Serouba, Bougarabou, and other traditions shaped his instinctive understanding of pulse, feel, and communication.",
@@ -184,17 +184,17 @@ const COURSE_CONFIG: Record<string, {
     },
     resources: [
       {
-        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-1.png',
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/main-monitor.png',
         title: 'Senegalese Drum Kit - Origins',
         description: 'Comprehensive lessons covering six essential rhythms: Lamboul, Kaolack, Sankour Badin, Diambadong, Bougarabou and Ekonkon with step-by-step instruction.'
       },
       {
-        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-2.png',
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/software-box.png',
         title: 'Interactive On-screen Notation',
         description: 'Access on-screen notation, tablature, slow motion and more with our innovative Soundslice integration.'
       },
       {
-        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Senegalese-Drum-Kit-3.png',
+        image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2025/11/masterclasss.png',
         title: 'Full Band Masterclass',
         description: 'See how Senegalese bands connect and communicate on stage with masterclass footage filmed in Senegal.'
       },
