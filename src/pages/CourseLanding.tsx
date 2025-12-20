@@ -20,7 +20,6 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourse } from '@/hooks/useCourses';
@@ -364,7 +363,7 @@ export default function CourseLanding() {
           </div>
         </section>
 
-        {/* Description Section with Tabs for Content/Expert */}
+        {/* Course Overview Section */}
         <section className="py-16 bg-background">
           <div className="max-w-6xl mx-auto px-6">
             <motion.div
@@ -372,101 +371,103 @@ export default function CourseLanding() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <Tabs defaultValue="course" className="w-full">
-                <TabsList className="mb-8">
-                  <TabsTrigger value="course">Course Overview</TabsTrigger>
-                  {courseConfig?.expert && (
-                    <TabsTrigger value="expert">Meet Your Expert</TabsTrigger>
-                  )}
-                  {courseConfig?.resources && (
-                    <TabsTrigger value="resources">Resources</TabsTrigger>
-                  )}
-                </TabsList>
+              <h2 className="text-3xl font-bold mb-6 text-center">Could Your Guitar Sound More Melodic?</h2>
+              <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
+                <p>
+                  Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
+                  comes from blending them into one seamless voice. The best players don't just play the 
+                  notes; they make the instrument sing.
+                </p>
+                <p>
+                  In Peru, music is a conversation, between past and present, the instruments, between 
+                  the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
+                  landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
+                  and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
+                </p>
+              </div>
 
-                <TabsContent value="course">
-                  <div className="w-full">
-                    <h2 className="text-3xl font-bold mb-6 text-center">Could Your Guitar Sound More Melodic?</h2>
-                    <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-                      <p>
-                        Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
-                        comes from blending them into one seamless voice. The best players don't just play the 
-                        notes; they make the instrument sing.
-                      </p>
-                      <p>
-                        In Peru, music is a conversation, between past and present, the instruments, between 
-                        the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
-                        landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
-                        and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Responsive styles image */}
-                  {courseConfig && (
-                    <div className="mt-8">
-                      {/* Desktop/Tablet image */}
-                      <img 
-                        src={courseConfig.stylesImageDesktop}
-                        alt="Peruvian Guitar Styles"
-                        className="hidden md:block w-full h-auto rounded-lg"
-                      />
-                      {/* Mobile image */}
-                      <img 
-                        src={courseConfig.stylesImageMobile}
-                        alt="Peruvian Guitar Styles"
-                        className="md:hidden w-full h-auto rounded-lg"
-                      />
-                    </div>
-                  )}
-                </TabsContent>
-
-                {courseConfig?.expert && (
-                  <TabsContent value="expert">
-                    <div className="grid md:grid-cols-3 gap-8 items-start">
-                      <div className="md:col-span-1">
-                        <img 
-                          src={courseConfig.expert.image}
-                          alt={courseConfig.expert.name}
-                          className="w-full aspect-[3/4] object-cover rounded-lg"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
-                        <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
-                        <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
-                          {courseConfig.expert.bio.map((paragraph, i) => (
-                            <p key={i}>{paragraph}</p>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </TabsContent>
-                )}
-
-                {courseConfig?.resources && (
-                  <TabsContent value="resources">
-                    <h2 className="text-3xl font-bold mb-8 text-center">The Ultimate Learning Experience</h2>
-                    <div className="grid md:grid-cols-2 gap-8">
-                      {courseConfig.resources.map((resource, i) => (
-                        <div key={i} className="flex gap-6 items-start">
-                          <img 
-                            src={resource.image}
-                            alt={resource.title}
-                            className="w-32 h-32 object-cover rounded-lg shrink-0"
-                          />
-                          <div>
-                            <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
-                            <p className="text-muted-foreground">{resource.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-                )}
-              </Tabs>
+              {/* Responsive styles image */}
+              {courseConfig && (
+                <div className="mt-12">
+                  {/* Desktop/Tablet image */}
+                  <img 
+                    src={courseConfig.stylesImageDesktop}
+                    alt="Peruvian Guitar Styles"
+                    className="hidden md:block w-full h-auto rounded-lg"
+                  />
+                  {/* Mobile image */}
+                  <img 
+                    src={courseConfig.stylesImageMobile}
+                    alt="Peruvian Guitar Styles"
+                    className="md:hidden w-full h-auto rounded-lg"
+                  />
+                </div>
+              )}
             </motion.div>
           </div>
         </section>
+
+        {/* Meet Your Expert Section */}
+        {courseConfig?.expert && (
+          <section className="py-16 bg-background border-t border-border/30">
+            <div className="max-w-6xl mx-auto px-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <div className="grid md:grid-cols-3 gap-8 items-start">
+                  <div className="md:col-span-1">
+                    <img 
+                      src={courseConfig.expert.image}
+                      alt={courseConfig.expert.name}
+                      className="w-full aspect-[3/4] object-cover rounded-lg"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
+                    <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
+                    <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
+                      {courseConfig.expert.bio.map((paragraph, i) => (
+                        <p key={i}>{paragraph}</p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </section>
+        )}
+
+        {/* Resources Section */}
+        {courseConfig?.resources && (
+          <section className="py-16 bg-background border-t border-border/30">
+            <div className="max-w-6xl mx-auto px-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <h2 className="text-3xl font-bold mb-8 text-center">The Ultimate Learning Experience</h2>
+                <div className="grid md:grid-cols-2 gap-8">
+                  {courseConfig.resources.map((resource, i) => (
+                    <div key={i} className="flex gap-6 items-start">
+                      <img 
+                        src={resource.image}
+                        alt={resource.title}
+                        className="w-40 h-auto object-contain rounded-lg shrink-0"
+                      />
+                      <div>
+                        <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
+                        <p className="text-muted-foreground">{resource.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          </section>
+        )}
 
         {/* Learning Outcomes */}
         <section className="py-16 bg-background">
