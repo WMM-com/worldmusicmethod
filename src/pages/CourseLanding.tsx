@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
@@ -13,7 +13,9 @@ import {
   Headphones,
   ShoppingCart,
   Shield,
-  X
+  X,
+  FileText,
+  HelpCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -35,6 +37,12 @@ interface ResourceItem {
   description: string;
 }
 
+// FAQ item type
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
 // Course-specific content configuration
 const COURSE_CONFIG: Record<string, {
   heroBackground: string;
@@ -42,12 +50,15 @@ const COURSE_CONFIG: Record<string, {
   trailerVideo: string;
   stylesImageDesktop: string;
   stylesImageMobile: string;
+  courseOverview: string[];
   expert?: {
     name: string;
     image: string;
     bio: string[];
   };
   resources?: ResourceItem[];
+  courseIncludes?: string[];
+  faqs?: FAQItem[];
 }> = {
   // Peruvian Guitar Styles course config
   'peruvian-guitar-styles': {
@@ -56,6 +67,16 @@ const COURSE_CONFIG: Record<string, {
     trailerVideo: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Argentinian-Guitar-Trailer.mp4',
     stylesImageDesktop: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-7.png',
     stylesImageMobile: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Peruvian-Guitar-Styles-6.png',
+    courseOverview: [
+      "Most guitarists think in terms of rhythm and lead, chords and melody - but true mastery comes from blending them into one seamless voice. The best players don't just play the notes; they make the instrument sing.",
+      "In Peru, music is a conversation, between past and present, the instruments, between the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion. These styles aren't just techniques to learn, they're new ways to shape melody, control dynamics, and bring life to every note you play.",
+      "Led by award-winning guitarist Camilo Menjura, this course breaks down the essential techniques of Peruvian guitar, translating the energy of full ensembles into a solo guitar approach. You'll develop a deeper understanding of phrasing, rhythmic flexibility, and harmonic movement while learning rich, expressive arrangements from one of the most musically diverse regions in the world.",
+      "If you're ready to expand your musical vocabulary, unlock new levels of expression, and transform the way you approach the guitar, this course is for you."
+    ],
+    courseIncludes: [
+      'Synced Notation & Tab',
+      'Downloadable PDF Notation'
+    ],
     expert: {
       name: 'Camilo Menjura',
       image: 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/05/Camilo-Menjura.jpg',
@@ -87,9 +108,33 @@ const COURSE_CONFIG: Record<string, {
         title: 'Festejo Masterclass',
         description: "Camilo Menjura's Festejo masterclass will take you deeper into understanding this coastal genre known for accompanying one of Peru's famed dance styles."
       }
+    ],
+    faqs: [
+      {
+        question: 'Is there PDF notation and tab?',
+        answer: 'Yes, each course includes notation and tab synchronised to the video lessons, which can also be downloaded as PDFs.'
+      },
+      {
+        question: 'How long do I have to complete the course?',
+        answer: 'Once enrolled, you have lifetime access, so you can complete the course at your own pace.'
+      },
+      {
+        question: 'Do you offer memberships?',
+        answer: 'Yes! If you\'d like access to all of our courses, you can start a membership.'
+      }
     ]
   }
 };
+
+// Section IDs for navigation
+const SECTIONS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'expert', label: 'Expert' },
+  { id: 'resources', label: 'Resources' },
+  { id: 'outcomes', label: 'Outcomes' },
+  { id: 'content', label: 'Content' },
+  { id: 'faq', label: 'FAQ' }
+];
 
 // Helper to get config by course title/slug
 const getCourseConfig = (courseTitle?: string) => {
@@ -106,15 +151,38 @@ export default function CourseLanding() {
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [activeSection, setActiveSection] = useState('overview');
+
+  // Section refs for scroll tracking
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Get course-specific config
   const courseConfig = getCourseConfig(course?.title);
 
-  // Show sticky CTA when scrolled past hero
+  // Show sticky CTA when scrolled past hero and track active section
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
       setShowStickyCTA(scrollY > 300);
+
+      // Find active section
+      const sectionPositions = SECTIONS.map(section => {
+        const el = sectionRefs.current[section.id];
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          return { id: section.id, top: rect.top };
+        }
+        return null;
+      }).filter(Boolean) as { id: string; top: number }[];
+
+      // Find section closest to top of viewport (with offset)
+      const offset = 200;
+      for (let i = sectionPositions.length - 1; i >= 0; i--) {
+        if (sectionPositions[i].top <= offset) {
+          setActiveSection(sectionPositions[i].id);
+          break;
+        }
+      }
     };
 
     handleScroll();
@@ -122,6 +190,15 @@ export default function CourseLanding() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const scrollToSection = (sectionId: string) => {
+    const el = sectionRefs.current[sectionId];
+    if (el) {
+      const offset = 100;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  };
 
   // Fetch product for this course
   const { data: product } = useQuery({
@@ -242,33 +319,12 @@ export default function CourseLanding() {
                 {course.title}
               </h1>
 
-              <p className="text-lg text-muted-foreground mb-8 max-w-xl">
+              <p className="text-lg text-muted-foreground mb-6 max-w-xl">
                 {course.description || `From Huayño to the Peruvian Waltz, immerse yourself in Andean culture and develop new guitar talents.`}
               </p>
 
-              <div className="flex flex-wrap gap-4 mb-8">
-                <Button size="lg" onClick={handleStartCourse} className="gap-2">
-                  {isEnrolled ? (
-                    <>
-                      <Play className="w-5 h-5" />
-                      Continue Learning
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-5 h-5" />
-                      {priceInfo ? `Enroll for ${formatPrice(priceInfo.price, priceInfo.currency)}` : 'Enroll Now'}
-                    </>
-                  )}
-                </Button>
-                {priceInfo && priceInfo.discount_percentage > 0 && !isEnrolled && (
-                  <Badge variant="secondary" className="self-center">
-                    {priceInfo.discount_percentage}% off in your region
-                  </Badge>
-                )}
-              </div>
-
-              {/* Course stats */}
-              <div className="flex flex-wrap gap-6 text-sm">
+              {/* Course stats - only show here */}
+              <div className="flex flex-wrap gap-6 text-sm mb-6">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-primary" />
                   <span>{course.modules?.length || 0} Modules</span>
@@ -282,9 +338,54 @@ export default function CourseLanding() {
                   <span>{Math.round(totalDuration / 60)} min</span>
                 </div>
               </div>
+
+              {/* Price display */}
+              {priceInfo && !isEnrolled && (
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-3xl font-bold">
+                      {formatPrice(priceInfo.price, priceInfo.currency)}
+                    </span>
+                    {priceInfo.discount_percentage > 0 && (
+                      <span className="text-lg text-muted-foreground line-through">
+                        ${product?.base_price_usd?.toFixed(2)} USD
+                      </span>
+                    )}
+                  </div>
+                  {priceInfo.discount_percentage > 0 && (
+                    <Badge variant="secondary" className="mt-2">
+                      {priceInfo.discount_percentage}% off in your region
+                    </Badge>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-4 mb-6">
+                <Button size="lg" onClick={handleStartCourse} className="gap-2">
+                  {isEnrolled ? (
+                    <>
+                      <Play className="w-5 h-5" />
+                      Continue Learning
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-5 h-5" />
+                      Enroll Now
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Money-back guarantee */}
+              {!isEnrolled && (
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <Shield className="w-4 h-4" />
+                  <span>30-Day 110% Money Back Guarantee</span>
+                </div>
+              )}
             </motion.div>
 
-            {/* Right: Course card with video play */}
+            {/* Right: Course card with video play - Desktop only */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -319,15 +420,15 @@ export default function CourseLanding() {
                   )}
                 </div>
 
-                <h3 className="font-semibold mb-4">Course Includes</h3>
+                <h3 className="font-semibold mb-4">This Course Includes:</h3>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-center gap-3 text-sm">
-                    <BookOpen className="w-4 h-4 text-primary" />
-                    {course.modules?.length || 0} Modules
+                    <FileText className="w-4 h-4 text-primary" />
+                    Synced Notation & Tab
                   </li>
                   <li className="flex items-center gap-3 text-sm">
-                    <Play className="w-4 h-4 text-primary" />
-                    {totalLessons} Video Lessons
+                    <FileText className="w-4 h-4 text-primary" />
+                    Downloadable PDF Notation
                   </li>
                   <li className="flex items-center gap-3 text-sm">
                     <CheckCircle className="w-4 h-4 text-primary" />
@@ -338,57 +439,76 @@ export default function CourseLanding() {
                     Student Community
                   </li>
                 </ul>
-
-                {priceInfo && !isEnrolled && (
-                  <div className="mb-4 text-center">
-                    <p className="text-2xl font-bold">
-                      {formatPrice(priceInfo.price, priceInfo.currency)}
-                    </p>
-                    {priceInfo.discount_percentage > 0 && (
-                      <p className="text-sm text-muted-foreground line-through">
-                        ${product?.base_price_usd?.toFixed(2)} USD
-                      </p>
-                    )}
-                    <p className="text-xs text-green-600 mt-1">
-                      30-day 110% money-back guarantee
-                    </p>
-                  </div>
-                )}
-
-                <Button className="w-full" size="lg" onClick={handleStartCourse}>
-                  {isEnrolled ? 'Continue Learning' : (priceInfo ? 'Enroll Now' : 'Get Started')}
-                </Button>
               </Card>
             </motion.div>
           </div>
         </section>
 
+        {/* Section Progress Navigation */}
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="flex items-center gap-1 py-3 overflow-x-auto">
+              {SECTIONS.map((section, index) => (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                    activeSection === section.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    activeSection === section.id
+                      ? 'bg-primary-foreground/20'
+                      : 'bg-muted'
+                  }`}>
+                    {index + 1}
+                  </span>
+                  {section.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Course Overview Section */}
-        <section className="py-16 bg-background">
+        <section 
+          ref={el => sectionRefs.current['overview'] = el}
+          className="py-20 bg-background"
+        >
           <div className="max-w-6xl mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl font-bold mb-6 text-center">Could Your Guitar Sound More Melodic?</h2>
+              <h2 className="text-3xl font-bold mb-8 text-center">Could Your Guitar Sound More Melodic?</h2>
               <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-                <p>
-                  Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
-                  comes from blending them into one seamless voice. The best players don't just play the 
-                  notes; they make the instrument sing.
-                </p>
-                <p>
-                  In Peru, music is a conversation, between past and present, the instruments, between 
-                  the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
-                  landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
-                  and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
-                </p>
+                {courseConfig?.courseOverview ? (
+                  courseConfig.courseOverview.map((paragraph, i) => (
+                    <p key={i}>{paragraph}</p>
+                  ))
+                ) : (
+                  <>
+                    <p>
+                      Most guitarists think in terms of rhythm and lead, chords and melody – but true mastery 
+                      comes from blending them into one seamless voice. The best players don't just play the 
+                      notes; they make the instrument sing.
+                    </p>
+                    <p>
+                      In Peru, music is a conversation, between past and present, the instruments, between 
+                      the dancer and the rhythm. Huayño's soaring melodies climb and tumble like the Andean 
+                      landscape, Peruvian waltz flows with elegance before twisting into unexpected syncopation, 
+                      and Festejo surges forward with the fiery pulse of Afro-Peruvian percussion.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Responsive styles image */}
               {courseConfig && (
-                <div className="mt-12">
+                <div className="mt-16">
                   {/* Desktop/Tablet image */}
                   <img 
                     src={courseConfig.stylesImageDesktop}
@@ -409,7 +529,10 @@ export default function CourseLanding() {
 
         {/* Meet Your Expert Section */}
         {courseConfig?.expert && (
-          <section className="py-16 bg-background border-t border-border/30">
+          <section 
+            ref={el => sectionRefs.current['expert'] = el}
+            className="py-20 bg-background border-t border-border/30"
+          >
             <div className="max-w-6xl mx-auto px-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -441,21 +564,24 @@ export default function CourseLanding() {
 
         {/* Resources Section */}
         {courseConfig?.resources && (
-          <section className="py-16 bg-background border-t border-border/30">
+          <section 
+            ref={el => sectionRefs.current['resources'] = el}
+            className="py-20 bg-background border-t border-border/30"
+          >
             <div className="max-w-6xl mx-auto px-6">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold mb-8 text-center">The Ultimate Learning Experience</h2>
-                <div className="grid md:grid-cols-2 gap-8">
+                <h2 className="text-3xl font-bold mb-12 text-center">The Ultimate Learning Experience</h2>
+                <div className="grid md:grid-cols-2 gap-10">
                   {courseConfig.resources.map((resource, i) => (
-                    <div key={i} className="flex gap-6 items-start">
+                    <div key={i} className="flex flex-col md:flex-row gap-6 items-start">
                       <img 
                         src={resource.image}
                         alt={resource.title}
-                        className="w-40 h-auto object-contain rounded-lg shrink-0"
+                        className="w-full md:w-52 h-auto object-contain rounded-lg shrink-0"
                       />
                       <div>
                         <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
@@ -470,7 +596,10 @@ export default function CourseLanding() {
         )}
 
         {/* Learning Outcomes */}
-        <section className="py-16 bg-background">
+        <section 
+          ref={el => sectionRefs.current['outcomes'] = el}
+          className="py-20 bg-background border-t border-border/30"
+        >
           <div className="max-w-6xl mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -549,7 +678,10 @@ export default function CourseLanding() {
         </section>
 
         {/* Course Content */}
-        <section className="py-16 bg-background">
+        <section 
+          ref={el => sectionRefs.current['content'] = el}
+          className="py-20 bg-background border-t border-border/30"
+        >
           <div className="max-w-6xl mx-auto px-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -558,9 +690,6 @@ export default function CourseLanding() {
               className="text-center mb-12"
             >
               <h2 className="text-3xl font-bold mb-4">Course Content</h2>
-              <p className="text-muted-foreground">
-                {course.modules?.length || 0} modules • {totalLessons} lessons • {Math.round(totalDuration / 60)} minutes
-              </p>
             </motion.div>
 
             <div className="max-w-4xl mx-auto">
@@ -614,8 +743,57 @@ export default function CourseLanding() {
           </div>
         </section>
 
+        {/* FAQ Section */}
+        {courseConfig?.faqs && (
+          <section 
+            ref={el => sectionRefs.current['faq'] = el}
+            className="py-20 bg-background border-t border-border/30"
+          >
+            <div className="max-w-4xl mx-auto px-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+              >
+                <div className="text-center mb-12">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
+                    <HelpCircle className="w-5 h-5 text-primary" />
+                    <span className="text-primary font-medium">Common Questions</span>
+                  </div>
+                  <h2 className="text-3xl font-bold">Frequently Asked Questions</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {courseConfig.faqs.map((faq, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                    >
+                      <Card className="overflow-hidden">
+                        <Accordion type="single" collapsible>
+                          <AccordionItem value={`faq-${i}`} className="border-none">
+                            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50">
+                              <span className="text-left font-semibold">{faq.question}</span>
+                            </AccordionTrigger>
+                            <AccordionContent className="px-6 pb-4">
+                              <p className="text-muted-foreground">{faq.answer}</p>
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
+          </section>
+        )}
+
         {/* CTA Section */}
-        <section className="py-20 bg-background">
+        <section className="py-24 bg-background border-t border-border/30">
           <div className="max-w-6xl mx-auto px-6 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -626,10 +804,21 @@ export default function CourseLanding() {
               <p className="text-lg text-muted-foreground mb-8">
                 Join students from around the world learning authentic Peruvian guitar styles.
               </p>
+              {priceInfo && !isEnrolled && (
+                <p className="text-2xl font-bold mb-4">
+                  {formatPrice(priceInfo.price, priceInfo.currency)}
+                </p>
+              )}
               <Button size="lg" onClick={handleStartCourse} className="gap-2">
                 <Play className="w-5 h-5" />
-                {user ? 'Continue Learning' : 'Enroll Now'}
+                {isEnrolled ? 'Continue Learning' : 'Enroll Now'}
               </Button>
+              {!isEnrolled && (
+                <p className="text-sm text-green-600 mt-4 flex items-center justify-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  30-Day 110% Money Back Guarantee
+                </p>
+              )}
             </motion.div>
           </div>
         </section>
@@ -649,6 +838,8 @@ export default function CourseLanding() {
               src={courseConfig.trailerVideo}
               controls
               autoPlay
+              controlsList="nodownload noplaybackrate"
+              disablePictureInPicture
               className="w-full aspect-video"
             />
           )}
@@ -666,9 +857,9 @@ export default function CourseLanding() {
             className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border shadow-lg"
           >
             <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-4 min-w-0">
                 {priceInfo && (
-                  <div className="hidden sm:block">
+                  <div>
                     <p className="text-lg font-bold">
                       {formatPrice(priceInfo.price, priceInfo.currency)}
                     </p>
@@ -679,7 +870,7 @@ export default function CourseLanding() {
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 text-xs text-green-600">
+                <div className="hidden sm:flex items-center gap-1.5 text-xs text-green-600">
                   <Shield className="w-3.5 h-3.5 shrink-0" />
                   <span className="whitespace-nowrap">30-day 110% money-back</span>
                 </div>
@@ -690,12 +881,7 @@ export default function CourseLanding() {
                 className="gap-2 shrink-0"
               >
                 <ShoppingCart className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {priceInfo ? `Enroll for ${formatPrice(priceInfo.price, priceInfo.currency)}` : 'Enroll Now'}
-                </span>
-                <span className="sm:hidden">
-                  {priceInfo ? formatPrice(priceInfo.price, priceInfo.currency) : 'Enroll'}
-                </span>
+                <span>Enroll Now</span>
               </Button>
             </div>
           </motion.div>
