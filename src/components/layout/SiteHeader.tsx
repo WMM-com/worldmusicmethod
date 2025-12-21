@@ -30,12 +30,12 @@ export function SiteHeader() {
         return;
       }
       
-      // Check if user has admin or staff role (both get admin dashboard access)
+      // Check if user has admin role
       const { data } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .in('role', ['admin', 'staff']);
+        .eq('role', 'admin');
       
       setHasAdminAccess(data && data.length > 0);
     }

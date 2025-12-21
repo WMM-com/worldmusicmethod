@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { Search, BookOpen, UserPlus, Shield, Users } from 'lucide-react';
 
-type AppRole = 'user' | 'admin' | 'staff' | 'moderator';
+type AppRole = 'user' | 'admin';
 
 export function AdminUsers() {
   const queryClient = useQueryClient();
@@ -49,7 +49,7 @@ export function AdminUsers() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState<AppRole>('user');
+  const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', searchQuery],
@@ -154,24 +154,7 @@ export function AdminUsers() {
       }]);
       if (error) throw error;
 
-      // If staff, enroll in all courses
-      if (role === 'staff') {
-        const allCourseIds = courses?.map(c => c.id) || [];
-        const existingEnrollments = enrollments?.filter(e => e.user_id === userId).map(e => e.course_id) || [];
-        const newCourseIds = allCourseIds.filter(id => !existingEnrollments.includes(id));
-        
-        if (newCourseIds.length > 0) {
-          const currentUser = (await supabase.auth.getUser()).data.user;
-          await supabase.from('course_enrollments').insert(
-            newCourseIds.map(courseId => ({
-              user_id: userId,
-              course_id: courseId,
-              enrollment_type: 'staff',
-              enrolled_by: currentUser?.id,
-            }))
-          );
-        }
-      }
+      // Role updated successfully
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
@@ -253,8 +236,6 @@ export function AdminUsers() {
   const getRoleBadgeVariant = (role: AppRole) => {
     switch (role) {
       case 'admin': return 'default';
-      case 'staff': return 'secondary';
-      case 'moderator': return 'outline';
       default: return 'outline';
     }
   };
@@ -324,21 +305,15 @@ export function AdminUsers() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  <Select value={newUserRole} onValueChange={(value: AppRole) => setNewUserRole(value)}>
+                  <Select value={newUserRole} onValueChange={(value: 'user' | 'admin') => setNewUserRole(value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="staff">Staff (Admin access + All courses)</SelectItem>
                       <SelectItem value="admin">Admin (Full access)</SelectItem>
                     </SelectContent>
                   </Select>
-                  {newUserRole === 'staff' && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Staff users can access admin dashboard and are enrolled in all courses automatically.
-                    </p>
-                  )}
                 </div>
                 <Button onClick={handleCreateUser} className="w-full">
                   Create User
@@ -397,15 +372,12 @@ export function AdminUsers() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="staff">Staff</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
-                      {role === 'staff' ? (
-                        <Badge variant="secondary" className="text-xs">All courses</Badge>
-                      ) : userEnrollments.length > 0 ? (
+                      {userEnrollments.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {userEnrollments.slice(0, 2).map((e: any, i) => (
                             <Badge key={i} variant="outline" className="text-xs">
