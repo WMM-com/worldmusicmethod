@@ -55,7 +55,7 @@ export function SiteHeader() {
 
   const navLinks = [
     { href: '/community', label: 'Community' },
-    { href: '/', label: 'Left Brain' },
+    { href: '/dashboard', label: 'Left Brain' },
   ];
 
   return (
