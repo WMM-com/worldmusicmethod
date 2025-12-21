@@ -35,7 +35,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
             <Brain className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="text-base font-semibold gradient-text">Left Brain</span>
+          <span className="text-base font-semibold text-foreground">Left Brain</span>
         </div>
         
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -85,7 +85,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-primary">
               <Brain className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-semibold gradient-text text-sm">Left Brain</span>
+            <span className="font-semibold text-foreground text-sm">Left Brain</span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

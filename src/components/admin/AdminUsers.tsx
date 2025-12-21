@@ -218,9 +218,27 @@ export function AdminUsers() {
     }
 
     try {
-      // Note: This requires admin API access. For now, we'll show a message
-      // In a real implementation, you'd use an edge function to create users
-      toast.info('User creation requires a server-side function. Please use Supabase dashboard or implement an edge function for this feature.');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: newUserEmail,
+          password: newUserPassword,
+          fullName: newUserName,
+          role: newUserRole,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success('User created successfully');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
       
       // Reset form
       setNewUserEmail('');
