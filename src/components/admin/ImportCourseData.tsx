@@ -74,6 +74,15 @@ export function ImportCourseData() {
     console.log(msg);
   };
 
+  const handleFileUpload = (setter: (text: string) => void) => async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const text = await file.text();
+    setter(text);
+    addLog(`Loaded file: ${file.name} (${(text.length / 1024).toFixed(1)} KB)`);
+  };
+
   const handleImport = async () => {
     if (!modulesText || !lessonsText) {
       toast.error("Please paste both modules and lessons data");
@@ -393,21 +402,39 @@ export function ImportCourseData() {
           <TabsContent value="modules" className="space-y-4">
             <div>
               <label className="text-sm font-medium">Modules JSONL Data</label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="file"
+                  accept=".jsonl,.ld,.json,.txt"
+                  onChange={handleFileUpload(setModulesText)}
+                  className="max-w-xs"
+                />
+                {modulesText && <span className="text-xs text-muted-foreground self-center">{(modulesText.length / 1024).toFixed(1)} KB loaded</span>}
+              </div>
               <Textarea
                 value={modulesText}
                 onChange={(e) => setModulesText(e.target.value)}
-                placeholder="Paste modules JSONL here..."
-                rows={4}
+                placeholder="Or paste modules JSONL here..."
+                rows={3}
               />
             </div>
             
             <div>
               <label className="text-sm font-medium">Lessons JSONL Data</label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="file"
+                  accept=".jsonl,.ld,.json,.txt"
+                  onChange={handleFileUpload(setLessonsText)}
+                  className="max-w-xs"
+                />
+                {lessonsText && <span className="text-xs text-muted-foreground self-center">{(lessonsText.length / 1024).toFixed(1)} KB loaded</span>}
+              </div>
               <Textarea
                 value={lessonsText}
                 onChange={(e) => setLessonsText(e.target.value)}
-                placeholder="Paste lessons JSONL here..."
-                rows={4}
+                placeholder="Or paste lessons JSONL here..."
+                rows={3}
               />
             </div>
             
