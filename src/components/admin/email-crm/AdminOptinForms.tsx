@@ -11,7 +11,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, FormInput, Copy, Code } from 'lucide-react';
+import { Plus, Pencil, Trash2, FormInput, Copy, Code, GripVertical, X } from 'lucide-react';
+
+interface FormField {
+  id: string;
+  type: 'text' | 'email' | 'select' | 'multiselect' | 'checkbox';
+  label: string;
+  required: boolean;
+  options?: string[];
+  tagOnValue?: { value: string; tagId: string }[];
+}
 
 interface OptinForm {
   id: string;
@@ -24,19 +33,24 @@ interface OptinForm {
   tags_to_assign: string[];
   sequence_id: string | null;
   is_active: boolean;
+  fields: FormField[];
   created_at: string;
 }
 
 interface EmailTag {
   id: string;
   name: string;
-  color: string;
 }
 
 interface EmailSequence {
   id: string;
   name: string;
 }
+
+const defaultFields: FormField[] = [
+  { id: 'email', type: 'email', label: 'Email', required: true },
+  { id: 'first_name', type: 'text', label: 'First Name', required: false },
+];
 
 export function AdminOptinForms() {
   const [forms, setForms] = useState<OptinForm[]>([]);
@@ -56,7 +70,8 @@ export function AdminOptinForms() {
     redirect_url: '',
     tags_to_assign: [] as string[],
     sequence_id: '',
-    is_active: true
+    is_active: true,
+    fields: defaultFields as FormField[]
   });
 
   useEffect(() => {
@@ -66,14 +81,19 @@ export function AdminOptinForms() {
   async function fetchData() {
     const [formsRes, tagsRes, seqRes] = await Promise.all([
       supabase.from('optin_forms').select('*').order('name'),
-      supabase.from('email_tags').select('id, name, color').order('name'),
+      supabase.from('email_tags').select('id, name').order('name'),
       supabase.from('email_sequences').select('id, name').eq('trigger_type', 'form_submit').order('name')
     ]);
     
     if (formsRes.error) toast.error('Failed to load forms');
     
-    setForms((formsRes.data || []) as OptinForm[]);
-    setTags(tagsRes.data || []);
+    const formsData = (formsRes.data || []).map(f => ({
+      ...f,
+      fields: (f.fields as unknown as FormField[]) || defaultFields
+    })) as OptinForm[];
+    
+    setForms(formsData);
+    setTags((tagsRes.data || []) as EmailTag[]);
     setSequences(seqRes.data || []);
     setLoading(false);
   }
@@ -94,6 +114,7 @@ export function AdminOptinForms() {
       tags_to_assign: formData.tags_to_assign,
       sequence_id: formData.sequence_id || null,
       is_active: formData.is_active,
+      fields: formData.fields as unknown as any,
     };
 
     if (editingForm) {
@@ -148,7 +169,8 @@ export function AdminOptinForms() {
       redirect_url: '',
       tags_to_assign: [],
       sequence_id: '',
-      is_active: true
+      is_active: true,
+      fields: defaultFields
     });
   }
 
@@ -163,7 +185,8 @@ export function AdminOptinForms() {
       redirect_url: form.redirect_url || '',
       tags_to_assign: form.tags_to_assign || [],
       sequence_id: form.sequence_id || '',
-      is_active: form.is_active
+      is_active: form.is_active,
+      fields: form.fields || defaultFields
     });
     setDialogOpen(true);
   }
@@ -194,6 +217,71 @@ export function AdminOptinForms() {
     }));
   }
 
+  function addField() {
+    const newField: FormField = {
+      id: `field_${Date.now()}`,
+      type: 'text',
+      label: 'New Field',
+      required: false
+    };
+    setFormData(prev => ({
+      ...prev,
+      fields: [...prev.fields, newField]
+    }));
+  }
+
+  function updateField(index: number, updates: Partial<FormField>) {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map((f, i) => i === index ? { ...f, ...updates } : f)
+    }));
+  }
+
+  function removeField(index: number) {
+    if (formData.fields[index].id === 'email') {
+      toast.error('Email field is required');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.filter((_, i) => i !== index)
+    }));
+  }
+
+  function addFieldOption(fieldIndex: number) {
+    const field = formData.fields[fieldIndex];
+    const options = field.options || [];
+    updateField(fieldIndex, { options: [...options, 'New Option'] });
+  }
+
+  function updateFieldOption(fieldIndex: number, optionIndex: number, value: string) {
+    const field = formData.fields[fieldIndex];
+    const options = [...(field.options || [])];
+    options[optionIndex] = value;
+    updateField(fieldIndex, { options });
+  }
+
+  function removeFieldOption(fieldIndex: number, optionIndex: number) {
+    const field = formData.fields[fieldIndex];
+    const options = (field.options || []).filter((_, i) => i !== optionIndex);
+    updateField(fieldIndex, { options });
+  }
+
+  function addTagMapping(fieldIndex: number, optionValue: string) {
+    const field = formData.fields[fieldIndex];
+    const tagOnValue = field.tagOnValue || [];
+    updateField(fieldIndex, { 
+      tagOnValue: [...tagOnValue, { value: optionValue, tagId: '' }] 
+    });
+  }
+
+  function updateTagMapping(fieldIndex: number, mappingIndex: number, tagId: string) {
+    const field = formData.fields[fieldIndex];
+    const tagOnValue = [...(field.tagOnValue || [])];
+    tagOnValue[mappingIndex] = { ...tagOnValue[mappingIndex], tagId };
+    updateField(fieldIndex, { tagOnValue });
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -214,66 +302,191 @@ export function AdminOptinForms() {
                 New Form
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingForm ? 'Edit Form' : 'Create Form'}</DialogTitle>
                 <DialogDescription>
-                  Configure your opt-in form settings
+                  Configure your opt-in form settings and fields
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-6 py-4">
+                {/* Basic Settings */}
+                <div className="space-y-4">
+                  <h3 className="font-medium">Basic Settings</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Form Name (internal)</Label>
+                      <Input
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g., Homepage Newsletter"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Button Text</Label>
+                      <Input
+                        value={formData.button_text}
+                        onChange={(e) => setFormData(prev => ({ ...prev, button_text: e.target.value }))}
+                        placeholder="Subscribe"
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label>Form Name (internal)</Label>
+                    <Label>Heading (optional)</Label>
                     <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g., Homepage Newsletter"
+                      value={formData.heading}
+                      onChange={(e) => setFormData(prev => ({ ...prev, heading: e.target.value }))}
+                      placeholder="Join our newsletter"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Button Text</Label>
-                    <Input
-                      value={formData.button_text}
-                      onChange={(e) => setFormData(prev => ({ ...prev, button_text: e.target.value }))}
-                      placeholder="Subscribe"
+                    <Label>Description (optional)</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Get the latest updates..."
+                      rows={2}
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Success Message</Label>
+                      <Input
+                        value={formData.success_message}
+                        onChange={(e) => setFormData(prev => ({ ...prev, success_message: e.target.value }))}
+                        placeholder="Thank you for subscribing!"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Redirect URL (optional)</Label>
+                      <Input
+                        value={formData.redirect_url}
+                        onChange={(e) => setFormData(prev => ({ ...prev, redirect_url: e.target.value }))}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Heading (optional)</Label>
-                  <Input
-                    value={formData.heading}
-                    onChange={(e) => setFormData(prev => ({ ...prev, heading: e.target.value }))}
-                    placeholder="Join our newsletter"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description (optional)</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Get the latest updates..."
-                    rows={2}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Success Message</Label>
-                  <Input
-                    value={formData.success_message}
-                    onChange={(e) => setFormData(prev => ({ ...prev, success_message: e.target.value }))}
-                    placeholder="Thank you for subscribing!"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Redirect URL (optional)</Label>
-                  <Input
-                    value={formData.redirect_url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, redirect_url: e.target.value }))}
-                    placeholder="https://..."
-                  />
+
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Form Fields</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addField}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Field
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {formData.fields.map((field, fieldIndex) => (
+                      <div key={field.id} className="p-4 border rounded-lg space-y-3">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex-1 grid grid-cols-3 gap-2">
+                            <Input
+                              value={field.label}
+                              onChange={(e) => updateField(fieldIndex, { label: e.target.value })}
+                              placeholder="Field label"
+                            />
+                            <Select 
+                              value={field.type} 
+                              onValueChange={(v) => updateField(fieldIndex, { type: v as FormField['type'] })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="text">Text</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                                <SelectItem value="select">Dropdown (Single)</SelectItem>
+                                <SelectItem value="multiselect">Dropdown (Multi)</SelectItem>
+                                <SelectItem value="checkbox">Checkbox</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={field.required}
+                                onCheckedChange={(v) => updateField(fieldIndex, { required: v })}
+                              />
+                              <span className="text-sm">Required</span>
+                            </div>
+                          </div>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => removeField(fieldIndex)}
+                            disabled={field.id === 'email'}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Options for select/multiselect */}
+                        {(field.type === 'select' || field.type === 'multiselect') && (
+                          <div className="ml-6 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm">Options</Label>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => addFieldOption(fieldIndex)}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Option
+                              </Button>
+                            </div>
+                            {(field.options || []).map((option, optionIndex) => (
+                              <div key={optionIndex} className="flex items-center gap-2">
+                                <Input
+                                  value={option}
+                                  onChange={(e) => updateFieldOption(fieldIndex, optionIndex, e.target.value)}
+                                  placeholder="Option value"
+                                  className="flex-1"
+                                />
+                                <Select
+                                  value={field.tagOnValue?.find(t => t.value === option)?.tagId || ''}
+                                  onValueChange={(tagId) => {
+                                    const existing = field.tagOnValue || [];
+                                    const existingIndex = existing.findIndex(t => t.value === option);
+                                    if (existingIndex >= 0) {
+                                      updateTagMapping(fieldIndex, existingIndex, tagId);
+                                    } else {
+                                      updateField(fieldIndex, { 
+                                        tagOnValue: [...existing, { value: option, tagId }] 
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="w-40">
+                                    <SelectValue placeholder="Assign tag" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">No tag</SelectItem>
+                                    {tags.map(tag => (
+                                      <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => removeFieldOption(fieldIndex, optionIndex)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 
+                {/* Tags */}
                 <div className="space-y-2">
                   <Label>Tags to assign on submission</Label>
                   <div className="flex flex-wrap gap-2">
@@ -282,7 +495,6 @@ export function AdminOptinForms() {
                         key={tag.id}
                         variant={formData.tags_to_assign.includes(tag.id) ? 'default' : 'outline'}
                         className="cursor-pointer"
-                        style={formData.tags_to_assign.includes(tag.id) ? { backgroundColor: tag.color } : {}}
                         onClick={() => toggleTag(tag.id)}
                       >
                         {tag.name}
@@ -294,6 +506,7 @@ export function AdminOptinForms() {
                   </div>
                 </div>
 
+                {/* Sequence */}
                 <div className="space-y-2">
                   <Label>Trigger Sequence (optional)</Label>
                   <Select 
@@ -338,6 +551,7 @@ export function AdminOptinForms() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Fields</TableHead>
                 <TableHead>Tags</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -355,11 +569,14 @@ export function AdminOptinForms() {
                     </div>
                   </TableCell>
                   <TableCell>
+                    <Badge variant="outline">{form.fields?.length || 0} fields</Badge>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-1 flex-wrap">
                       {form.tags_to_assign.slice(0, 3).map(tagId => {
                         const tag = tags.find(t => t.id === tagId);
                         return tag ? (
-                          <Badge key={tagId} variant="secondary" style={{ backgroundColor: tag.color, color: 'white' }}>
+                          <Badge key={tagId} variant="secondary">
                             {tag.name}
                           </Badge>
                         ) : null;
