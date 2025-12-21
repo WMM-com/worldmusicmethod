@@ -111,7 +111,7 @@ export function useCreatePost() {
       mediaUrl?: string;
       mediaType?: 'image' | 'video' | 'audio' | null;
       visibility: string;
-      postType?: 'statement' | 'update' | 'recommendation';
+      postType?: 'statement' | 'update' | 'recommendation' | 'practice';
     }) => {
       if (!user) throw new Error('Not authenticated');
       
