@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,13 +18,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { BookOpen, Users, MapPin, Eye, Edit } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { BookOpen, Users, MapPin, Eye, Edit, Trash2, FolderOpen } from 'lucide-react';
 import { CourseEditDialog } from './CourseEditDialog';
+import { CourseContentManager } from './CourseContentManager';
+import { toast } from 'sonner';
 
 export function AdminCourses() {
+  const queryClient = useQueryClient();
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
+  const [viewMode, setViewMode] = useState<'view' | 'edit' | 'content'>('view');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   const { data: courses, isLoading } = useQuery({
     queryKey: ['admin-courses'],
@@ -70,6 +84,57 @@ export function AdminCourses() {
     },
   });
 
+  const deleteCourseMutation = useMutation({
+    mutationFn: async (courseId: string) => {
+      // Delete in order: lesson progress, lessons, modules, enrollments, course
+      const { data: modules } = await supabase
+        .from('course_modules')
+        .select('id')
+        .eq('course_id', courseId);
+
+      if (modules && modules.length > 0) {
+        const moduleIds = modules.map(m => m.id);
+        
+        // Delete user progress for lessons in these modules
+        const { data: lessons } = await supabase
+          .from('module_lessons')
+          .select('id')
+          .in('module_id', moduleIds);
+        
+        if (lessons && lessons.length > 0) {
+          const lessonIds = lessons.map(l => l.id);
+          await supabase.from('user_lesson_progress').delete().in('lesson_id', lessonIds);
+        }
+
+        // Delete lessons
+        await supabase.from('module_lessons').delete().in('module_id', moduleIds);
+      }
+
+      // Delete modules
+      await supabase.from('course_modules').delete().eq('course_id', courseId);
+
+      // Delete enrollments
+      await supabase.from('course_enrollments').delete().eq('course_id', courseId);
+
+      // Delete course stats
+      await supabase.from('user_course_stats').delete().eq('course_id', courseId);
+
+      // Delete course
+      const { error } = await supabase.from('courses').delete().eq('id', courseId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-module-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-enrollment-counts'] });
+      toast.success('Course deleted');
+      setDeleteTarget(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete course');
+    },
+  });
+
   const handleRowClick = (course: any) => {
     setSelectedCourse(course);
     setViewMode('view');
@@ -82,6 +147,25 @@ export function AdminCourses() {
     setViewMode('edit');
     setDialogOpen(true);
   };
+
+  const handleManageContent = (course: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedCourse(course);
+    setViewMode('content');
+  };
+
+  if (viewMode === 'content' && selectedCourse) {
+    return (
+      <CourseContentManager
+        courseId={selectedCourse.id}
+        courseTitle={selectedCourse.title}
+        onBack={() => {
+          setViewMode('view');
+          setSelectedCourse(null);
+        }}
+      />
+    );
+  }
 
   return (
     <>
@@ -169,15 +253,37 @@ export function AdminCourses() {
                             e.stopPropagation();
                             handleRowClick(course);
                           }}
+                          title="View"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={(e) => handleManageContent(course, e)}
+                          title="Manage Content"
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={(e) => handleEdit(course, e)}
+                          title="Edit"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id: course.id, title: course.title });
+                          }}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -226,7 +332,17 @@ export function AdminCourses() {
                   <p className="mt-1">{selectedCourse.description}</p>
                 </div>
               )}
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setViewMode('content');
+                  }}
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Manage Content
+                </Button>
                 <Button onClick={() => setViewMode('edit')}>
                   <Edit className="h-4 w-4 mr-2" />
                   Edit Course
@@ -242,6 +358,28 @@ export function AdminCourses() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Course?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.title}"? 
+              This will permanently delete all modules, lessons, enrollments, and progress data. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteTarget && deleteCourseMutation.mutate(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCourseMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
