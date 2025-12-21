@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { SESClient, SendEmailCommand } from "npm:@aws-sdk/client-ses@3.540.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +10,145 @@ const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[SEND-CAMPAIGN] ${step}${detailsStr}`);
 };
+
+// AWS SES signing (same as send-email-ses)
+async function signRequest(
+  method: string,
+  url: URL,
+  body: string,
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string,
+  service: string
+): Promise<Headers> {
+  const encoder = new TextEncoder();
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+
+  const headers = new Headers({
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Host': url.host,
+    'X-Amz-Date': amzDate,
+  });
+
+  const canonicalUri = url.pathname;
+  const canonicalQueryString = '';
+  const signedHeaders = 'content-type;host;x-amz-date';
+  
+  const payloadHash = await crypto.subtle.digest('SHA-256', encoder.encode(body));
+  const payloadHashHex = Array.from(new Uint8Array(payloadHash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const canonicalHeaders = 
+    `content-type:${headers.get('Content-Type')}\n` +
+    `host:${url.host}\n` +
+    `x-amz-date:${amzDate}\n`;
+
+  const canonicalRequest = [
+    method,
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHashHex,
+  ].join('\n');
+
+  const algorithm = 'AWS4-HMAC-SHA256';
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  
+  const canonicalRequestHash = await crypto.subtle.digest(
+    'SHA-256',
+    encoder.encode(canonicalRequest)
+  );
+  const canonicalRequestHashHex = Array.from(new Uint8Array(canonicalRequestHash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const stringToSign = [
+    algorithm,
+    amzDate,
+    credentialScope,
+    canonicalRequestHashHex,
+  ].join('\n');
+
+  const getSignatureKey = async (
+    key: string,
+    dateStamp: string,
+    regionName: string,
+    serviceName: string
+  ) => {
+    const kDate = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', encoder.encode('AWS4' + key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(dateStamp)
+    );
+    const kRegion = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', kDate, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(regionName)
+    );
+    const kService = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', kRegion, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(serviceName)
+    );
+    const kSigning = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', kService, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode('aws4_request')
+    );
+    return kSigning;
+  };
+
+  const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, service);
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    await crypto.subtle.importKey('raw', signingKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+    encoder.encode(stringToSign)
+  );
+  const signatureHex = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const authorizationHeader = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signatureHex}`;
+  headers.set('Authorization', authorizationHeader);
+
+  return headers;
+}
+
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string
+): Promise<boolean> {
+  const url = new URL(`https://email.${region}.amazonaws.com/`);
+  const from = 'World Music Method <noreply@worldmusicmethod.com>';
+  
+  const params = new URLSearchParams();
+  params.append('Action', 'SendEmail');
+  params.append('Version', '2010-12-01');
+  params.append('Source', from);
+  params.append('Destination.ToAddresses.member.1', to);
+  params.append('Message.Subject.Data', subject);
+  params.append('Message.Subject.Charset', 'UTF-8');
+  params.append('Message.Body.Html.Data', html);
+  params.append('Message.Body.Html.Charset', 'UTF-8');
+
+  const body = params.toString();
+  const headers = await signRequest('POST', url, body, accessKeyId, secretAccessKey, region, 'ses');
+
+  try {
+    const response = await fetch(url.toString(), { method: 'POST', headers, body });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -24,6 +162,14 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    const accessKeyId = Deno.env.get("AWS_SES_ACCESS_KEY_ID") || "";
+    const secretAccessKey = Deno.env.get("AWS_SES_SECRET_ACCESS_KEY") || "";
+    const region = Deno.env.get("AWS_SES_REGION") || "eu-west-2";
+
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error("AWS SES credentials not configured");
+    }
 
     const { campaignId } = await req.json();
     logStep("Campaign ID", { campaignId });
@@ -123,17 +269,7 @@ serve(async (req) => {
       .update({ total_recipients: finalRecipients.length })
       .eq("id", campaignId);
 
-    // Initialize SES client
-    const sesClient = new SESClient({
-      region: Deno.env.get("AWS_SES_REGION") || "eu-west-2",
-      credentials: {
-        accessKeyId: Deno.env.get("AWS_SES_ACCESS_KEY_ID") || "",
-        secretAccessKey: Deno.env.get("AWS_SES_SECRET_ACCESS_KEY") || "",
-      },
-    });
-
     let sentCount = 0;
-    const fromEmail = "noreply@worldmusicmethod.com";
 
     // Send emails
     for (const recipient of finalRecipients) {
@@ -143,39 +279,40 @@ serve(async (req) => {
           .replace(/\{\{first_name\}\}/g, recipient.first_name || 'there')
           .replace(/\{\{email\}\}/g, recipient.email);
 
-        const command = new SendEmailCommand({
-          Source: fromEmail,
-          Destination: { ToAddresses: [recipient.email] },
-          Message: {
-            Subject: { Data: campaign.subject, Charset: "UTF-8" },
-            Body: {
-              Html: { Data: htmlBody, Charset: "UTF-8" },
-              Text: { Data: campaign.body_text || htmlBody.replace(/<[^>]*>/g, ''), Charset: "UTF-8" },
-            },
-          },
-        });
+        const success = await sendEmail(
+          recipient.email,
+          campaign.subject,
+          htmlBody,
+          accessKeyId,
+          secretAccessKey,
+          region
+        );
 
-        await sesClient.send(command);
-        sentCount++;
-
-        // Log send
-        await supabase.from("email_send_log").insert({
-          email: recipient.email,
-          subject: campaign.subject,
-          status: "sent",
-        });
+        if (success) {
+          sentCount++;
+          await supabase.from("email_send_log").insert({
+            email: recipient.email,
+            subject: campaign.subject,
+            status: "sent",
+          });
+        } else {
+          await supabase.from("email_send_log").insert({
+            email: recipient.email,
+            subject: campaign.subject,
+            status: "failed",
+          });
+        }
 
         // Small delay to avoid throttling
         if (sentCount % 10 === 0) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       } catch (sendError) {
-        logStep("Failed to send to recipient", { email: recipient.email, error: sendError.message });
+        logStep("Failed to send to recipient", { email: recipient.email });
         await supabase.from("email_send_log").insert({
           email: recipient.email,
           subject: campaign.subject,
           status: "failed",
-          error_message: sendError.message,
         });
       }
     }
