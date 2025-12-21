@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Dumbbell } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,24 +28,35 @@ interface PostCardProps {
 
 const COMMENT_EDIT_DAYS_LIMIT = 30;
 
+
 const POST_TYPE_CONFIG = {
   statement: {
     label: 'Statement',
     icon: Megaphone,
-    borderColor: 'border-l-amber-500',
-    badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    borderColor: 'border-l-red-500',
+    badgeClass: 'bg-red-500/10 text-red-600 border-red-500/20',
+    buttonColor: 'bg-red-500 hover:bg-red-600 text-white',
   },
   update: {
     label: 'Update',
     icon: RefreshCw,
-    borderColor: 'border-l-sky-500',
-    badgeClass: 'bg-sky-500/10 text-sky-600 border-sky-500/20',
+    borderColor: 'border-l-blue-500',
+    badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+    buttonColor: 'bg-blue-500 hover:bg-blue-600 text-white',
   },
   recommendation: {
     label: 'Recommendation',
     icon: Star,
-    borderColor: 'border-l-emerald-500',
-    badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+    borderColor: 'border-l-yellow-500',
+    badgeClass: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+    buttonColor: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+  },
+  practice: {
+    label: 'Practice Room',
+    icon: Dumbbell,
+    borderColor: 'border-l-green-500',
+    badgeClass: 'bg-green-500/10 text-green-600 border-green-500/20',
+    buttonColor: 'bg-green-500 hover:bg-green-600 text-white',
   },
 };
 

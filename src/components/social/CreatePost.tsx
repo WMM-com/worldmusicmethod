@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star } from 'lucide-react';
+import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star, Dumbbell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatePost } from '@/hooks/useSocial';
 import { useR2Upload } from '@/hooks/useR2Upload';
@@ -21,26 +21,40 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 type MediaType = 'image' | 'video' | 'audio' | null;
-type PostType = 'statement' | 'update' | 'recommendation';
+type PostType = 'statement' | 'update' | 'recommendation' | 'practice';
 
 const POST_TYPE_CONFIG = {
   statement: {
     label: 'Statement',
     icon: Megaphone,
     verification: 'I verify this represents my genuine beliefs and is worth public discourse',
-    color: 'border-l-amber-500',
+    color: 'border-l-red-500',
+    buttonColor: 'bg-red-500 hover:bg-red-600 text-white',
+    requiresVerification: true,
   },
   update: {
     label: 'Update',
     icon: RefreshCw,
     verification: 'I verify this update is relevant for my audience to know about',
-    color: 'border-l-sky-500',
+    color: 'border-l-blue-500',
+    buttonColor: 'bg-blue-500 hover:bg-blue-600 text-white',
+    requiresVerification: true,
   },
   recommendation: {
     label: 'Recommendation',
     icon: Star,
     verification: 'I verify this is a legitimate recommendation and I wholeheartedly believe this to be of the highest quality and that others will be interested in this',
-    color: 'border-l-emerald-500',
+    color: 'border-l-yellow-500',
+    buttonColor: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    requiresVerification: true,
+  },
+  practice: {
+    label: 'Practice Room',
+    icon: Dumbbell,
+    verification: null,
+    color: 'border-l-green-500',
+    buttonColor: 'bg-green-500 hover:bg-green-600 text-white',
+    requiresVerification: false,
   },
 };
 
@@ -134,7 +148,10 @@ export function CreatePost() {
   };
 
   const handleSubmit = () => {
-    if (!content.trim() || !verified) return;
+    const config = POST_TYPE_CONFIG[postType];
+    if (!content.trim()) return;
+    if (config.requiresVerification && !verified) return;
+    
     createPostMutation.mutate(
       { 
         content, 
@@ -257,7 +274,7 @@ export function CreatePost() {
                     variant={postType === type ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handlePostTypeChange(type)}
-                    className="gap-1.5"
+                    className={postType === type ? config.buttonColor + ' gap-1.5' : 'gap-1.5'}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {config.label}
@@ -266,20 +283,22 @@ export function CreatePost() {
               })}
             </div>
 
-            {/* Verification Checkbox */}
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
-              <Checkbox 
-                id="verify" 
-                checked={verified} 
-                onCheckedChange={(checked) => setVerified(checked === true)}
-              />
-              <Label 
-                htmlFor="verify" 
-                className="text-sm leading-relaxed cursor-pointer text-muted-foreground"
-              >
-                {POST_TYPE_CONFIG[postType].verification}
-              </Label>
-            </div>
+            {/* Verification Checkbox - only for types that require it */}
+            {POST_TYPE_CONFIG[postType].requiresVerification && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
+                <Checkbox 
+                  id="verify" 
+                  checked={verified} 
+                  onCheckedChange={(checked) => setVerified(checked === true)}
+                />
+                <Label 
+                  htmlFor="verify" 
+                  className="text-sm leading-relaxed cursor-pointer text-muted-foreground"
+                >
+                  {POST_TYPE_CONFIG[postType].verification}
+                </Label>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
@@ -337,7 +356,7 @@ export function CreatePost() {
               
               <Button
                 onClick={handleSubmit}
-                disabled={!content.trim() || !verified || createPostMutation.isPending || isUploading}
+                disabled={!content.trim() || (POST_TYPE_CONFIG[postType].requiresVerification && !verified) || createPostMutation.isPending || isUploading}
               >
                 {createPostMutation.isPending ? 'Posting...' : 'Post'}
               </Button>
