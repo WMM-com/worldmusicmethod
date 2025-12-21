@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trash2, Plus, Minus, ShoppingCart, ArrowRight } from 'lucide-react';
+import { Trash2, ShoppingCart, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -9,7 +9,7 @@ import { formatPrice } from '@/hooks/useGeoPricing';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, removeFromCart, updateQuantity, getTotal, clearCart } = useCart();
+  const { items, removeFromCart, getTotal, clearCart } = useCart();
 
   if (items.length === 0) {
     return (
@@ -47,28 +47,8 @@ export default function Cart() {
                       <p className="text-sm text-muted-foreground capitalize">{item.productType}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center">{item.quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-
                     <p className="font-semibold w-24 text-right">
-                      {formatPrice(item.price * item.quantity, item.currency || 'USD')}
+                      {formatPrice(item.price, item.currency || 'USD')}
                     </p>
 
                     <Button
