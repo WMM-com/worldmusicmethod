@@ -46,6 +46,7 @@ interface LandingPageData {
   faqs: FAQ[];
   cta_title: string;
   cta_description: string;
+  course_includes: string[];
 }
 
 const defaultData: LandingPageData = {
@@ -66,6 +67,7 @@ const defaultData: LandingPageData = {
   faqs: [{ question: "", answer: "" }],
   cta_title: "Ready To Start Your Journey?",
   cta_description: "Join a worldwide community of musicians.",
+  course_includes: ["Synced Notation & Tab", "Downloadable PDF Notation", "Lifetime Access", "Student Community"],
 };
 
 export function LandingPageEditor() {
@@ -122,8 +124,9 @@ export function LandingPageEditor() {
         expert_image_url: landingPage.expert_image_url || "",
         expert_bio: landingPage.expert_bio || [""],
         faqs: (landingPage.faqs as unknown as FAQ[]) || [{ question: "", answer: "" }],
-        cta_title: (landingPage as any).cta_title || "",
-        cta_description: (landingPage as any).cta_description || "",
+        cta_title: (landingPage as any).cta_title || "Ready To Start Your Journey?",
+        cta_description: (landingPage as any).cta_description || "Join a worldwide community of musicians.",
+        course_includes: landingPage.course_includes || defaultData.course_includes,
       });
     } else if (selectedCourseId) {
       setFormData({ ...defaultData, course_id: selectedCourseId });
@@ -151,6 +154,7 @@ export function LandingPageEditor() {
         faqs: data.faqs as unknown as any,
         cta_title: data.cta_title,
         cta_description: data.cta_description,
+        course_includes: data.course_includes,
       };
 
       if (data.id) {
@@ -180,21 +184,21 @@ export function LandingPageEditor() {
   };
 
   // Array field helpers
-  const addArrayItem = (field: "course_overview" | "expert_bio", defaultValue: string = "") => {
+  const addArrayItem = (field: "course_overview" | "expert_bio" | "course_includes", defaultValue: string = "") => {
     setFormData(prev => ({
       ...prev,
       [field]: [...prev[field], defaultValue],
     }));
   };
 
-  const removeArrayItem = (field: "course_overview" | "expert_bio", index: number) => {
+  const removeArrayItem = (field: "course_overview" | "expert_bio" | "course_includes", index: number) => {
     setFormData(prev => ({
       ...prev,
       [field]: prev[field].filter((_, i) => i !== index),
     }));
   };
 
-  const updateArrayItem = (field: "course_overview" | "expert_bio", index: number, value: string) => {
+  const updateArrayItem = (field: "course_overview" | "expert_bio" | "course_includes", index: number, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: prev[field].map((item, i) => (i === index ? value : item)),
@@ -317,7 +321,7 @@ export function LandingPageEditor() {
       )}
 
       {selectedCourseId && !isLoading && (
-        <Accordion type="multiple" defaultValue={["hero", "overview", "outcomes", "resources", "expert", "faqs", "cta"]} className="space-y-4">
+        <Accordion type="multiple" defaultValue={["hero", "overview", "outcomes", "resources", "includes", "expert", "faqs", "cta"]} className="space-y-4">
           {/* Hero Section */}
           <AccordionItem value="hero" className="border rounded-lg px-4">
             <AccordionTrigger className="text-lg font-semibold">Hero Section</AccordionTrigger>
@@ -510,6 +514,34 @@ export function LandingPageEditor() {
             </AccordionContent>
           </AccordionItem>
 
+          {/* Course Includes */}
+          <AccordionItem value="includes" className="border rounded-lg px-4">
+            <AccordionTrigger className="text-lg font-semibold">Course Includes</AccordionTrigger>
+            <AccordionContent className="space-y-4 pt-4">
+              <p className="text-sm text-muted-foreground">Items shown under "This Course Includes" on the landing page.</p>
+              {formData.course_includes.map((item, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={item}
+                    onChange={(e) => updateArrayItem("course_includes", index, e.target.value)}
+                    placeholder="e.g. Synced Notation & Tab"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeArrayItem("course_includes", index)}
+                    disabled={formData.course_includes.length <= 1}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="outline" onClick={() => addArrayItem("course_includes")}>
+                <Plus className="h-4 w-4 mr-2" /> Add Item
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
+
           {/* Meet Your Expert */}
           <AccordionItem value="expert" className="border rounded-lg px-4">
             <AccordionTrigger className="text-lg font-semibold">Meet Your Expert</AccordionTrigger>
@@ -533,24 +565,28 @@ export function LandingPageEditor() {
                   <img src={formData.expert_image_url} alt="Expert preview" className="h-32 object-cover rounded mt-2" />
                 )}
               </div>
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <Label>Expert Bio Paragraphs</Label>
                 {formData.expert_bio.map((para, index) => (
-                  <div key={index} className="flex gap-2">
+                  <Card key={index} className="p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">Paragraph {index + 1}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeArrayItem("expert_bio", index)}
+                        disabled={formData.expert_bio.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <Textarea
                       value={para}
                       onChange={(e) => updateArrayItem("expert_bio", index, e.target.value)}
                       placeholder="Bio paragraph..."
+                      rows={4}
                     />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("expert_bio", index)}
-                      disabled={formData.expert_bio.length <= 1}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </Card>
                 ))}
                 <Button variant="outline" onClick={() => addArrayItem("expert_bio")}>
                   <Plus className="h-4 w-4 mr-2" /> Add Paragraph
