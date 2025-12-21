@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Brain } from 'lucide-react';
+import wmmLogo from '@/assets/world-music-method-logo.png';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -57,11 +57,11 @@ export default function Auth() {
       
       <Card className="relative w-full max-w-md glass">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary animate-glow">
-            <Brain className="h-8 w-8 text-primary-foreground" />
+          <div className="mx-auto mb-4">
+            <img src={wmmLogo} alt="World Music Method" className="h-20 w-auto mx-auto" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            <span className="gradient-text">Left Brain</span>
+            World Music Method
           </CardTitle>
           <CardDescription>
             {isLogin ? 'Welcome back! Sign in to continue.' : 'Create your account to get started.'}

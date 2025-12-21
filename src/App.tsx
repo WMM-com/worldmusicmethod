@@ -30,6 +30,7 @@ import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import { MessagingPopup } from "./components/messaging/MessagingPopup";
 
 const queryClient = new QueryClient();
 
@@ -63,7 +64,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/courses" replace />;
   }
   
   return <>{children}</>;
@@ -79,7 +80,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/" element={<Navigate to="/courses" replace />} />
               <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
               <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
               <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
@@ -101,8 +102,10 @@ const App = () => (
               <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
               <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <MessagingPopup />
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>
