@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -23,21 +24,32 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, ChevronDown, Users } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Shield, Users } from 'lucide-react';
+
+type AppRole = 'user' | 'admin' | 'staff' | 'moderator';
 
 export function AdminUsers() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  
+  // New user form state
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<AppRole>('user');
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', searchQuery],
@@ -69,7 +81,7 @@ export function AdminUsers() {
   const { data: courses } = useQuery({
     queryKey: ['admin-courses-list'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('courses').select('id, title');
+      const { data, error } = await supabase.from('courses').select('id, title').order('title');
       if (error) throw error;
       return data;
     },
@@ -130,9 +142,50 @@ export function AdminUsers() {
     },
   });
 
-  const getUserRole = (userId: string) => {
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      // First delete existing role
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      
+      // Then insert new role - cast to any to handle enum type
+      const { error } = await supabase.from('user_roles').insert([{
+        user_id: userId,
+        role: role as any,
+      }]);
+      if (error) throw error;
+
+      // If staff, enroll in all courses
+      if (role === 'staff') {
+        const allCourseIds = courses?.map(c => c.id) || [];
+        const existingEnrollments = enrollments?.filter(e => e.user_id === userId).map(e => e.course_id) || [];
+        const newCourseIds = allCourseIds.filter(id => !existingEnrollments.includes(id));
+        
+        if (newCourseIds.length > 0) {
+          const currentUser = (await supabase.auth.getUser()).data.user;
+          await supabase.from('course_enrollments').insert(
+            newCourseIds.map(courseId => ({
+              user_id: userId,
+              course_id: courseId,
+              enrollment_type: 'staff',
+              enrolled_by: currentUser?.id,
+            }))
+          );
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
+      toast.success('User role updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update role');
+    },
+  });
+
+  const getUserRole = (userId: string): AppRole => {
     const role = userRoles?.find(r => r.user_id === userId);
-    return role?.role || 'user';
+    return (role?.role as AppRole) || 'user';
   };
 
   const getUserEnrollments = (userId: string) => {
@@ -175,20 +228,124 @@ export function AdminUsers() {
     enrollMutation.mutate({ userId: selectedUserId, courseIds: allCourseIds });
   };
 
+  const handleCreateUser = async () => {
+    if (!newUserEmail || !newUserName || !newUserPassword) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      // Note: This requires admin API access. For now, we'll show a message
+      // In a real implementation, you'd use an edge function to create users
+      toast.info('User creation requires a server-side function. Please use Supabase dashboard or implement an edge function for this feature.');
+      
+      // Reset form
+      setNewUserEmail('');
+      setNewUserName('');
+      setNewUserPassword('');
+      setNewUserRole('user');
+      setCreateUserDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create user');
+    }
+  };
+
+  const getRoleBadgeVariant = (role: AppRole) => {
+    switch (role) {
+      case 'admin': return 'default';
+      case 'staff': return 'secondary';
+      case 'moderator': return 'outline';
+      default: return 'outline';
+    }
+  };
+
   const selectedCount = selectedCourseIds.length + selectedGroupIds.length;
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Users</CardTitle>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search users..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Users
+        </CardTitle>
+        <div className="flex items-center gap-4">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+                <DialogDescription>
+                  Add a new user to the platform. Staff users get access to admin dashboard and all courses.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter full name"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter password"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={newUserRole} onValueChange={(value: AppRole) => setNewUserRole(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="staff">Staff (Admin access + All courses)</SelectItem>
+                      <SelectItem value="admin">Admin (Full access)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {newUserRole === 'staff' && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Staff users can access admin dashboard and are enrolled in all courses automatically.
+                    </p>
+                  )}
+                </div>
+                <Button onClick={handleCreateUser} className="w-full">
+                  Create User
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </CardHeader>
       <CardContent>
@@ -229,12 +386,26 @@ export function AdminUsers() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={role === 'admin' ? 'default' : 'secondary'}>
-                        {role}
-                      </Badge>
+                      <Select
+                        value={role}
+                        onValueChange={(value: AppRole) => updateRoleMutation.mutate({ userId: user.id, role: value })}
+                      >
+                        <SelectTrigger className="w-28">
+                          <Badge variant={getRoleBadgeVariant(role)} className="pointer-events-none">
+                            {role}
+                          </Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="user">User</SelectItem>
+                          <SelectItem value="staff">Staff</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
-                      {userEnrollments.length > 0 ? (
+                      {role === 'staff' ? (
+                        <Badge variant="secondary" className="text-xs">All courses</Badge>
+                      ) : userEnrollments.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {userEnrollments.slice(0, 2).map((e: any, i) => (
                             <Badge key={i} variant="outline" className="text-xs">

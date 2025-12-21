@@ -15,13 +15,30 @@ export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch courses with their landing page images
+      const { data: courses, error } = await supabase
         .from('courses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('title', { ascending: true }); // Alphabetical order
       
       if (error) throw error;
-      return data as Course[];
+      
+      // Fetch landing page images
+      const courseIds = courses?.map(c => c.id) || [];
+      const { data: landingPages } = await supabase
+        .from('course_landing_pages')
+        .select('course_id, course_image_url')
+        .in('course_id', courseIds);
+      
+      // Merge landing page images with courses
+      return (courses || []).map(course => {
+        const landingPage = landingPages?.find(lp => lp.course_id === course.id);
+        return {
+          ...course,
+          // Use landing page image if available, otherwise keep original cover_image_url
+          cover_image_url: landingPage?.course_image_url || course.cover_image_url
+        };
+      }) as Course[];
     }
   });
 }
