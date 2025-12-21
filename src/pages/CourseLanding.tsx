@@ -601,7 +601,10 @@ interface DBLandingPage {
   expert_bio: string[] | null;
   resources: ResourceItem[] | null;
   faqs: FAQItem[] | null;
-  learning_outcomes: LearningOutcome[] | null;
+  learning_outcomes: { title: string; description: string }[] | null;
+  learning_outcomes_intro: string | null;
+  cta_title: string | null;
+  cta_description: string | null;
 }
 
 export default function CourseLanding() {
@@ -637,6 +640,15 @@ export default function CourseLanding() {
   // Get hardcoded course-specific config as fallback
   const hardcodedConfig = getCourseConfig(course?.title);
 
+  // Helper to convert DB learning outcomes (with description string) to frontend format (with items array)
+  const convertLearningOutcomes = (dbOutcomes: { title: string; description: string }[] | null): LearningOutcome[] => {
+    if (!dbOutcomes?.length) return [];
+    return dbOutcomes.map(outcome => ({
+      title: outcome.title,
+      items: outcome.description.split('\n').map(s => s.trim()).filter(s => s.length > 0)
+    }));
+  };
+
   // Merge database data with hardcoded config (database takes priority)
   const courseConfig = dbLandingPage ? {
     heroBackground: dbLandingPage.hero_background_url || hardcodedConfig?.heroBackground || '',
@@ -655,8 +667,18 @@ export default function CourseLanding() {
     } : undefined,
     resources: ((dbLandingPage.resources as unknown) as ResourceItem[] | null)?.length ? (dbLandingPage.resources as unknown) as ResourceItem[] : hardcodedConfig?.resources || [],
     faqs: ((dbLandingPage.faqs as unknown) as FAQItem[] | null)?.length ? (dbLandingPage.faqs as unknown) as FAQItem[] : hardcodedConfig?.faqs || [],
-    learningOutcomes: ((dbLandingPage.learning_outcomes as unknown) as LearningOutcome[] | null)?.length ? (dbLandingPage.learning_outcomes as unknown) as LearningOutcome[] : hardcodedConfig?.learningOutcomes || []
-  } : hardcodedConfig;
+    learningOutcomes: convertLearningOutcomes(dbLandingPage.learning_outcomes as { title: string; description: string }[] | null).length 
+      ? convertLearningOutcomes(dbLandingPage.learning_outcomes as { title: string; description: string }[] | null) 
+      : hardcodedConfig?.learningOutcomes || [],
+    learningOutcomesIntro: dbLandingPage.learning_outcomes_intro || 'By the end of this course, you will be able to:',
+    ctaTitle: dbLandingPage.cta_title || 'Ready To Start Your Journey?',
+    ctaDescription: dbLandingPage.cta_description || 'Join a worldwide community of musicians.',
+  } : hardcodedConfig ? {
+    ...hardcodedConfig,
+    learningOutcomesIntro: 'By the end of this course, you will be able to:',
+    ctaTitle: 'Ready To Start Your Journey?',
+    ctaDescription: 'Join a worldwide community of musicians.',
+  } : null;
 
   // Show sticky CTA when scrolled past hero and track active section
   useEffect(() => {
@@ -1138,7 +1160,7 @@ export default function CourseLanding() {
                 className="text-center mb-12"
               >
                 <h2 className="text-3xl font-bold mb-4">Key Learning Outcomes</h2>
-                <p className="text-muted-foreground">By the end of this course, you will be able to:</p>
+                <p className="text-muted-foreground">{courseConfig?.learningOutcomesIntro || 'By the end of this course, you will be able to:'}</p>
               </motion.div>
 
               <div className="grid md:grid-cols-2 gap-6">
@@ -1309,9 +1331,9 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-              <h2 className="text-3xl font-bold mb-4">Ready to Start Your Journey?</h2>
+              <h2 className="text-3xl font-bold mb-4">{courseConfig?.ctaTitle || 'Ready To Start Your Journey?'}</h2>
                 <p className="text-lg text-muted-foreground mb-8">
-                  Join students from around the world learning {course?.title || 'this course'}.
+                  {courseConfig?.ctaDescription || 'Join a worldwide community of musicians.'}
                 </p>
                 {priceInfo && !isEnrolled && (
                   <p className="text-2xl font-bold mb-4">

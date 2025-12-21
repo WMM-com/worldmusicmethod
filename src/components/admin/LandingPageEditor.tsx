@@ -64,8 +64,8 @@ const defaultData: LandingPageData = {
   expert_image_url: "",
   expert_bio: [""],
   faqs: [{ question: "", answer: "" }],
-  cta_title: "",
-  cta_description: "",
+  cta_title: "Ready To Start Your Journey?",
+  cta_description: "Join a worldwide community of musicians.",
 };
 
 export function LandingPageEditor() {
@@ -143,11 +143,14 @@ export function LandingPageEditor() {
         styles_image_desktop: data.styles_image_desktop,
         styles_image_mobile: data.styles_image_mobile,
         learning_outcomes: data.learning_outcomes as unknown as any,
+        learning_outcomes_intro: data.learning_outcomes_intro,
         resources: data.resources as unknown as any,
         expert_name: data.expert_name,
         expert_image_url: data.expert_image_url,
         expert_bio: data.expert_bio,
         faqs: data.faqs as unknown as any,
+        cta_title: data.cta_title,
+        cta_description: data.cta_description,
       };
 
       if (data.id) {
