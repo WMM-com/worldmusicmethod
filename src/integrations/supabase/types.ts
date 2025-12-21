@@ -374,6 +374,7 @@ export type Database = {
       }
       course_landing_pages: {
         Row: {
+          course_duration_minutes: number | null
           course_id: string | null
           course_image_url: string | null
           course_includes: string[] | null
@@ -398,6 +399,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          course_duration_minutes?: number | null
           course_id?: string | null
           course_image_url?: string | null
           course_includes?: string[] | null
@@ -422,6 +424,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          course_duration_minutes?: number | null
           course_id?: string | null
           course_image_url?: string | null
           course_includes?: string[] | null
