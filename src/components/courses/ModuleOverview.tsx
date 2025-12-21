@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Play, CheckCircle2, Clock, BookOpen, Headphones, FileText, MapPin } from 'lucide-react';
+import { Play, CheckCircle2, Clock, BookOpen, Headphones, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -13,29 +13,93 @@ interface ModuleOverviewProps {
   onStartModule: () => void;
 }
 
-// Module overview content (could come from DB in future)
-const MODULE_CONTENT: Record<number, {
-  description: string;
-  learningFocus: string[];
-  culturalContext: string;
-}> = {
-  0: {
-    description: "Huayño is one of the most iconic styles of the Peruvian Andes, with deep Indigenous roots that date back centuries. Traditionally accompanied by flutes, violins, and percussion, Huayño's guitar adaptation brings out its bright, syncopated strumming patterns and melodic phrasing.",
-    learningFocus: [
-      "Develop Huayño strumming techniques and rhythmic precision.",
-      "Understand syncopation and its role in Andean music.",
-      "Learn a traditional Huayño melody and variations."
-    ],
-    culturalContext: "Huayño originated in Quechua and Aymara communities of the Andean highlands. It became a national symbol of Peruvian identity in the 20th century and remains one of the most widely performed folk styles across Bolivia, Ecuador, and Peru."
-  }
-};
-
 const LESSON_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   video: Play,
   reading: BookOpen,
   listening: Headphones,
   assignment: FileText,
 };
+
+// Parse module description to extract sections
+function parseModuleDescription(description: string | null) {
+  if (!description) {
+    return { intro: '', sections: [], youtubeUrls: [] };
+  }
+
+  const lines = description.split('\n');
+  const sections: { title: string; content: string[] }[] = [];
+  const youtubeUrls: string[] = [];
+  let intro: string[] = [];
+  let currentSection: { title: string; content: string[] } | null = null;
+
+  // Common section headers to detect
+  const sectionHeaders = [
+    'Learning Focus',
+    'Context & References',
+    'Cultural Context',
+    'Suggested Listening',
+    'References',
+    'Overview',
+    'About This Module',
+  ];
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // Extract YouTube URLs
+    const youtubeMatch = trimmedLine.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (youtubeMatch) {
+      youtubeUrls.push(youtubeMatch[1]);
+      continue;
+    }
+
+    // Check if this line is a section header
+    const isHeader = sectionHeaders.some(header => 
+      trimmedLine.toLowerCase().includes(header.toLowerCase()) && 
+      trimmedLine.length < 50
+    );
+
+    if (isHeader) {
+      // Save previous section if exists
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+      currentSection = { title: trimmedLine, content: [] };
+    } else if (currentSection) {
+      // Add to current section
+      if (trimmedLine) {
+        currentSection.content.push(trimmedLine);
+      }
+    } else {
+      // Add to intro
+      if (trimmedLine) {
+        intro.push(trimmedLine);
+      }
+    }
+  }
+
+  // Don't forget the last section
+  if (currentSection) {
+    sections.push(currentSection);
+  }
+
+  return { intro: intro.join(' '), sections, youtubeUrls };
+}
+
+// YouTube embed component
+function YouTubeEmbed({ videoId }: { videoId: string }) {
+  return (
+    <div className="aspect-video rounded-xl overflow-hidden border border-border">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="w-full h-full"
+      />
+    </div>
+  );
+}
 
 export function ModuleOverview({
   module,
@@ -49,12 +113,8 @@ export function ModuleOverview({
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
   const isComplete = completedCount === lessons.length && lessons.length > 0;
   
-  // Get module content or use defaults
-  const content = MODULE_CONTENT[moduleIndex] || {
-    description: module.description || "Explore this module to discover new techniques and cultural insights.",
-    learningFocus: ["Master the core techniques", "Understand the cultural context", "Apply your knowledge in practice"],
-    culturalContext: "This style represents an important part of the musical tradition."
-  };
+  // Parse the actual module description
+  const { intro, sections, youtubeUrls } = parseModuleDescription(module.description);
 
   const totalDuration = lessons.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
   const formatDuration = (seconds: number) => {
@@ -66,7 +126,7 @@ export function ModuleOverview({
   const nextLesson = lessons.find(l => !completedLessons.has(l.id));
 
   return (
-    <div className="max-w-4xl mx-auto p-6 md:p-8">
+    <div className="w-full max-w-6xl mx-auto p-6 md:p-8 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -81,10 +141,7 @@ export function ModuleOverview({
             {module.region_name && (
               <>
                 <span>•</span>
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {module.region_name}
-                </div>
+                <span>{module.region_name}</span>
               </>
             )}
           </div>
@@ -130,57 +187,60 @@ export function ModuleOverview({
           )}
         </div>
 
-        {/* Description */}
-        <div className="prose prose-neutral dark:prose-invert max-w-none">
-          <p className="text-lg leading-relaxed text-foreground/80">
-            {content.description}
-          </p>
-        </div>
-
-        {/* Learning Focus */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <span className="w-1 h-6 bg-primary rounded-full" />
-            Learning Focus
-          </h2>
-          <ul className="space-y-3">
-            {content.learningFocus.map((item, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-xs font-medium">{i + 1}</span>
-                </div>
-                <span className="text-foreground/80">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Cultural Context */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <span className="w-1 h-6 bg-amber-500 rounded-full" />
-            Cultural & Musical Context
-          </h2>
-          <p className="text-foreground/80 leading-relaxed">
-            {content.culturalContext}
-          </p>
-        </div>
-
-        {/* Mini map placeholder - could show region */}
-        <div className="rounded-xl overflow-hidden border border-border bg-muted/30 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-amber-900/50 to-emerald-800/50 flex items-center justify-center">
-              <MapPin className="w-8 h-8 text-amber-200/70" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Region</p>
-              <p className="font-medium">{module.region_name || 'Peruvian Andes'}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Explore the musical traditions of this region
-              </p>
-            </div>
+        {/* Intro Description */}
+        {intro && (
+          <div className="prose prose-neutral dark:prose-invert max-w-none">
+            <p className="text-lg leading-relaxed text-foreground/80">
+              {intro}
+            </p>
           </div>
-        </div>
+        )}
+
+        {/* Dynamic Sections from description */}
+        {sections.map((section, idx) => (
+          <div key={idx} className="space-y-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <span className={cn(
+                "w-1 h-6 rounded-full",
+                idx % 2 === 0 ? "bg-primary" : "bg-amber-500"
+              )} />
+              {section.title}
+            </h2>
+            {section.content.length > 0 && (
+              <div className="space-y-3">
+                {section.content.map((item, i) => {
+                  // Check if it looks like a bullet point
+                  const isBullet = item.startsWith('•') || item.startsWith('-') || item.startsWith('*');
+                  const cleanItem = isBullet ? item.slice(1).trim() : item;
+                  
+                  if (isBullet) {
+                    return (
+                      <div key={i} className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-primary/60 flex-shrink-0 mt-2" />
+                        <span className="text-foreground/80">{cleanItem}</span>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <p key={i} className="text-foreground/80 leading-relaxed">
+                      {item}
+                    </p>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* YouTube Embeds */}
+        {youtubeUrls.length > 0 && (
+          <div className="space-y-4">
+            {youtubeUrls.map((videoId, idx) => (
+              <YouTubeEmbed key={idx} videoId={videoId} />
+            ))}
+          </div>
+        )}
 
         {/* Lessons list */}
         <div className="space-y-4">
