@@ -113,7 +113,13 @@ serve(async (req) => {
       const parsedModules: any[] = [];
       const lines = modulesData.split('\n').filter((l: string) => l.trim());
       
-      const courseSlug = courseTitle.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      // Create course slug - handle hyphens properly (e.g. "Desert Guitar – Origins" -> "desert-guitar-origins")
+      const courseSlug = courseTitle.toLowerCase()
+        .replace(/–/g, '-')  // Replace en-dash with hyphen
+        .replace(/—/g, '-')  // Replace em-dash with hyphen
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-'); // Collapse multiple hyphens
       console.log('Looking for modules with course slug:', courseSlug);
       
       for (const line of lines) {
@@ -121,8 +127,8 @@ serve(async (req) => {
           const data = JSON.parse(line);
           const permalink = data.wp_post_permalink || '';
           
-          // Only include modules that belong to this course (check permalink)
-          if (!permalink.includes(courseSlug) && !permalink.toLowerCase().includes('argentinian-fingerstyle')) {
+          // Only include modules that belong to this course (check permalink contains course slug)
+          if (!permalink.toLowerCase().includes(courseSlug)) {
             continue;
           }
           
@@ -220,8 +226,8 @@ serve(async (req) => {
           const data = JSON.parse(line);
           const permalink = data.wp_post_permalink || '';
           
-          // Only include lessons that belong to this course
-          if (!permalink.includes(courseSlug) && !permalink.toLowerCase().includes('argentinian-fingerstyle')) {
+          // Only include lessons that belong to this course (check permalink contains course slug)
+          if (!permalink.toLowerCase().includes(courseSlug)) {
             continue;
           }
           

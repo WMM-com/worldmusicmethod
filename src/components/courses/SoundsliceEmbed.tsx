@@ -107,10 +107,15 @@ export function SoundsliceEmbed({
     let baseUrl: string;
     
     if (sliceIdOrUrl.includes('soundslice.com')) {
-      // Full URL provided - ensure it ends with /embed/
-      baseUrl = sliceIdOrUrl.includes('/embed/') 
-        ? sliceIdOrUrl.replace(/\/$/, '') // Remove trailing slash if present
-        : sliceIdOrUrl.replace(/\/?$/, '/embed');
+      // Full URL provided - extract the slice path and build embed URL
+      // Handle formats like: https://www.soundslice.com/slices/krXCc/
+      const sliceMatch = sliceIdOrUrl.match(/soundslice\.com\/slices\/([a-zA-Z0-9]+)/);
+      if (sliceMatch) {
+        baseUrl = `https://www.soundslice.com/slices/${sliceMatch[1]}/embed`;
+      } else {
+        // Fallback - try to use as-is with /embed
+        baseUrl = sliceIdOrUrl.replace(/\/?$/, '').replace(/\/embed\/?$/, '') + '/embed';
+      }
     } else {
       // Just the slice ID provided
       baseUrl = `https://www.soundslice.com/slices/${sliceIdOrUrl}/embed`;
