@@ -975,7 +975,12 @@ export default function CourseLanding() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 text-primary" />
-                    <span>{Math.round(totalDuration / 60)} min</span>
+                    <span>
+                      {totalDuration >= 3600 
+                        ? `${Math.floor(totalDuration / 3600)}h ${Math.round((totalDuration % 3600) / 60)}m`
+                        : `${Math.round(totalDuration / 60)} min`
+                      }
+                    </span>
                   </div>
                 </div>
 
@@ -1065,22 +1070,12 @@ export default function CourseLanding() {
 
                   <h3 className="font-semibold text-sm mb-3">This Course Includes:</h3>
                   <ul className="space-y-2 text-xs">
-                    <li className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-primary" />
-                      Synced Notation & Tab
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <FileText className="w-3.5 h-3.5 text-primary" />
-                      Downloadable PDF Notation
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-primary" />
-                      Lifetime Access
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Users className="w-3.5 h-3.5 text-primary" />
-                      Student Community
-                    </li>
+                    {(courseConfig?.courseIncludes?.length ? courseConfig.courseIncludes : ['Synced Notation & Tab', 'Downloadable PDF Notation', 'Lifetime Access', 'Student Community']).map((item, i) => (
+                      <li key={i} className="flex items-center gap-2">
+                        <CheckCircle className="w-3.5 h-3.5 text-primary" />
+                        {item}
+                      </li>
+                    ))}
                   </ul>
                 </Card>
               </motion.div>
