@@ -597,6 +597,60 @@ export type Database = {
         }
         Relationships: []
       }
+      email_campaigns: {
+        Row: {
+          body_html: string
+          body_text: string | null
+          created_at: string
+          exclude_tags: string[] | null
+          id: string
+          include_tags: string[] | null
+          name: string
+          scheduled_at: string | null
+          send_to_lists: string[] | null
+          sent_at: string | null
+          sent_count: number | null
+          status: string
+          subject: string
+          total_recipients: number | null
+          updated_at: string
+        }
+        Insert: {
+          body_html: string
+          body_text?: string | null
+          created_at?: string
+          exclude_tags?: string[] | null
+          id?: string
+          include_tags?: string[] | null
+          name: string
+          scheduled_at?: string | null
+          send_to_lists?: string[] | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          subject: string
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          body_text?: string | null
+          created_at?: string
+          exclude_tags?: string[] | null
+          id?: string
+          include_tags?: string[] | null
+          name?: string
+          scheduled_at?: string | null
+          send_to_lists?: string[] | null
+          sent_at?: string | null
+          sent_count?: number | null
+          status?: string
+          subject?: string
+          total_recipients?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_contacts: {
         Row: {
           created_at: string
@@ -636,6 +690,66 @@ export type Database = {
           unsubscribed_at?: string | null
           updated_at?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      email_list_members: {
+        Row: {
+          contact_id: string
+          id: string
+          joined_at: string
+          list_id: string
+        }
+        Insert: {
+          contact_id: string
+          id?: string
+          joined_at?: string
+          list_id: string
+        }
+        Update: {
+          contact_id?: string
+          id?: string
+          joined_at?: string
+          list_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_list_members_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "email_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_list_members_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "email_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -914,7 +1028,6 @@ export type Database = {
       }
       email_tags: {
         Row: {
-          color: string | null
           created_at: string
           description: string | null
           id: string
@@ -922,7 +1035,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          color?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -930,7 +1042,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          color?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -2184,6 +2295,8 @@ export type Database = {
           is_active: boolean | null
           name: string
           product_type: string
+          purchase_tag_id: string | null
+          refund_remove_tag: boolean | null
           sale_ends_at: string | null
           sale_price_usd: number | null
           tutor_id: string | null
@@ -2198,6 +2311,8 @@ export type Database = {
           is_active?: boolean | null
           name: string
           product_type?: string
+          purchase_tag_id?: string | null
+          refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
           tutor_id?: string | null
@@ -2212,6 +2327,8 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           product_type?: string
+          purchase_tag_id?: string | null
+          refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
           tutor_id?: string | null
@@ -2223,6 +2340,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_purchase_tag_id_fkey"
+            columns: ["purchase_tag_id"]
+            isOneToOne: false
+            referencedRelation: "email_tags"
             referencedColumns: ["id"]
           },
         ]
