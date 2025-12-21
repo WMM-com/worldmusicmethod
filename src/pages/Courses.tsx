@@ -1,8 +1,10 @@
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, BookOpen, ChevronRight, Plus } from 'lucide-react';
+import { MapPin, Clock, BookOpen, ChevronRight, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourses } from '@/hooks/useCourses';
@@ -12,6 +14,20 @@ export default function Courses() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: courses, isLoading } = useCourses();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter courses by search query
+  const filteredCourses = useMemo(() => {
+    if (!courses) return [];
+    if (!searchQuery.trim()) return courses;
+    
+    const query = searchQuery.toLowerCase();
+    return courses.filter(course => 
+      course.title.toLowerCase().includes(query) ||
+      course.country?.toLowerCase().includes(query) ||
+      course.description?.toLowerCase().includes(query)
+    );
+  }, [courses, searchQuery]);
 
   if (isLoading) {
     return (
@@ -52,14 +68,25 @@ export default function Courses() {
               </Button>
             )}
           </div>
+          
+          {/* Search bar */}
+          <div className="mt-6 relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search courses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
       </header>
 
       {/* Course grid */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        {courses && courses.length > 0 ? (
+        {filteredCourses.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course, i) => (
+            {filteredCourses.map((course, i) => (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -116,6 +143,16 @@ export default function Courses() {
                 </Card>
               </motion.div>
             ))}
+          </div>
+        ) : searchQuery ? (
+          <div className="text-center py-20">
+            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-semibold mb-2">No courses found</h2>
+            <p className="text-muted-foreground mb-6">
+              Try a different search term
+            </p>
           </div>
         ) : (
           <div className="text-center py-20">

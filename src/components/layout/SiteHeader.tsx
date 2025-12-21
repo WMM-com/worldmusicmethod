@@ -20,27 +20,27 @@ export function SiteHeader() {
   const { user, profile, signOut } = useAuth();
   const { getItemCount } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const cartItemCount = getItemCount();
 
   useEffect(() => {
-    async function checkAdminRole() {
+    async function checkAdminAccess() {
       if (!user) {
-        setIsAdmin(false);
+        setHasAdminAccess(false);
         return;
       }
       
+      // Check if user has admin or staff role (both get admin dashboard access)
       const { data } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+        .in('role', ['admin', 'staff']);
       
-      setIsAdmin(!!data);
+      setHasAdminAccess(data && data.length > 0);
     }
     
-    checkAdminRole();
+    checkAdminAccess();
   }, [user]);
 
   const handleSignOut = async () => {
@@ -156,7 +156,7 @@ export function SiteHeader() {
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
-                  {isAdmin && (
+                  {hasAdminAccess && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
@@ -244,7 +244,7 @@ export function SiteHeader() {
               
               {user ? (
                 <>
-                  {isAdmin && (
+                  {hasAdminAccess && (
                     <Link
                       to="/admin"
                       onClick={() => setMobileMenuOpen(false)}
