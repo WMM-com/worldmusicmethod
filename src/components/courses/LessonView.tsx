@@ -55,8 +55,8 @@ export function LessonView({
   const listeningRefs = lesson.listening_references || [];
 
   return (
-    <div className="flex-1 overflow-auto">
-      <div className="max-w-5xl mx-auto px-4 py-6 lg:px-6 lg:py-8">
+    <div className="flex-1 overflow-auto w-full">
+      <div className="w-full max-w-6xl mx-auto px-4 py-6 lg:px-8 lg:py-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -85,8 +85,8 @@ export function LessonView({
           )}
         </motion.div>
 
-        {/* Soundslice Embed - if video_url is a short Soundslice ID (5-6 chars) */}
-        {lesson.video_url && lesson.video_url.length <= 10 && !lesson.video_url.includes('/') && !lesson.video_url.includes('.') && (
+        {/* Soundslice Embed - if video_url contains soundslice or is a short ID */}
+        {lesson.video_url && (lesson.video_url.includes('soundslice') || (!lesson.video_url.includes('youtube') && !lesson.video_url.includes('vimeo') && !lesson.video_url.includes('.mp4'))) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -95,14 +95,14 @@ export function LessonView({
           >
             <SoundsliceEmbed 
               sliceIdOrUrl={lesson.video_url}
-              preset="drum"
-              height={500}
+              preset="guitar"
+              height={600}
             />
           </motion.div>
         )}
 
-        {/* Video Player - only for actual video URLs */}
-        {lesson.video_url && (lesson.video_url.includes('/') || lesson.video_url.includes('.')) && (
+        {/* Video Player - only for YouTube/Vimeo/direct video URLs */}
+        {lesson.video_url && (lesson.video_url.includes('youtube') || lesson.video_url.includes('vimeo') || lesson.video_url.includes('.mp4')) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -148,8 +148,8 @@ export function LessonView({
                 <BookOpen className="w-5 h-5 text-primary" />
                 <h2 className="font-semibold">Lesson Notes</h2>
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                {lesson.content.split('\n').map((paragraph, i) => (
+              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90">
+                {lesson.content.split('\n').filter(p => !p.includes('[guitar') && !p.includes('[drum') && !p.includes('[bass') && !p.includes('[vocals') && !p.includes('soundslice.com')).map((paragraph, i) => (
                   <p key={i}>{paragraph}</p>
                 ))}
               </div>

@@ -249,7 +249,7 @@ export default function Course() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="max-w-4xl mx-auto"
+              className="w-full"
             >
               <LessonView
                 lesson={selectedLesson}
