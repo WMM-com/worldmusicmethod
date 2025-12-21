@@ -379,6 +379,8 @@ export type Database = {
           course_includes: string[] | null
           course_overview: string[] | null
           created_at: string
+          cta_description: string | null
+          cta_title: string | null
           expert_bio: string[] | null
           expert_image_url: string | null
           expert_name: string | null
@@ -387,6 +389,7 @@ export type Database = {
           id: string
           instrument_tag: string | null
           learning_outcomes: Json | null
+          learning_outcomes_intro: string | null
           overview_heading: string | null
           resources: Json | null
           styles_image_desktop: string | null
@@ -400,6 +403,8 @@ export type Database = {
           course_includes?: string[] | null
           course_overview?: string[] | null
           created_at?: string
+          cta_description?: string | null
+          cta_title?: string | null
           expert_bio?: string[] | null
           expert_image_url?: string | null
           expert_name?: string | null
@@ -408,6 +413,7 @@ export type Database = {
           id?: string
           instrument_tag?: string | null
           learning_outcomes?: Json | null
+          learning_outcomes_intro?: string | null
           overview_heading?: string | null
           resources?: Json | null
           styles_image_desktop?: string | null
@@ -421,6 +427,8 @@ export type Database = {
           course_includes?: string[] | null
           course_overview?: string[] | null
           created_at?: string
+          cta_description?: string | null
+          cta_title?: string | null
           expert_bio?: string[] | null
           expert_image_url?: string | null
           expert_name?: string | null
@@ -429,6 +437,7 @@ export type Database = {
           id?: string
           instrument_tag?: string | null
           learning_outcomes?: Json | null
+          learning_outcomes_intro?: string | null
           overview_heading?: string | null
           resources?: Json | null
           styles_image_desktop?: string | null
