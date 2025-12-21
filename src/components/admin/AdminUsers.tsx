@@ -308,7 +308,7 @@ export function AdminUsers() {
               <DialogHeader>
                 <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>
-                  Add a new user to the platform. Staff users get access to admin dashboard and all courses.
+                  Add a new user to the platform.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
