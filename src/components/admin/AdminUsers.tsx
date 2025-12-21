@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Shield, Users } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Shield, Users, Pencil } from 'lucide-react';
 
 type AppRole = 'user' | 'admin';
 
@@ -44,7 +44,8 @@ export function AdminUsers() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<{ id: string; full_name: string; email: string } | null>(null);
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -163,6 +164,25 @@ export function AdminUsers() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update role');
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, fullName, email }: { userId: string; fullName: string; email: string }) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName, email })
+        .eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('User updated successfully');
+      setEditDialogOpen(false);
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update user');
     },
   });
 
@@ -416,24 +436,36 @@ export function AdminUsers() {
                       {new Date(user.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Dialog open={enrollDialogOpen && selectedUserId === user.id} onOpenChange={(open) => {
-                        setEnrollDialogOpen(open);
-                        if (!open) {
-                          setSelectedUserId(null);
-                          setSelectedCourseIds([]);
-                          setSelectedGroupIds([]);
-                        }
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedUserId(user.id)}
-                          >
-                            <BookOpen className="h-4 w-4 mr-1" />
-                            Enroll
-                          </Button>
-                        </DialogTrigger>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingUser({ id: user.id, full_name: user.full_name || '', email: user.email });
+                            setEditDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Dialog open={enrollDialogOpen && selectedUserId === user.id} onOpenChange={(open) => {
+                          setEnrollDialogOpen(open);
+                          if (!open) {
+                            setSelectedUserId(null);
+                            setSelectedCourseIds([]);
+                            setSelectedGroupIds([]);
+                          }
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedUserId(user.id)}
+                            >
+                              <BookOpen className="h-4 w-4 mr-1" />
+                              Enroll
+                            </Button>
+                          </DialogTrigger>
                         <DialogContent className="max-w-md">
                           <DialogHeader>
                             <DialogTitle>Enroll User in Courses</DialogTitle>
@@ -524,6 +556,7 @@ export function AdminUsers() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -532,6 +565,53 @@ export function AdminUsers() {
           </TableBody>
         </Table>
       </CardContent>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) setEditingUser(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information.
+            </DialogDescription>
+          </DialogHeader>
+          {editingUser && (
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Full Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editingUser.full_name}
+                  onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                />
+              </div>
+              <Button
+                onClick={() => updateUserMutation.mutate({
+                  userId: editingUser.id,
+                  fullName: editingUser.full_name,
+                  email: editingUser.email,
+                })}
+                disabled={updateUserMutation.isPending}
+                className="w-full"
+              >
+                {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
