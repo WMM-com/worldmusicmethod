@@ -1,0 +1,170 @@
+Country Code,Country Name,Region,Discount %,Currency
+NG,Nigeria,africa,65,USD
+ZA,South Africa,africa,65,USD
+KE,Kenya,africa,65,USD
+GH,Ghana,africa,65,USD
+EG,Egypt,africa,65,USD
+MA,Morocco,africa,65,USD
+TZ,Tanzania,africa,65,USD
+UG,Uganda,africa,65,USD
+ET,Ethiopia,africa,65,USD
+SN,Senegal,africa,65,USD
+DZ,Algeria,africa,65,USD
+AO,Angola,africa,65,USD
+BJ,Benin,africa,65,USD
+BW,Botswana,africa,65,USD
+BF,Burkina Faso,africa,65,USD
+BI,Burundi,africa,65,USD
+CM,Cameroon,africa,65,USD
+CV,Cape Verde,africa,65,USD
+CF,Central African Republic,africa,65,USD
+TD,Chad,africa,65,USD
+KM,Comoros,africa,65,USD
+CG,Congo,africa,65,USD
+CD,Democratic Republic of the Congo,africa,65,USD
+DJ,Djibouti,africa,65,USD
+GQ,Equatorial Guinea,africa,65,USD
+ER,Eritrea,africa,65,USD
+SZ,Eswatini,africa,65,USD
+GA,Gabon,africa,65,USD
+GM,Gambia,africa,65,USD
+GN,Guinea,africa,65,USD
+GW,Guinea-Bissau,africa,65,USD
+CI,Ivory Coast,africa,65,USD
+LS,Lesotho,africa,65,USD
+LR,Liberia,africa,65,USD
+LY,Libya,africa,65,USD
+MG,Madagascar,africa,65,USD
+MW,Malawi,africa,65,USD
+ML,Mali,africa,65,USD
+MR,Mauritania,africa,65,USD
+MU,Mauritius,africa,65,USD
+MZ,Mozambique,africa,65,USD
+NA,Namibia,africa,65,USD
+NE,Niger,africa,65,USD
+RW,Rwanda,africa,65,USD
+ST,Sao Tome and Principe,africa,65,USD
+SC,Seychelles,africa,65,USD
+SL,Sierra Leone,africa,65,USD
+SO,Somalia,africa,65,USD
+SS,South Sudan,africa,65,USD
+SD,Sudan,africa,65,USD
+TG,Togo,africa,65,USD
+TN,Tunisia,africa,65,USD
+ZM,Zambia,africa,65,USD
+ZW,Zimbabwe,africa,65,USD
+BR,Brazil,south_america,65,USD
+AR,Argentina,south_america,65,USD
+CO,Colombia,south_america,65,USD
+CL,Chile,south_america,65,USD
+PE,Peru,south_america,65,USD
+VE,Venezuela,south_america,65,USD
+EC,Ecuador,south_america,65,USD
+BO,Bolivia,south_america,65,USD
+UY,Uruguay,south_america,65,USD
+PY,Paraguay,south_america,65,USD
+MX,Mexico,south_america,65,USD
+GT,Guatemala,south_america,65,USD
+CU,Cuba,south_america,65,USD
+HT,Haiti,south_america,65,USD
+DO,Dominican Republic,south_america,65,USD
+HN,Honduras,south_america,65,USD
+NI,Nicaragua,south_america,65,USD
+SV,El Salvador,south_america,65,USD
+CR,Costa Rica,south_america,65,USD
+PA,Panama,south_america,65,USD
+PR,Puerto Rico,south_america,65,USD
+JM,Jamaica,south_america,65,USD
+TT,Trinidad and Tobago,south_america,65,USD
+GY,Guyana,south_america,65,USD
+SR,Suriname,south_america,65,USD
+BZ,Belize,south_america,65,USD
+US,United States,usa_canada,0,USD
+CA,Canada,usa_canada,0,USD
+GB,United Kingdom,uk,0,GBP
+DE,Germany,north_west_europe,0,EUR
+FR,France,north_west_europe,0,EUR
+NL,Netherlands,north_west_europe,0,EUR
+BE,Belgium,north_west_europe,0,EUR
+AT,Austria,north_west_europe,0,EUR
+CH,Switzerland,north_west_europe,0,EUR
+IE,Ireland,north_west_europe,0,EUR
+DK,Denmark,north_west_europe,0,EUR
+SE,Sweden,north_west_europe,0,EUR
+NO,Norway,north_west_europe,0,EUR
+FI,Finland,north_west_europe,0,EUR
+LU,Luxembourg,north_west_europe,0,EUR
+IS,Iceland,north_west_europe,0,EUR
+LI,Liechtenstein,north_west_europe,0,EUR
+MC,Monaco,north_west_europe,0,EUR
+ES,Spain,east_south_europe,40,EUR
+IT,Italy,east_south_europe,40,EUR
+PT,Portugal,east_south_europe,40,EUR
+GR,Greece,east_south_europe,40,EUR
+PL,Poland,east_south_europe,40,EUR
+CZ,Czech Republic,east_south_europe,40,EUR
+HU,Hungary,east_south_europe,40,EUR
+RO,Romania,east_south_europe,40,EUR
+BG,Bulgaria,east_south_europe,40,EUR
+HR,Croatia,east_south_europe,40,EUR
+SK,Slovakia,east_south_europe,40,EUR
+SI,Slovenia,east_south_europe,40,EUR
+RS,Serbia,east_south_europe,40,EUR
+BA,Bosnia and Herzegovina,east_south_europe,40,EUR
+AL,Albania,east_south_europe,40,EUR
+MK,North Macedonia,east_south_europe,40,EUR
+ME,Montenegro,east_south_europe,40,EUR
+UA,Ukraine,east_south_europe,40,EUR
+TR,Turkey,east_south_europe,40,EUR
+MD,Moldova,east_south_europe,40,EUR
+BY,Belarus,east_south_europe,40,EUR
+LT,Lithuania,east_south_europe,40,EUR
+LV,Latvia,east_south_europe,40,EUR
+EE,Estonia,east_south_europe,40,EUR
+CY,Cyprus,east_south_europe,40,EUR
+MT,Malta,east_south_europe,40,EUR
+XK,Kosovo,east_south_europe,40,EUR
+JP,Japan,asia_higher,0,USD
+KR,South Korea,asia_higher,0,USD
+SG,Singapore,asia_higher,0,USD
+HK,Hong Kong,asia_higher,0,USD
+TW,Taiwan,asia_higher,0,USD
+AU,Australia,asia_higher,0,USD
+NZ,New Zealand,asia_higher,0,USD
+AE,United Arab Emirates,asia_higher,0,USD
+SA,Saudi Arabia,asia_higher,0,USD
+QA,Qatar,asia_higher,0,USD
+KW,Kuwait,asia_higher,0,USD
+BH,Bahrain,asia_higher,0,USD
+OM,Oman,asia_higher,0,USD
+IL,Israel,asia_higher,0,USD
+IN,India,asia_lower,65,USD
+ID,Indonesia,asia_lower,65,USD
+PH,Philippines,asia_lower,65,USD
+VN,Vietnam,asia_lower,65,USD
+TH,Thailand,asia_lower,65,USD
+MY,Malaysia,asia_lower,65,USD
+BD,Bangladesh,asia_lower,65,USD
+PK,Pakistan,asia_lower,65,USD
+LK,Sri Lanka,asia_lower,65,USD
+NP,Nepal,asia_lower,65,USD
+MM,Myanmar,asia_lower,65,USD
+KH,Cambodia,asia_lower,65,USD
+LA,Laos,asia_lower,65,USD
+MN,Mongolia,asia_lower,65,USD
+CN,China,asia_lower,65,USD
+AF,Afghanistan,asia_lower,65,USD
+UZ,Uzbekistan,asia_lower,65,USD
+KZ,Kazakhstan,asia_lower,65,USD
+TJ,Tajikistan,asia_lower,65,USD
+KG,Kyrgyzstan,asia_lower,65,USD
+TM,Turkmenistan,asia_lower,65,USD
+AZ,Azerbaijan,asia_lower,65,USD
+GE,Georgia,asia_lower,65,USD
+AM,Armenia,asia_lower,65,USD
+IQ,Iraq,asia_lower,65,USD
+IR,Iran,asia_lower,65,USD
+SY,Syria,asia_lower,65,USD
+JO,Jordan,asia_lower,65,USD
+LB,Lebanon,asia_lower,65,USD
+YE,Yemen,asia_lower,65,USD
