@@ -796,11 +796,12 @@ export default function CourseLanding() {
   };
 
   const handleAddToCart = () => {
-    if (product) {
+    if (product && priceInfo) {
       addToCart({
         productId: product.id,
         name: product.name,
-        price: product.base_price_usd,
+        price: priceInfo.price,
+        currency: priceInfo.currency,
         courseId: product.course_id || undefined,
         productType: product.product_type,
       });
