@@ -13,12 +13,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Mail, Settings, Play, Pause } from 'lucide-react';
 
+interface Product {
+  id: string;
+  name: string;
+}
+
 interface EmailSequence {
   id: string;
   name: string;
   description: string | null;
   trigger_type: string;
-  trigger_config: Record<string, any>;
+  trigger_config: { product_ids?: string[] } | null;
   is_active: boolean;
   created_at: string;
 }
@@ -41,6 +46,7 @@ interface SequenceStep {
 export function AdminSequences() {
   const [sequences, setSequences] = useState<EmailSequence[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [stepsDialogOpen, setStepsDialogOpen] = useState(false);
@@ -51,6 +57,7 @@ export function AdminSequences() {
     name: '', 
     description: '', 
     trigger_type: 'form_submit',
+    product_ids: [] as string[],
     is_active: true
   });
 
@@ -59,16 +66,17 @@ export function AdminSequences() {
   }, []);
 
   async function fetchData() {
-    const [seqRes, tempRes] = await Promise.all([
+    const [seqRes, tempRes, prodRes] = await Promise.all([
       supabase.from('email_sequences').select('*').order('name'),
-      supabase.from('email_sequence_templates').select('id, name, subject').order('name')
+      supabase.from('email_sequence_templates').select('id, name, subject').order('name'),
+      supabase.from('products').select('id, name').eq('is_active', true).order('name')
     ]);
     
     if (seqRes.error) toast.error('Failed to load sequences');
-    if (tempRes.error) toast.error('Failed to load templates');
     
     setSequences((seqRes.data || []) as EmailSequence[]);
     setTemplates(tempRes.data || []);
+    setProducts(prodRes.data || []);
     setLoading(false);
   }
 
@@ -95,11 +103,16 @@ export function AdminSequences() {
       return;
     }
 
+    const triggerConfig: { product_ids?: string[] } = {};
+    if (formData.trigger_type === 'purchase' && formData.product_ids.length > 0) {
+      triggerConfig.product_ids = formData.product_ids;
+    }
+
     const payload = {
       name: formData.name.trim(),
       description: formData.description.trim() || null,
       trigger_type: formData.trigger_type,
-      trigger_config: {},
+      trigger_config: triggerConfig,
       is_active: formData.is_active,
     };
 
@@ -130,19 +143,14 @@ export function AdminSequences() {
 
     setDialogOpen(false);
     setEditingSequence(null);
-    setFormData({ name: '', description: '', trigger_type: 'form_submit', is_active: true });
+    setFormData({ name: '', description: '', trigger_type: 'form_submit', product_ids: [], is_active: true });
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this sequence? All steps and enrollments will be removed.')) return;
-
+    if (!confirm('Delete this sequence?')) return;
     const { error } = await supabase.from('email_sequences').delete().eq('id', id);
-    if (error) {
-      toast.error('Failed to delete sequence');
-    } else {
-      toast.success('Sequence deleted');
-      fetchData();
-    }
+    if (error) toast.error('Failed to delete sequence');
+    else { toast.success('Sequence deleted'); fetchData(); }
   }
 
   async function toggleActive(sequence: EmailSequence) {
@@ -150,49 +158,36 @@ export function AdminSequences() {
       .from('email_sequences')
       .update({ is_active: !sequence.is_active })
       .eq('id', sequence.id);
-    
-    if (error) {
-      toast.error('Failed to update sequence');
-    } else {
-      fetchData();
-    }
+    if (!error) fetchData();
   }
 
   async function addStep(templateId: string, delayMinutes: number) {
     if (!selectedSequence) return;
-
-    const nextOrder = steps.length + 1;
     const { error } = await supabase
       .from('email_sequence_steps')
       .insert({
         sequence_id: selectedSequence.id,
         template_id: templateId,
-        step_order: nextOrder,
+        step_order: steps.length + 1,
         delay_minutes: delayMinutes,
       });
-
-    if (error) {
-      toast.error('Failed to add step');
-    } else {
-      fetchSteps(selectedSequence.id);
-    }
+    if (error) toast.error('Failed to add step');
+    else fetchSteps(selectedSequence.id);
   }
 
   async function deleteStep(stepId: string) {
     const { error } = await supabase.from('email_sequence_steps').delete().eq('id', stepId);
-    if (error) {
-      toast.error('Failed to delete step');
-    } else if (selectedSequence) {
-      fetchSteps(selectedSequence.id);
-    }
+    if (!error && selectedSequence) fetchSteps(selectedSequence.id);
   }
 
   function openEdit(sequence: EmailSequence) {
     setEditingSequence(sequence);
+    const config = sequence.trigger_config || {};
     setFormData({ 
       name: sequence.name, 
       description: sequence.description || '', 
       trigger_type: sequence.trigger_type,
+      product_ids: config.product_ids || [],
       is_active: sequence.is_active
     });
     setDialogOpen(true);
@@ -200,7 +195,7 @@ export function AdminSequences() {
 
   function openNew() {
     setEditingSequence(null);
-    setFormData({ name: '', description: '', trigger_type: 'form_submit', is_active: true });
+    setFormData({ name: '', description: '', trigger_type: 'form_submit', product_ids: [], is_active: true });
     setDialogOpen(true);
   }
 
@@ -208,6 +203,15 @@ export function AdminSequences() {
     setSelectedSequence(sequence);
     fetchSteps(sequence.id);
     setStepsDialogOpen(true);
+  }
+
+  function toggleProduct(productId: string) {
+    setFormData(prev => ({
+      ...prev,
+      product_ids: prev.product_ids.includes(productId)
+        ? prev.product_ids.filter(id => id !== productId)
+        : [...prev.product_ids, productId]
+    }));
   }
 
   const triggerTypes = [
@@ -229,67 +233,61 @@ export function AdminSequences() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Email Sequences
-            </CardTitle>
-            <CardDescription>
-              Create automated email sequences triggered by actions
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5" />Email Sequences</CardTitle>
+            <CardDescription>Create automated email sequences triggered by actions</CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Sequence
-              </Button>
+              <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />New Sequence</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>{editingSequence ? 'Edit Sequence' : 'Create Sequence'}</DialogTitle>
-                <DialogDescription>
-                  Set up an automated email sequence
-                </DialogDescription>
+                <DialogDescription>Set up an automated email sequence</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Name</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="e.g., Welcome Series"
-                  />
+                  <Input value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Welcome Series" />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="What this sequence does..."
-                    rows={2}
-                  />
+                  <Textarea value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} rows={2} />
                 </div>
                 <div className="space-y-2">
                   <Label>Trigger</Label>
-                  <Select 
-                    value={formData.trigger_type}
-                    onValueChange={(v) => setFormData(prev => ({ ...prev, trigger_type: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={formData.trigger_type} onValueChange={(v) => setFormData(prev => ({ ...prev, trigger_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {triggerTypes.map(t => (
-                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                      ))}
+                      {triggerTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {formData.trigger_type === 'purchase' && (
+                  <div className="space-y-2">
+                    <Label>Trigger for products (leave empty for all)</Label>
+                    <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded">
+                      {products.map(product => (
+                        <Badge
+                          key={product.id}
+                          variant={formData.product_ids.includes(product.id) ? 'default' : 'outline'}
+                          className="cursor-pointer"
+                          onClick={() => toggleProduct(product.id)}
+                        >
+                          {product.name}
+                        </Badge>
+                      ))}
+                      {products.length === 0 && <p className="text-sm text-muted-foreground">No products</p>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formData.product_ids.length === 0 ? 'Triggers for ALL product purchases' : `Triggers for ${formData.product_ids.length} selected product(s)`}
+                    </p>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={formData.is_active}
-                    onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))}
-                  />
+                  <Switch checked={formData.is_active} onCheckedChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))} />
                   <Label>Active</Label>
                 </div>
               </div>
@@ -322,15 +320,18 @@ export function AdminSequences() {
                   <TableCell>
                     <div>
                       <p className="font-medium">{seq.name}</p>
-                      {seq.description && (
-                        <p className="text-xs text-muted-foreground">{seq.description}</p>
-                      )}
+                      {seq.description && <p className="text-xs text-muted-foreground">{seq.description}</p>}
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
                       {triggerTypes.find(t => t.value === seq.trigger_type)?.label || seq.trigger_type}
                     </Badge>
+                    {seq.trigger_type === 'purchase' && seq.trigger_config?.product_ids?.length ? (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({seq.trigger_config.product_ids.length} products)
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     <Badge variant={seq.is_active ? 'default' : 'outline'}>
@@ -363,9 +364,7 @@ export function AdminSequences() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Sequence Steps: {selectedSequence?.name}</DialogTitle>
-            <DialogDescription>
-              Add emails to send in this sequence
-            </DialogDescription>
+            <DialogDescription>Add emails to send in this sequence</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {steps.length === 0 ? (
@@ -374,9 +373,7 @@ export function AdminSequences() {
               <div className="space-y-2">
                 {steps.map((step, idx) => (
                   <div key={step.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                    <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium">
-                      {idx + 1}
-                    </div>
+                    <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-medium">{idx + 1}</div>
                     <div className="flex-1">
                       <p className="font-medium">{step.template?.name || 'Unknown template'}</p>
                       <p className="text-xs text-muted-foreground">
@@ -394,21 +391,13 @@ export function AdminSequences() {
             {templates.length > 0 && (
               <div className="border-t pt-4">
                 <p className="text-sm font-medium mb-2">Add Step</p>
-                <div className="flex gap-2">
-                  <Select onValueChange={(templateId) => addStep(templateId, steps.length === 0 ? 0 : 1440)}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select template..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {templates.map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  First step sends immediately, subsequent steps wait 24 hours by default
-                </p>
+                <Select onValueChange={(templateId) => addStep(templateId, steps.length === 0 ? 0 : 1440)}>
+                  <SelectTrigger><SelectValue placeholder="Select template..." /></SelectTrigger>
+                  <SelectContent>
+                    {templates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-2">First step sends immediately, subsequent steps wait 24 hours</p>
               </div>
             )}
           </div>

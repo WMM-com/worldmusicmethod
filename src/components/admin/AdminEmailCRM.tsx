@@ -1,17 +1,26 @@
-import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tag, Mail, FileText, FormInput, ShoppingCart } from 'lucide-react';
+import { Tag, Mail, FileText, FormInput, ShoppingCart, ListIcon, Send } from 'lucide-react';
 import { AdminTags } from './email-crm/AdminTags';
 import { AdminEmailTemplates } from './email-crm/AdminEmailTemplates';
 import { AdminSequences } from './email-crm/AdminSequences';
 import { AdminOptinForms } from './email-crm/AdminOptinForms';
 import { AdminCartAbandonment } from './email-crm/AdminCartAbandonment';
+import { AdminLists } from './email-crm/AdminLists';
+import { AdminCampaigns } from './email-crm/AdminCampaigns';
 
 export function AdminEmailCRM() {
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="tags" className="space-y-6">
+      <Tabs defaultValue="campaigns" className="space-y-6">
         <TabsList className="flex-wrap">
+          <TabsTrigger value="campaigns" className="gap-2">
+            <Send className="h-4 w-4" />
+            Campaigns
+          </TabsTrigger>
+          <TabsTrigger value="lists" className="gap-2">
+            <ListIcon className="h-4 w-4" />
+            Lists
+          </TabsTrigger>
           <TabsTrigger value="tags" className="gap-2">
             <Tag className="h-4 w-4" />
             Tags
@@ -34,6 +43,12 @@ export function AdminEmailCRM() {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="campaigns">
+          <AdminCampaigns />
+        </TabsContent>
+        <TabsContent value="lists">
+          <AdminLists />
+        </TabsContent>
         <TabsContent value="tags">
           <AdminTags />
         </TabsContent>
