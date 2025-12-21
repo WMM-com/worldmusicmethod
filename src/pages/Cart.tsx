@@ -68,7 +68,7 @@ export default function Cart() {
                     </div>
 
                     <p className="font-semibold w-24 text-right">
-                      {formatPrice(item.price * item.quantity, 'USD')}
+                      {formatPrice(item.price * item.quantity, item.currency || 'USD')}
                     </p>
 
                     <Button
@@ -86,7 +86,7 @@ export default function Cart() {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <span className="text-lg font-semibold">Total</span>
-                <span className="text-2xl font-bold">{formatPrice(getTotal(), 'USD')}</span>
+                <span className="text-2xl font-bold">{formatPrice(getTotal(), items[0]?.currency || 'USD')}</span>
               </div>
 
               <div className="flex gap-4">

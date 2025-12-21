@@ -92,8 +92,6 @@ export function useGeoPricing(): GeoPricingResult {
   useEffect(() => {
     const detectRegion = async () => {
       try {
-        // Try to get country from browser timezone/locale first
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const locale = navigator.language || 'en-US';
         
         // Try to detect country from IP using a free geo API
@@ -104,6 +102,7 @@ export function useGeoPricing(): GeoPricingResult {
           if (response.ok) {
             const data = await response.json();
             const code = data.country_code;
+            console.log('[GeoPricing] Detected country:', code, data.country_name);
             setCountryCode(code);
             setCountryName(data.country_name || code);
             
@@ -115,15 +114,21 @@ export function useGeoPricing(): GeoPricingResult {
               .maybeSingle();
             
             if (mapping?.region) {
+              console.log('[GeoPricing] Using DB mapping:', mapping.region);
               setRegion(mapping.region as PricingRegion);
             } else if (countryToRegion[code]) {
+              console.log('[GeoPricing] Using fallback mapping:', countryToRegion[code]);
               setRegion(countryToRegion[code]);
+            } else {
+              console.log('[GeoPricing] No mapping found, using default');
             }
           }
-        } catch {
+        } catch (err) {
+          console.warn('[GeoPricing] IP detection failed, using locale fallback:', err);
           // Fallback to locale-based detection
           const localeCountry = locale.split('-')[1]?.toUpperCase();
           if (localeCountry && countryToRegion[localeCountry]) {
+            console.log('[GeoPricing] Using locale fallback:', localeCountry);
             setCountryCode(localeCountry);
             setRegion(countryToRegion[localeCountry]);
           }

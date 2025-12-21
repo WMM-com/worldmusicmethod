@@ -26,6 +26,7 @@ const PayPalButton = ({
   password,
   couponCode,
   amount,
+  currency,
   onSuccess,
   disabled,
 }: {
@@ -35,6 +36,7 @@ const PayPalButton = ({
   password: string;
   couponCode?: string;
   amount: number;
+  currency: string;
   onSuccess: () => void;
   disabled: boolean;
 }) => {
@@ -127,7 +129,7 @@ const PayPalButton = ({
         <span className="flex items-center gap-2">
           <span className="text-[#003087] font-bold italic">Pay</span>
           <span className="text-[#009CDE] font-bold italic">Pal</span>
-          <span className="text-sm font-normal ml-2">Pay {formatPrice(amount, 'USD')}</span>
+          <span className="text-sm font-normal ml-2">Pay {formatPrice(amount, currency)}</span>
         </span>
       )}
     </Button>
@@ -203,7 +205,7 @@ function CheckoutContent() {
   const [isReturningCustomer, setIsReturningCustomer] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const { isLoading: geoLoading } = useGeoPricing();
+  const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
 
   // Fetch product details
   const { data: product, isLoading: productLoading } = useQuery({
@@ -310,9 +312,15 @@ function CheckoutContent() {
     );
   }
 
+  // Calculate prices with geo pricing for single product mode
+  const productPriceInfo = product ? calculatePrice(product.base_price_usd) : null;
+  
   const basePrice = isCartMode
     ? cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    : product?.base_price_usd || 0;
+    : productPriceInfo?.price || 0;
+  const currency = isCartMode
+    ? cartItems[0]?.currency || 'USD'
+    : productPriceInfo?.currency || 'USD';
   const stripeDiscount = basePrice * 0.01;
   const cardPrice = basePrice - stripeDiscount;
   const isCourse = isCartMode
@@ -522,7 +530,7 @@ function CheckoutContent() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="font-semibold">{formatPrice(item.price * item.quantity, 'USD')}</p>
+                          <p className="font-semibold">{formatPrice(item.price * item.quantity, item.currency || 'USD')}</p>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -537,7 +545,7 @@ function CheckoutContent() {
                   ) : (
                     <div className="flex justify-between items-start">
                       <p className="font-medium">{product?.name}</p>
-                      <p className="font-semibold">{formatPrice(basePrice, 'USD')}</p>
+                      <p className="font-semibold">{formatPrice(basePrice, currency)}</p>
                     </div>
                   )}
                 </div>
@@ -626,7 +634,7 @@ function CheckoutContent() {
                           <Check className="h-4 w-4" />
                           <span className="text-sm font-medium">Save 1% with card payment</span>
                           <span className="text-xs text-green-600 dark:text-green-500">
-                            (You save {formatPrice(stripeDiscount, 'USD')})
+                            (You save {formatPrice(stripeDiscount, currency)})
                           </span>
                         </div>
                       </div>
@@ -654,6 +662,7 @@ function CheckoutContent() {
                         password={password}
                         couponCode={appliedCoupon?.code}
                         amount={basePrice}
+                        currency={currency}
                         onSuccess={handleSuccess}
                         disabled={!user && (!email || !password || password.length < 8)}
                       />
