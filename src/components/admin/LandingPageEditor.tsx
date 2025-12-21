@@ -326,6 +326,7 @@ export function LandingPageEditor() {
       )}
 
       {selectedCourseId && !isLoading && (
+        <>
         <Accordion type="multiple" defaultValue={["hero", "overview", "outcomes", "resources", "includes", "expert", "faqs", "cta"]} className="space-y-4">
           {/* Hero Section */}
           <AccordionItem value="hero" className="border rounded-lg px-4">
@@ -688,6 +689,7 @@ export function LandingPageEditor() {
             Save Changes
           </Button>
         </div>
+      </>
       )}
     </div>
   );
