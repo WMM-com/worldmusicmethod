@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.scrape-wordpress-course]
 verify_jwt = false
+
+[functions.import-learndash-data]
+verify_jwt = false
