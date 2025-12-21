@@ -23,12 +23,13 @@ const LESSON_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
 // Parse module description to extract sections
 function parseModuleDescription(description: string | null) {
   if (!description) {
-    return { intro: '', sections: [], youtubeUrls: [] };
+    return { intro: '', sections: [], youtubeUrls: [], spotifyUrls: [] };
   }
 
   const lines = description.split('\n');
   const sections: { title: string; content: string[] }[] = [];
   const youtubeUrls: string[] = [];
+  const spotifyUrls: string[] = [];
   let intro: string[] = [];
   let currentSection: { title: string; content: string[] } | null = null;
 
@@ -50,6 +51,13 @@ function parseModuleDescription(description: string | null) {
     const youtubeMatch = trimmedLine.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
     if (youtubeMatch) {
       youtubeUrls.push(youtubeMatch[1]);
+      continue;
+    }
+
+    // Extract Spotify URLs
+    const spotifyMatch = trimmedLine.match(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
+    if (spotifyMatch) {
+      spotifyUrls.push(`${spotifyMatch[1]}/${spotifyMatch[2]}`);
       continue;
     }
 
@@ -83,19 +91,50 @@ function parseModuleDescription(description: string | null) {
     sections.push(currentSection);
   }
 
-  return { intro: intro.join(' '), sections, youtubeUrls };
+  return { intro: intro.join(' '), sections, youtubeUrls, spotifyUrls };
 }
 
-// YouTube embed component
+// Parse text for bold markers (** or __)
+function parseTextWithBold(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('__') && part.endsWith('__')) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+// YouTube embed component - narrower than Soundslice
 function YouTubeEmbed({ videoId }: { videoId: string }) {
   return (
-    <div className="aspect-video rounded-xl overflow-hidden border border-border">
+    <div className="max-w-2xl">
+      <div className="aspect-video rounded-xl overflow-hidden border border-border">
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          title="YouTube video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="w-full h-full"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Spotify embed component
+function SpotifyEmbed({ embedPath }: { embedPath: string }) {
+  return (
+    <div className="max-w-md">
       <iframe
-        src={`https://www.youtube.com/embed/${videoId}`}
-        title="YouTube video"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        className="w-full h-full"
+        src={`https://open.spotify.com/embed/${embedPath}`}
+        width="100%"
+        height="152"
+        allow="encrypted-media"
+        className="rounded-xl"
       />
     </div>
   );
@@ -114,7 +153,7 @@ export function ModuleOverview({
   const isComplete = completedCount === lessons.length && lessons.length > 0;
   
   // Parse the actual module description
-  const { intro, sections, youtubeUrls } = parseModuleDescription(module.description);
+  const { intro, sections, youtubeUrls, spotifyUrls } = parseModuleDescription(module.description);
 
   const totalDuration = lessons.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
   const formatDuration = (seconds: number) => {
@@ -197,47 +236,64 @@ export function ModuleOverview({
         )}
 
         {/* Dynamic Sections from description */}
-        {sections.map((section, idx) => (
-          <div key={idx} className="space-y-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <span className={cn(
-                "w-1 h-6 rounded-full",
-                idx % 2 === 0 ? "bg-primary" : "bg-amber-500"
-              )} />
-              {section.title}
-            </h2>
-            {section.content.length > 0 && (
-              <div className="space-y-3">
-                {section.content.map((item, i) => {
-                  // Check if it looks like a bullet point
-                  const isBullet = item.startsWith('•') || item.startsWith('-') || item.startsWith('*');
-                  const cleanItem = isBullet ? item.slice(1).trim() : item;
-                  
-                  if (isBullet) {
+        {sections.map((section, idx) => {
+          const isLearningFocus = section.title.toLowerCase().includes('learning focus');
+          // For Learning Focus, treat all items as bullet points
+          const shouldBullet = isLearningFocus && section.content.length > 1;
+          
+          return (
+            <div key={idx} className="space-y-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <span className={cn(
+                  "w-1 h-6 rounded-full",
+                  idx % 2 === 0 ? "bg-primary" : "bg-amber-500"
+                )} />
+                {section.title}
+              </h2>
+              {section.content.length > 0 && (
+                <div className={cn("space-y-3", shouldBullet && "pl-1")}>
+                  {section.content.map((item, i) => {
+                    // Check if it looks like a bullet point or should be bulleted
+                    const isBullet = item.startsWith('•') || item.startsWith('-') || item.startsWith('*') || shouldBullet;
+                    const cleanItem = (item.startsWith('•') || item.startsWith('-') || item.startsWith('*')) 
+                      ? item.slice(1).trim() 
+                      : item;
+                    
+                    if (isBullet) {
+                      return (
+                        <div key={i} className="flex items-start gap-3">
+                          <div className="w-2 h-2 rounded-full bg-primary/60 flex-shrink-0 mt-2" />
+                          <span className="text-foreground/80">{parseTextWithBold(cleanItem)}</span>
+                        </div>
+                      );
+                    }
+                    
                     return (
-                      <div key={i} className="flex items-start gap-3">
-                        <div className="w-2 h-2 rounded-full bg-primary/60 flex-shrink-0 mt-2" />
-                        <span className="text-foreground/80">{cleanItem}</span>
-                      </div>
+                      <p key={i} className="text-foreground/80 leading-relaxed">
+                        {parseTextWithBold(item)}
+                      </p>
                     );
-                  }
-                  
-                  return (
-                    <p key={i} className="text-foreground/80 leading-relaxed">
-                      {item}
-                    </p>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ))}
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* YouTube Embeds */}
         {youtubeUrls.length > 0 && (
           <div className="space-y-4">
             {youtubeUrls.map((videoId, idx) => (
               <YouTubeEmbed key={idx} videoId={videoId} />
+            ))}
+          </div>
+        )}
+
+        {/* Spotify Embeds */}
+        {spotifyUrls.length > 0 && (
+          <div className="space-y-4">
+            {spotifyUrls.map((embedPath, idx) => (
+              <SpotifyEmbed key={idx} embedPath={embedPath} />
             ))}
           </div>
         )}
