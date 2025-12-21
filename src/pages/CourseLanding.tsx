@@ -788,8 +788,17 @@ export default function CourseLanding() {
   const handleStartCourse = () => {
     if (isEnrolled) {
       navigate(`/courses/${courseId}/learn`);
-    } else if (product) {
-      navigate(`/checkout/${product.id}`);
+    } else if (product && priceInfo) {
+      // Add to cart silently, then go to checkout
+      addToCart({
+        productId: product.id,
+        name: product.name,
+        price: priceInfo.price,
+        currency: priceInfo.currency,
+        courseId: product.course_id || undefined,
+        productType: product.product_type,
+      });
+      navigate(`/checkout`);
     } else if (!user) {
       navigate('/auth');
     }
