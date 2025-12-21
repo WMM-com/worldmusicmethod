@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Plus, Trash2, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 interface LearningOutcome {
   title: string;
@@ -47,6 +48,7 @@ interface LandingPageData {
   cta_title: string;
   cta_description: string;
   course_includes: string[];
+  course_duration_minutes: number;
 }
 
 const defaultData: LandingPageData = {
@@ -68,6 +70,7 @@ const defaultData: LandingPageData = {
   cta_title: "Ready To Start Your Journey?",
   cta_description: "Join a worldwide community of musicians.",
   course_includes: ["Synced Notation & Tab", "Downloadable PDF Notation", "Lifetime Access", "Student Community"],
+  course_duration_minutes: 0,
 };
 
 export function LandingPageEditor() {
@@ -127,6 +130,7 @@ export function LandingPageEditor() {
         cta_title: (landingPage as any).cta_title || "Ready To Start Your Journey?",
         cta_description: (landingPage as any).cta_description || "Join a worldwide community of musicians.",
         course_includes: landingPage.course_includes || defaultData.course_includes,
+        course_duration_minutes: (landingPage as any).course_duration_minutes || 0,
       });
     } else if (selectedCourseId) {
       setFormData({ ...defaultData, course_id: selectedCourseId });
@@ -155,6 +159,7 @@ export function LandingPageEditor() {
         cta_title: data.cta_title,
         cta_description: data.cta_description,
         course_includes: data.course_includes,
+        course_duration_minutes: data.course_duration_minutes,
       };
 
       if (data.id) {
@@ -349,12 +354,28 @@ export function LandingPageEditor() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label>Trailer Video URL (YouTube or Vimeo)</Label>
+                <Label>Trailer Video URL</Label>
                 <Input
                   value={formData.trailer_video_url}
                   onChange={(e) => setFormData(prev => ({ ...prev, trailer_video_url: e.target.value }))}
-                  placeholder="https://youtube.com/... or https://vimeo.com/..."
+                  placeholder="https://..."
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Course Duration (minutes)</Label>
+                <Input
+                  type="number"
+                  value={formData.course_duration_minutes || ""}
+                  onChange={(e) => setFormData(prev => ({ ...prev, course_duration_minutes: parseInt(e.target.value) || 0 }))}
+                  placeholder="e.g. 120"
+                />
+                <p className="text-sm text-muted-foreground">
+                  {formData.course_duration_minutes > 0 && (
+                    formData.course_duration_minutes < 60
+                      ? `Will display as: ${formData.course_duration_minutes} min`
+                      : `Will display as: ${Math.floor(formData.course_duration_minutes / 60)}h ${formData.course_duration_minutes % 60}m`
+                  )}
+                </p>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -371,24 +392,26 @@ export function LandingPageEditor() {
                   placeholder="What You'll Learn"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Overview Paragraphs</Label>
+              <div className="space-y-4">
+                <Label>Overview Content</Label>
                 {formData.course_overview.map((para, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Textarea
+                  <Card key={index} className="p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-medium text-muted-foreground">Paragraph {index + 1}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeArrayItem("course_overview", index)}
+                        disabled={formData.course_overview.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <RichTextEditor
                       value={para}
-                      onChange={(e) => updateArrayItem("course_overview", index, e.target.value)}
-                      placeholder="Paragraph text..."
+                      onChange={(value) => updateArrayItem("course_overview", index, value)}
                     />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => removeArrayItem("course_overview", index)}
-                      disabled={formData.course_overview.length <= 1}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </Card>
                 ))}
                 <Button variant="outline" onClick={() => addArrayItem("course_overview")}>
                   <Plus className="h-4 w-4 mr-2" /> Add Paragraph
@@ -566,7 +589,7 @@ export function LandingPageEditor() {
                 )}
               </div>
               <div className="space-y-4">
-                <Label>Expert Bio Paragraphs</Label>
+                <Label>Expert Bio</Label>
                 {formData.expert_bio.map((para, index) => (
                   <Card key={index} className="p-3">
                     <div className="flex justify-between items-start mb-2">
@@ -580,11 +603,9 @@ export function LandingPageEditor() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <Textarea
+                    <RichTextEditor
                       value={para}
-                      onChange={(e) => updateArrayItem("expert_bio", index, e.target.value)}
-                      placeholder="Bio paragraph..."
-                      rows={4}
+                      onChange={(value) => updateArrayItem("expert_bio", index, value)}
                     />
                   </Card>
                 ))}
@@ -655,6 +676,18 @@ export function LandingPageEditor() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+
+        {/* Bottom Save Button */}
+        <div className="flex justify-end pt-6 border-t">
+          <Button onClick={handleSave} disabled={!selectedCourseId || saveMutation.isPending} size="lg">
+            {saveMutation.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Changes
+          </Button>
+        </div>
       )}
     </div>
   );
