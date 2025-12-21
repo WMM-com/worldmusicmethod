@@ -583,6 +583,27 @@ const getCourseConfig = (courseTitle?: string) => {
   return COURSE_CONFIG[slug] || null;
 };
 
+// Type for database landing page data
+interface DBLandingPage {
+  id: string;
+  course_id: string;
+  hero_background_url: string | null;
+  course_image_url: string | null;
+  trailer_video_url: string | null;
+  styles_image_desktop: string | null;
+  styles_image_mobile: string | null;
+  overview_heading: string | null;
+  course_overview: string[] | null;
+  instrument_tag: string | null;
+  course_includes: string[] | null;
+  expert_name: string | null;
+  expert_image_url: string | null;
+  expert_bio: string[] | null;
+  resources: ResourceItem[] | null;
+  faqs: FAQItem[] | null;
+  learning_outcomes: LearningOutcome[] | null;
+}
+
 export default function CourseLanding() {
   const { courseId } = useParams();
   const navigate = useNavigate();
@@ -598,8 +619,44 @@ export default function CourseLanding() {
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  // Get course-specific config
-  const courseConfig = getCourseConfig(course?.title);
+  // Fetch landing page data from database
+  const { data: dbLandingPage } = useQuery({
+    queryKey: ['course-landing-page', courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_landing_pages')
+        .select('*')
+        .eq('course_id', courseId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!courseId,
+  });
+
+  // Get hardcoded course-specific config as fallback
+  const hardcodedConfig = getCourseConfig(course?.title);
+
+  // Merge database data with hardcoded config (database takes priority)
+  const courseConfig = dbLandingPage ? {
+    heroBackground: dbLandingPage.hero_background_url || hardcodedConfig?.heroBackground || '',
+    courseImage: dbLandingPage.course_image_url || hardcodedConfig?.courseImage || '',
+    trailerVideo: dbLandingPage.trailer_video_url || hardcodedConfig?.trailerVideo || '',
+    stylesImageDesktop: dbLandingPage.styles_image_desktop || hardcodedConfig?.stylesImageDesktop || '',
+    stylesImageMobile: dbLandingPage.styles_image_mobile || hardcodedConfig?.stylesImageMobile || '',
+    overviewHeading: dbLandingPage.overview_heading || hardcodedConfig?.overviewHeading || '',
+    courseOverview: (dbLandingPage.course_overview as string[] | null)?.length ? dbLandingPage.course_overview as string[] : hardcodedConfig?.courseOverview || [],
+    instrumentTag: dbLandingPage.instrument_tag || hardcodedConfig?.instrumentTag || 'Music',
+    courseIncludes: (dbLandingPage.course_includes as string[] | null)?.length ? dbLandingPage.course_includes as string[] : hardcodedConfig?.courseIncludes || [],
+    expert: (dbLandingPage.expert_name || hardcodedConfig?.expert) ? {
+      name: dbLandingPage.expert_name || hardcodedConfig?.expert?.name || '',
+      image: dbLandingPage.expert_image_url || hardcodedConfig?.expert?.image || '',
+      bio: (dbLandingPage.expert_bio as string[] | null)?.length ? dbLandingPage.expert_bio as string[] : hardcodedConfig?.expert?.bio || []
+    } : undefined,
+    resources: ((dbLandingPage.resources as unknown) as ResourceItem[] | null)?.length ? (dbLandingPage.resources as unknown) as ResourceItem[] : hardcodedConfig?.resources || [],
+    faqs: ((dbLandingPage.faqs as unknown) as FAQItem[] | null)?.length ? (dbLandingPage.faqs as unknown) as FAQItem[] : hardcodedConfig?.faqs || [],
+    learningOutcomes: ((dbLandingPage.learning_outcomes as unknown) as LearningOutcome[] | null)?.length ? (dbLandingPage.learning_outcomes as unknown) as LearningOutcome[] : hardcodedConfig?.learningOutcomes || []
+  } : hardcodedConfig;
 
   // Show sticky CTA when scrolled past hero and track active section
   useEffect(() => {
