@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, Check } from 'lucide-react';
+import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -187,7 +187,7 @@ function CheckoutContent() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { user, signIn } = useAuth();
-  const { items: cartItems, clearCart } = useCart();
+  const { items: cartItems, clearCart, removeFromCart } = useCart();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
@@ -514,14 +514,24 @@ function CheckoutContent() {
                 <div className="space-y-3 pb-4 border-b border-border">
                   {isCartMode ? (
                     cartItems.map((item) => (
-                      <div key={item.productId} className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{item.name}</p>
+                      <div key={item.productId} className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{item.name}</p>
                           {item.quantity > 1 && (
                             <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
                           )}
                         </div>
-                        <p className="font-semibold">{formatPrice(item.price * item.quantity, 'USD')}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold">{formatPrice(item.price * item.quantity, 'USD')}</p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeFromCart(item.productId)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))
                   ) : (
