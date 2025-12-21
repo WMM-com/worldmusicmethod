@@ -35,3 +35,18 @@ verify_jwt = false
 
 [functions.import-learndash-data]
 verify_jwt = false
+
+[functions.submit-optin-form]
+verify_jwt = false
+
+[functions.process-cart-abandonment]
+verify_jwt = true
+
+[functions.process-email-sequence]
+verify_jwt = false
+
+[functions.track-cart-abandonment]
+verify_jwt = false
+
+[functions.assign-user-tag]
+verify_jwt = true

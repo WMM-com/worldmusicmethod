@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -53,56 +53,28 @@ export function StripeCardFields({
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Debug state
   const [mounted, setMounted] = useState({ number: false, expiry: false, cvc: false });
 
-  // Create payment intent on mount
-  useEffect(() => {
-    if (!productId) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        console.log('[StripeCardFields] Creating payment intent for product:', productId);
-        const { data, error: invokeError } = await supabase.functions.invoke('create-payment-intent', {
-          body: {
-            productId,
-            email: email || 'guest@checkout.com',
-            fullName: fullName || 'Guest',
-            couponCode,
-          },
-        });
-
-        if (invokeError) throw invokeError;
-        if (!cancelled && data?.clientSecret) {
-          console.log('[StripeCardFields] Got client secret');
-          setClientSecret(data.clientSecret);
-        }
-      } catch (err: any) {
-        console.error('[StripeCardFields] Payment intent error:', err);
-        if (!cancelled) setError(err.message || 'Failed to initialize payment');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [productId, couponCode, email, fullName]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements || !clientSecret) {
+    if (!stripe || !elements) {
       toast.error('Payment system not ready. Please wait a moment and try again.');
       return;
     }
 
-    if (!email) {
-      toast.error('Please enter your email address');
+    // Validate email before proceeding
+    if (!email || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Validate password for new accounts
+    if (!isLoggedIn && (!password || password.length < 8)) {
+      toast.error('Please enter a password with at least 8 characters');
       return;
     }
 
@@ -115,8 +87,24 @@ export function StripeCardFields({
         throw new Error('Card input not found. Please refresh and try again.');
       }
 
-      console.log('[StripeCardFields] Confirming card payment...');
-      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      // Create payment intent only when user submits (with validated email)
+      console.log('[StripeCardFields] Creating payment intent...');
+      const { data: intentData, error: intentError } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          productId,
+          email,
+          fullName: fullName || email.split('@')[0],
+          couponCode,
+        },
+      });
+
+      if (intentError) throw intentError;
+      if (!intentData?.clientSecret) {
+        throw new Error('Failed to initialize payment');
+      }
+
+      console.log('[StripeCardFields] Got client secret, confirming payment...');
+      const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
         payment_method: {
           card: cardNumberElement,
           billing_details: {
@@ -153,6 +141,8 @@ export function StripeCardFields({
   const formatAmount = (amt: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amt);
 
+  const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8));
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Debug panel */}
@@ -161,7 +151,7 @@ export function StripeCardFields({
           <div className="space-y-1">
             <div>stripe: {stripe ? '✓ ready' : '✗ not ready'}</div>
             <div>elements: {elements ? '✓ ready' : '✗ not ready'}</div>
-            <div>clientSecret: {clientSecret ? '✓ set' : '✗ not set'}</div>
+            <div>email: {email ? '✓ set' : '✗ not set'}</div>
             <div>number mounted: {mounted.number ? '✓' : '✗'}</div>
             <div>expiry mounted: {mounted.expiry ? '✓' : '✗'}</div>
             <div>cvc mounted: {mounted.cvc ? '✓' : '✗'}</div>
@@ -221,7 +211,7 @@ export function StripeCardFields({
         type="submit"
         size="lg"
         className="w-full"
-        disabled={isProcessing || !stripe || !clientSecret || !email || (!isLoggedIn && (!password || password.length < 8))}
+        disabled={isProcessing || !isFormValid}
       >
         {isProcessing ? (
           <>

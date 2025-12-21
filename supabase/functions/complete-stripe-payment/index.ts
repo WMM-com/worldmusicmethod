@@ -83,6 +83,112 @@ serve(async (req) => {
       }
     }
 
+    // Mark any cart abandonment as recovered
+    await supabaseClient
+      .from("cart_abandonment")
+      .update({ recovered_at: new Date().toISOString() })
+      .or(`user_id.eq.${userId},email.eq.${email}`)
+      .is("recovered_at", null);
+
+    // Assign purchase tag
+    try {
+      // Get product name for tag
+      const { data: product } = await supabaseClient
+        .from("products")
+        .select("name")
+        .eq("id", product_id)
+        .single();
+
+      if (product) {
+        // Find or create a purchase tag
+        const tagName = `Purchased: ${product.name}`;
+        let tagId: string;
+
+        const { data: existingTag } = await supabaseClient
+          .from("email_tags")
+          .select("id")
+          .eq("name", tagName)
+          .maybeSingle();
+
+        if (existingTag) {
+          tagId = existingTag.id;
+        } else {
+          const { data: newTag } = await supabaseClient
+            .from("email_tags")
+            .insert({
+              name: tagName,
+              description: `Auto-created for ${product.name} purchases`,
+              color: "#10B981",
+            })
+            .select("id")
+            .single();
+          tagId = newTag?.id;
+        }
+
+        if (tagId) {
+          await supabaseClient
+            .from("user_tags")
+            .upsert({
+              user_id: userId,
+              email: email?.toLowerCase(),
+              tag_id: tagId,
+              source: "purchase",
+              source_id: product_id,
+            }, {
+              onConflict: "user_id,tag_id",
+              ignoreDuplicates: true,
+            });
+          console.log("[COMPLETE-STRIPE-PAYMENT] Purchase tag assigned", { tagId });
+        }
+
+        // Trigger purchase sequences
+        const { data: purchaseSequences } = await supabaseClient
+          .from("email_sequences")
+          .select("id")
+          .eq("trigger_type", "purchase")
+          .eq("is_active", true);
+
+        if (purchaseSequences && purchaseSequences.length > 0) {
+          // Get or create contact
+          let contactId: string | null = null;
+          const { data: contact } = await supabaseClient
+            .from("email_contacts")
+            .select("id")
+            .eq("email", email.toLowerCase())
+            .maybeSingle();
+          contactId = contact?.id || null;
+
+          for (const seq of purchaseSequences) {
+            const { data: firstStep } = await supabaseClient
+              .from("email_sequence_steps")
+              .select("delay_minutes")
+              .eq("sequence_id", seq.id)
+              .order("step_order")
+              .limit(1)
+              .single();
+
+            const nextEmailAt = new Date(Date.now() + (firstStep?.delay_minutes || 0) * 60 * 1000).toISOString();
+
+            await supabaseClient
+              .from("email_sequence_enrollments")
+              .insert({
+                sequence_id: seq.id,
+                contact_id: contactId,
+                user_id: userId,
+                email: email.toLowerCase(),
+                status: "active",
+                current_step: 0,
+                next_email_at: nextEmailAt,
+                metadata: { source: "purchase", product_id, course_id, product_name: product.name },
+              });
+            console.log("[COMPLETE-STRIPE-PAYMENT] Enrolled in purchase sequence", { sequenceId: seq.id });
+          }
+        }
+      }
+    } catch (tagError) {
+      console.error("[COMPLETE-STRIPE-PAYMENT] Tag/sequence error (non-fatal):", tagError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
