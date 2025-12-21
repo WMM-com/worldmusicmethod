@@ -23,14 +23,17 @@ function shouldExclude(title: string): boolean {
 // Extract Soundslice ID from post content
 function extractSoundsliceId(content: string): string | null {
   const patterns = [
-    /\[drum url='https:\/\/www\.soundslice\.com\/slices\/([^']+)'\]/,
-    /\[guitar url='https:\/\/www\.soundslice\.com\/slices\/([^']+)'\]/,
-    /\[bass url='https:\/\/www\.soundslice\.com\/slices\/([^']+)'\]/,
-    /soundslice\.com\/slices\/([a-zA-Z0-9]+)/,
+    // Match shortcode formats: [guitar url='...'], [drum url='...'], [bass url='...'], etc.
+    /\[\w+\s+url=['"]https?:\/\/(?:www\.)?soundslice\.com\/slices\/([a-zA-Z0-9]+)\/?['"]\s*\]/i,
+    // Match direct URLs
+    /soundslice\.com\/slices\/([a-zA-Z0-9]+)/i,
   ];
   for (const pattern of patterns) {
     const match = content.match(pattern);
-    if (match) return match[1];
+    if (match) {
+      console.log('Found Soundslice ID:', match[1], 'from pattern:', pattern);
+      return match[1];
+    }
   }
   return null;
 }
@@ -145,6 +148,9 @@ serve(async (req) => {
       
       console.log(`Found ${parsedModules.length} modules for this course`);
       
+      // Reverse the modules array to get correct order (JSONL is typically newest-first)
+      parsedModules.reverse();
+      
       // Create modules
       for (let i = 0; i < parsedModules.length; i++) {
         const mod = parsedModules[i];
@@ -206,7 +212,10 @@ serve(async (req) => {
       
       console.log('Module permalink map:', Object.fromEntries(modulePermalinkMap));
       
-      for (const line of lessonsLines) {
+      // Reverse lessons to get correct order (JSONL is typically newest-first)
+      const reversedLessonsLines = lessonsLines.reverse();
+      
+      for (const line of reversedLessonsLines) {
         try {
           const data = JSON.parse(line);
           const permalink = data.wp_post_permalink || '';
