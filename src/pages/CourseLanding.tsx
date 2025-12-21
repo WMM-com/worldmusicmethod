@@ -33,6 +33,7 @@ import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import DOMPurify from 'dompurify';
 
 // Resource item type
 interface ResourceItem {
@@ -1097,7 +1098,7 @@ export default function CourseLanding() {
                 <div className="prose prose-lg dark:prose-invert max-w-none mb-8 space-y-6">
                   {courseConfig?.courseOverview ? (
                     courseConfig.courseOverview.map((paragraph, i) => (
-                      <p key={i}>{paragraph}</p>
+                      <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} />
                     ))
                   ) : (
                     <>
@@ -1225,7 +1226,7 @@ export default function CourseLanding() {
                       <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
                       <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
                         {courseConfig.expert.bio.map((paragraph, i) => (
-                          <p key={i}>{paragraph}</p>
+                          <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} />
                         ))}
                       </div>
                     </div>
