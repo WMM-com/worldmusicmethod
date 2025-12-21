@@ -316,7 +316,7 @@ function CheckoutContent() {
   const productPriceInfo = product ? calculatePrice(product.base_price_usd) : null;
   
   const basePrice = isCartMode
-    ? cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    ? cartItems.reduce((sum, item) => sum + item.price, 0)
     : productPriceInfo?.price || 0;
   const currency = isCartMode
     ? cartItems[0]?.currency || 'USD'
@@ -521,27 +521,32 @@ function CheckoutContent() {
                 {/* Product rows */}
                 <div className="space-y-3 pb-4 border-b border-border">
                   {isCartMode ? (
-                    cartItems.map((item) => (
-                      <div key={item.productId} className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.name}</p>
-                          {item.quantity > 1 && (
-                            <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                          )}
+                    <>
+                      {cartItems.map((item) => (
+                        <div key={item.productId} className="flex justify-between items-start gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{item.name}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold">{formatPrice(item.price, item.currency || 'USD')}</p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeFromCart(item.productId)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">{formatPrice(item.price * item.quantity, item.currency || 'USD')}</p>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeFromCart(item.productId)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                      ))}
+                      {cartItems.length > 1 && (
+                        <div className="flex justify-between items-center pt-2 border-t border-border/50">
+                          <p className="font-semibold">Total</p>
+                          <p className="font-bold text-lg">{formatPrice(basePrice, currency)}</p>
                         </div>
-                      </div>
-                    ))
+                      )}
+                    </>
                   ) : (
                     <div className="flex justify-between items-start">
                       <p className="font-medium">{product?.name}</p>

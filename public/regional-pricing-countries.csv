@@ -4,55 +4,55 @@ ZA,South Africa,africa,65,USD
 KE,Kenya,africa,65,USD
 GH,Ghana,africa,65,USD
 EG,Egypt,africa,65,USD
-MA,Morocco,africa,65,USD
 TZ,Tanzania,africa,65,USD
 UG,Uganda,africa,65,USD
 ET,Ethiopia,africa,65,USD
-SN,Senegal,africa,65,USD
-DZ,Algeria,africa,65,USD
-AO,Angola,africa,65,USD
-BJ,Benin,africa,65,USD
-BW,Botswana,africa,65,USD
-BF,Burkina Faso,africa,65,USD
-BI,Burundi,africa,65,USD
-CM,Cameroon,africa,65,USD
-CV,Cape Verde,africa,65,USD
-CF,Central African Republic,africa,65,USD
-TD,Chad,africa,65,USD
-KM,Comoros,africa,65,USD
-CG,Congo,africa,65,USD
 CD,Democratic Republic of the Congo,africa,65,USD
 DJ,Djibouti,africa,65,USD
-GQ,Equatorial Guinea,africa,65,USD
 ER,Eritrea,africa,65,USD
 SZ,Eswatini,africa,65,USD
-GA,Gabon,africa,65,USD
-GM,Gambia,africa,65,USD
-GN,Guinea,africa,65,USD
-GW,Guinea-Bissau,africa,65,USD
-CI,Ivory Coast,africa,65,USD
 LS,Lesotho,africa,65,USD
 LR,Liberia,africa,65,USD
 LY,Libya,africa,65,USD
 MG,Madagascar,africa,65,USD
 MW,Malawi,africa,65,USD
-ML,Mali,africa,65,USD
-MR,Mauritania,africa,65,USD
-MU,Mauritius,africa,65,USD
-MZ,Mozambique,africa,65,USD
 NA,Namibia,africa,65,USD
-NE,Niger,africa,65,USD
 RW,Rwanda,africa,65,USD
-ST,Sao Tome and Principe,africa,65,USD
-SC,Seychelles,africa,65,USD
 SL,Sierra Leone,africa,65,USD
 SO,Somalia,africa,65,USD
 SS,South Sudan,africa,65,USD
 SD,Sudan,africa,65,USD
-TG,Togo,africa,65,USD
-TN,Tunisia,africa,65,USD
 ZM,Zambia,africa,65,USD
 ZW,Zimbabwe,africa,65,USD
+BW,Botswana,africa,65,USD
+ST,Sao Tome and Principe,african_euros,65,EUR
+SC,Seychelles,african_euros,65,EUR
+TG,Togo,african_euros,65,EUR
+TN,Tunisia,african_euros,65,EUR
+NE,Niger,african_euros,65,EUR
+ML,Mali,african_euros,65,EUR
+MR,Mauritania,african_euros,65,EUR
+MU,Mauritius,african_euros,65,EUR
+MZ,Mozambique,african_euros,65,EUR
+GA,Gabon,african_euros,65,EUR
+GM,Gambia,african_euros,65,EUR
+GN,Guinea,african_euros,65,EUR
+GW,Guinea-Bissau,african_euros,65,EUR
+CI,Ivory Coast,african_euros,65,EUR
+MA,Morocco,african_euros,65,EUR
+SN,Senegal,african_euros,65,EUR
+DZ,Algeria,african_euros,65,EUR
+AO,Angola,african_euros,65,EUR
+BJ,Benin,african_euros,65,EUR
+BF,Burkina Faso,african_euros,65,EUR
+BI,Burundi,african_euros,65,EUR
+CM,Cameroon,african_euros,65,EUR
+CV,Cape Verde,african_euros,65,EUR
+CF,Central African Republic,african_euros,65,EUR
+TD,Chad,african_euros,65,EUR
+GQ,Equatorial Guinea,african_euros,65,EUR
+KM,Comoros,african_euros,65,EUR
+CG,Congo,african_euros,65,EUR
 BR,Brazil,south_america,65,USD
 AR,Argentina,south_america,65,USD
 CO,Colombia,south_america,65,USD
@@ -138,6 +138,7 @@ KW,Kuwait,asia_higher,0,USD
 BH,Bahrain,asia_higher,0,USD
 OM,Oman,asia_higher,0,USD
 IL,Israel,asia_higher,0,USD
+CN,China,asia_higher,0,USD
 IN,India,asia_lower,65,USD
 ID,Indonesia,asia_lower,65,USD
 PH,Philippines,asia_lower,65,USD
@@ -152,7 +153,6 @@ MM,Myanmar,asia_lower,65,USD
 KH,Cambodia,asia_lower,65,USD
 LA,Laos,asia_lower,65,USD
 MN,Mongolia,asia_lower,65,USD
-CN,China,asia_lower,65,USD
 AF,Afghanistan,asia_lower,65,USD
 UZ,Uzbekistan,asia_lower,65,USD
 KZ,Kazakhstan,asia_lower,65,USD

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type PricingRegion = 
   | 'africa' 
+  | 'african_euros'
   | 'south_america' 
   | 'usa_canada' 
   | 'uk' 
@@ -36,9 +37,21 @@ const currencySymbols: Record<string, string> = {
 
 // Fallback country-to-region mapping for common countries
 const countryToRegion: Record<string, PricingRegion> = {
-  // Africa
+  // Africa (USD)
   'NG': 'africa', 'ZA': 'africa', 'KE': 'africa', 'GH': 'africa', 'EG': 'africa',
-  'MA': 'africa', 'TZ': 'africa', 'UG': 'africa', 'ET': 'africa', 'SN': 'africa',
+  'TZ': 'africa', 'UG': 'africa', 'ET': 'africa', 'CD': 'africa', 'DJ': 'africa',
+  'ER': 'africa', 'SZ': 'africa', 'LS': 'africa', 'LR': 'africa', 'LY': 'africa',
+  'MG': 'africa', 'MW': 'africa', 'NA': 'africa', 'RW': 'africa', 'SL': 'africa',
+  'SO': 'africa', 'SS': 'africa', 'SD': 'africa', 'ZM': 'africa', 'ZW': 'africa',
+  'BW': 'africa',
+  // African Euros (Francophone/Lusophone - EUR)
+  'ST': 'african_euros', 'SC': 'african_euros', 'TG': 'african_euros', 'TN': 'african_euros',
+  'NE': 'african_euros', 'ML': 'african_euros', 'MR': 'african_euros', 'MU': 'african_euros',
+  'MZ': 'african_euros', 'GA': 'african_euros', 'GM': 'african_euros', 'GN': 'african_euros',
+  'GW': 'african_euros', 'CI': 'african_euros', 'MA': 'african_euros', 'SN': 'african_euros',
+  'DZ': 'african_euros', 'AO': 'african_euros', 'BJ': 'african_euros', 'BF': 'african_euros',
+  'BI': 'african_euros', 'CM': 'african_euros', 'CV': 'african_euros', 'CF': 'african_euros',
+  'TD': 'african_euros', 'GQ': 'african_euros', 'KM': 'african_euros', 'CG': 'african_euros',
   // South America
   'BR': 'south_america', 'AR': 'south_america', 'CO': 'south_america', 'CL': 'south_america',
   'PE': 'south_america', 'VE': 'south_america', 'EC': 'south_america', 'BO': 'south_america',
@@ -60,9 +73,9 @@ const countryToRegion: Record<string, PricingRegion> = {
   'RS': 'east_south_europe', 'BA': 'east_south_europe', 'AL': 'east_south_europe',
   'MK': 'east_south_europe', 'ME': 'east_south_europe', 'UA': 'east_south_europe',
   'TR': 'east_south_europe',
-  // Higher economic Asia
+  // Higher economic Asia (including China)
   'JP': 'asia_higher', 'KR': 'asia_higher', 'SG': 'asia_higher', 'HK': 'asia_higher',
-  'TW': 'asia_higher', 'AU': 'asia_higher', 'NZ': 'asia_higher',
+  'TW': 'asia_higher', 'AU': 'asia_higher', 'NZ': 'asia_higher', 'CN': 'asia_higher',
   // Lower economic Asia
   'IN': 'asia_lower', 'ID': 'asia_lower', 'PH': 'asia_lower', 'VN': 'asia_lower',
   'TH': 'asia_lower', 'MY': 'asia_lower', 'BD': 'asia_lower', 'PK': 'asia_lower',
@@ -72,6 +85,7 @@ const countryToRegion: Record<string, PricingRegion> = {
 // Pricing rules by region
 const regionPricing: Record<PricingRegion, { discount: number; currency: string }> = {
   africa: { discount: 65, currency: 'USD' },
+  african_euros: { discount: 65, currency: 'EUR' },
   south_america: { discount: 65, currency: 'USD' },
   usa_canada: { discount: 0, currency: 'USD' },
   uk: { discount: 0, currency: 'GBP' },
