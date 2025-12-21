@@ -372,6 +372,80 @@ export type Database = {
         }
         Relationships: []
       }
+      course_landing_pages: {
+        Row: {
+          course_id: string | null
+          course_image_url: string | null
+          course_includes: string[] | null
+          course_overview: string[] | null
+          created_at: string
+          expert_bio: string[] | null
+          expert_image_url: string | null
+          expert_name: string | null
+          faqs: Json | null
+          hero_background_url: string | null
+          id: string
+          instrument_tag: string | null
+          learning_outcomes: Json | null
+          overview_heading: string | null
+          resources: Json | null
+          styles_image_desktop: string | null
+          styles_image_mobile: string | null
+          trailer_video_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          course_image_url?: string | null
+          course_includes?: string[] | null
+          course_overview?: string[] | null
+          created_at?: string
+          expert_bio?: string[] | null
+          expert_image_url?: string | null
+          expert_name?: string | null
+          faqs?: Json | null
+          hero_background_url?: string | null
+          id?: string
+          instrument_tag?: string | null
+          learning_outcomes?: Json | null
+          overview_heading?: string | null
+          resources?: Json | null
+          styles_image_desktop?: string | null
+          styles_image_mobile?: string | null
+          trailer_video_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          course_image_url?: string | null
+          course_includes?: string[] | null
+          course_overview?: string[] | null
+          created_at?: string
+          expert_bio?: string[] | null
+          expert_image_url?: string | null
+          expert_name?: string | null
+          faqs?: Json | null
+          hero_background_url?: string | null
+          id?: string
+          instrument_tag?: string | null
+          learning_outcomes?: Json | null
+          overview_heading?: string | null
+          resources?: Json | null
+          styles_image_desktop?: string | null
+          styles_image_mobile?: string | null
+          trailer_video_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_landing_pages_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           color_theme: string | null
