@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -13,6 +13,7 @@ import { AdminMedia } from '@/components/admin/AdminMedia';
 import { AdminCourseGroups } from '@/components/admin/AdminCourseGroups';
 import { ImportCourseData } from '@/components/admin/ImportCourseData';
 import { LandingPageEditor } from '@/components/admin/LandingPageEditor';
+import { AdminEmailCRM } from '@/components/admin/AdminEmailCRM';
 import { Skeleton } from '@/components/ui/skeleton';
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -213,6 +214,10 @@ export default function AdminDashboard() {
                 <FileText className="h-4 w-4" />
                 Landing Pages
               </TabsTrigger>
+              <TabsTrigger value="email-crm" className="gap-2">
+                <Mail className="h-4 w-4" />
+                Email CRM
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -235,6 +240,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="landing">
               <LandingPageEditor />
+            </TabsContent>
+            <TabsContent value="email-crm">
+              <AdminEmailCRM />
             </TabsContent>
           </Tabs>
         </main>
