@@ -46,6 +46,8 @@ export function AdminUsers() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<{ id: string; full_name: string; email: string } | null>(null);
+  const [editPassword, setEditPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -569,45 +571,96 @@ export function AdminUsers() {
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => {
         setEditDialogOpen(open);
-        if (!open) setEditingUser(null);
+        if (!open) {
+          setEditingUser(null);
+          setEditPassword('');
+        }
       }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
-              Update user information.
+              Update user information and password.
             </DialogDescription>
           </DialogHeader>
           {editingUser && (
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Full Name</Label>
-                <Input
-                  id="edit-name"
-                  value={editingUser.full_name}
-                  onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                />
+            <div className="space-y-6 pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Full Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editingUser.full_name}
+                    onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editingUser.email}
+                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  />
+                </div>
+                <Button
+                  onClick={() => updateUserMutation.mutate({
+                    userId: editingUser.id,
+                    fullName: editingUser.full_name,
+                    email: editingUser.email,
+                  })}
+                  disabled={updateUserMutation.isPending}
+                  className="w-full"
+                >
+                  {updateUserMutation.isPending ? 'Saving...' : 'Save Profile'}
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={editingUser.email}
-                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                />
+
+              <div className="border-t pt-4 space-y-4">
+                <h4 className="font-medium text-sm">Reset Password</h4>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-password">New Password</Label>
+                  <Input
+                    id="edit-password"
+                    type="password"
+                    placeholder="Enter new password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!editPassword || editPassword.length < 6) {
+                      toast.error('Password must be at least 6 characters');
+                      return;
+                    }
+                    setResettingPassword(true);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session) {
+                        toast.error('You must be logged in');
+                        return;
+                      }
+                      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+                        body: { userId: editingUser.id, newPassword: editPassword },
+                      });
+                      if (error) throw error;
+                      if (data?.error) throw new Error(data.error);
+                      toast.success('Password updated successfully');
+                      setEditPassword('');
+                    } catch (error: any) {
+                      toast.error(error.message || 'Failed to reset password');
+                    } finally {
+                      setResettingPassword(false);
+                    }
+                  }}
+                  disabled={resettingPassword || !editPassword}
+                  className="w-full"
+                >
+                  {resettingPassword ? 'Resetting...' : 'Reset Password'}
+                </Button>
               </div>
-              <Button
-                onClick={() => updateUserMutation.mutate({
-                  userId: editingUser.id,
-                  fullName: editingUser.full_name,
-                  email: editingUser.email,
-                })}
-                disabled={updateUserMutation.isPending}
-                className="w-full"
-              >
-                {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
             </div>
           )}
         </DialogContent>

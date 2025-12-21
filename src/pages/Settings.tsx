@@ -9,9 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CalendarSettings } from '@/components/settings/CalendarSettings';
-import { User, Bell, CreditCard, Brain, Calendar } from 'lucide-react';
+import { User, Bell, CreditCard, Brain, Calendar, Lock } from 'lucide-react';
 
 const CURRENCIES = [
   { code: 'GBP', symbol: '£', name: 'British Pound' },
@@ -42,6 +43,13 @@ export default function Settings() {
     full_name: '',
     phone: '',
   });
+
+  // Password form
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Left Brain form (business settings)
   const [businessForm, setBusinessForm] = useState({
@@ -93,6 +101,30 @@ export default function Settings() {
     setSaving(false);
   };
 
+  const handleChangePassword = async () => {
+    if (passwordForm.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setChangingPassword(true);
+    const { error } = await supabase.auth.updateUser({
+      password: passwordForm.newPassword,
+    });
+
+    if (error) {
+      toast.error('Failed to update password: ' + error.message);
+    } else {
+      toast.success('Password updated successfully');
+      setPasswordForm({ newPassword: '', confirmPassword: '' });
+    }
+    setChangingPassword(false);
+  };
+
   const handleSaveBusiness = async () => {
     setSaving(true);
     const { error } = await updateProfile(businessForm);
@@ -140,7 +172,7 @@ export default function Settings() {
             </TabsList>
 
             {/* Account Settings */}
-            <TabsContent value="account">
+            <TabsContent value="account" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Account Information</CardTitle>
@@ -170,6 +202,45 @@ export default function Settings() {
                   </div>
                   <Button onClick={handleSaveAccount} disabled={saving}>
                     {saving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5" />
+                    Change Password
+                  </CardTitle>
+                  <CardDescription>Update your account password</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>New Password</Label>
+                      <Input 
+                        type="password"
+                        value={passwordForm.newPassword} 
+                        onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})} 
+                        placeholder="Enter new password"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Confirm Password</Label>
+                      <Input 
+                        type="password"
+                        value={passwordForm.confirmPassword} 
+                        onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})} 
+                        placeholder="Confirm new password"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleChangePassword} 
+                    disabled={changingPassword || !passwordForm.newPassword}
+                    variant="outline"
+                  >
+                    {changingPassword ? 'Updating...' : 'Update Password'}
                   </Button>
                 </CardContent>
               </Card>
