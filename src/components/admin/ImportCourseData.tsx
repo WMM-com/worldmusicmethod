@@ -57,7 +57,7 @@ const extractImages = (html: string): string[] => {
 };
 
 export function ImportCourseData() {
-  const [courseTitle, setCourseTitle] = useState("Argentinian Fingerstyle Guitar");
+  const [courseTitle, setCourseTitle] = useState("");
   const [importing, setImporting] = useState(false);
   const [modulesText, setModulesText] = useState("");
   const [lessonsText, setLessonsText] = useState("");
