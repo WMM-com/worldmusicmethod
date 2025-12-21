@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BookOpen, LogOut, User, Settings, Menu, X, Shield, MessageSquare, ShoppingCart } from 'lucide-react';
+import { BookOpen, LogOut, User, Settings, Menu, X, Shield, MessageSquare, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -48,8 +48,12 @@ export function SiteHeader() {
     navigate('/');
   };
 
+  const learningHubLinks = [
+    { href: '/courses', label: 'Courses' },
+    { href: '/my-courses', label: 'My Courses' },
+  ];
+
   const navLinks = [
-    { href: '/courses', label: 'World Music Method' },
     { href: '/community', label: 'Community' },
     { href: '/', label: 'Left Brain' },
   ];
@@ -69,6 +73,21 @@ export function SiteHeader() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
+            {/* Learning Hub Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Learning Hub
+                <ChevronDown className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {learningHubLinks.map((link) => (
+                  <DropdownMenuItem key={link.href} onClick={() => navigate(link.href)}>
+                    {link.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -195,6 +214,23 @@ export function SiteHeader() {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <nav className="flex flex-col gap-2">
+              {/* Learning Hub Section */}
+              <div className="px-2 py-2">
+                <span className="text-sm font-semibold text-foreground">Learning Hub</span>
+                <div className="mt-2 ml-2 flex flex-col gap-1">
+                  {learningHubLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      to={link.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -208,13 +244,6 @@ export function SiteHeader() {
               
               {user ? (
                 <>
-                  <Link
-                    to="/my-courses"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    My Courses
-                  </Link>
                   {isAdmin && (
                     <Link
                       to="/admin"
