@@ -1252,9 +1252,9 @@ export default function CourseLanding() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold mb-4">Ready to Start Your Journey?</h2>
+              <h2 className="text-3xl font-bold mb-4">Ready to Start Your Journey?</h2>
                 <p className="text-lg text-muted-foreground mb-8">
-                  Join students from around the world learning authentic Peruvian guitar styles.
+                  Join students from around the world learning {course?.title || 'this course'}.
                 </p>
                 {priceInfo && !isEnrolled && (
                   <p className="text-2xl font-bold mb-4">

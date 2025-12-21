@@ -20,16 +20,64 @@ const LESSON_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   assignment: FileText,
 };
 
+// Extract all YouTube video IDs from text
+function extractYouTubeIds(text: string): string[] {
+  const ids: string[] = [];
+  // Match various YouTube URL formats
+  const patterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/g,
+  ];
+  
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (!ids.includes(match[1])) {
+        ids.push(match[1]);
+      }
+    }
+  }
+  return ids;
+}
+
+// Extract Spotify embed paths from text
+function extractSpotifyPaths(text: string): string[] {
+  const paths: string[] = [];
+  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const path = `${match[1]}/${match[2]}`;
+    if (!paths.includes(path)) {
+      paths.push(path);
+    }
+  }
+  return paths;
+}
+
+// Remove URLs from text for cleaner display
+function removeMediaUrls(text: string): string {
+  return text
+    .replace(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}/g, '')
+    .replace(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/[a-zA-Z0-9_-]{11}/g, '')
+    .replace(/(?:https?:\/\/)?youtu\.be\/[a-zA-Z0-9_-]{11}/g, '')
+    .replace(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/[a-zA-Z0-9]+/g, '')
+    .trim();
+}
+
 // Parse module description to extract sections
 function parseModuleDescription(description: string | null) {
   if (!description) {
     return { intro: '', sections: [], youtubeUrls: [], spotifyUrls: [] };
   }
 
+  // Extract all media URLs from the entire description first
+  const youtubeUrls = extractYouTubeIds(description);
+  const spotifyUrls = extractSpotifyPaths(description);
+
   const lines = description.split('\n');
   const sections: { title: string; content: string[] }[] = [];
-  const youtubeUrls: string[] = [];
-  const spotifyUrls: string[] = [];
   let intro: string[] = [];
   let currentSection: { title: string; content: string[] } | null = null;
 
@@ -47,24 +95,20 @@ function parseModuleDescription(description: string | null) {
   for (const line of lines) {
     const trimmedLine = line.trim();
     
-    // Extract YouTube URLs
-    const youtubeMatch = trimmedLine.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (youtubeMatch) {
-      youtubeUrls.push(youtubeMatch[1]);
+    // Skip lines that are just YouTube/Spotify URLs
+    if (trimmedLine.match(/^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)/i) ||
+        trimmedLine.match(/^(?:https?:\/\/)?(?:open\.)?spotify\.com/i)) {
       continue;
     }
-
-    // Extract Spotify URLs
-    const spotifyMatch = trimmedLine.match(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/);
-    if (spotifyMatch) {
-      spotifyUrls.push(`${spotifyMatch[1]}/${spotifyMatch[2]}`);
-      continue;
-    }
+    
+    // Remove any embedded URLs from the line for display
+    const cleanedLine = removeMediaUrls(trimmedLine);
+    if (!cleanedLine) continue;
 
     // Check if this line is a section header
     const isHeader = sectionHeaders.some(header => 
-      trimmedLine.toLowerCase().includes(header.toLowerCase()) && 
-      trimmedLine.length < 50
+      cleanedLine.toLowerCase().includes(header.toLowerCase()) && 
+      cleanedLine.length < 50
     );
 
     if (isHeader) {
@@ -72,16 +116,16 @@ function parseModuleDescription(description: string | null) {
       if (currentSection) {
         sections.push(currentSection);
       }
-      currentSection = { title: trimmedLine, content: [] };
+      currentSection = { title: cleanedLine, content: [] };
     } else if (currentSection) {
       // Add to current section
-      if (trimmedLine) {
-        currentSection.content.push(trimmedLine);
+      if (cleanedLine) {
+        currentSection.content.push(cleanedLine);
       }
     } else {
       // Add to intro
-      if (trimmedLine) {
-        intro.push(trimmedLine);
+      if (cleanedLine) {
+        intro.push(cleanedLine);
       }
     }
   }
