@@ -71,7 +71,7 @@ export default function AdminDashboard() {
       <>
         <SiteHeader />
         <div className="min-h-screen bg-background p-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full max-w-6xl mx-auto px-6">
             <Skeleton className="h-12 w-64 mb-8" />
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[1, 2, 3, 4].map(i => (
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="border-b border-border bg-card">
-          <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="w-full max-w-6xl mx-auto px-6 py-8">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Shield className="h-5 w-5 text-primary" />
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-6 py-8">
+        <main className="w-full max-w-6xl mx-auto px-6 py-8">
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <Card>
