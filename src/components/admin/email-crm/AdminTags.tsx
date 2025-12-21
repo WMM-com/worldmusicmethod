@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +15,6 @@ interface EmailTag {
   id: string;
   name: string;
   description: string | null;
-  color: string;
   created_at: string;
 }
 
@@ -23,7 +23,7 @@ export function AdminTags() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<EmailTag | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', color: '#3B82F6' });
+  const [formData, setFormData] = useState({ name: '', description: '' });
 
   useEffect(() => {
     fetchTags();
@@ -32,13 +32,13 @@ export function AdminTags() {
   async function fetchTags() {
     const { data, error } = await supabase
       .from('email_tags')
-      .select('*')
+      .select('id, name, description, created_at')
       .order('name');
     
     if (error) {
       toast.error('Failed to load tags');
     } else {
-      setTags(data || []);
+      setTags((data || []) as EmailTag[]);
     }
     setLoading(false);
   }
@@ -52,11 +52,7 @@ export function AdminTags() {
     if (editingTag) {
       const { error } = await supabase
         .from('email_tags')
-        .update({
-          name: formData.name.trim(),
-          description: formData.description.trim() || null,
-          color: formData.color,
-        })
+        .update({ name: formData.name.trim(), description: formData.description.trim() || null })
         .eq('id', editingTag.id);
 
       if (error) {
@@ -68,11 +64,7 @@ export function AdminTags() {
     } else {
       const { error } = await supabase
         .from('email_tags')
-        .insert({
-          name: formData.name.trim(),
-          description: formData.description.trim() || null,
-          color: formData.color,
-        });
+        .insert({ name: formData.name.trim(), description: formData.description.trim() || null });
 
       if (error) {
         toast.error('Failed to create tag');
@@ -84,12 +76,11 @@ export function AdminTags() {
 
     setDialogOpen(false);
     setEditingTag(null);
-    setFormData({ name: '', description: '', color: '#3B82F6' });
+    setFormData({ name: '', description: '' });
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this tag? Users with this tag will have it removed.')) return;
-
+    if (!confirm('Delete this tag?')) return;
     const { error } = await supabase.from('email_tags').delete().eq('id', id);
     if (error) {
       toast.error('Failed to delete tag');
@@ -101,20 +92,15 @@ export function AdminTags() {
 
   function openEdit(tag: EmailTag) {
     setEditingTag(tag);
-    setFormData({ name: tag.name, description: tag.description || '', color: tag.color });
+    setFormData({ name: tag.name, description: tag.description || '' });
     setDialogOpen(true);
   }
 
   function openNew() {
     setEditingTag(null);
-    setFormData({ name: '', description: '', color: '#3B82F6' });
+    setFormData({ name: '', description: '' });
     setDialogOpen(true);
   }
-
-  const colorOptions = [
-    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', 
-    '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
-  ];
 
   return (
     <Card>
@@ -153,27 +139,13 @@ export function AdminTags() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Input
+                  <Label>Description (optional)</Label>
+                  <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Optional description"
+                    placeholder="What this tag represents..."
+                    rows={2}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>Color</Label>
-                  <div className="flex gap-2 flex-wrap">
-                    {colorOptions.map(color => (
-                      <button
-                        key={color}
-                        className={`w-8 h-8 rounded-full border-2 transition-all ${
-                          formData.color === color ? 'border-foreground scale-110' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => setFormData(prev => ({ ...prev, color }))}
-                      />
-                    ))}
-                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -203,9 +175,7 @@ export function AdminTags() {
               {tags.map(tag => (
                 <TableRow key={tag.id}>
                   <TableCell>
-                    <Badge style={{ backgroundColor: tag.color, color: 'white' }}>
-                      {tag.name}
-                    </Badge>
+                    <Badge variant="secondary">{tag.name}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {tag.description || '-'}
