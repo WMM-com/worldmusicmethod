@@ -50,12 +50,6 @@ function extractYoutubeId(content: string): string | null {
   return null;
 }
 
-// Extract Spotify embed URL
-function extractSpotifyEmbed(content: string): string | null {
-  const match = content.match(/open\.spotify\.com\/embed\/[^"'\s]+/);
-  return match ? `https://${match[0]}` : null;
-}
-
 // Clean HTML content to plain text
 function cleanHtml(html: string): string {
   return html
@@ -71,17 +65,6 @@ function cleanHtml(html: string): string {
     .trim();
 }
 
-// Extract image URLs from content
-function extractImageUrls(content: string): string[] {
-  const imgPattern = /src="(https:\/\/[^"]+\.(jpg|jpeg|png|gif|webp))"/gi;
-  const urls: string[] = [];
-  let match;
-  while ((match = imgPattern.exec(content)) !== null) {
-    urls.push(match[1]);
-  }
-  return urls;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -93,150 +76,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await req.json();
-    const { action, coursePages, modules, lessons } = body;
+    const { action, courseTitle, modulesData, lessonsData } = body;
 
-    if (action === 'parse-courses') {
-      // Parse course pages data
-      const courses: any[] = [];
-      const lines = (coursePages as string).split('\n').filter(Boolean);
-      
-      for (const line of lines) {
-        try {
-          const data = JSON.parse(line);
-          const title = data.wp_post?.post_title;
-          
-          if (!title || shouldExclude(title)) {
-            console.log(`Skipping: ${title}`);
-            continue;
-          }
-          
-          const content = data.wp_post?.post_content || '';
-          const images = extractImageUrls(content);
-          
-          courses.push({
-            wp_id: data.wp_post?.ID,
-            title,
-            description: cleanHtml(data.wp_post?.post_excerpt || ''),
-            content: cleanHtml(content),
-            permalink: data.wp_post_permalink,
-            images,
-            course_steps: data.wp_post_meta?.ld_course_steps?.[0]?.steps?.h?.['sfwd-lessons'] || {},
-          });
-        } catch (e) {
-          console.error('Error parsing course line:', e);
-        }
-      }
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        courses,
-        count: courses.length 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    console.log('Received action:', action);
 
-    if (action === 'parse-modules') {
-      // Parse modules data
-      const modulesData: any[] = [];
-      const lines = (modules as string).split('\n').filter(Boolean);
-      
-      for (const line of lines) {
-        try {
-          const data = JSON.parse(line);
-          const title = data.wp_post?.post_title;
-          
-          if (!title || shouldExclude(title)) {
-            console.log(`Skipping module: ${title}`);
-            continue;
-          }
-          
-          const content = data.wp_post?.post_content || '';
-          const courseId = data.wp_post_meta?.course_id?.[0];
-          
-          modulesData.push({
-            wp_id: data.wp_post?.ID,
-            title,
-            description: cleanHtml(content),
-            permalink: data.wp_post_permalink,
-            wp_course_id: courseId,
-            youtube_id: extractYoutubeId(content),
-            spotify_embed: extractSpotifyEmbed(content),
-          });
-        } catch (e) {
-          console.error('Error parsing module line:', e);
-        }
-      }
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        modules: modulesData,
-        count: modulesData.length 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (action === 'parse-lessons') {
-      // Parse lessons data
-      const lessonsData: any[] = [];
-      const lines = (lessons as string).split('\n').filter(Boolean);
-      
-      for (const line of lines) {
-        try {
-          const data = JSON.parse(line);
-          const title = data.wp_post?.post_title;
-          
-          if (!title || shouldExclude(title)) {
-            console.log(`Skipping lesson: ${title}`);
-            continue;
-          }
-          
-          const content = data.wp_post?.post_content || '';
-          const courseId = data.wp_post_meta?.course_id?.[0];
-          
-          // Get module ID from the permalink (lesson is under a module in LearnDash)
-          const permalink = data.wp_post_permalink || '';
-          const moduleMatch = permalink.match(/\/lessons\/([^\/]+)\/topics\//);
-          const moduleSlug = moduleMatch ? moduleMatch[1] : null;
-          
-          lessonsData.push({
-            wp_id: data.wp_post?.ID,
-            title,
-            content: cleanHtml(content),
-            permalink,
-            wp_course_id: courseId,
-            module_slug: moduleSlug,
-            soundslice_id: extractSoundsliceId(content),
-            youtube_id: extractYoutubeId(content),
-            spotify_embed: extractSpotifyEmbed(content),
-          });
-        } catch (e) {
-          console.error('Error parsing lesson line:', e);
-        }
-      }
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        lessons: lessonsData,
-        count: lessonsData.length 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (action === 'import-to-db') {
-      // Import parsed data to database
-      const { courseTitle, parsedModules, parsedLessons } = body;
-      
+    if (action === 'import-course') {
       // Find the course in our database by title
       const { data: course, error: courseError } = await supabase
         .from('courses')
         .select('id, title')
-        .ilike('title', courseTitle)
+        .ilike('title', `%${courseTitle}%`)
         .single();
       
       if (courseError || !course) {
+        console.log('Course lookup error:', courseError);
         return new Response(JSON.stringify({ 
           success: false, 
           error: `Course not found: ${courseTitle}` 
@@ -245,11 +98,52 @@ serve(async (req) => {
         });
       }
       
+      console.log('Found course:', course.title, 'ID:', course.id);
+      
       const results = {
         modulesCreated: 0,
         lessonsCreated: 0,
         errors: [] as string[],
       };
+      
+      // Parse and filter modules from the JSONL data
+      const parsedModules: any[] = [];
+      const lines = modulesData.split('\n').filter((l: string) => l.trim());
+      
+      const courseSlug = courseTitle.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      console.log('Looking for modules with course slug:', courseSlug);
+      
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line);
+          const permalink = data.wp_post_permalink || '';
+          
+          // Only include modules that belong to this course (check permalink)
+          if (!permalink.includes(courseSlug) && !permalink.toLowerCase().includes('argentinian-fingerstyle')) {
+            continue;
+          }
+          
+          const title = data.wp_post?.post_title;
+          if (!title || shouldExclude(title)) {
+            console.log(`Skipping module: ${title}`);
+            continue;
+          }
+          
+          const content = data.wp_post?.post_content || '';
+          
+          parsedModules.push({
+            wp_id: data.wp_post?.ID,
+            title,
+            description: cleanHtml(content),
+            permalink,
+            youtube_id: extractYoutubeId(content),
+          });
+        } catch (e) {
+          console.error('Error parsing module line:', e);
+        }
+      }
+      
+      console.log(`Found ${parsedModules.length} modules for this course`);
       
       // Create modules
       for (let i = 0; i < parsedModules.length; i++) {
@@ -277,84 +171,134 @@ serve(async (req) => {
           });
         
         if (error) {
+          console.error('Module insert error:', error);
           results.errors.push(`Module: ${mod.title} - ${error.message}`);
         } else {
           results.modulesCreated++;
+          console.log(`Created module: ${mod.title}`);
         }
       }
       
-      // Create lessons (need to get module IDs first)
+      // Get all created modules for this course
       const { data: dbModules } = await supabase
         .from('course_modules')
         .select('id, title')
-        .eq('course_id', course.id);
+        .eq('course_id', course.id)
+        .order('order_index');
       
-      const moduleMap = new Map(dbModules?.map(m => [m.title.toLowerCase(), m.id]) || []);
+      console.log(`DB has ${dbModules?.length || 0} modules for this course`);
       
-      for (let i = 0; i < parsedLessons.length; i++) {
-        const lesson = parsedLessons[i];
-        
-        // Try to find the module by matching the module slug to module titles
-        let moduleId: string | null = null;
-        for (const [title, id] of moduleMap.entries()) {
-          const slugified = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-          if (lesson.module_slug?.includes(slugified) || slugified.includes(lesson.module_slug || '')) {
-            moduleId = id;
-            break;
+      // Parse and filter lessons from the JSONL data
+      const lessonsLines = lessonsData.split('\n').filter((l: string) => l.trim());
+      
+      // Create a map of module permalinks to module IDs
+      const modulePermalinkMap = new Map<string, string>();
+      for (const mod of parsedModules) {
+        // Extract the lesson slug from the module permalink
+        const lessonMatch = mod.permalink.match(/\/lessons\/([^\/]+)/);
+        if (lessonMatch) {
+          const moduleRecord = dbModules?.find(m => m.title === mod.title);
+          if (moduleRecord) {
+            modulePermalinkMap.set(lessonMatch[1], moduleRecord.id);
           }
         }
-        
-        if (!moduleId) {
-          // Default to first module if can't match
-          moduleId = dbModules?.[0]?.id;
-        }
-        
-        if (!moduleId) {
-          results.errors.push(`No module found for lesson: ${lesson.title}`);
-          continue;
-        }
-        
-        const { data: existingLesson } = await supabase
-          .from('module_lessons')
-          .select('id')
-          .eq('module_id', moduleId)
-          .eq('title', lesson.title)
-          .single();
-        
-        if (existingLesson) {
-          console.log(`Lesson already exists: ${lesson.title}`);
-          continue;
-        }
-        
-        // Determine video URL
-        let videoUrl = null;
-        if (lesson.soundslice_id) {
-          videoUrl = `https://www.soundslice.com/slices/${lesson.soundslice_id}/`;
-        } else if (lesson.youtube_id) {
-          videoUrl = `https://www.youtube.com/embed/${lesson.youtube_id}`;
-        }
-        
-        const { error } = await supabase
-          .from('module_lessons')
-          .insert({
-            module_id: moduleId,
-            title: lesson.title,
-            content: lesson.content,
-            video_url: videoUrl,
-            lesson_type: lesson.soundslice_id ? 'video' : (lesson.youtube_id ? 'video' : 'reading'),
-            order_index: i,
-          });
-        
-        if (error) {
-          results.errors.push(`Lesson: ${lesson.title} - ${error.message}`);
-        } else {
-          results.lessonsCreated++;
+      }
+      
+      console.log('Module permalink map:', Object.fromEntries(modulePermalinkMap));
+      
+      for (const line of lessonsLines) {
+        try {
+          const data = JSON.parse(line);
+          const permalink = data.wp_post_permalink || '';
+          
+          // Only include lessons that belong to this course
+          if (!permalink.includes(courseSlug) && !permalink.toLowerCase().includes('argentinian-fingerstyle')) {
+            continue;
+          }
+          
+          const title = data.wp_post?.post_title;
+          if (!title || shouldExclude(title)) {
+            console.log(`Skipping lesson: ${title}`);
+            continue;
+          }
+          
+          const content = data.wp_post?.post_content || '';
+          
+          // Find which module this lesson belongs to from the permalink
+          const lessonMatch = permalink.match(/\/lessons\/([^\/]+)\//);
+          let moduleId: string | null = null;
+          
+          if (lessonMatch) {
+            moduleId = modulePermalinkMap.get(lessonMatch[1]) || null;
+          }
+          
+          // Fallback to first module if can't match
+          if (!moduleId && dbModules?.length) {
+            moduleId = dbModules[0].id;
+          }
+          
+          if (!moduleId) {
+            results.errors.push(`No module found for lesson: ${title}`);
+            continue;
+          }
+          
+          // Check if lesson exists
+          const { data: existingLesson } = await supabase
+            .from('module_lessons')
+            .select('id')
+            .eq('module_id', moduleId)
+            .eq('title', title)
+            .single();
+          
+          if (existingLesson) {
+            console.log(`Lesson already exists: ${title}`);
+            continue;
+          }
+          
+          // Determine video URL
+          let videoUrl = null;
+          const soundsliceId = extractSoundsliceId(content);
+          const youtubeId = extractYoutubeId(content);
+          
+          if (soundsliceId) {
+            videoUrl = `https://www.soundslice.com/slices/${soundsliceId}/`;
+          } else if (youtubeId) {
+            videoUrl = `https://www.youtube.com/embed/${youtubeId}`;
+          }
+          
+          // Get current count for order
+          const { count } = await supabase
+            .from('module_lessons')
+            .select('*', { count: 'exact', head: true })
+            .eq('module_id', moduleId);
+          
+          const { error } = await supabase
+            .from('module_lessons')
+            .insert({
+              module_id: moduleId,
+              title,
+              content: cleanHtml(content),
+              video_url: videoUrl,
+              lesson_type: soundsliceId ? 'video' : (youtubeId ? 'video' : 'reading'),
+              order_index: count || 0,
+            });
+          
+          if (error) {
+            console.error('Lesson insert error:', error);
+            results.errors.push(`Lesson: ${title} - ${error.message}`);
+          } else {
+            results.lessonsCreated++;
+            console.log(`Created lesson: ${title}`);
+          }
+        } catch (e) {
+          console.error('Error parsing lesson line:', e);
         }
       }
       
       return new Response(JSON.stringify({ 
         success: true, 
         courseId: course.id,
+        courseTitle: course.title,
         results 
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -362,7 +306,7 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ 
-      error: 'Unknown action. Use: parse-courses, parse-modules, parse-lessons, or import-to-db' 
+      error: 'Unknown action. Use: import-course' 
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
