@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Plus, User, Trash2, MoreVertical } from 'lucide-react';
+import { MessageSquare, Plus, User, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,12 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +23,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { useState } from 'react';
@@ -52,7 +47,7 @@ export function ConversationList({ onSelectConversation, selectedId }: Conversat
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
@@ -69,7 +64,7 @@ export function ConversationList({ onSelectConversation, selectedId }: Conversat
   }
 
   return (
-    <Card>
+    <Card className="bg-card border-border">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
@@ -98,7 +93,7 @@ export function ConversationList({ onSelectConversation, selectedId }: Conversat
                       <button
                         key={friend.id}
                         onClick={() => handleStartConversation(friendUserId)}
-                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors text-left"
                       >
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={friend.profiles?.avatar_url || undefined} />
@@ -154,26 +149,18 @@ function ConversationItem({
 }) {
   const participant = conversation.participants?.[0];
   const deleteConversation = useDeleteConversation();
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowDeleteAlert(true);
-  };
-
-  const confirmDelete = () => {
+  const handleDelete = () => {
     deleteConversation.mutate(conversation.id);
-    setShowDeleteAlert(false);
   };
 
   return (
-    <>
-      <div
-        onClick={onClick}
-        className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-left cursor-pointer group ${
-          isSelected ? 'bg-muted/50' : ''
-        }`}
-      >
+    <div
+      className={`relative flex items-center gap-3 p-4 hover:bg-accent/30 transition-colors cursor-pointer ${
+        isSelected ? 'bg-accent/50' : ''
+      }`}
+    >
+      <div className="flex-1 flex items-center gap-3" onClick={onClick}>
         <Avatar className="h-10 w-10">
           <AvatarImage src={participant?.avatar_url || undefined} />
           <AvatarFallback>
@@ -202,28 +189,19 @@ function ConversationItem({
             {conversation.unread_count}
           </Badge>
         )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={handleDelete}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Conversation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+      
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
@@ -233,12 +211,12 @@ function ConversationItem({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
