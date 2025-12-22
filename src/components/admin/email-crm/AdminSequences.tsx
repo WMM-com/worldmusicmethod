@@ -18,12 +18,22 @@ interface Product {
   name: string;
 }
 
+interface OptinForm {
+  id: string;
+  name: string;
+}
+
+interface EmailTag {
+  id: string;
+  name: string;
+}
+
 interface EmailSequence {
   id: string;
   name: string;
   description: string | null;
   trigger_type: string;
-  trigger_config: { product_ids?: string[] } | null;
+  trigger_config: { product_ids?: string[]; form_id?: string; tag_id?: string } | null;
   is_active: boolean;
   created_at: string;
 }
@@ -47,6 +57,8 @@ export function AdminSequences() {
   const [sequences, setSequences] = useState<EmailSequence[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [optinForms, setOptinForms] = useState<OptinForm[]>([]);
+  const [emailTags, setEmailTags] = useState<EmailTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [stepsDialogOpen, setStepsDialogOpen] = useState(false);
@@ -58,6 +70,8 @@ export function AdminSequences() {
     description: '', 
     trigger_type: 'form_submit',
     product_ids: [] as string[],
+    form_id: '',
+    tag_id: '',
     is_active: true
   });
 
@@ -66,10 +80,12 @@ export function AdminSequences() {
   }, []);
 
   async function fetchData() {
-    const [seqRes, tempRes, prodRes] = await Promise.all([
+    const [seqRes, tempRes, prodRes, formsRes, tagsRes] = await Promise.all([
       supabase.from('email_sequences').select('*').order('name'),
       supabase.from('email_sequence_templates').select('id, name, subject').order('name'),
-      supabase.from('products').select('id, name').eq('is_active', true).order('name')
+      supabase.from('products').select('id, name').eq('is_active', true).order('name'),
+      supabase.from('optin_forms').select('id, name').order('name'),
+      supabase.from('email_tags').select('id, name').order('name')
     ]);
     
     if (seqRes.error) toast.error('Failed to load sequences');
@@ -77,6 +93,8 @@ export function AdminSequences() {
     setSequences((seqRes.data || []) as EmailSequence[]);
     setTemplates(tempRes.data || []);
     setProducts(prodRes.data || []);
+    setOptinForms(formsRes.data || []);
+    setEmailTags(tagsRes.data || []);
     setLoading(false);
   }
 
@@ -103,9 +121,15 @@ export function AdminSequences() {
       return;
     }
 
-    const triggerConfig: { product_ids?: string[] } = {};
+    const triggerConfig: { product_ids?: string[]; form_id?: string; tag_id?: string } = {};
     if (formData.trigger_type === 'purchase' && formData.product_ids.length > 0) {
       triggerConfig.product_ids = formData.product_ids;
+    }
+    if (formData.trigger_type === 'form_submit' && formData.form_id) {
+      triggerConfig.form_id = formData.form_id;
+    }
+    if (formData.trigger_type === 'tag_added' && formData.tag_id) {
+      triggerConfig.tag_id = formData.tag_id;
     }
 
     const payload = {
@@ -143,7 +167,7 @@ export function AdminSequences() {
 
     setDialogOpen(false);
     setEditingSequence(null);
-    setFormData({ name: '', description: '', trigger_type: 'form_submit', product_ids: [], is_active: true });
+    setFormData({ name: '', description: '', trigger_type: 'form_submit', product_ids: [], form_id: '', tag_id: '', is_active: true });
   }
 
   async function handleDelete(id: string) {
@@ -188,6 +212,8 @@ export function AdminSequences() {
       description: sequence.description || '', 
       trigger_type: sequence.trigger_type,
       product_ids: config.product_ids || [],
+      form_id: config.form_id || '',
+      tag_id: config.tag_id || '',
       is_active: sequence.is_active
     });
     setDialogOpen(true);
@@ -195,7 +221,7 @@ export function AdminSequences() {
 
   function openNew() {
     setEditingSequence(null);
-    setFormData({ name: '', description: '', trigger_type: 'form_submit', product_ids: [], is_active: true });
+    setFormData({ name: '', description: '', trigger_type: 'form_submit', product_ids: [], form_id: '', tag_id: '', is_active: true });
     setDialogOpen(true);
   }
 
@@ -264,6 +290,41 @@ export function AdminSequences() {
                   </Select>
                 </div>
                 
+                {formData.trigger_type === 'form_submit' && (
+                  <div className="space-y-2">
+                    <Label>Trigger for form (optional)</Label>
+                    <Select 
+                      value={formData.form_id} 
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, form_id: v === 'all' ? '' : v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="All forms" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Forms</SelectItem>
+                        {optinForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {formData.form_id ? 'Triggers for specific form' : 'Triggers for ANY form submission'}
+                    </p>
+                  </div>
+                )}
+
+                {formData.trigger_type === 'tag_added' && (
+                  <div className="space-y-2">
+                    <Label>Trigger when tag is added</Label>
+                    <Select 
+                      value={formData.tag_id} 
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, tag_id: v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select tag..." /></SelectTrigger>
+                      <SelectContent>
+                        {emailTags.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {!formData.tag_id && <p className="text-xs text-destructive">Please select a tag</p>}
+                  </div>
+                )}
+
                 {formData.trigger_type === 'purchase' && (
                   <div className="space-y-2">
                     <Label>Trigger for products (leave empty for all)</Label>
