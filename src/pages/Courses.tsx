@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, BookOpen, ChevronRight, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,12 +10,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourses } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Courses() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: courses, isLoading } = useCourses();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Check if user is admin
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+      return data === true;
+    },
+    enabled: !!user,
+  });
 
   // Filter courses by search query
   const filteredCourses = useMemo(() => {
@@ -61,7 +74,7 @@ export default function Courses() {
                 Explore traditional guitar styles from around the world
               </p>
             </div>
-            {user && (
+            {isAdmin && (
               <Button onClick={() => navigate('/courses/new')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Course
@@ -163,7 +176,7 @@ export default function Courses() {
             <p className="text-muted-foreground mb-6">
               Create your first course to get started
             </p>
-            {user && (
+            {isAdmin && (
               <Button onClick={() => navigate('/courses/new')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Course

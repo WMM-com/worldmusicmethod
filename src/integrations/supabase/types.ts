@@ -2501,6 +2501,13 @@ export type Database = {
           last_name: string | null
           logo_url: string | null
           message_privacy: string | null
+          notification_email_comments: boolean | null
+          notification_email_friend_requests: boolean | null
+          notification_email_invoices: boolean | null
+          notification_email_mentions: boolean | null
+          notification_email_reminders: boolean | null
+          notification_push_events: boolean | null
+          notification_push_messages: boolean | null
           paypal_email: string | null
           phone: string | null
           profile_layout: Json | null
@@ -2532,6 +2539,13 @@ export type Database = {
           last_name?: string | null
           logo_url?: string | null
           message_privacy?: string | null
+          notification_email_comments?: boolean | null
+          notification_email_friend_requests?: boolean | null
+          notification_email_invoices?: boolean | null
+          notification_email_mentions?: boolean | null
+          notification_email_reminders?: boolean | null
+          notification_push_events?: boolean | null
+          notification_push_messages?: boolean | null
           paypal_email?: string | null
           phone?: string | null
           profile_layout?: Json | null
@@ -2563,6 +2577,13 @@ export type Database = {
           last_name?: string | null
           logo_url?: string | null
           message_privacy?: string | null
+          notification_email_comments?: boolean | null
+          notification_email_friend_requests?: boolean | null
+          notification_email_invoices?: boolean | null
+          notification_email_mentions?: boolean | null
+          notification_email_reminders?: boolean | null
+          notification_push_events?: boolean | null
+          notification_push_messages?: boolean | null
           paypal_email?: string | null
           phone?: string | null
           profile_layout?: Json | null
