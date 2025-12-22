@@ -327,7 +327,7 @@ export function useDeleteComment() {
 
 export function useAppreciate() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ postId, commentId, remove }: { 
@@ -353,6 +353,45 @@ export function useAppreciate() {
           comment_id: commentId || null,
         });
         if (error) throw error;
+
+        // Create notification for appreciation (only when adding, not removing)
+        if (postId) {
+          const { data: post } = await supabase
+            .from('posts')
+            .select('user_id')
+            .eq('id', postId)
+            .single();
+          
+          if (post && post.user_id !== user.id) {
+            await createNotification({
+              userId: post.user_id,
+              type: 'appreciation',
+              title: 'New Appreciation',
+              message: `${profile?.full_name || 'Someone'} appreciated your post`,
+              referenceId: postId,
+              referenceType: 'post',
+              fromUserId: user.id,
+            });
+          }
+        } else if (commentId) {
+          const { data: comment } = await supabase
+            .from('comments')
+            .select('user_id, post_id')
+            .eq('id', commentId)
+            .single();
+          
+          if (comment && comment.user_id !== user.id) {
+            await createNotification({
+              userId: comment.user_id,
+              type: 'appreciation',
+              title: 'New Appreciation',
+              message: `${profile?.full_name || 'Someone'} appreciated your comment`,
+              referenceId: comment.post_id,
+              referenceType: 'post',
+              fromUserId: user.id,
+            });
+          }
+        }
       }
     },
     onSuccess: (_, variables) => {

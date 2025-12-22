@@ -32,6 +32,7 @@ import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
 import ResetPassword from "./pages/ResetPassword";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 
@@ -105,6 +106,7 @@ const App = () => (
                 <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
                 <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
                 <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
