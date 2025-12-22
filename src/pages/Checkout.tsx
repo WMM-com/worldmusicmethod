@@ -321,7 +321,7 @@ function CheckoutContent() {
   const currency = isCartMode
     ? cartItems[0]?.currency || 'USD'
     : productPriceInfo?.currency || 'USD';
-  const stripeDiscount = basePrice * 0.01;
+  const stripeDiscount = basePrice * 0.02;
   const cardPrice = basePrice - stripeDiscount;
   const isCourse = isCartMode
     ? cartItems.some((item) => item.productType === 'course')
@@ -637,7 +637,7 @@ function CheckoutContent() {
                       <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mb-4">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                           <Check className="h-4 w-4" />
-                          <span className="text-sm font-medium">Save 1% with card payment</span>
+                          <span className="text-sm font-medium">Save 2% with card payment</span>
                           <span className="text-xs text-green-600 dark:text-green-500">
                             (You save {formatPrice(stripeDiscount, currency)})
                           </span>
@@ -650,6 +650,7 @@ function CheckoutContent() {
                         password={password}
                         couponCode={appliedCoupon?.code}
                         amount={cardPrice}
+                        currency={currency}
                         onSuccess={handleSuccess}
                         debugEnabled={debugEnabled}
                         isLoggedIn={!!user}

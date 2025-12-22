@@ -81,49 +81,49 @@ SR,Suriname,south_america,65,USD
 BZ,Belize,south_america,65,USD
 US,United States,usa_canada,0,USD
 CA,Canada,usa_canada,0,USD
-GB,United Kingdom,uk,0,GBP
-DE,Germany,north_west_europe,0,EUR
-FR,France,north_west_europe,0,EUR
-NL,Netherlands,north_west_europe,0,EUR
-BE,Belgium,north_west_europe,0,EUR
-AT,Austria,north_west_europe,0,EUR
-CH,Switzerland,north_west_europe,0,EUR
-IE,Ireland,north_west_europe,0,EUR
-DK,Denmark,north_west_europe,0,EUR
-SE,Sweden,north_west_europe,0,EUR
-NO,Norway,north_west_europe,0,EUR
-FI,Finland,north_west_europe,0,EUR
-LU,Luxembourg,north_west_europe,0,EUR
-IS,Iceland,north_west_europe,0,EUR
-LI,Liechtenstein,north_west_europe,0,EUR
-MC,Monaco,north_west_europe,0,EUR
-ES,Spain,east_south_europe,40,EUR
-IT,Italy,east_south_europe,40,EUR
-PT,Portugal,east_south_europe,40,EUR
-GR,Greece,east_south_europe,40,EUR
-PL,Poland,east_south_europe,40,EUR
-CZ,Czech Republic,east_south_europe,40,EUR
-HU,Hungary,east_south_europe,40,EUR
-RO,Romania,east_south_europe,40,EUR
-BG,Bulgaria,east_south_europe,40,EUR
-HR,Croatia,east_south_europe,40,EUR
-SK,Slovakia,east_south_europe,40,EUR
-SI,Slovenia,east_south_europe,40,EUR
-RS,Serbia,east_south_europe,40,EUR
-BA,Bosnia and Herzegovina,east_south_europe,40,EUR
-AL,Albania,east_south_europe,40,EUR
-MK,North Macedonia,east_south_europe,40,EUR
-ME,Montenegro,east_south_europe,40,EUR
-UA,Ukraine,east_south_europe,40,EUR
-TR,Turkey,east_south_europe,40,EUR
-MD,Moldova,east_south_europe,40,EUR
-BY,Belarus,east_south_europe,40,EUR
-LT,Lithuania,east_south_europe,40,EUR
-LV,Latvia,east_south_europe,40,EUR
-EE,Estonia,east_south_europe,40,EUR
-CY,Cyprus,east_south_europe,40,EUR
-MT,Malta,east_south_europe,40,EUR
-XK,Kosovo,east_south_europe,40,EUR
+GB,United Kingdom,uk,20.2,GBP
+DE,Germany,north_west_europe,14.14,EUR
+FR,France,north_west_europe,14.14,EUR
+NL,Netherlands,north_west_europe,14.14,EUR
+BE,Belgium,north_west_europe,14.14,EUR
+AT,Austria,north_west_europe,14.14,EUR
+CH,Switzerland,north_west_europe,14.14,EUR
+IE,Ireland,north_west_europe,14.14,EUR
+DK,Denmark,north_west_europe,14.14,EUR
+SE,Sweden,north_west_europe,14.14,EUR
+NO,Norway,north_west_europe,14.14,EUR
+FI,Finland,north_west_europe,14.14,EUR
+LU,Luxembourg,north_west_europe,14.14,EUR
+IS,Iceland,north_west_europe,14.14,EUR
+LI,Liechtenstein,north_west_europe,14.14,EUR
+MC,Monaco,north_west_europe,14.14,EUR
+ES,Spain,east_south_europe,30.3,EUR
+IT,Italy,east_south_europe,30.3,EUR
+PT,Portugal,east_south_europe,30.3,EUR
+GR,Greece,east_south_europe,30.3,EUR
+PL,Poland,east_south_europe,30.3,EUR
+CZ,Czech Republic,east_south_europe,30.3,EUR
+HU,Hungary,east_south_europe,30.3,EUR
+RO,Romania,east_south_europe,30.3,EUR
+BG,Bulgaria,east_south_europe,30.3,EUR
+HR,Croatia,east_south_europe,30.3,EUR
+SK,Slovakia,east_south_europe,30.3,EUR
+SI,Slovenia,east_south_europe,30.3,EUR
+RS,Serbia,east_south_europe,30.3,EUR
+BA,Bosnia and Herzegovina,east_south_europe,30.3,EUR
+AL,Albania,east_south_europe,30.3,EUR
+MK,North Macedonia,east_south_europe,30.3,EUR
+ME,Montenegro,east_south_europe,30.3,EUR
+UA,Ukraine,east_south_europe,30.3,EUR
+TR,Turkey,east_south_europe,30.3,EUR
+MD,Moldova,east_south_europe,30.3,EUR
+BY,Belarus,east_south_europe,30.3,EUR
+LT,Lithuania,east_south_europe,30.3,EUR
+LV,Latvia,east_south_europe,30.3,EUR
+EE,Estonia,east_south_europe,30.3,EUR
+CY,Cyprus,east_south_europe,30.3,EUR
+MT,Malta,east_south_europe,30.3,EUR
+XK,Kosovo,east_south_europe,30.3,EUR
 JP,Japan,asia_higher,0,USD
 KR,South Korea,asia_higher,0,USD
 SG,Singapore,asia_higher,0,USD

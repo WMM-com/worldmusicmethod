@@ -34,10 +34,18 @@ interface StripeCardFieldsProps {
   password: string;
   couponCode?: string;
   amount: number;
+  currency?: string;
   onSuccess: () => void;
   debugEnabled?: boolean;
   isLoggedIn?: boolean;
 }
+
+// Currency symbols
+const currencySymbols: Record<string, string> = {
+  USD: '$',
+  GBP: '£',
+  EUR: '€',
+};
 
 export function StripeCardFields({
   productId,
@@ -46,6 +54,7 @@ export function StripeCardFields({
   password,
   couponCode,
   amount,
+  currency = 'USD',
   onSuccess,
   debugEnabled = false,
   isLoggedIn = false,
@@ -138,8 +147,10 @@ export function StripeCardFields({
     }
   };
 
-  const formatAmount = (amt: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amt);
+  const formatAmount = (amt: number) => {
+    const symbol = currencySymbols[currency] || currency;
+    return `${symbol}${amt.toFixed(2)}`;
+  };
 
   const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8));
 

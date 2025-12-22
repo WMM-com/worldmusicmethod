@@ -53,9 +53,9 @@ const REGIONS = [
   { value: 'africa', label: 'Africa', defaultDiscount: 65 },
   { value: 'south_america', label: 'South America', defaultDiscount: 65 },
   { value: 'usa_canada', label: 'USA & Canada', defaultDiscount: 0 },
-  { value: 'uk', label: 'UK', defaultDiscount: 0 },
-  { value: 'north_west_europe', label: 'North West Europe', defaultDiscount: 0 },
-  { value: 'east_south_europe', label: 'East & South Europe', defaultDiscount: 40 },
+  { value: 'uk', label: 'UK', defaultDiscount: 20.2 },
+  { value: 'north_west_europe', label: 'North West Europe', defaultDiscount: 14.14 },
+  { value: 'east_south_europe', label: 'East & South Europe', defaultDiscount: 30.3 },
   { value: 'asia_lower', label: 'Asia (Lower Income)', defaultDiscount: 65 },
   { value: 'asia_higher', label: 'Asia (Higher Income)', defaultDiscount: 0 },
 ];
@@ -368,10 +368,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
               
               <div className="space-y-2">
                 <Label>Tag to assign on purchase</Label>
-                <Select value={purchaseTagId} onValueChange={setPurchaseTagId}>
+                <Select value={purchaseTagId || 'none'} onValueChange={(val) => setPurchaseTagId(val === 'none' ? '' : val)}>
                   <SelectTrigger><SelectValue placeholder="Select a tag (optional)" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No tag</SelectItem>
+                    <SelectItem value="none">No tag</SelectItem>
                     {tags?.map((tag) => (
                       <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
                     ))}

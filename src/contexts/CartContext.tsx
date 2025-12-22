@@ -38,6 +38,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(prev => {
       const existing = prev.find(i => i.productId === item.productId);
       if (existing) {
+        // For courses, don't increase quantity - just return existing cart
+        if (item.productType === 'course') {
+          return prev;
+        }
         return prev.map(i => 
           i.productId === item.productId 
             ? { ...i, quantity: i.quantity + 1 }
