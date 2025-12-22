@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2 } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2, Reply, ChevronDown, Paperclip, Image, Video, X, FileText } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,14 +20,17 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post, Comment, useAppreciate, useDeletePost, useUpdatePost, useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useSocial';
+import { useR2Upload } from '@/hooks/useR2Upload';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface PostCardProps {
   post: Post;
+  defaultShowComments?: boolean;
 }
 
 const COMMENT_EDIT_DAYS_LIMIT = 30;
-
+const INITIAL_COMMENTS_SHOWN = 3;
 
 const POST_TYPE_CONFIG = {
   statement: {
@@ -60,18 +63,30 @@ const POST_TYPE_CONFIG = {
   },
 };
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
   const { user } = useAuth();
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(defaultShowComments);
+  const [showAllComments, setShowAllComments] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [commentAttachment, setCommentAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { data: comments } = useComments(showComments ? post.id : '');
   const appreciateMutation = useAppreciate();
   const deleteMutation = useDeletePost();
   const updateMutation = useUpdatePost();
   const createCommentMutation = useCreateComment();
+  const { uploadFile, isUploading } = useR2Upload();
+
+  // Open comments if defaultShowComments changes
+  useEffect(() => {
+    if (defaultShowComments) {
+      setShowComments(true);
+    }
+  }, [defaultShowComments]);
 
   const isOwner = user?.id === post.user_id;
   const initials = post.profiles?.full_name
@@ -80,6 +95,20 @@ export function PostCard({ post }: PostCardProps) {
     .join('')
     .toUpperCase() || '?';
 
+  // Organize comments into threads (top-level and replies)
+  const topLevelComments = comments?.filter(c => !c.parent_id) || [];
+  const repliesMap = new Map<string, Comment[]>();
+  comments?.forEach(c => {
+    if (c.parent_id) {
+      const existing = repliesMap.get(c.parent_id) || [];
+      repliesMap.set(c.parent_id, [...existing, c]);
+    }
+  });
+
+  const visibleComments = showAllComments 
+    ? topLevelComments 
+    : topLevelComments.slice(0, INITIAL_COMMENTS_SHOWN);
+
   const handleAppreciate = () => {
     appreciateMutation.mutate({
       postId: post.id,
@@ -87,11 +116,44 @@ export function PostCard({ post }: PostCardProps) {
     });
   };
 
-  const handleComment = () => {
-    if (!commentText.trim()) return;
+  const handleComment = async () => {
+    if (!commentText.trim() && !commentAttachment) return;
+    
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+
+    if (commentAttachment) {
+      try {
+        const result = await uploadFile(commentAttachment.file, { 
+          bucket: 'user', 
+          folder: 'comments',
+          trackInDatabase: false,
+        });
+        if (result) {
+          mediaUrl = result.url;
+          mediaType = commentAttachment.type;
+        }
+      } catch (error) {
+        toast.error('Failed to upload attachment');
+        return;
+      }
+    }
+
     createCommentMutation.mutate(
-      { postId: post.id, content: commentText },
-      { onSuccess: () => setCommentText('') }
+      { 
+        postId: post.id, 
+        content: commentText.trim() || (mediaUrl ? `[${mediaType}]` : ''),
+        parentId: replyingTo || undefined,
+        mediaUrl,
+        mediaType,
+      },
+      { 
+        onSuccess: () => {
+          setCommentText('');
+          setReplyingTo(null);
+          removeCommentAttachment();
+        }
+      }
     );
   };
 
@@ -108,7 +170,6 @@ export function PostCard({ post }: PostCardProps) {
   };
 
   const handleEditSave = () => {
-    // Only update content, keep media unchanged
     updateMutation.mutate(
       { 
         postId: post.id, 
@@ -120,9 +181,33 @@ export function PostCard({ post }: PostCardProps) {
     );
   };
 
-  // Determine media type from URL if not set
-  const displayMediaType = post.media_type || (post.image_url ? 'image' : null);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    const type = isImage ? 'image' : isVideo ? 'video' : 'file';
+
+    setCommentAttachment({
+      file,
+      url: URL.createObjectURL(file),
+      type,
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeCommentAttachment = () => {
+    if (commentAttachment) {
+      URL.revokeObjectURL(commentAttachment.url);
+      setCommentAttachment(null);
+    }
+  };
+
+  const displayMediaType = post.media_type || (post.image_url ? 'image' : null);
   const postType = (post.post_type as keyof typeof POST_TYPE_CONFIG) || 'update';
   const typeConfig = POST_TYPE_CONFIG[postType];
   const TypeIcon = typeConfig.icon;
@@ -252,22 +337,113 @@ export function PostCard({ post }: PostCardProps) {
           {/* Comments Section */}
           {showComments && (
             <div className="w-full space-y-3 pt-2 border-t">
-              {comments?.map((comment) => (
-                <CommentItem key={comment.id} comment={comment} />
+              {visibleComments.map((comment) => (
+                <CommentThread 
+                  key={comment.id} 
+                  comment={comment} 
+                  replies={repliesMap.get(comment.id) || []}
+                  onReply={(commentId) => setReplyingTo(commentId)}
+                />
               ))}
               
+              {topLevelComments.length > INITIAL_COMMENTS_SHOWN && !showAllComments && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllComments(true)}
+                  className="w-full"
+                >
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                  View {topLevelComments.length - INITIAL_COMMENTS_SHOWN} more comments
+                </Button>
+              )}
+              
+              {/* Reply indicator */}
+              {replyingTo && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+                  <Reply className="h-4 w-4" />
+                  <span>Replying to a comment</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto h-6 px-2"
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {/* Attachment Preview */}
+              {commentAttachment && (
+                <div className="relative inline-block">
+                  {commentAttachment.type === 'image' ? (
+                    <img src={commentAttachment.url} alt="Preview" className="h-16 rounded object-cover" />
+                  ) : commentAttachment.type === 'video' ? (
+                    <video src={commentAttachment.url} className="h-16 rounded" />
+                  ) : (
+                    <div className="h-12 px-3 bg-muted rounded flex items-center gap-2 text-sm">
+                      <FileText className="h-4 w-4" />
+                      <span className="truncate max-w-[150px]">{commentAttachment.file.name}</span>
+                    </div>
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-1 -right-1 h-5 w-5"
+                    onClick={removeCommentAttachment}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              
               <div className="flex gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*,video/*,.pdf,.doc,.docx"
+                  className="hidden"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'image/*';
+                        fileInputRef.current.click();
+                      }
+                    }}>
+                      <Image className="h-4 w-4 mr-2" />
+                      Image
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'video/*';
+                        fileInputRef.current.click();
+                      }
+                    }}>
+                      <Video className="h-4 w-4 mr-2" />
+                      Video
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   onKeyDown={handleCommentKeyDown}
-                  placeholder="Write a comment... (Enter to post)"
+                  placeholder={replyingTo ? "Write a reply... (Enter to post)" : "Write a comment... (Enter to post)"}
                   rows={1}
-                  className="min-h-[40px] resize-none"
+                  className="min-h-[40px] resize-none flex-1"
                 />
                 <Button
                   onClick={handleComment}
-                  disabled={!commentText.trim() || createCommentMutation.isPending}
+                  disabled={(!commentText.trim() && !commentAttachment) || createCommentMutation.isPending || isUploading}
                   size="sm"
                 >
                   Post
@@ -278,7 +454,7 @@ export function PostCard({ post }: PostCardProps) {
         </CardFooter>
       </Card>
 
-      {/* Edit Dialog - Text only, no media changes allowed */}
+      {/* Edit Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -293,7 +469,6 @@ export function PostCard({ post }: PostCardProps) {
               className="resize-none"
             />
 
-            {/* Show existing media as preview only - not editable */}
             {post.image_url && (
               <div className="rounded-lg overflow-hidden bg-muted/30 p-2">
                 <p className="text-xs text-muted-foreground mb-2">Media cannot be changed after posting</p>
@@ -332,7 +507,34 @@ export function PostCard({ post }: PostCardProps) {
   );
 }
 
-function CommentItem({ comment }: { comment: Comment }) {
+interface CommentThreadProps {
+  comment: Comment;
+  replies: Comment[];
+  onReply: (commentId: string) => void;
+}
+
+function CommentThread({ comment, replies, onReply }: CommentThreadProps) {
+  return (
+    <div className="space-y-2">
+      <CommentItem comment={comment} onReply={onReply} />
+      {replies.length > 0 && (
+        <div className="ml-10 space-y-2 border-l-2 border-border pl-3">
+          {replies.map(reply => (
+            <CommentItem key={reply.id} comment={reply} onReply={onReply} isReply />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CommentItemProps {
+  comment: Comment;
+  onReply: (commentId: string) => void;
+  isReply?: boolean;
+}
+
+function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
@@ -363,9 +565,13 @@ function CommentItem({ comment }: { comment: Comment }) {
     deleteCommentMutation.mutate(comment.id);
   };
 
+  // Check for media in comment (from extended Comment type)
+  const mediaUrl = (comment as any).media_url;
+  const mediaType = (comment as any).media_type;
+
   return (
     <div className="flex gap-2">
-      <Avatar className="h-8 w-8 flex-shrink-0">
+      <Avatar className={cn("flex-shrink-0", isReply ? "h-6 w-6" : "h-8 w-8")}>
         <AvatarImage src={comment.profiles?.avatar_url || undefined} />
         <AvatarFallback className="text-xs">{initials}</AvatarFallback>
       </Avatar>
@@ -440,7 +646,31 @@ function CommentItem({ comment }: { comment: Comment }) {
                   </DropdownMenu>
                 )}
               </div>
-              <p className="text-sm">{comment.content}</p>
+              
+              {/* Comment Media */}
+              {mediaUrl && (
+                <div className="mb-2 mt-1">
+                  {mediaType === 'image' ? (
+                    <img src={mediaUrl} alt="Comment media" className="max-w-full max-h-48 rounded" />
+                  ) : mediaType === 'video' ? (
+                    <video src={mediaUrl} controls className="max-w-full max-h-48 rounded" />
+                  ) : (
+                    <a
+                      href={mediaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm underline"
+                    >
+                      <FileText className="h-4 w-4" />
+                      View attachment
+                    </a>
+                  )}
+                </div>
+              )}
+              
+              {comment.content && !comment.content.startsWith('[') && (
+                <p className="text-sm">{comment.content}</p>
+              )}
             </div>
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
               <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
@@ -453,6 +683,14 @@ function CommentItem({ comment }: { comment: Comment }) {
               >
                 Appreciate {comment.appreciation_count > 0 && `(${comment.appreciation_count})`}
               </button>
+              {!isReply && (
+                <button
+                  onClick={() => onReply(comment.id)}
+                  className="hover:underline"
+                >
+                  Reply
+                </button>
+              )}
             </div>
           </>
         )}

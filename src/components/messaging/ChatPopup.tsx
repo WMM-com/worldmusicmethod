@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages, useSendMessage } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
@@ -6,7 +7,7 @@ import { useR2Upload } from '@/hooks/useR2Upload';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, Minus, Send, Paperclip, Image, Video, FileText } from 'lucide-react';
+import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 
 export function ChatPopup() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { popupConversation, closePopupChat, minimizePopupChat, isMinimized } = useMessagingPopup();
   const { data: messages, isLoading } = useMessages(popupConversation?.id || '');
   const sendMessage = useSendMessage();
@@ -35,6 +37,11 @@ export function ChatPopup() {
   }, [messages?.length]);
 
   if (!user || !popupConversation) return null;
+
+  const handleViewInMessages = () => {
+    navigate('/messages', { state: { conversationId: popupConversation.id } });
+    closePopupChat();
+  };
 
   const handleSend = async () => {
     if (!newMessage.trim() && !attachment) return;
@@ -115,11 +122,20 @@ export function ChatPopup() {
             <AvatarImage src={popupConversation.participantAvatar} />
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold text-sm truncate max-w-[160px]">
+          <span className="font-semibold text-sm truncate max-w-[120px]">
             {popupConversation.participantName}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleViewInMessages}
+            title="View in Messages"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

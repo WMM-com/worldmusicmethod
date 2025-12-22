@@ -233,10 +233,12 @@ export function useCreateComment() {
   const { user, profile } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ postId, content, parentId }: { 
+    mutationFn: async ({ postId, content, parentId, mediaUrl, mediaType }: { 
       postId: string; 
       content: string; 
       parentId?: string;
+      mediaUrl?: string;
+      mediaType?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
       
@@ -245,6 +247,8 @@ export function useCreateComment() {
         user_id: user.id,
         content,
         parent_id: parentId || null,
+        media_url: mediaUrl || null,
+        media_type: mediaType || null,
       }).select().single();
       if (error) throw error;
       

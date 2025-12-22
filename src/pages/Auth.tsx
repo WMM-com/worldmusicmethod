@@ -12,7 +12,8 @@ export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
 
@@ -37,12 +38,13 @@ export default function Auth() {
           toast.error(error.message);
         }
       } else {
-        if (!fullName.trim()) {
-          toast.error('Please enter your name');
+        if (!firstName.trim() || !lastName.trim()) {
+          toast.error('Please enter your first and last name');
           setLoading(false);
           return;
         }
-        const { error } = await signUp(email, password, fullName);
+        const fullName = `${firstName.trim()} ${lastName.trim()}`;
+        const { error } = await signUp(email, password, fullName, firstName.trim(), lastName.trim());
         if (error) {
           if (error.message.includes('already registered')) {
             toast.error('This email is already registered. Please sign in instead.');
@@ -83,17 +85,30 @@ export default function Auth() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Your name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

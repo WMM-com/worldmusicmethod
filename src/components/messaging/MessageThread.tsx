@@ -290,39 +290,20 @@ function MessageBubble({ message, isOwn, conversationId }: { message: Message; i
   };
 
   return (
-    <div className={cn('flex gap-2 min-w-0 group', isOwn ? 'flex-row-reverse' : 'flex-row')}>
-      <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
-        <AvatarFallback>
-          <User className="h-3 w-3" />
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex items-center gap-1">
-        {isOwn && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <MoreVertical className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem 
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Message
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+    <div className={cn('flex gap-2 min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
+      {!isOwn && (
+        <Avatar className="h-8 w-8 flex-shrink-0">
+          <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
+          <AvatarFallback>
+            <User className="h-3 w-3" />
+          </AvatarFallback>
+        </Avatar>
+      )}
+      
+      <div className={cn('flex items-center gap-1 max-w-[75%]', isOwn ? 'flex-row-reverse' : 'flex-row')}>
         <div
           className={cn(
-            'max-w-[70%] min-w-0 break-words rounded-lg px-4 py-2',
+            'min-w-0 break-words rounded-lg px-4 py-2',
             isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted',
             isAvailability && 'border-l-4 border-secondary'
           )}
@@ -370,29 +351,37 @@ function MessageBubble({ message, isOwn, conversationId }: { message: Message; i
             {format(new Date(message.created_at), 'h:mm a')}
           </span>
         </div>
-        {!isOwn && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <MoreVertical className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem 
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete for Me
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+            >
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align={isOwn ? "end" : "start"}>
+            <DropdownMenuItem 
+              onClick={handleDelete}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {isOwn ? 'Delete Message' : 'Delete for Me'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+      
+      {isOwn && (
+        <Avatar className="h-8 w-8 flex-shrink-0">
+          <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
+          <AvatarFallback>
+            <User className="h-3 w-3" />
+          </AvatarFallback>
+        </Avatar>
+      )}
     </div>
   );
 }
