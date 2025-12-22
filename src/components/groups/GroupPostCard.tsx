@@ -131,7 +131,13 @@ export function GroupPostCard({ post, getInitials }: GroupPostCardProps) {
             {post.media_url && (
               <div className="mt-3">
                 {post.media_type === 'image' && (
-                  <img src={post.media_url} alt="" className="rounded-lg max-h-96 object-cover" />
+                  <a href={post.media_url} target="_blank" rel="noopener noreferrer">
+                    <img 
+                      src={post.media_url} 
+                      alt="" 
+                      className="rounded-lg max-h-96 object-cover cursor-pointer hover:opacity-90 transition-opacity" 
+                    />
+                  </a>
                 )}
                 {post.media_type === 'audio' && (
                   <audio src={post.media_url} controls className="w-full" />
