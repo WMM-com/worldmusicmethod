@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export type ReportReason = 'too_negative' | 'annoying' | 'using_ai' | 'spam' | 'harassment' | 'other';
+export type ReportReason = 'too_negative' | 'annoying' | 'using_ai' | 'other';
 export type ReportType = 'user' | 'post' | 'message';
 export type ReportStatus = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 
@@ -25,8 +25,6 @@ export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
   { value: 'too_negative', label: 'Too Negative' },
   { value: 'annoying', label: 'Annoying' },
   { value: 'using_ai', label: 'Using A.I' },
-  { value: 'spam', label: 'Spam' },
-  { value: 'harassment', label: 'Harassment' },
   { value: 'other', label: 'Other' },
 ];
 

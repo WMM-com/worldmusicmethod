@@ -4,11 +4,36 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, UserPlus, MessageCircle, Users, Check, Clock } from 'lucide-react';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Search, UserPlus, MessageCircle, Users, Check, Clock, MoreHorizontal, Flag, Ban } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMembers, useConnectWithMember, useConnectionStatus } from '@/hooks/useMembers';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 
 function MemberCard({ member }: { member: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; business_name: string | null } }) {
   const { user } = useAuth();
@@ -16,6 +41,12 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
   const { data: connectionStatus, isLoading: loadingStatus } = useConnectionStatus(member.id);
   const connectMutation = useConnectWithMember();
   const createConversation = useCreateConversation();
+  const createReport = useCreateReport();
+  const blockUser = useBlockUser();
+  
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>('other');
+  const [reportDetails, setReportDetails] = useState('');
   
   const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -33,68 +64,160 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
       navigate(`/messages?conversation=${conversationId}`);
     }
   };
+
+  const handleReport = () => {
+    createReport.mutate({
+      reportType: 'user',
+      reason: reportReason,
+      reportedUserId: member.id,
+      details: reportDetails,
+    }, {
+      onSuccess: () => {
+        setReportDialogOpen(false);
+        setReportReason('other');
+        setReportDetails('');
+      }
+    });
+  };
+
+  const handleBlock = () => {
+    blockUser.mutate(member.id);
+  };
+
+  const isOwnProfile = user?.id === member.id;
   
   return (
-    <Card className="hover:bg-muted/50 transition-colors">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <Link to={`/profile/${member.id}`}>
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={member.avatar_url || undefined} />
-              <AvatarFallback>{getInitials(member.full_name)}</AvatarFallback>
-            </Avatar>
-          </Link>
-          
-          <div className="flex-1 min-w-0">
-            <Link to={`/profile/${member.id}`} className="hover:underline">
-              <h4 className="font-semibold truncate">{member.full_name || 'Anonymous'}</h4>
+    <>
+      <Card className="hover:bg-muted/50 transition-colors">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Link to={`/profile/${member.id}`}>
+              <Avatar className="h-12 w-12">
+                <AvatarImage src={member.avatar_url || undefined} />
+                <AvatarFallback>{getInitials(member.full_name)}</AvatarFallback>
+              </Avatar>
             </Link>
-            {member.business_name && (
-              <p className="text-sm text-muted-foreground truncate">{member.business_name}</p>
-            )}
-            {member.bio && (
-              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{member.bio}</p>
-            )}
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between">
+                <Link to={`/profile/${member.id}`} className="hover:underline">
+                  <h4 className="font-semibold truncate">{member.full_name || 'Anonymous'}</h4>
+                </Link>
+                {user && !isOwnProfile && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
+                        <Flag className="h-4 w-4 mr-2" />
+                        Report User
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleBlock} className="text-destructive">
+                        <Ban className="h-4 w-4 mr-2" />
+                        Block User
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              {member.business_name && (
+                <p className="text-sm text-muted-foreground truncate">{member.business_name}</p>
+              )}
+              {member.bio && (
+                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{member.bio}</p>
+              )}
+            </div>
           </div>
-        </div>
-        
-        <div className="flex gap-2 mt-3 pt-3 border-t">
-          {loadingStatus ? (
-            <Skeleton className="h-9 w-24" />
-          ) : connectionStatus?.isFriend ? (
-            <>
-              <Button size="sm" variant="outline" disabled className="flex-1">
-                <Check className="h-4 w-4 mr-1" />
-                Connected
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleMessage}>
-                <MessageCircle className="h-4 w-4" />
-              </Button>
-            </>
-          ) : connectionStatus?.pendingRequest ? (
-            <Button size="sm" variant="outline" disabled className="flex-1">
-              <Clock className="h-4 w-4 mr-1" />
-              {connectionStatus.pendingRequest.sentByMe ? 'Pending' : 'Respond'}
-            </Button>
-          ) : (
-            <>
-              <Button 
-                size="sm" 
-                onClick={handleConnect} 
-                disabled={connectMutation.isPending}
-                className="flex-1"
-              >
-                <UserPlus className="h-4 w-4 mr-1" />
-                Connect
-              </Button>
-              <Button size="sm" variant="outline" onClick={handleMessage}>
-                <MessageCircle className="h-4 w-4" />
-              </Button>
-            </>
+          
+          {!isOwnProfile && (
+            <div className="flex gap-2 mt-3 pt-3 border-t">
+              {loadingStatus ? (
+                <Skeleton className="h-9 w-24" />
+              ) : connectionStatus?.isFriend ? (
+                <>
+                  <Button size="sm" variant="outline" disabled className="flex-1">
+                    <Check className="h-4 w-4 mr-1" />
+                    Connected
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleMessage}>
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : connectionStatus?.pendingRequest ? (
+                <Button size="sm" variant="outline" disabled className="flex-1">
+                  <Clock className="h-4 w-4 mr-1" />
+                  {connectionStatus.pendingRequest.sentByMe ? 'Pending' : 'Respond'}
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    size="sm" 
+                    onClick={handleConnect} 
+                    disabled={connectMutation.isPending}
+                    className="flex-1"
+                  >
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Connect
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleMessage}>
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Report Dialog */}
+      <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report User</DialogTitle>
+            <DialogDescription>
+              Report {member.full_name || 'this user'} for violating community guidelines
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Select value={reportReason} onValueChange={(v) => setReportReason(v as ReportReason)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORT_REASONS.map((reason) => (
+                    <SelectItem key={reason.value} value={reason.value}>
+                      {reason.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Additional details (optional)</Label>
+              <Textarea
+                placeholder="Provide more context..."
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReportDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleReport} disabled={createReport.isPending}>
+              Submit Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
