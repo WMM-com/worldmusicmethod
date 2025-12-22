@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Shield, Users, Pencil } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Shield, Users, Pencil, RefreshCw } from 'lucide-react';
 
 type AppRole = 'user' | 'admin';
 
@@ -280,6 +280,31 @@ export function AdminUsers() {
     }
   };
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncEmails = async () => {
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('sync-profile-emails');
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success('Emails synced successfully');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sync emails');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const selectedCount = selectedCourseIds.length + selectedGroupIds.length;
 
   return (
@@ -290,6 +315,10 @@ export function AdminUsers() {
           Users
         </CardTitle>
         <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleSyncEmails} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            Sync Emails
+          </Button>
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input

@@ -63,10 +63,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => {
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Check if email already exists in profiles
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (existingProfile) {
+      return { error: new Error('A user with this email address already exists') };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         emailRedirectTo: redirectUrl,
@@ -77,6 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
+
+    // Handle Supabase auth duplicate email error
+    if (error?.message?.includes('already been registered') || error?.message?.includes('already exists')) {
+      return { error: new Error('A user with this email address already exists') };
+    }
 
     return { error: error as Error | null };
   };

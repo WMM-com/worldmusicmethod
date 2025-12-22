@@ -54,11 +54,22 @@ serve(async (req) => {
       throw new Error('Missing required fields: email, password, fullName');
     }
 
+    // Check if email already exists in profiles
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (existingProfile) {
+      throw new Error('A user with this email address already exists');
+    }
+
     console.log(`Creating user: ${email} with role: ${role}`);
 
     // Create the user using admin API
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: email.toLowerCase().trim(),
       password,
       email_confirm: true,
       user_metadata: {
@@ -68,6 +79,10 @@ serve(async (req) => {
 
     if (createError) {
       console.error('Error creating user:', createError);
+      // Check for duplicate email error from Supabase Auth
+      if (createError.message?.includes('already been registered') || createError.message?.includes('already exists')) {
+        throw new Error('A user with this email address already exists');
+      }
       throw createError;
     }
 
