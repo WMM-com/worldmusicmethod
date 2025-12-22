@@ -32,7 +32,18 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Shield, Users, Pencil, RefreshCw } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Shield, Users, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type AppRole = 'user' | 'admin';
 
@@ -281,6 +292,7 @@ export function AdminUsers() {
   };
 
   const [syncing, setSyncing] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   const handleSyncEmails = async () => {
     setSyncing(true);
@@ -302,6 +314,33 @@ export function AdminUsers() {
       toast.error(error.message || 'Failed to sync emails');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success('User deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete user');
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -525,7 +564,7 @@ export function AdminUsers() {
                                     />
                                     <label
                                       htmlFor={`course-${course.id}`}
-                                      className={`flex-1 text-sm cursor-pointer ${isEnrolled ? 'text-muted-foreground' : ''}`}
+                                      className={`text-sm flex-1 cursor-pointer ${isEnrolled ? 'text-muted-foreground' : ''}`}
                                     >
                                       {course.title}
                                       {isEnrolled && <span className="ml-2 text-xs">(enrolled)</span>}
@@ -533,60 +572,82 @@ export function AdminUsers() {
                                   </div>
                                 );
                               })}
-                              {(!courses || courses.length === 0) && (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                  No courses available
-                                </p>
-                              )}
                             </TabsContent>
                             <TabsContent value="groups" className="space-y-2 max-h-60 overflow-y-auto">
-                              {courseGroups?.map((group) => {
-                                const coursesInGroup = (group.course_group_courses as any[])?.length || 0;
-                                return (
-                                  <div
-                                    key={group.id}
-                                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
+                              {courseGroups?.map((group: any) => (
+                                <div
+                                  key={group.id}
+                                  className="flex items-center space-x-3 p-2 rounded-lg hover:bg-muted/50"
+                                >
+                                  <Checkbox
+                                    id={`group-${group.id}`}
+                                    checked={selectedGroupIds.includes(group.id)}
+                                    onCheckedChange={() => toggleGroup(group.id)}
+                                  />
+                                  <label
+                                    htmlFor={`group-${group.id}`}
+                                    className="text-sm flex-1 cursor-pointer"
                                   >
-                                    <Checkbox
-                                      id={`group-${group.id}`}
-                                      checked={selectedGroupIds.includes(group.id)}
-                                      onCheckedChange={() => toggleGroup(group.id)}
-                                    />
-                                    <label
-                                      htmlFor={`group-${group.id}`}
-                                      className="flex-1 cursor-pointer"
-                                    >
-                                      <span className="text-sm font-medium">{group.name}</span>
-                                      <span className="text-xs text-muted-foreground ml-2">
-                                        ({coursesInGroup} courses)
-                                      </span>
-                                    </label>
-                                  </div>
-                                );
-                              })}
-                              {(!courseGroups || courseGroups.length === 0) && (
-                                <p className="text-sm text-muted-foreground text-center py-4">
-                                  No course groups available
-                                </p>
-                              )}
+                                    {group.name}
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                      ({group.course_group_courses?.length || 0} courses)
+                                    </span>
+                                  </label>
+                                </div>
+                              ))}
                             </TabsContent>
                           </Tabs>
-                          <div className="pt-4 space-y-3">
-                            {selectedCount > 0 && (
-                              <p className="text-sm text-muted-foreground">
-                                {selectedCourseIds.length} course(s) and {selectedGroupIds.length} group(s) selected
-                              </p>
-                            )}
+                          <div className="flex justify-between items-center pt-4 border-t">
+                            <span className="text-sm text-muted-foreground">
+                              {selectedCount} selected
+                            </span>
                             <Button
                               onClick={handleEnroll}
-                              disabled={selectedCount === 0 || enrollMutation.isPending}
-                              className="w-full"
+                              disabled={enrollMutation.isPending || selectedCount === 0}
                             >
                               {enrollMutation.isPending ? 'Enrolling...' : 'Enroll User'}
                             </Button>
                           </div>
                         </DialogContent>
-                      </Dialog>
+                        </Dialog>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              disabled={deletingUserId === user.id || role === 'admin'}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              {deletingUserId === user.id ? 'Deleting...' : 'Delete'}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete User</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {user.full_name || user.email}? This will permanently remove:
+                                <ul className="list-disc list-inside mt-2 space-y-1">
+                                  <li>All posts and comments</li>
+                                  <li>All uploaded media and files</li>
+                                  <li>Course enrollments</li>
+                                  <li>Messages and conversations</li>
+                                  <li>All other user data</li>
+                                </ul>
+                                <p className="mt-2 font-semibold">This action cannot be undone.</p>
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete User
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -595,105 +656,97 @@ export function AdminUsers() {
             )}
           </TableBody>
         </Table>
-      </CardContent>
 
-      {/* Edit User Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={(open) => {
-        setEditDialogOpen(open);
-        if (!open) {
-          setEditingUser(null);
-          setEditPassword('');
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information and password.
-            </DialogDescription>
-          </DialogHeader>
-          {editingUser && (
-            <div className="space-y-6 pt-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-name">Full Name</Label>
-                  <Input
-                    id="edit-name"
-                    value={editingUser.full_name}
-                    onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-email">Email</Label>
-                  <Input
-                    id="edit-email"
-                    type="email"
-                    value={editingUser.email}
-                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                  />
-                </div>
-                <Button
-                  onClick={() => updateUserMutation.mutate({
-                    userId: editingUser.id,
-                    fullName: editingUser.full_name,
-                    email: editingUser.email,
-                  })}
-                  disabled={updateUserMutation.isPending}
-                  className="w-full"
-                >
-                  {updateUserMutation.isPending ? 'Saving...' : 'Save Profile'}
-                </Button>
+        {/* Edit User Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Update user information.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Full Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editingUser?.full_name || ''}
+                  onChange={(e) => setEditingUser(prev => prev ? { ...prev, full_name: e.target.value } : null)}
+                />
               </div>
-
-              <div className="border-t pt-4 space-y-4">
-                <h4 className="font-medium text-sm">Reset Password</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-password">New Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={editingUser?.email || ''}
+                  onChange={(e) => setEditingUser(prev => prev ? { ...prev, email: e.target.value } : null)}
+                />
+              </div>
+              <Button
+                onClick={() => {
+                  if (editingUser) {
+                    updateUserMutation.mutate({
+                      userId: editingUser.id,
+                      fullName: editingUser.full_name,
+                      email: editingUser.email,
+                    });
+                  }
+                }}
+                disabled={updateUserMutation.isPending}
+                className="w-full"
+              >
+                {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+              
+              <div className="border-t pt-4 mt-4">
+                <Label htmlFor="new-password" className="mb-2 block">Reset Password</Label>
+                <div className="flex gap-2">
                   <Input
-                    id="edit-password"
+                    id="new-password"
                     type="password"
-                    placeholder="Enter new password"
+                    placeholder="New password"
                     value={editPassword}
                     onChange={(e) => setEditPassword(e.target.value)}
                   />
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!editPassword || editPassword.length < 6) {
-                      toast.error('Password must be at least 6 characters');
-                      return;
-                    }
-                    setResettingPassword(true);
-                    try {
-                      const { data: { session } } = await supabase.auth.getSession();
-                      if (!session) {
-                        toast.error('You must be logged in');
-                        return;
+                  <Button
+                    variant="outline"
+                    disabled={resettingPassword || !editPassword}
+                    onClick={async () => {
+                      if (!editingUser || !editPassword) return;
+                      setResettingPassword(true);
+                      try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session) {
+                          toast.error('You must be logged in');
+                          return;
+                        }
+
+                        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+                          body: { userId: editingUser.id, newPassword: editPassword },
+                        });
+
+                        if (error) throw error;
+                        if (data?.error) throw new Error(data.error);
+
+                        toast.success('Password reset successfully');
+                        setEditPassword('');
+                      } catch (err: any) {
+                        toast.error(err.message || 'Failed to reset password');
+                      } finally {
+                        setResettingPassword(false);
                       }
-                      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-                        body: { userId: editingUser.id, newPassword: editPassword },
-                      });
-                      if (error) throw error;
-                      if (data?.error) throw new Error(data.error);
-                      toast.success('Password updated successfully');
-                      setEditPassword('');
-                    } catch (error: any) {
-                      toast.error(error.message || 'Failed to reset password');
-                    } finally {
-                      setResettingPassword(false);
-                    }
-                  }}
-                  disabled={resettingPassword || !editPassword}
-                  className="w-full"
-                >
-                  {resettingPassword ? 'Resetting...' : 'Reset Password'}
-                </Button>
+                    }}
+                  >
+                    {resettingPassword ? 'Resetting...' : 'Reset'}
+                  </Button>
+                </div>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
     </Card>
   );
 }

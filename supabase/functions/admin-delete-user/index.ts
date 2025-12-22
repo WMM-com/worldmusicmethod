@@ -82,44 +82,65 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const token = url.searchParams.get('token');
-
-    if (!token) {
-      return new Response(
-        '<html><body><h1>Invalid Request</h1><p>Missing confirmation token.</p></body></html>',
-        { status: 400, headers: { 'Content-Type': 'text/html' } }
-      );
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Find the deletion request
-    const { data: request, error: reqError } = await adminClient
-      .from('account_deletion_requests')
-      .select('*')
-      .eq('token', token)
-      .eq('status', 'pending')
-      .gt('expires_at', new Date().toISOString())
-      .single();
-
-    if (reqError || !request) {
-      return new Response(
-        '<html><body style="font-family: sans-serif; text-align: center; padding: 50px;"><h1>Link Expired or Invalid</h1><p>This deletion link has expired or has already been used.</p></body></html>',
-        { status: 400, headers: { 'Content-Type': 'text/html' } }
-      );
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Verify requesting user is admin
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await userClient.auth.getUser();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const userId = request.user_id;
-    console.log(`Processing account deletion for user ${userId}`);
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Check if user is admin
+    const { data: roleData } = await adminClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
 
-    // Update request status
-    await adminClient
-      .from('account_deletion_requests')
-      .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
-      .eq('id', request.id);
+    if (roleData?.role !== 'admin') {
+      return new Response(JSON.stringify({ error: 'Admin access required' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { userId } = await req.json();
+    
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'User ID required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Prevent self-deletion
+    if (userId === user.id) {
+      return new Response(JSON.stringify({ error: 'Cannot delete your own account' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`Admin ${user.id} deleting user ${userId}`);
 
     // R2 credentials
     const accountId = Deno.env.get('CLOUDFLARE_R2_ACCOUNT_ID');
@@ -140,10 +161,12 @@ Deno.serve(async (req) => {
       if (profile.avatar_url?.includes(userPublicUrl)) {
         const key = profile.avatar_url.replace(userPublicUrl + '/', '');
         await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
+        console.log(`Deleted avatar: ${key}`);
       }
       if (profile.cover_image_url?.includes(userPublicUrl)) {
         const key = profile.cover_image_url.replace(userPublicUrl + '/', '');
         await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
+        console.log(`Deleted cover image: ${key}`);
       }
     }
 
@@ -160,6 +183,7 @@ Deno.serve(async (req) => {
           await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
         }
       }
+      console.log(`Deleted ${gallery.length} gallery images`);
     }
 
     // 3. Messages with media
@@ -170,12 +194,13 @@ Deno.serve(async (req) => {
 
     if (messages && accountId && accessKeyId && secretAccessKey && userBucket) {
       for (const msg of messages) {
-        const mediaUrl = msg.metadata?.mediaUrl;
+        const mediaUrl = (msg.metadata as any)?.mediaUrl;
         if (mediaUrl?.includes(userPublicUrl)) {
           const key = mediaUrl.replace(userPublicUrl + '/', '');
           await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
         }
       }
+      console.log(`Processed ${messages.length} messages for media deletion`);
     }
 
     // 4. Posts with media
@@ -191,6 +216,43 @@ Deno.serve(async (req) => {
           await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
         }
       }
+      console.log(`Deleted media from ${posts.length} posts`);
+    }
+
+    // 5. Group posts with media
+    const { data: groupPosts } = await adminClient
+      .from('group_posts')
+      .select('media_url')
+      .eq('user_id', userId);
+
+    if (groupPosts && accountId && accessKeyId && secretAccessKey && userBucket) {
+      for (const post of groupPosts) {
+        if (post.media_url?.includes(userPublicUrl)) {
+          const key = post.media_url.replace(userPublicUrl + '/', '');
+          await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
+        }
+      }
+      console.log(`Deleted media from ${groupPosts.length} group posts`);
+    }
+
+    // 6. Pinned audio
+    const { data: pinnedAudio } = await adminClient
+      .from('pinned_audio')
+      .select('audio_url, cover_image_url')
+      .eq('user_id', userId);
+
+    if (pinnedAudio && accountId && accessKeyId && secretAccessKey && userBucket) {
+      for (const audio of pinnedAudio) {
+        if (audio.audio_url?.includes(userPublicUrl)) {
+          const key = audio.audio_url.replace(userPublicUrl + '/', '');
+          await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
+        }
+        if (audio.cover_image_url?.includes(userPublicUrl)) {
+          const key = audio.cover_image_url.replace(userPublicUrl + '/', '');
+          await deleteFromR2(key, userBucket, accountId, accessKeyId, secretAccessKey);
+        }
+      }
+      console.log(`Deleted ${pinnedAudio.length} pinned audio files`);
     }
 
     // Delete user data from tables (order matters for foreign keys)
@@ -200,6 +262,7 @@ Deno.serve(async (req) => {
       'messages',
       'posts',
       'friendships',
+      'user_blocks',
       'group_members',
       'group_invites',
       'group_join_requests',
@@ -227,6 +290,7 @@ Deno.serve(async (req) => {
       'lesson_messages',
       'cart_abandonment',
       'tech_specs',
+      'account_deletion_requests',
       'profiles',
       'user_roles',
     ];
@@ -250,50 +314,23 @@ Deno.serve(async (req) => {
     
     if (deleteUserError) {
       console.error('Failed to delete auth user:', deleteUserError);
+      return new Response(JSON.stringify({ error: 'Failed to delete auth user' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Mark request as completed
-    await adminClient
-      .from('account_deletion_requests')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', request.id);
+    console.log(`User ${userId} deleted successfully by admin ${user.id}`);
 
-    console.log(`Account deletion completed for user ${userId}`);
-
-    return new Response(
-      `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Account Deleted</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 100vh;">
-  <div style="max-width: 500px; background: white; border-radius: 12px; padding: 40px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <div style="font-size: 48px; margin-bottom: 20px;">&#10003;</div>
-    <h1 style="color: #333; margin: 0 0 16px;">Account Deleted</h1>
-    <p style="color: #666; font-size: 16px; line-height: 1.6;">
-      Your World Music Method account has been permanently deleted. All your data and uploaded files have been removed.
-    </p>
-    <p style="color: #999; font-size: 14px; margin-top: 30px;">
-      We're sorry to see you go. Thank you for being part of our community.
-    </p>
-  </div>
-</body>
-</html>`,
-      { 
-        status: 200, 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'text/html; charset=utf-8' 
-        } 
-      }
-    );
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Unexpected error:', error);
-    return new Response(
-      '<html><body><h1>Error</h1><p>An unexpected error occurred. Please try again later.</p></body></html>',
-      { status: 500, headers: { 'Content-Type': 'text/html' } }
-    );
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
