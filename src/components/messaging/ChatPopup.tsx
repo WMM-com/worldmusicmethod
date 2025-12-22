@@ -1,27 +1,97 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages, useSendMessage } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
+import { useR2Upload } from '@/hooks/useR2Upload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Minus, Send } from 'lucide-react';
+import { X, Minus, Send, Paperclip, Image, FileText } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function ChatPopup() {
   const { user } = useAuth();
   const { popupConversation, closePopupChat, minimizePopupChat, isMinimized } = useMessagingPopup();
   const { data: messages, isLoading } = useMessages(popupConversation?.id || '');
   const sendMessage = useSendMessage();
+  const { uploadFile, isUploading } = useR2Upload();
   const [newMessage, setNewMessage] = useState('');
+  const [attachment, setAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [messages?.length]);
 
   if (!user || !popupConversation) return null;
 
-  const handleSend = () => {
-    if (!newMessage.trim()) return;
-    sendMessage.mutate({ conversationId: popupConversation.id, content: newMessage.trim() });
+  const handleSend = async () => {
+    if (!newMessage.trim() && !attachment) return;
+
+    let mediaUrl: string | undefined;
+    let mediaType: string | undefined;
+
+    if (attachment) {
+      try {
+        const result = await uploadFile(attachment.file, { 
+          bucket: 'user', 
+          folder: 'messages',
+          trackInDatabase: false,
+        });
+        if (result) {
+          mediaUrl = result.url;
+          mediaType = attachment.type;
+        }
+      } catch (error) {
+        toast.error('Failed to upload attachment');
+        return;
+      }
+    }
+
+    sendMessage.mutate({ 
+      conversationId: popupConversation.id, 
+      content: newMessage.trim() || (attachment ? `[${attachment.type}]` : ''),
+      messageType: mediaUrl ? 'media' : 'text',
+      metadata: mediaUrl ? { mediaUrl, mediaType } : {},
+    });
     setNewMessage('');
+    setAttachment(null);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const type = isImage ? 'image' : 'file';
+
+    setAttachment({
+      file,
+      url: URL.createObjectURL(file),
+      type,
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = () => {
+    if (attachment) {
+      URL.revokeObjectURL(attachment.url);
+      setAttachment(null);
+    }
   };
 
   const initials = popupConversation.participantName
@@ -38,7 +108,7 @@ export function ChatPopup() {
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50 rounded-t-lg">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50 rounded-t-lg shrink-0">
         <div className="flex items-center gap-2">
           <Avatar className="h-7 w-7">
             <AvatarImage src={popupConversation.participantAvatar} />
@@ -71,7 +141,11 @@ export function ChatPopup() {
       {/* Content */}
       {!isMinimized && (
         <>
-          <ScrollArea className="flex-1 p-3">
+          {/* Messages with scroll */}
+          <div 
+            ref={scrollContainerRef}
+            className="flex-1 overflow-y-auto p-3 min-h-0"
+          >
             {isLoading ? (
               <div className="text-center text-muted-foreground text-sm py-4">Loading...</div>
             ) : messages?.length === 0 ? (
@@ -82,6 +156,10 @@ export function ChatPopup() {
               <div className="space-y-2">
                 {messages?.map((msg) => {
                   const isOwn = msg.sender_id === user?.id;
+                  const isMedia = msg.message_type === 'media';
+                  const mediaUrl = msg.metadata?.mediaUrl;
+                  const mediaType = msg.metadata?.mediaType;
+
                   return (
                     <div
                       key={msg.id}
@@ -95,30 +173,105 @@ export function ChatPopup() {
                             : 'bg-muted'
                         )}
                       >
-                        {msg.content}
+                        {isMedia && mediaUrl && (
+                          <div className="mb-1">
+                            {mediaType === 'image' ? (
+                              <img src={mediaUrl} alt="Shared" className="max-w-full rounded" />
+                            ) : (
+                              <a 
+                                href={mediaUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 underline text-xs"
+                              >
+                                <FileText className="h-3 w-3" />
+                                Attachment
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {msg.content && !msg.content.startsWith('[') && msg.content}
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </ScrollArea>
+          </div>
+
+          {/* Attachment Preview */}
+          {attachment && (
+            <div className="px-2 pb-1 shrink-0">
+              <div className="relative inline-block">
+                {attachment.type === 'image' ? (
+                  <img src={attachment.url} alt="Preview" className="h-12 rounded object-cover" />
+                ) : (
+                  <div className="h-10 px-2 bg-muted rounded flex items-center gap-1 text-xs">
+                    <FileText className="h-4 w-4" />
+                    <span className="truncate max-w-[100px]">{attachment.file.name}</span>
+                  </div>
+                )}
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-1 -right-1 h-5 w-5"
+                  onClick={removeAttachment}
+                >
+                  <X className="h-2 w-2" />
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Input */}
-          <div className="p-2 border-t border-border">
-            <div className="flex gap-2">
+          <div className="p-2 border-t border-border shrink-0">
+            <div className="flex gap-1 items-center">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*,.pdf,.doc,.docx,.txt"
+                className="hidden"
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = 'image/*';
+                      fileInputRef.current.click();
+                    }
+                  }}>
+                    <Image className="h-4 w-4 mr-2" />
+                    Image
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
+                      fileInputRef.current.click();
+                    }
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Document
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="text-sm h-9"
+                className="text-sm h-9 flex-1"
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
               />
               <Button
                 size="icon"
-                className="h-9 w-9"
+                className="h-9 w-9 shrink-0"
                 onClick={handleSend}
-                disabled={!newMessage.trim() || sendMessage.isPending}
+                disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending || isUploading}
               >
                 <Send className="h-4 w-4" />
               </Button>
