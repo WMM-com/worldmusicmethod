@@ -129,7 +129,7 @@ export function PostCard({ post }: PostCardProps) {
 
   return (
     <>
-      <Card className={cn("overflow-hidden border-l-4", typeConfig.borderColor)}>
+      <Card id={`post-${post.id}`} className={cn("overflow-hidden border-l-4", typeConfig.borderColor)}>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

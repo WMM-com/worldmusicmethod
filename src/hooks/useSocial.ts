@@ -248,24 +248,29 @@ export function useCreateComment() {
       }).select().single();
       if (error) throw error;
       
-      // Get the post owner to notify them
-      const { data: post } = await supabase
-        .from('posts')
-        .select('user_id')
-        .eq('id', postId)
-        .single();
-      
-      if (post && post.user_id !== user.id) {
-        await createNotification({
-          userId: post.user_id,
-          type: 'comment',
-          title: 'New Comment',
-          message: `${profile?.full_name || 'Someone'} commented on your post`,
-          referenceId: postId,
-          referenceType: 'post',
-          fromUserId: user.id,
-        });
-      }
+        // Get the post owner to notify them
+        const { data: post } = await supabase
+          .from('posts')
+          .select('user_id')
+          .eq('id', postId)
+          .single();
+
+        if (post && post.user_id !== user.id) {
+          const preview = content
+            .trim()
+            .replace(/\s+/g, ' ')
+            .slice(0, 140);
+
+          await createNotification({
+            userId: post.user_id,
+            type: 'comment',
+            title: 'New Comment',
+            message: `${profile?.full_name || 'Someone'} commented: “${preview}${content.trim().length > 140 ? '…' : ''}”`,
+            referenceId: postId,
+            referenceType: 'post',
+            fromUserId: user.id,
+          });
+        }
       
       return comment;
     },

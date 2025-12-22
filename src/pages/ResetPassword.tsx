@@ -16,6 +16,8 @@ export default function ResetPassword() {
   const [isValidSession, setIsValidSession] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  const showMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
   useEffect(() => {
     // Check if we have a valid recovery session
     const checkSession = async () => {
@@ -147,7 +149,12 @@ export default function ResetPassword() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 minLength={6}
+                aria-invalid={showMismatch}
+                className={showMismatch ? 'border-destructive focus-visible:ring-destructive' : undefined}
               />
+              {showMismatch && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
+              )}
             </div>
             <Button type="submit" className="w-full gradient-primary" disabled={loading}>
               {loading ? 'Updating...' : 'Update Password'}
