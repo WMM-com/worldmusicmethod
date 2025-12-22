@@ -4,6 +4,7 @@ import { CreatePost } from '@/components/social/CreatePost';
 import { PostCard } from '@/components/social/PostCard';
 import { GroupsList } from '@/components/groups/GroupsList';
 import { MembersList } from '@/components/community/MembersList';
+import { FriendsTab } from '@/components/community/FriendsTab';
 import { PendingInvitesBanner } from '@/components/groups/PendingInvitesBanner';
 import { useFeed } from '@/hooks/useSocial';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,12 +12,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Newspaper, UsersRound, UserSearch, LogIn } from 'lucide-react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Users, Newspaper, UsersRound, UserSearch, LogIn, UserPlus } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
 
 export default function Social() {
   const { user, loading } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: posts, isLoading } = useFeed();
   
@@ -89,10 +89,14 @@ export default function Social() {
 
         <main className="max-w-6xl mx-auto px-4 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-3">
+            <TabsList className="grid w-full max-w-lg grid-cols-4">
               <TabsTrigger value="feed" className="flex items-center gap-2">
                 <Newspaper className="h-4 w-4" />
                 Feed
+              </TabsTrigger>
+              <TabsTrigger value="friends" className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Friends
               </TabsTrigger>
               <TabsTrigger value="members" className="flex items-center gap-2">
                 <UserSearch className="h-4 w-4" />
@@ -119,38 +123,39 @@ export default function Social() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 gap-6">
-                  {/* Main Feed */}
-                  <div className="space-y-4">
-                    <CreatePost />
-                    
-                    {isLoading ? (
-                      <>
-                        <Skeleton className="h-48" />
-                        <Skeleton className="h-48" />
-                      </>
-                    ) : posts?.length === 0 ? (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <h3 className="font-semibold mb-2">No posts yet</h3>
-                          <p className="text-muted-foreground">
-                            Be the first to share something, or add friends to see their posts.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      posts?.map((post) => (
-                        <PostCard 
-                          key={post.id} 
-                          post={post} 
-                          defaultShowComments={post.id === postId && openComments}
-                        />
-                      ))
-                    )}
-                  </div>
+                <div className="max-w-2xl mx-auto space-y-4">
+                  <CreatePost />
+                  
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-48" />
+                      <Skeleton className="h-48" />
+                    </>
+                  ) : posts?.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold mb-2">No posts yet</h3>
+                        <p className="text-muted-foreground">
+                          Be the first to share something, or add friends to see their posts.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    posts?.map((post) => (
+                      <PostCard 
+                        key={post.id} 
+                        post={post} 
+                        defaultShowComments={post.id === postId && openComments}
+                      />
+                    ))
+                  )}
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="friends">
+              <FriendsTab />
             </TabsContent>
             
             <TabsContent value="groups">
