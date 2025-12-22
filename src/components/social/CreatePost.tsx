@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star, Dumbbell } from 'lucide-react';
+import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star, Music2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatePost } from '@/hooks/useSocial';
 import { useR2Upload } from '@/hooks/useR2Upload';
@@ -50,7 +50,7 @@ const POST_TYPE_CONFIG = {
   },
   practice: {
     label: 'Practice Room',
-    icon: Dumbbell,
+    icon: Music2,
     verification: null,
     color: 'border-l-green-500',
     buttonColor: 'bg-green-500 hover:bg-green-600 text-white',

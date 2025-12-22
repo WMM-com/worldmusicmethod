@@ -40,16 +40,19 @@ export default function Settings() {
   
   // Account form
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
+    first_name: '',
+    last_name: '',
+    email: '',
   });
 
   // Password form
   const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
   const [changingPassword, setChangingPassword] = useState(false);
+  const [changingEmail, setChangingEmail] = useState(false);
 
   // Left Brain form (business settings)
   const [businessForm, setBusinessForm] = useState({
@@ -66,17 +69,23 @@ export default function Settings() {
   const [notifications, setNotifications] = useState({
     email_reminders: true,
     email_invoices: true,
-    email_social: false,
+    email_friend_requests: false,
+    email_comments: false,
+    email_mentions: false,
     push_events: true,
     push_messages: true,
   });
+
+  // Message privacy settings
+  const [messagePrivacy, setMessagePrivacy] = useState('community');
 
   // Sync form with profile when profile loads
   useEffect(() => {
     if (profile) {
       setForm({
-        full_name: profile.full_name || '',
-        phone: profile.phone || '',
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        email: profile.email || '',
       });
       setBusinessForm({
         business_name: profile.business_name || '',
@@ -87,12 +96,20 @@ export default function Settings() {
         vat_number: profile.vat_number || '',
         tax_country: profile.tax_country || '',
       });
+      setMessagePrivacy(profile.message_privacy || 'community');
     }
   }, [profile]);
 
   const handleSaveAccount = async () => {
     setSaving(true);
-    const { error } = await updateProfile(form);
+    
+    // Update profile (name fields)
+    const { error } = await updateProfile({
+      first_name: form.first_name,
+      last_name: form.last_name,
+      full_name: `${form.first_name} ${form.last_name}`.trim(),
+    });
+    
     if (error) {
       toast.error('Failed to save: ' + error.message);
     } else {
@@ -101,7 +118,30 @@ export default function Settings() {
     setSaving(false);
   };
 
+  const handleChangeEmail = async () => {
+    if (!form.email || form.email === profile?.email) {
+      toast.error('Please enter a new email address');
+      return;
+    }
+
+    setChangingEmail(true);
+    const { error } = await supabase.auth.updateUser({
+      email: form.email,
+    });
+
+    if (error) {
+      toast.error('Failed to update email: ' + error.message);
+    } else {
+      toast.success('Confirmation email sent to your new address. Please check your inbox.');
+    }
+    setChangingEmail(false);
+  };
+
   const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword) {
+      toast.error('Please enter your current password');
+      return;
+    }
     if (passwordForm.newPassword.length < 6) {
       toast.error('Password must be at least 6 characters');
       return;
@@ -112,6 +152,20 @@ export default function Settings() {
     }
 
     setChangingPassword(true);
+    
+    // First verify current password by signing in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: profile?.email || '',
+      password: passwordForm.currentPassword,
+    });
+
+    if (signInError) {
+      toast.error('Current password is incorrect');
+      setChangingPassword(false);
+      return;
+    }
+
+    // Then update to new password
     const { error } = await supabase.auth.updateUser({
       password: passwordForm.newPassword,
     });
@@ -120,7 +174,7 @@ export default function Settings() {
       toast.error('Failed to update password: ' + error.message);
     } else {
       toast.success('Password updated successfully');
-      setPasswordForm({ newPassword: '', confirmPassword: '' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     }
     setChangingPassword(false);
   };
@@ -137,8 +191,13 @@ export default function Settings() {
   };
 
   const handleSaveNotifications = async () => {
-    // Placeholder - would save to a notifications_settings table
-    toast.success('Notification preferences saved');
+    // Save message privacy to profile
+    const { error } = await updateProfile({ message_privacy: messagePrivacy });
+    if (error) {
+      toast.error('Failed to save: ' + error.message);
+    } else {
+      toast.success('Notification preferences saved');
+    }
   };
 
   return (
@@ -181,27 +240,47 @@ export default function Settings() {
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label>Full Name</Label>
+                      <Label>First Name</Label>
                       <Input 
-                        value={form.full_name} 
-                        onChange={(e) => setForm({...form, full_name: e.target.value})} 
+                        value={form.first_name} 
+                        onChange={(e) => setForm({...form, first_name: e.target.value})} 
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Phone</Label>
+                      <Label>Last Name</Label>
                       <Input 
-                        value={form.phone} 
-                        onChange={(e) => setForm({...form, phone: e.target.value})} 
+                        value={form.last_name} 
+                        onChange={(e) => setForm({...form, last_name: e.target.value})} 
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input value={profile?.email || ''} disabled />
-                    <p className="text-xs text-muted-foreground">Contact support to change your email</p>
-                  </div>
                   <Button onClick={handleSaveAccount} disabled={saving}>
                     {saving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Address</CardTitle>
+                  <CardDescription>Change your email address</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input 
+                      type="email"
+                      value={form.email} 
+                      onChange={(e) => setForm({...form, email: e.target.value})} 
+                    />
+                    <p className="text-xs text-muted-foreground">A confirmation will be sent to your new email</p>
+                  </div>
+                  <Button 
+                    onClick={handleChangeEmail} 
+                    disabled={changingEmail || form.email === profile?.email}
+                    variant="outline"
+                  >
+                    {changingEmail ? 'Sending...' : 'Change Email'}
                   </Button>
                 </CardContent>
               </Card>
@@ -215,6 +294,15 @@ export default function Settings() {
                   <CardDescription>Update your account password</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Current Password</Label>
+                    <Input 
+                      type="password"
+                      value={passwordForm.currentPassword} 
+                      onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})} 
+                      placeholder="Enter current password"
+                    />
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>New Password</Label>
@@ -237,7 +325,7 @@ export default function Settings() {
                   </div>
                   <Button 
                     onClick={handleChangePassword} 
-                    disabled={changingPassword || !passwordForm.newPassword}
+                    disabled={changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword}
                     variant="outline"
                   >
                     {changingPassword ? 'Updating...' : 'Update Password'}
@@ -279,12 +367,32 @@ export default function Settings() {
                       </div>
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label>Social Activity</Label>
-                          <p className="text-sm text-muted-foreground">Friend requests, comments, and mentions</p>
+                          <Label>Friend Requests</Label>
+                          <p className="text-sm text-muted-foreground">Notifications when someone sends a friend request</p>
                         </div>
                         <Switch 
-                          checked={notifications.email_social} 
-                          onCheckedChange={(v) => setNotifications({...notifications, email_social: v})}
+                          checked={notifications.email_friend_requests} 
+                          onCheckedChange={(v) => setNotifications({...notifications, email_friend_requests: v})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>Comments</Label>
+                          <p className="text-sm text-muted-foreground">Notifications when someone comments on your posts</p>
+                        </div>
+                        <Switch 
+                          checked={notifications.email_comments} 
+                          onCheckedChange={(v) => setNotifications({...notifications, email_comments: v})}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>Mentions</Label>
+                          <p className="text-sm text-muted-foreground">Notifications when someone mentions you</p>
+                        </div>
+                        <Switch 
+                          checked={notifications.email_mentions} 
+                          onCheckedChange={(v) => setNotifications({...notifications, email_mentions: v})}
                         />
                       </div>
                     </div>
@@ -312,6 +420,29 @@ export default function Settings() {
                           checked={notifications.push_messages} 
                           onCheckedChange={(v) => setNotifications({...notifications, push_messages: v})}
                         />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t">
+                    <h3 className="font-medium">Message Privacy</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Who can send you messages?</Label>
+                        <Select value={messagePrivacy} onValueChange={setMessagePrivacy}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="community">Anyone in the community</SelectItem>
+                            <SelectItem value="friends">Friends only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          {messagePrivacy === 'friends' 
+                            ? 'Only people you are friends with can message you'
+                            : 'Anyone in the community can send you messages'}
+                        </p>
                       </div>
                     </div>
                   </div>

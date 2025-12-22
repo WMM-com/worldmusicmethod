@@ -7,6 +7,8 @@ export interface Profile {
   id: string;
   email: string;
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   business_name: string | null;
   phone: string | null;
   address: string | null;
@@ -16,6 +18,7 @@ export interface Profile {
   tax_id: string | null;
   vat_number: string | null;
   tax_country: string | null;
+  message_privacy: string | null;
   created_at: string;
   updated_at: string;
 }
