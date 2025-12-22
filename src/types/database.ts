@@ -19,6 +19,13 @@ export interface Profile {
   vat_number: string | null;
   tax_country: string | null;
   message_privacy: string | null;
+  notification_email_reminders: boolean | null;
+  notification_email_invoices: boolean | null;
+  notification_email_friend_requests: boolean | null;
+  notification_email_comments: boolean | null;
+  notification_email_mentions: boolean | null;
+  notification_push_events: boolean | null;
+  notification_push_messages: boolean | null;
   created_at: string;
   updated_at: string;
 }

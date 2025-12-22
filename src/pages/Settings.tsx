@@ -65,7 +65,7 @@ export default function Settings() {
     tax_country: '',
   });
 
-  // Notification settings (placeholder for now)
+  // Notification settings
   const [notifications, setNotifications] = useState({
     email_reminders: true,
     email_invoices: true,
@@ -97,6 +97,16 @@ export default function Settings() {
         tax_country: profile.tax_country || '',
       });
       setMessagePrivacy(profile.message_privacy || 'community');
+      // Load notification preferences from profile
+      setNotifications({
+        email_reminders: profile.notification_email_reminders ?? true,
+        email_invoices: profile.notification_email_invoices ?? true,
+        email_friend_requests: profile.notification_email_friend_requests ?? false,
+        email_comments: profile.notification_email_comments ?? false,
+        email_mentions: profile.notification_email_mentions ?? false,
+        push_events: profile.notification_push_events ?? true,
+        push_messages: profile.notification_push_messages ?? true,
+      });
     }
   }, [profile]);
 
@@ -191,8 +201,16 @@ export default function Settings() {
   };
 
   const handleSaveNotifications = async () => {
-    // Save message privacy to profile
-    const { error } = await updateProfile({ message_privacy: messagePrivacy });
+    const { error } = await updateProfile({ 
+      message_privacy: messagePrivacy,
+      notification_email_reminders: notifications.email_reminders,
+      notification_email_invoices: notifications.email_invoices,
+      notification_email_friend_requests: notifications.email_friend_requests,
+      notification_email_comments: notifications.email_comments,
+      notification_email_mentions: notifications.email_mentions,
+      notification_push_events: notifications.push_events,
+      notification_push_messages: notifications.push_messages,
+    });
     if (error) {
       toast.error('Failed to save: ' + error.message);
     } else {
