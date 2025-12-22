@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Dumbbell } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +53,7 @@ const POST_TYPE_CONFIG = {
   },
   practice: {
     label: 'Practice Room',
-    icon: Dumbbell,
+    icon: Music2,
     borderColor: 'border-l-green-500',
     badgeClass: 'bg-green-500/10 text-green-600 border-green-500/20',
     buttonColor: 'bg-green-500 hover:bg-green-600 text-white',
@@ -375,6 +375,12 @@ function CommentItem({ comment }: { comment: Comment }) {
             <Textarea
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSaveEdit();
+                }
+              }}
               rows={2}
               className="min-h-[60px] resize-none text-sm"
             />

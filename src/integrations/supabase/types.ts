@@ -2494,10 +2494,13 @@ export type Database = {
           created_at: string
           default_currency: string | null
           email: string
+          first_name: string | null
           full_name: string | null
           id: string
           is_public: boolean | null
+          last_name: string | null
           logo_url: string | null
+          message_privacy: string | null
           paypal_email: string | null
           phone: string | null
           profile_layout: Json | null
@@ -2522,10 +2525,13 @@ export type Database = {
           created_at?: string
           default_currency?: string | null
           email: string
+          first_name?: string | null
           full_name?: string | null
           id: string
           is_public?: boolean | null
+          last_name?: string | null
           logo_url?: string | null
+          message_privacy?: string | null
           paypal_email?: string | null
           phone?: string | null
           profile_layout?: Json | null
@@ -2550,10 +2556,13 @@ export type Database = {
           created_at?: string
           default_currency?: string | null
           email?: string
+          first_name?: string | null
           full_name?: string | null
           id?: string
           is_public?: boolean | null
+          last_name?: string | null
           logo_url?: string | null
+          message_privacy?: string | null
           paypal_email?: string | null
           phone?: string | null
           profile_layout?: Json | null

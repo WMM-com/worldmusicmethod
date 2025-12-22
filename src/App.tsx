@@ -30,7 +30,7 @@ import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import { MessagingPopup } from "./components/messaging/MessagingPopup";
+
 
 const queryClient = new QueryClient();
 
@@ -105,7 +105,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <MessagingPopup />
+            
           </BrowserRouter>
         </TooltipProvider>
       </CartProvider>

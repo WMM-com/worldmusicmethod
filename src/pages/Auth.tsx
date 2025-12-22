@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +9,7 @@ import { toast } from 'sonner';
 import wmmLogo from '@/assets/world-music-method-logo.png';
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -20,7 +21,17 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/settings`,
+        });
+        if (error) {
+          toast.error(error.message);
+        } else {
+          toast.success('Password reset email sent! Check your inbox.');
+          setMode('login');
+        }
+      } else if (mode === 'login') {
         const { error } = await signIn(email, password);
         if (error) {
           toast.error(error.message);
@@ -40,7 +51,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Account created! You can now sign in.');
-          setIsLogin(true);
+          setMode('login');
         }
       }
     } finally {
@@ -64,12 +75,14 @@ export default function Auth() {
             World Music Method
           </CardTitle>
           <CardDescription>
-            {isLogin ? 'Welcome back! Sign in to continue.' : 'Create your account to get started.'}
+            {mode === 'login' && 'Welcome back! Sign in to continue.'}
+            {mode === 'signup' && 'Create your account to get started.'}
+            {mode === 'forgot' && 'Enter your email to reset your password.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {mode === 'signup' && (
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
@@ -78,7 +91,7 @@ export default function Auth() {
                   placeholder="Your name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  required={!isLogin}
+                  required
                 />
               </div>
             )}
@@ -93,32 +106,47 @@ export default function Auth() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
+            {mode !== 'forgot' && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full gradient-primary" disabled={loading}>
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Email'}
             </Button>
           </form>
+          
+          {mode === 'login' && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setMode('forgot')}
+                className="text-sm text-muted-foreground hover:text-secondary"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
+          
           <div className="mt-6 text-center text-sm">
             <span className="text-muted-foreground">
-              {isLogin ? "Don't have an account? " : 'Already have an account? '}
+              {mode === 'login' ? "Don't have an account? " : mode === 'signup' ? 'Already have an account? ' : 'Remember your password? '}
             </span>
             <button
               type="button"
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => setMode(mode === 'signup' ? 'login' : mode === 'forgot' ? 'login' : 'signup')}
               className="font-medium text-secondary hover:underline"
             >
-              {isLogin ? 'Sign up' : 'Sign in'}
+              {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>
           </div>
         </CardContent>
