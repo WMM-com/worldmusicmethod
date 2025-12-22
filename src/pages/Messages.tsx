@@ -27,18 +27,19 @@ export default function Messages() {
 
   const selectedConversation = conversations?.find(c => c.id === selectedConversationId);
   const participantName = selectedConversation?.participants?.[0]?.full_name || 'Conversation';
+  const participantId = selectedConversation?.participants?.[0]?.id;
 
   if (loading || !user) return null;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <SiteHeader />
-      <div className="flex-1 flex flex-col min-h-0 bg-background">
-        <header className="border-b border-border bg-card shrink-0">
+      <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-br from-background via-background to-primary/5">
+        <header className="border-b border-primary/20 bg-card/80 backdrop-blur shrink-0">
           <div className="max-w-6xl mx-auto px-4 py-6">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <MessageSquare className="h-5 w-5 text-primary" />
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
+                <MessageSquare className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Messages</h1>
@@ -64,11 +65,14 @@ export default function Messages() {
                 <MessageThread
                   conversationId={selectedConversationId}
                   participantName={participantName}
+                  participantId={participantId}
                 />
               ) : (
-                <Card className="h-full flex items-center justify-center">
+                <Card className="h-full flex items-center justify-center border-primary/20 bg-gradient-to-br from-card to-card/50">
                   <CardContent className="text-center">
-                    <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                      <MessageSquare className="h-8 w-8 text-primary" />
+                    </div>
                     <h3 className="font-semibold mb-2">Select a conversation</h3>
                     <p className="text-muted-foreground">
                       Choose a conversation from the list to start messaging

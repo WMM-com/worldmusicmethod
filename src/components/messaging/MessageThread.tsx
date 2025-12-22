@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { useMessages, useSendMessage, useDeleteMessage, Message } from '@/hooks/useMessaging';
+import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
+import { MessageOptionsMenu } from './MessageOptionsMenu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -12,9 +13,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Send, User, Calendar, Clock, MoreVertical, Paperclip, Image, Video, FileText, X, Trash2 } from 'lucide-react';
+import { Send, User, Clock, Paperclip, Image, Video, FileText, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 interface MessageThreadProps {
   conversationId: string;
   participantName?: string;
+  participantId?: string;
 }
 
 interface AttachmentPreview {
@@ -30,7 +31,7 @@ interface AttachmentPreview {
   type: 'image' | 'video' | 'file';
 }
 
-export function MessageThread({ conversationId, participantName }: MessageThreadProps) {
+export function MessageThread({ conversationId, participantName, participantId }: MessageThreadProps) {
   const { user } = useAuth();
   const { data: messages, isLoading } = useMessages(conversationId);
   const sendMessage = useSendMessage();
@@ -40,7 +41,6 @@ export function MessageThread({ conversationId, participantName }: MessageThread
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -114,20 +114,10 @@ export function MessageThread({ conversationId, participantName }: MessageThread
     }
   };
 
-  const sendAvailabilityMessage = (slots: string[]) => {
-    const message = `I'm available at the following times:\n${slots.join('\n')}\n\nLet me know which works for you.`;
-    sendMessage.mutate({
-      conversationId,
-      content: message,
-      messageType: 'availability',
-      metadata: { slots },
-    });
-  };
-
   if (isLoading) {
     return (
-      <Card className="h-full flex flex-col overflow-hidden">
-        <CardHeader>
+      <Card className="h-full flex flex-col overflow-hidden border-primary/20">
+        <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
           <Skeleton className="h-6 w-32" />
         </CardHeader>
         <CardContent className="flex-1">
@@ -138,34 +128,15 @@ export function MessageThread({ conversationId, participantName }: MessageThread
   }
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader className="border-b border-border pb-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{participantName || 'Conversation'}</CardTitle>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => sendAvailabilityMessage([
-                'Monday 10:00 AM - 12:00 PM',
-                'Wednesday 2:00 PM - 4:00 PM',
-                'Friday 11:00 AM - 1:00 PM',
-              ])}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Send Availability
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+    <Card className="h-full flex flex-col overflow-hidden border-primary/20 shadow-lg">
+      <CardHeader className="border-b border-primary/20 pb-4 shrink-0 bg-gradient-to-r from-primary/5 to-secondary/5">
+        <CardTitle className="text-lg">{participantName || 'Conversation'}</CardTitle>
       </CardHeader>
 
-      {/* Messages area with fixed height and scroll */}
+      {/* Messages area */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 min-h-0"
+        className="flex-1 overflow-y-auto p-4 min-h-0 bg-gradient-to-b from-background to-card/50"
       >
         <div className="space-y-4">
           {messages?.map((message) => (
@@ -174,6 +145,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
               message={message}
               isOwn={message.sender_id === user?.id}
               conversationId={conversationId}
+              otherUserId={participantId}
             />
           ))}
           {messages?.length === 0 && (
@@ -186,7 +158,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
 
       {/* Attachment Preview */}
       {attachment && (
-        <div className="px-4 pb-2 shrink-0">
+        <div className="px-4 pb-2 shrink-0 bg-card">
           <div className="relative inline-block">
             {attachment.type === 'image' ? (
               <img src={attachment.url} alt="Preview" className="h-20 rounded-lg object-cover" />
@@ -211,7 +183,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
       )}
 
       {/* Input area */}
-      <div className="p-4 border-t border-border shrink-0">
+      <div className="p-4 border-t border-primary/20 shrink-0 bg-card">
         <div className="flex gap-2 items-end">
           <input
             type="file"
@@ -222,11 +194,11 @@ export function MessageThread({ conversationId, participantName }: MessageThread
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0">
+              <Button variant="ghost" size="icon" className="shrink-0 hover:bg-primary/10">
                 <Paperclip className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
+            <DropdownMenuContent align="start" className="bg-card">
               <DropdownMenuItem onClick={() => {
                 if (fileInputRef.current) {
                   fileInputRef.current.accept = 'image/*';
@@ -261,7 +233,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="min-h-[44px] max-h-32 resize-none flex-1"
+            className="min-h-[44px] max-h-32 resize-none flex-1 border-primary/20 focus:border-primary"
             rows={1}
           />
           <Button
@@ -278,23 +250,28 @@ export function MessageThread({ conversationId, participantName }: MessageThread
   );
 }
 
-function MessageBubble({ message, isOwn, conversationId }: { message: Message; isOwn: boolean; conversationId: string }) {
-  const deleteMessage = useDeleteMessage();
+function MessageBubble({ 
+  message, 
+  isOwn, 
+  conversationId,
+  otherUserId 
+}: { 
+  message: Message; 
+  isOwn: boolean; 
+  conversationId: string;
+  otherUserId?: string;
+}) {
   const isAvailability = message.message_type === 'availability';
   const isMedia = message.message_type === 'media';
   const mediaUrl = message.metadata?.mediaUrl;
   const mediaType = message.metadata?.mediaType;
 
-  const handleDelete = () => {
-    deleteMessage.mutate({ messageId: message.id, conversationId });
-  };
-
   return (
     <div className={cn('flex gap-2 min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
       {!isOwn && (
-        <Avatar className="h-8 w-8 flex-shrink-0">
+        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-primary/20">
           <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
-          <AvatarFallback>
+          <AvatarFallback className="bg-primary/10">
             <User className="h-3 w-3" />
           </AvatarFallback>
         </Avatar>
@@ -303,8 +280,10 @@ function MessageBubble({ message, isOwn, conversationId }: { message: Message; i
       <div className={cn('flex items-center gap-1 max-w-[75%]', isOwn ? 'flex-row-reverse' : 'flex-row')}>
         <div
           className={cn(
-            'min-w-0 break-words rounded-lg px-4 py-2',
-            isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted',
+            'min-w-0 break-words rounded-2xl px-4 py-2 shadow-sm',
+            isOwn 
+              ? 'bg-primary text-primary-foreground rounded-br-md' 
+              : 'bg-card border border-primary/20 rounded-bl-md',
             isAvailability && 'border-l-4 border-secondary'
           )}
         >
@@ -352,32 +331,18 @@ function MessageBubble({ message, isOwn, conversationId }: { message: Message; i
           </span>
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-            >
-              <MoreVertical className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align={isOwn ? "end" : "start"}>
-            <DropdownMenuItem 
-              onClick={handleDelete}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {isOwn ? 'Delete Message' : 'Delete for Me'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <MessageOptionsMenu
+          message={message}
+          conversationId={conversationId}
+          otherUserId={otherUserId}
+          align={isOwn ? 'end' : 'start'}
+        />
       </div>
       
       {isOwn && (
-        <Avatar className="h-8 w-8 flex-shrink-0">
+        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-secondary/20">
           <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
-          <AvatarFallback>
+          <AvatarFallback className="bg-secondary/10">
             <User className="h-3 w-3" />
           </AvatarFallback>
         </Avatar>

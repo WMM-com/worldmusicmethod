@@ -49,7 +49,6 @@ export function useConversations() {
 
       if (error) throw error;
 
-      // Get all participant IDs
       const allParticipantIds = [...new Set(conversations.flatMap(c => c.participant_ids))];
       
       const { data: profiles } = await supabase
@@ -59,7 +58,6 @@ export function useConversations() {
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Get last message and unread count for each conversation
       const conversationsWithDetails = await Promise.all(
         conversations.map(async (conv) => {
           const { data: lastMessage } = await supabase
@@ -103,7 +101,6 @@ export function useUnreadMessageCount() {
     queryFn: async () => {
       if (!user) return 0;
 
-      // Get all conversations the user is in
       const { data: conversations } = await supabase
         .from('conversations')
         .select('id')
@@ -113,7 +110,6 @@ export function useUnreadMessageCount() {
 
       const conversationIds = conversations.map(c => c.id);
 
-      // Count unread messages across all conversations
       const { count, error } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
@@ -144,13 +140,7 @@ export function useMessages(conversationId: string) {
 
       if (error) throw error;
 
-      // Filter out messages deleted for current user
-      const filteredMessages = messages.filter(m => {
-        const deletedFor = (m as any).deleted_for_users || [];
-        return !deletedFor.includes(user?.id);
-      });
-
-      const senderIds = [...new Set(filteredMessages.map(m => m.sender_id))];
+      const senderIds = [...new Set(messages.map(m => m.sender_id))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url')
@@ -158,7 +148,7 @@ export function useMessages(conversationId: string) {
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      return filteredMessages.map(m => ({
+      return messages.map(m => ({
         ...m,
         sender_profile: profilesMap.get(m.sender_id),
       })) as Message[];
@@ -166,7 +156,6 @@ export function useMessages(conversationId: string) {
     enabled: !!conversationId && !!user,
   });
 
-  // Subscribe to realtime messages
   useEffect(() => {
     if (!conversationId) return;
 
@@ -175,7 +164,7 @@ export function useMessages(conversationId: string) {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
@@ -192,7 +181,6 @@ export function useMessages(conversationId: string) {
     };
   }, [conversationId, queryClient]);
 
-  // Mark messages as read
   useEffect(() => {
     if (!user || !conversationId || !query.data) return;
 
@@ -244,7 +232,6 @@ export function useSendMessage() {
 
       if (messageError) throw messageError;
 
-      // Update conversation last_message_at
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -268,22 +255,12 @@ export function useCreateConversation() {
     mutationFn: async (participantId: string) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Check if conversation already exists
       const { data: existing } = await supabase
         .from('conversations')
         .select('id')
         .contains('participant_ids', [user.id, participantId]);
 
-      const existingConv = existing?.find(c => 
-        c.id && supabase
-          .from('conversations')
-          .select('participant_ids')
-          .eq('id', c.id)
-          .single()
-      );
-
       if (existing && existing.length > 0) {
-        // Find the one that matches exactly
         for (const conv of existing) {
           const { data } = await supabase
             .from('conversations')
@@ -299,7 +276,6 @@ export function useCreateConversation() {
         }
       }
 
-      // Create new conversation
       const { data, error } = await supabase
         .from('conversations')
         .insert({

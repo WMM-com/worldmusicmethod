@@ -2,6 +2,7 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface PopupConversation {
   id: string;
+  participantId?: string;
   participantName: string;
   participantAvatar?: string;
 }

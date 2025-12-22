@@ -29,7 +29,7 @@ async function deleteFromR2(
   const headers = new Headers({
     'Host': url.host,
     'X-Amz-Date': amzDate,
-    'X-Amz-Content-Sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', // Empty payload hash
+    'X-Amz-Content-Sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
   });
 
   const canonicalUri = `/${bucket}/${objectKey}`;
@@ -106,7 +106,7 @@ async function deleteFromR2(
       method: 'DELETE',
       headers,
     });
-    return response.ok || response.status === 404; // 404 is fine, means already deleted
+    return response.ok || response.status === 404;
   } catch (error) {
     console.error('R2 delete error:', error);
     return false;
@@ -154,7 +154,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use service role for database operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get the message
@@ -171,83 +170,49 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user is sender or recipient
-    const { data: conversation } = await adminClient
-      .from('conversations')
-      .select('participant_ids')
-      .eq('id', message.conversation_id)
-      .single();
-
-    if (!conversation?.participant_ids.includes(user.id)) {
+    // Only sender can delete messages
+    if (message.sender_id !== user.id) {
       return new Response(
-        JSON.stringify({ error: 'Not authorized to delete this message' }),
+        JSON.stringify({ error: 'Only the sender can delete this message' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const isSender = message.sender_id === user.id;
+    // Delete media if present
+    if (message.metadata?.mediaUrl) {
+      const accountId = Deno.env.get('CLOUDFLARE_R2_ACCOUNT_ID');
+      const accessKeyId = Deno.env.get('CLOUDFLARE_R2_ACCESS_KEY_ID');
+      const secretAccessKey = Deno.env.get('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
+      const bucket = Deno.env.get('CLOUDFLARE_R2_USER_BUCKET');
 
-    if (isSender) {
-      // Sender deletes: hard delete from DB and delete media from R2
-      
-      // Delete media if present
-      if (message.metadata?.mediaUrl) {
-        const accountId = Deno.env.get('CLOUDFLARE_R2_ACCOUNT_ID');
-        const accessKeyId = Deno.env.get('CLOUDFLARE_R2_ACCESS_KEY_ID');
-        const secretAccessKey = Deno.env.get('CLOUDFLARE_R2_SECRET_ACCESS_KEY');
-        const bucket = Deno.env.get('CLOUDFLARE_R2_USER_BUCKET');
-
-        if (accountId && accessKeyId && secretAccessKey && bucket) {
-          // Extract object key from URL
-          const mediaUrl = message.metadata.mediaUrl;
-          const publicUrl = Deno.env.get('CLOUDFLARE_R2_USER_PUBLIC_URL') || '';
-          const objectKey = mediaUrl.replace(publicUrl + '/', '');
-          
-          console.log(`Deleting media from R2: ${objectKey}`);
-          await deleteFromR2(objectKey, bucket, accountId, accessKeyId, secretAccessKey);
-        }
+      if (accountId && accessKeyId && secretAccessKey && bucket) {
+        const mediaUrl = message.metadata.mediaUrl;
+        const publicUrl = Deno.env.get('CLOUDFLARE_R2_USER_PUBLIC_URL') || '';
+        const objectKey = mediaUrl.replace(publicUrl + '/', '');
+        
+        console.log(`Deleting media from R2: ${objectKey}`);
+        await deleteFromR2(objectKey, bucket, accountId, accessKeyId, secretAccessKey);
       }
-
-      // Hard delete the message
-      const { error: deleteError } = await adminClient
-        .from('messages')
-        .delete()
-        .eq('id', messageId);
-
-      if (deleteError) {
-        console.error('Delete error:', deleteError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to delete message' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log(`Message ${messageId} hard deleted by sender ${user.id}`);
-    } else {
-      // Receiver: soft delete (add to deleted_for_users array)
-      const deletedForUsers = message.deleted_for_users || [];
-      if (!deletedForUsers.includes(user.id)) {
-        deletedForUsers.push(user.id);
-      }
-
-      const { error: updateError } = await adminClient
-        .from('messages')
-        .update({ deleted_for_users: deletedForUsers })
-        .eq('id', messageId);
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to hide message' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log(`Message ${messageId} soft deleted for user ${user.id}`);
     }
 
+    // Hard delete the message
+    const { error: deleteError } = await adminClient
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+
+    if (deleteError) {
+      console.error('Delete error:', deleteError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete message' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Message ${messageId} deleted by sender ${user.id}`);
+
     return new Response(
-      JSON.stringify({ success: true, action: isSender ? 'deleted' : 'hidden' }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
