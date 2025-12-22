@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletion_requests: {
+        Row: {
+          completed_at: string | null
+          confirmed_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          requested_at: string | null
+          status: string | null
+          token: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          confirmed_at?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          requested_at?: string | null
+          status?: string | null
+          token?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          confirmed_at?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          requested_at?: string | null
+          status?: string | null
+          token?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       appreciations: {
         Row: {
           comment_id: string | null
