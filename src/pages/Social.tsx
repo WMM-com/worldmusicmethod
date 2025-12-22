@@ -28,6 +28,7 @@ export default function Social() {
   };
 
   const postId = searchParams.get('postId');
+  const openComments = searchParams.get('openComments') === 'true';
 
   useEffect(() => {
     if (!user) return;
@@ -140,7 +141,13 @@ export default function Social() {
                         </CardContent>
                       </Card>
                     ) : (
-                      posts?.map((post) => <PostCard key={post.id} post={post} />)
+                      posts?.map((post) => (
+                        <PostCard 
+                          key={post.id} 
+                          post={post} 
+                          defaultShowComments={post.id === postId && openComments}
+                        />
+                      ))
                     )}
                   </div>
 
