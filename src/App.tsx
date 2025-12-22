@@ -28,6 +28,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Social from "./pages/Social";
+import Friends from "./pages/Friends";
 import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
@@ -105,6 +106,7 @@ const App = () => (
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
                 <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
+                <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
                 <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
                 <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
