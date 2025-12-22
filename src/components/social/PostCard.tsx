@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2, Reply, ChevronDown, Paperclip, Image, Video, X, FileText } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2, Reply, ChevronDown, Paperclip, Image, Video, X, FileText, Flag, Ban } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -17,9 +18,19 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post, Comment, useAppreciate, useDeletePost, useUpdatePost, useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useSocial';
+import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -72,6 +83,9 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
   const [editContent, setEditContent] = useState(post.content);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [commentAttachment, setCommentAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason | ''>('');
+  const [reportDetails, setReportDetails] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { data: comments } = useComments(showComments ? post.id : '');
@@ -79,6 +93,8 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
   const deleteMutation = useDeletePost();
   const updateMutation = useUpdatePost();
   const createCommentMutation = useCreateComment();
+  const reportMutation = useCreateReport();
+  const blockMutation = useBlockUser();
   const { uploadFile, isUploading } = useR2Upload();
 
   // Open comments if defaultShowComments changes
@@ -242,7 +258,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
               </div>
             </div>
             
-            {isOwner && (
+            {user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -250,17 +266,36 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleEditOpen}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit post
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => deleteMutation.mutate(post.id)}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete post
-                  </DropdownMenuItem>
+                  {isOwner ? (
+                    <>
+                      <DropdownMenuItem onClick={handleEditOpen}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit post
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => deleteMutation.mutate(post.id)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete post
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
+                        <Flag className="h-4 w-4 mr-2" />
+                        Report post
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => blockMutation.mutate(post.user_id)}
+                        className="text-destructive"
+                      >
+                        <Ban className="h-4 w-4 mr-2" />
+                        Block user
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -501,6 +536,73 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report Post</DialogTitle>
+            <DialogDescription>
+              Help us understand what's wrong with this post.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reason</label>
+              <Select value={reportReason} onValueChange={(v) => setReportReason(v as ReportReason)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORT_REASONS.map((reason) => (
+                    <SelectItem key={reason.value} value={reason.value}>
+                      {reason.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Additional details (optional)</label>
+              <Textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Provide more context..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReportDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!reportReason) {
+                  toast.error('Please select a reason');
+                  return;
+                }
+                reportMutation.mutate({
+                  reportType: 'post',
+                  reason: reportReason,
+                  reportedPostId: post.id,
+                  reportedUserId: post.user_id,
+                  details: reportDetails || undefined,
+                }, {
+                  onSuccess: () => {
+                    setShowReportDialog(false);
+                    setReportReason('');
+                    setReportDetails('');
+                  }
+                });
+              }}
+              disabled={!reportReason || reportMutation.isPending}
+            >
+              {reportMutation.isPending ? 'Submitting...' : 'Submit Report'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

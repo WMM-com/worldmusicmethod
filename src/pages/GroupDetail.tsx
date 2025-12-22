@@ -6,16 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, Users, Lock, EyeOff, Settings, 
-  MessageSquare, Calendar, BarChart3, 
-  Send, ImageIcon, Music
+  MessageSquare, Calendar, BarChart3
 } from 'lucide-react';
 import { 
   useGroup, useGroupMembers, useGroupPosts, useGroupEvents, 
-  useGroupPolls, useCreateGroupPost, useJoinGroup, useLeaveGroup,
+  useGroupPolls, useJoinGroup, useLeaveGroup,
   useVoteOnPoll, useUpdateGroup
 } from '@/hooks/useGroups';
 import { useGroupPinnedAudio } from '@/hooks/usePinnedAudio';
@@ -29,11 +27,11 @@ import { InviteMembersDialog } from '@/components/groups/InviteMembersDialog';
 import { GroupCoverUpload } from '@/components/groups/GroupCoverUpload';
 import { PinnedAudioPlayer } from '@/components/groups/PinnedAudioPlayer';
 import { PinAudioDialog } from '@/components/groups/PinAudioDialog';
+import { CreateGroupPost } from '@/components/groups/CreateGroupPost';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const [newPostContent, setNewPostContent] = useState('');
   
   const { data: group, isLoading: loadingGroup } = useGroup(groupId || '');
   const { data: members } = useGroupMembers(groupId || '');
@@ -42,20 +40,10 @@ export default function GroupDetail() {
   const { data: polls } = useGroupPolls(groupId || '');
   const { data: pinnedAudio } = useGroupPinnedAudio(groupId || '');
   
-  const createPost = useCreateGroupPost();
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
   const voteOnPoll = useVoteOnPoll();
   const updateGroup = useUpdateGroup();
-  
-  const handleCreatePost = async () => {
-    if (!newPostContent.trim() || !groupId) return;
-    await createPost.mutateAsync({
-      group_id: groupId,
-      content: newPostContent,
-    });
-    setNewPostContent('');
-  };
   
   const handleVote = (pollId: string, optionIndex: number) => {
     if (!groupId) return;
@@ -262,39 +250,12 @@ export default function GroupDetail() {
               
               <TabsContent value="posts" className="space-y-4">
                 {/* Create Post */}
-                {canPost && (
-                  <Card>
-                    <CardContent className="pt-4">
-                      <Textarea
-                        placeholder="Share something with the group..."
-                        value={newPostContent}
-                        onChange={(e) => setNewPostContent(e.target.value)}
-                        rows={3}
-                      />
-                      <div className="flex justify-between items-center mt-3">
-                        <div className="flex gap-2">
-                          {settings.allow_images !== false && (
-                            <Button variant="ghost" size="sm">
-                              <ImageIcon className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {settings.allow_audio !== false && (
-                            <Button variant="ghost" size="sm">
-                              <Music className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        <Button 
-                          size="sm" 
-                          onClick={handleCreatePost}
-                          disabled={!newPostContent.trim() || createPost.isPending}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Post
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {canPost && groupId && (
+                  <CreateGroupPost 
+                    groupId={groupId} 
+                    allowImages={settings.allow_images !== false}
+                    allowAudio={settings.allow_audio !== false}
+                  />
                 )}
                 
                 {!canPost && group.is_member && (

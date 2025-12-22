@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { CreatePost } from '@/components/social/CreatePost';
 import { PostCard } from '@/components/social/PostCard';
-import { FriendsList } from '@/components/social/FriendsList';
 import { GroupsList } from '@/components/groups/GroupsList';
 import { MembersList } from '@/components/community/MembersList';
 import { PendingInvitesBanner } from '@/components/groups/PendingInvitesBanner';
@@ -120,9 +119,9 @@ export default function Social() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                   {/* Main Feed */}
-                  <div className="lg:col-span-2 space-y-4">
+                  <div className="space-y-4">
                     <CreatePost />
                     
                     {isLoading ? (
@@ -149,11 +148,6 @@ export default function Social() {
                         />
                       ))
                     )}
-                  </div>
-
-                  {/* Sidebar */}
-                  <div className="space-y-4">
-                    <FriendsList />
                   </div>
                 </div>
               )}

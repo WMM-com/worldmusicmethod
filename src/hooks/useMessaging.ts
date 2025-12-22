@@ -41,6 +41,14 @@ export function useConversations() {
     queryFn: async () => {
       if (!user) return [];
 
+      // First get blocked users
+      const { data: blockedData } = await supabase
+        .from('user_blocks')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+      
+      const blockedIds = new Set(blockedData?.map(b => b.blocked_id) || []);
+
       const { data: conversations, error } = await supabase
         .from('conversations')
         .select('*')
@@ -49,7 +57,13 @@ export function useConversations() {
 
       if (error) throw error;
 
-      const allParticipantIds = [...new Set(conversations.flatMap(c => c.participant_ids))];
+      // Filter out conversations with blocked users
+      const filteredConversations = conversations.filter(conv => {
+        const otherParticipants = conv.participant_ids.filter((id: string) => id !== user.id);
+        return !otherParticipants.some((id: string) => blockedIds.has(id));
+      });
+
+      const allParticipantIds = [...new Set(filteredConversations.flatMap(c => c.participant_ids))];
       
       const { data: profiles } = await supabase
         .from('profiles')
@@ -59,7 +73,7 @@ export function useConversations() {
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
       const conversationsWithDetails = await Promise.all(
-        conversations.map(async (conv) => {
+        filteredConversations.map(async (conv) => {
           const { data: lastMessage } = await supabase
             .from('messages')
             .select('*')
