@@ -8,11 +8,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CalendarSettings } from '@/components/settings/CalendarSettings';
-import { User, Bell, CreditCard, Brain, Calendar, Lock } from 'lucide-react';
+import { User, Bell, CreditCard, Brain, Calendar, Lock, AlertTriangle, Trash2 } from 'lucide-react';
 
 const CURRENCIES = [
   { code: 'GBP', symbol: '£', name: 'British Pound' },
@@ -53,6 +64,8 @@ export default function Settings() {
   });
   const [changingPassword, setChangingPassword] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
+  const [requestingDeletion, setRequestingDeletion] = useState(false);
+  const [deletionRequested, setDeletionRequested] = useState(false);
 
   // Left Brain form (business settings)
   const [businessForm, setBusinessForm] = useState({
@@ -187,6 +200,19 @@ export default function Settings() {
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     }
     setChangingPassword(false);
+  };
+
+  const handleRequestAccountDeletion = async () => {
+    setRequestingDeletion(true);
+    try {
+      const { error } = await supabase.functions.invoke('request-account-deletion');
+      if (error) throw error;
+      setDeletionRequested(true);
+      toast.success('Confirmation email sent. Please check your inbox to confirm account deletion.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to request account deletion');
+    }
+    setRequestingDeletion(false);
   };
 
   const handleSaveBusiness = async () => {
@@ -348,6 +374,67 @@ export default function Settings() {
                   >
                     {changingPassword ? 'Updating...' : 'Update Password'}
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* Delete Account */}
+              <Card className="border-destructive/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-5 w-5" />
+                    Danger Zone
+                  </CardTitle>
+                  <CardDescription>Permanently delete your account and all associated data</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Once you delete your account, there is no going back. This action will:
+                    </p>
+                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>Delete all your profile information</li>
+                      <li>Remove all your posts, comments, and messages</li>
+                      <li>Delete all your events, invoices, and expenses</li>
+                      <li>Remove all uploaded media files</li>
+                      <li>Cancel any active course enrollments</li>
+                    </ul>
+                  </div>
+                  {deletionRequested ? (
+                    <div className="p-4 bg-muted rounded-lg">
+                      <p className="text-sm font-medium">Confirmation email sent</p>
+                      <p className="text-sm text-muted-foreground">
+                        Please check your email and click the confirmation link to complete account deletion.
+                      </p>
+                    </div>
+                  ) : (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="gap-2">
+                          <Trash2 className="h-4 w-4" />
+                          Delete My Account
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. We will send a confirmation email to {profile?.email}. 
+                            You must click the link in that email to confirm the deletion.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleRequestAccountDeletion}
+                            disabled={requestingDeletion}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {requestingDeletion ? 'Sending...' : 'Send Confirmation Email'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

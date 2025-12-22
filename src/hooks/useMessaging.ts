@@ -360,3 +360,45 @@ export function useCreateAvailabilityTemplate() {
     },
   });
 }
+
+export function useDeleteMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, conversationId }: { messageId: string; conversationId: string }) => {
+      const { error } = await supabase.functions.invoke('delete-message', {
+        body: { messageId },
+      });
+      if (error) throw error;
+      return conversationId;
+    },
+    onSuccess: (conversationId) => {
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast.success('Message deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete message');
+    },
+  });
+}
+
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      const { error } = await supabase.functions.invoke('delete-conversation', {
+        body: { conversationId },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      toast.success('Conversation deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete conversation');
+    },
+  });
+}
