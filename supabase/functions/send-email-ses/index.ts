@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
     }
 
     const recipients = Array.isArray(to) ? to : [to];
-    const fromAddress = from || 'World Music Method <info@worldmusicmethod.com>';
+    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
 
     console.log(`Sending email to ${recipients.join(', ')} from ${fromAddress}`);
 

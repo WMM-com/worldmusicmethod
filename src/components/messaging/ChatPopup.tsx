@@ -4,9 +4,9 @@ import { useMessages, useSendMessage } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, Minus, Send, Paperclip, Image, FileText } from 'lucide-react';
+import { X, Minus, Send, Paperclip, Image, Video, FileText } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,7 +74,8 @@ export function ChatPopup() {
     if (!file) return;
 
     const isImage = file.type.startsWith('image/');
-    const type = isImage ? 'image' : 'file';
+    const isVideo = file.type.startsWith('video/');
+    const type = isImage ? 'image' : isVideo ? 'video' : 'file';
 
     setAttachment({
       file,
@@ -163,26 +164,26 @@ export function ChatPopup() {
                   return (
                     <div
                       key={msg.id}
-                      className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}
+                      className={cn('flex min-w-0', isOwn ? 'justify-end' : 'justify-start')}
                     >
                       <div
                         className={cn(
-                          'max-w-[85%] px-3 py-2 rounded-lg text-sm',
-                          isOwn
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
+                          'max-w-[85%] min-w-0 px-3 py-2 rounded-lg text-sm break-words',
+                          isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted'
                         )}
                       >
                         {isMedia && mediaUrl && (
                           <div className="mb-1">
                             {mediaType === 'image' ? (
-                              <img src={mediaUrl} alt="Shared" className="max-w-full rounded" />
+                              <img src={mediaUrl} alt="Shared image" className="max-w-full rounded" />
+                            ) : mediaType === 'video' ? (
+                              <video src={mediaUrl} controls className="max-w-full rounded" />
                             ) : (
-                              <a 
-                                href={mediaUrl} 
-                                target="_blank" 
+                              <a
+                                href={mediaUrl}
+                                target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1 underline text-xs"
+                                className="flex items-center gap-1 underline text-xs break-words"
                               >
                                 <FileText className="h-3 w-3" />
                                 Attachment
@@ -190,7 +191,9 @@ export function ChatPopup() {
                             )}
                           </div>
                         )}
-                        {msg.content && !msg.content.startsWith('[') && msg.content}
+                        {msg.content && !msg.content.startsWith('[') && (
+                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                        )}
                       </div>
                     </div>
                   );
@@ -225,12 +228,12 @@ export function ChatPopup() {
 
           {/* Input */}
           <div className="p-2 border-t border-border shrink-0">
-            <div className="flex gap-1 items-center">
+            <div className="flex gap-1 items-end">
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
-                accept="image/*,.pdf,.doc,.docx,.txt"
+                accept="image/*,video/*,.pdf,.doc,.docx,.txt,.rtf,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
                 className="hidden"
               />
               <DropdownMenu>
@@ -240,32 +243,53 @@ export function ChatPopup() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.accept = 'image/*';
-                      fileInputRef.current.click();
-                    }
-                  }}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'image/*';
+                        fileInputRef.current.click();
+                      }
+                    }}
+                  >
                     <Image className="h-4 w-4 mr-2" />
                     Image
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (fileInputRef.current) {
-                      fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
-                      fileInputRef.current.click();
-                    }
-                  }}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = 'video/*';
+                        fileInputRef.current.click();
+                      }
+                    }}
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    Video
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = '.pdf,.doc,.docx,.txt,.rtf,.csv,.xls,.xlsx,.ppt,.pptx,.zip';
+                        fileInputRef.current.click();
+                      }
+                    }}
+                  >
                     <FileText className="h-4 w-4 mr-2" />
                     Document
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Input
+              <Textarea
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="text-sm h-9 flex-1"
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                className="text-sm min-h-[36px] max-h-28 resize-none flex-1"
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
               />
               <Button
                 size="icon"
@@ -276,6 +300,9 @@ export function ChatPopup() {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Allowed: images, videos, PDF, Word, Excel, PPT, TXT, CSV, ZIP
+            </p>
           </div>
         </>
       )}

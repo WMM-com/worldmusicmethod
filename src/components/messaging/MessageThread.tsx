@@ -283,7 +283,7 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
   const mediaType = message.metadata?.mediaType;
 
   return (
-    <div className={cn('flex gap-2', isOwn ? 'flex-row-reverse' : 'flex-row')}>
+    <div className={cn('flex gap-2 min-w-0', isOwn ? 'flex-row-reverse' : 'flex-row')}>
       <Avatar className="h-8 w-8 flex-shrink-0">
         <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
         <AvatarFallback>
@@ -292,7 +292,7 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
       </Avatar>
       <div
         className={cn(
-          'max-w-[70%] rounded-lg px-4 py-2',
+          'max-w-[70%] min-w-0 break-words rounded-lg px-4 py-2',
           isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted',
           isAvailability && 'border-l-4 border-secondary'
         )}
@@ -303,19 +303,19 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
             <span>Availability</span>
           </div>
         )}
-        
+
         {isMedia && mediaUrl && (
           <div className="mb-2">
             {mediaType === 'image' ? (
-              <img src={mediaUrl} alt="Shared" className="max-w-full rounded-lg" />
+              <img src={mediaUrl} alt="Shared image" className="max-w-full rounded-lg" />
             ) : mediaType === 'video' ? (
               <video src={mediaUrl} controls className="max-w-full rounded-lg" />
             ) : (
-              <a 
-                href={mediaUrl} 
-                target="_blank" 
+              <a
+                href={mediaUrl}
+                target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 underline"
+                className="flex items-center gap-2 underline break-words"
               >
                 <FileText className="h-4 w-4" />
                 View attachment
@@ -323,15 +323,20 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
             )}
           </div>
         )}
-        
-        {message.content && message.content !== '[image]' && message.content !== '[video]' && message.content !== '[file]' && (
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-        )}
-        
-        <span className={cn(
-          'text-xs block mt-1',
-          isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
-        )}>
+
+        {message.content &&
+          message.content !== '[image]' &&
+          message.content !== '[video]' &&
+          message.content !== '[file]' && (
+            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+          )}
+
+        <span
+          className={cn(
+            'text-xs block mt-1',
+            isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+          )}
+        >
           {format(new Date(message.created_at), 'h:mm a')}
         </span>
       </div>

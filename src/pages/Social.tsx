@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { CreatePost } from '@/components/social/CreatePost';
 import { PostCard } from '@/components/social/PostCard';
@@ -25,6 +26,23 @@ export default function Social() {
   const setActiveTab = (tab: string) => {
     setSearchParams({ tab });
   };
+
+  const postId = searchParams.get('postId');
+
+  useEffect(() => {
+    if (!user) return;
+    if (activeTab !== 'feed') return;
+    if (!postId) return;
+    if (isLoading) return;
+
+    // Defer to ensure the DOM has rendered the post cards.
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(`post-${postId}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+
+    return () => window.clearTimeout(t);
+  }, [user, activeTab, postId, isLoading, posts]);
 
   if (loading) {
     return (

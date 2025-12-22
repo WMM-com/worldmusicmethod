@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversations, useMessages, useSendMessage } from '@/hooks/useMessaging';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -195,23 +195,21 @@ function ChatView({
           <div className="space-y-2">
             {messages?.map((msg) => {
               const isOwn = msg.sender_id === user?.id;
-              return (
-                <div
-                  key={msg.id}
-                  className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}
-                >
+                return (
                   <div
-                    className={cn(
-                      'max-w-[85%] px-3 py-2 rounded-lg text-sm',
-                      isOwn
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    )}
+                    key={msg.id}
+                    className={cn('flex min-w-0', isOwn ? 'justify-end' : 'justify-start')}
                   >
-                    {msg.content}
+                    <div
+                      className={cn(
+                        'max-w-[85%] min-w-0 px-3 py-2 rounded-lg text-sm break-words',
+                        isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    </div>
                   </div>
-                </div>
-              );
+                );
             })}
           </div>
         )}
@@ -219,13 +217,19 @@ function ChatView({
 
       {/* Input */}
       <div className="p-2 border-t border-border">
-        <div className="flex gap-2">
-          <Input
+        <div className="flex gap-2 items-end">
+          <Textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="text-sm h-9"
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            className="text-sm min-h-[36px] max-h-28 resize-none flex-1"
+            rows={1}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
           />
           <Button
             size="icon"

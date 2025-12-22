@@ -35,12 +35,12 @@ export default function Notifications() {
     }
 
     // Navigate based on notification type
-    if (notification.reference_type === 'post') {
-      navigate('/community');
+    if (notification.reference_type === 'post' && notification.reference_id) {
+      navigate(`/community?tab=feed&postId=${notification.reference_id}`);
     } else if (notification.reference_type === 'friendship') {
       navigate('/community');
     } else if (notification.reference_type === 'conversation') {
-      navigate('/messages');
+      navigate('/messages', { state: { conversationId: notification.reference_id } });
     }
   };
 
