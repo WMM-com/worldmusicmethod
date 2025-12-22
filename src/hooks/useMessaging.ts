@@ -95,6 +95,40 @@ export function useConversations() {
   });
 }
 
+export function useUnreadMessageCount() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['unread-messages-count', user?.id],
+    queryFn: async () => {
+      if (!user) return 0;
+
+      // Get all conversations the user is in
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .contains('participant_ids', [user.id]);
+
+      if (!conversations || conversations.length === 0) return 0;
+
+      const conversationIds = conversations.map(c => c.id);
+
+      // Count unread messages across all conversations
+      const { count, error } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .in('conversation_id', conversationIds)
+        .neq('sender_id', user.id)
+        .is('read_at', null);
+
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+}
+
 export function useMessages(conversationId: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-
+import { createNotification } from '@/hooks/useNotifications';
 export interface Post {
   id: string;
   user_id: string;
@@ -230,7 +230,7 @@ export function useComments(postId: string) {
 
 export function useCreateComment() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ postId, content, parentId }: { 
@@ -240,13 +240,34 @@ export function useCreateComment() {
     }) => {
       if (!user) throw new Error('Not authenticated');
       
-      const { error } = await supabase.from('comments').insert({
+      const { data: comment, error } = await supabase.from('comments').insert({
         post_id: postId,
         user_id: user.id,
         content,
         parent_id: parentId || null,
-      });
+      }).select().single();
       if (error) throw error;
+      
+      // Get the post owner to notify them
+      const { data: post } = await supabase
+        .from('posts')
+        .select('user_id')
+        .eq('id', postId)
+        .single();
+      
+      if (post && post.user_id !== user.id) {
+        await createNotification({
+          userId: post.user_id,
+          type: 'comment',
+          title: 'New Comment',
+          message: `${profile?.full_name || 'Someone'} commented on your post`,
+          referenceId: postId,
+          referenceType: 'post',
+          fromUserId: user.id,
+        });
+      }
+      
+      return comment;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['comments', variables.postId] });
@@ -394,18 +415,31 @@ export function useFriendships() {
 
 export function useSendFriendRequest() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async (friendId: string) => {
       if (!user) throw new Error('Not authenticated');
       
-      const { error } = await supabase.from('friendships').insert({
+      const { data, error } = await supabase.from('friendships').insert({
         user_id: user.id,
         friend_id: friendId,
         status: 'pending',
-      });
+      }).select().single();
       if (error) throw error;
+      
+      // Create notification for the recipient
+      await createNotification({
+        userId: friendId,
+        type: 'friend_request',
+        title: 'New Friend Request',
+        message: `${profile?.full_name || 'Someone'} sent you a friend request`,
+        referenceId: data.id,
+        referenceType: 'friendship',
+        fromUserId: user.id,
+      });
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friendships'] });
@@ -419,15 +453,38 @@ export function useSendFriendRequest() {
 
 export function useRespondToFriendRequest() {
   const queryClient = useQueryClient();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ friendshipId, accept }: { friendshipId: string; accept: boolean }) => {
+      if (!user) throw new Error('Not authenticated');
+      
+      // Get the friendship to find the sender
+      const { data: friendship, error: fetchError } = await supabase
+        .from('friendships')
+        .select('*')
+        .eq('id', friendshipId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
       if (accept) {
         const { error } = await supabase
           .from('friendships')
           .update({ status: 'accepted' })
           .eq('id', friendshipId);
         if (error) throw error;
+        
+        // Notify the original sender that their request was accepted
+        await createNotification({
+          userId: friendship.user_id,
+          type: 'friend_accepted',
+          title: 'Friend Request Accepted',
+          message: `${profile?.full_name || 'Someone'} accepted your friend request`,
+          referenceId: friendshipId,
+          referenceType: 'friendship',
+          fromUserId: user.id,
+        });
       } else {
         const { error } = await supabase
           .from('friendships')
@@ -439,6 +496,10 @@ export function useRespondToFriendRequest() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['friendships'] });
       toast.success(variables.accept ? 'Friend request accepted' : 'Friend request declined');
+    },
+    onError: (error: any) => {
+      console.error('Friend request response error:', error);
+      toast.error(error.message || 'Failed to respond to friend request');
     },
   });
 }

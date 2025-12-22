@@ -9,10 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BookOpen, LogOut, User, Settings, Menu, X, Shield, MessageSquare, ShoppingCart, ChevronDown } from 'lucide-react';
+import { BookOpen, LogOut, User, Settings, Menu, X, Shield, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { MessagesDropdown } from '@/components/messaging/MessagesDropdown';
 import siteLogo from '@/assets/world-music-method-logo.png';
 
 export function SiteHeader() {
@@ -117,9 +118,7 @@ export function SiteHeader() {
                   </span>
                 )}
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => navigate('/messages')}>
-                <MessageSquare className="h-5 w-5" />
-              </Button>
+              <MessagesDropdown />
               <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
