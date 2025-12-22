@@ -1,19 +1,41 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMessages, useSendMessage } from '@/hooks/useMessaging';
+import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
+import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2, MoreVertical, Trash2, Calendar, Flag, Ban } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -29,7 +51,6 @@ export function ChatPopup() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -111,16 +132,16 @@ export function ChatPopup() {
   return (
     <div
       className={cn(
-        "fixed bottom-6 right-6 w-80 bg-card border border-border rounded-lg shadow-2xl z-50 flex flex-col transition-all duration-200",
+        "fixed bottom-6 right-6 w-80 bg-card border border-primary/30 rounded-xl shadow-2xl z-50 flex flex-col transition-all duration-200",
         isMinimized ? "h-12" : "h-[450px]"
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50 rounded-t-lg shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-xl shrink-0">
         <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
+          <Avatar className="h-7 w-7 ring-2 ring-primary/30">
             <AvatarImage src={popupConversation.participantAvatar} />
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs bg-primary/10">{initials}</AvatarFallback>
           </Avatar>
           <span className="font-semibold text-sm truncate max-w-[120px]">
             {popupConversation.participantName}
@@ -130,7 +151,7 @@ export function ChatPopup() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 hover:bg-primary/10"
             onClick={handleViewInMessages}
             title="View in Messages"
           >
@@ -139,7 +160,7 @@ export function ChatPopup() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 hover:bg-primary/10"
             onClick={minimizePopupChat}
           >
             <Minus className="h-4 w-4" />
@@ -147,7 +168,7 @@ export function ChatPopup() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 hover:bg-primary/10"
             onClick={closePopupChat}
           >
             <X className="h-4 w-4" />
@@ -161,7 +182,7 @@ export function ChatPopup() {
           {/* Messages with scroll */}
           <div 
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto p-3 min-h-0"
+            className="flex-1 overflow-y-auto p-3 min-h-0 bg-gradient-to-b from-background to-card/50"
           >
             {isLoading ? (
               <div className="text-center text-muted-foreground text-sm py-4">Loading...</div>
@@ -171,56 +192,22 @@ export function ChatPopup() {
               </div>
             ) : (
               <div className="space-y-2">
-                {messages?.map((msg) => {
-                  const isOwn = msg.sender_id === user?.id;
-                  const isMedia = msg.message_type === 'media';
-                  const mediaUrl = msg.metadata?.mediaUrl;
-                  const mediaType = msg.metadata?.mediaType;
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={cn('flex min-w-0', isOwn ? 'justify-end' : 'justify-start')}
-                    >
-                      <div
-                        className={cn(
-                          'max-w-[85%] min-w-0 px-3 py-2 rounded-lg text-sm break-words',
-                          isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                        )}
-                      >
-                        {isMedia && mediaUrl && (
-                          <div className="mb-1">
-                            {mediaType === 'image' ? (
-                              <img src={mediaUrl} alt="Shared image" className="max-w-full rounded" />
-                            ) : mediaType === 'video' ? (
-                              <video src={mediaUrl} controls className="max-w-full rounded" />
-                            ) : (
-                              <a
-                                href={mediaUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 underline text-xs break-words"
-                              >
-                                <FileText className="h-3 w-3" />
-                                Attachment
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        {msg.content && !msg.content.startsWith('[') && (
-                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                {messages?.map((msg) => (
+                  <PopupMessageBubble
+                    key={msg.id}
+                    message={msg}
+                    isOwn={msg.sender_id === user?.id}
+                    conversationId={popupConversation.id}
+                    otherUserId={popupConversation.participantId}
+                  />
+                ))}
               </div>
             )}
           </div>
 
           {/* Attachment Preview */}
           {attachment && (
-            <div className="px-2 pb-1 shrink-0">
+            <div className="px-2 pb-1 shrink-0 bg-card">
               <div className="relative inline-block">
                 {attachment.type === 'image' ? (
                   <img src={attachment.url} alt="Preview" className="h-12 rounded object-cover" />
@@ -243,22 +230,22 @@ export function ChatPopup() {
           )}
 
           {/* Input */}
-          <div className="p-2 border-t border-border shrink-0">
+          <div className="p-2 border-t border-primary/20 shrink-0 bg-card rounded-b-xl">
             <div className="flex gap-1 items-end">
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
-                accept="image/*,video/*,.pdf,.doc,.docx,.txt,.rtf,.csv,.xls,.xlsx,.ppt,.pptx,.zip"
+                accept="image/*,video/*,.pdf,.doc,.docx,.txt"
                 className="hidden"
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 hover:bg-primary/10">
                     <Paperclip className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
+                <DropdownMenuContent align="start" className="bg-card">
                   <DropdownMenuItem
                     onClick={() => {
                       if (fileInputRef.current) {
@@ -284,7 +271,7 @@ export function ChatPopup() {
                   <DropdownMenuItem
                     onClick={() => {
                       if (fileInputRef.current) {
-                        fileInputRef.current.accept = '.pdf,.doc,.docx,.txt,.rtf,.csv,.xls,.xlsx,.ppt,.pptx,.zip';
+                        fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
                         fileInputRef.current.click();
                       }
                     }}
@@ -298,7 +285,7 @@ export function ChatPopup() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="text-sm min-h-[36px] max-h-28 resize-none flex-1"
+                className="text-sm min-h-[36px] max-h-28 resize-none flex-1 border-primary/20"
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -316,12 +303,191 @@ export function ChatPopup() {
                 <Send className="h-4 w-4" />
               </Button>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Allowed: images, videos, PDF, Word, Excel, PPT, TXT, CSV, ZIP
-            </p>
           </div>
         </>
       )}
     </div>
+  );
+}
+
+function PopupMessageBubble({ 
+  message, 
+  isOwn, 
+  conversationId,
+  otherUserId
+}: { 
+  message: Message; 
+  isOwn: boolean; 
+  conversationId: string;
+  otherUserId?: string;
+}) {
+  const { user } = useAuth();
+  const sendMessage = useSendMessage();
+  const createReport = useCreateReport();
+  const blockUser = useBlockUser();
+  
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showBlockAlert, setShowBlockAlert] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>('too_negative');
+  const [reportDetails, setReportDetails] = useState('');
+
+  const isMedia = message.message_type === 'media';
+  const mediaUrl = message.metadata?.mediaUrl;
+  const mediaType = message.metadata?.mediaType;
+
+  const handleSendAvailability = () => {
+    const slots = [
+      'Monday 10:00 AM - 12:00 PM',
+      'Wednesday 2:00 PM - 4:00 PM',
+      'Friday 11:00 AM - 1:00 PM',
+    ];
+    sendMessage.mutate({
+      conversationId,
+      content: `I'm available at the following times:\n${slots.join('\n')}\n\nLet me know which works for you.`,
+      messageType: 'availability',
+      metadata: { slots },
+    });
+  };
+
+  const handleReport = () => {
+    createReport.mutate({
+      reportType: 'user',
+      reason: reportReason,
+      reportedUserId: message.sender_id,
+      details: reportDetails || undefined,
+    });
+    setShowReportDialog(false);
+    setReportReason('too_negative');
+    setReportDetails('');
+  };
+
+  const handleBlock = () => {
+    if (otherUserId) {
+      blockUser.mutate(otherUserId);
+    }
+    setShowBlockAlert(false);
+  };
+
+  return (
+    <>
+      <div className={cn('flex min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
+        <div className="flex items-center gap-1">
+          <div
+            className={cn(
+              'max-w-[85%] min-w-0 px-3 py-2 rounded-2xl text-sm break-words shadow-sm',
+              isOwn 
+                ? 'bg-primary text-primary-foreground rounded-br-md' 
+                : 'bg-card border border-primary/20 rounded-bl-md'
+            )}
+          >
+            {isMedia && mediaUrl && (
+              <div className="mb-1">
+                {mediaType === 'image' ? (
+                  <img src={mediaUrl} alt="Shared image" className="max-w-full rounded" />
+                ) : mediaType === 'video' ? (
+                  <video src={mediaUrl} controls className="max-w-full rounded" />
+                ) : (
+                  <a
+                    href={mediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 underline text-xs break-words"
+                  >
+                    <FileText className="h-3 w-3" />
+                    Attachment
+                  </a>
+                )}
+              </div>
+            )}
+            {message.content && !message.content.startsWith('[') && (
+              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            )}
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <MoreVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-44 bg-card">
+              <DropdownMenuItem onClick={handleSendAvailability}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Send Availability
+              </DropdownMenuItem>
+              
+              {!isOwn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
+                    <Flag className="h-4 w-4 mr-2" />
+                    Report User
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowBlockAlert(true)} className="text-destructive focus:text-destructive">
+                    <Ban className="h-4 w-4 mr-2" />
+                    Block User
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Report Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report User</DialogTitle>
+            <DialogDescription>
+              Help us understand what's wrong.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <RadioGroup value={reportReason} onValueChange={(v) => setReportReason(v as ReportReason)}>
+              {REPORT_REASONS.map((reason) => (
+                <div key={reason.value} className="flex items-center space-x-2">
+                  <RadioGroupItem value={reason.value} id={`popup-${reason.value}`} />
+                  <Label htmlFor={`popup-${reason.value}`}>{reason.label}</Label>
+                </div>
+              ))}
+            </RadioGroup>
+            <Textarea
+              placeholder="Additional details (optional)"
+              value={reportDetails}
+              onChange={(e) => setReportDetails(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReportDialog(false)}>Cancel</Button>
+            <Button onClick={handleReport} disabled={createReport.isPending}>
+              Submit Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Block Alert */}
+      <AlertDialog open={showBlockAlert} onOpenChange={setShowBlockAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Block User?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They won't be able to message you or see your posts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBlock} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Block
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
