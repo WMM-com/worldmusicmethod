@@ -137,7 +137,7 @@ export function MessagesDropdown() {
                           "text-sm truncate",
                           hasUnread ? "text-foreground" : "text-muted-foreground"
                         )}>
-                          {conversation.last_message || 'Start a conversation'}
+                          {conversation.last_message?.content ?? 'Start a conversation'}
                         </p>
                         {hasUnread && (
                           <Badge className="mt-1 h-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500 text-amber-950">

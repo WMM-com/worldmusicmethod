@@ -27,13 +27,11 @@ export function MessageThread({ conversationId, participantName }: MessageThread
   const { data: messages, isLoading } = useMessages(conversationId);
   const sendMessage = useSendMessage();
   const [content, setContent] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages?.length]);
 
   const handleSend = async () => {
     if (!content.trim()) return;
@@ -76,7 +74,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
   }
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col min-h-0">
       <CardHeader className="border-b border-border pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{participantName || 'Conversation'}</CardTitle>
@@ -100,8 +98,8 @@ export function MessageThread({ conversationId, participantName }: MessageThread
         </div>
       </CardHeader>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-4 space-y-4">
           {messages?.map((message) => (
             <MessageBubble
               key={message.id}
@@ -114,6 +112,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
               No messages yet. Start the conversation.
             </p>
           )}
+          <div ref={endRef} />
         </div>
       </ScrollArea>
 
@@ -139,6 +138,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
     </Card>
   );
 }
+
 
 function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
   const isAvailability = message.message_type === 'availability';
