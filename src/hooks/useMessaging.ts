@@ -144,7 +144,13 @@ export function useMessages(conversationId: string) {
 
       if (error) throw error;
 
-      const senderIds = [...new Set(messages.map(m => m.sender_id))];
+      // Filter out messages deleted for current user
+      const filteredMessages = messages.filter(m => {
+        const deletedFor = (m as any).deleted_for_users || [];
+        return !deletedFor.includes(user?.id);
+      });
+
+      const senderIds = [...new Set(filteredMessages.map(m => m.sender_id))];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url')
@@ -152,12 +158,12 @@ export function useMessages(conversationId: string) {
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      return messages.map(m => ({
+      return filteredMessages.map(m => ({
         ...m,
         sender_profile: profilesMap.get(m.sender_id),
       })) as Message[];
     },
-    enabled: !!conversationId,
+    enabled: !!conversationId && !!user,
   });
 
   // Subscribe to realtime messages

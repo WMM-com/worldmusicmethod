@@ -50,3 +50,18 @@ verify_jwt = false
 
 [functions.assign-user-tag]
 verify_jwt = true
+
+[functions.send-auth-email]
+verify_jwt = false
+
+[functions.delete-message]
+verify_jwt = true
+
+[functions.delete-conversation]
+verify_jwt = true
+
+[functions.request-account-deletion]
+verify_jwt = true
+
+[functions.confirm-account-deletion]
+verify_jwt = false
