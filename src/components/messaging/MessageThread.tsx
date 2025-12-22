@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
+import { useMessages, useSendMessage, useDeleteMessage, Message } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +12,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Send, User, Calendar, Clock, MoreVertical, Paperclip, Image, Video, FileText, X } from 'lucide-react';
+import { Send, User, Calendar, Clock, MoreVertical, Paperclip, Image, Video, FileText, X, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -172,6 +173,7 @@ export function MessageThread({ conversationId, participantName }: MessageThread
               key={message.id}
               message={message}
               isOwn={message.sender_id === user?.id}
+              conversationId={conversationId}
             />
           ))}
           {messages?.length === 0 && (
@@ -276,69 +278,120 @@ export function MessageThread({ conversationId, participantName }: MessageThread
   );
 }
 
-function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
+function MessageBubble({ message, isOwn, conversationId }: { message: Message; isOwn: boolean; conversationId: string }) {
+  const deleteMessage = useDeleteMessage();
   const isAvailability = message.message_type === 'availability';
   const isMedia = message.message_type === 'media';
   const mediaUrl = message.metadata?.mediaUrl;
   const mediaType = message.metadata?.mediaType;
 
+  const handleDelete = () => {
+    deleteMessage.mutate({ messageId: message.id, conversationId });
+  };
+
   return (
-    <div className={cn('flex gap-2 min-w-0', isOwn ? 'flex-row-reverse' : 'flex-row')}>
+    <div className={cn('flex gap-2 min-w-0 group', isOwn ? 'flex-row-reverse' : 'flex-row')}>
       <Avatar className="h-8 w-8 flex-shrink-0">
         <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
         <AvatarFallback>
           <User className="h-3 w-3" />
         </AvatarFallback>
       </Avatar>
-      <div
-        className={cn(
-          'max-w-[70%] min-w-0 break-words rounded-lg px-4 py-2',
-          isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted',
-          isAvailability && 'border-l-4 border-secondary'
-        )}
-      >
-        {isAvailability && (
-          <div className="flex items-center gap-1 mb-1 text-xs opacity-80">
-            <Clock className="h-3 w-3" />
-            <span>Availability</span>
-          </div>
-        )}
-
-        {isMedia && mediaUrl && (
-          <div className="mb-2">
-            {mediaType === 'image' ? (
-              <img src={mediaUrl} alt="Shared image" className="max-w-full rounded-lg" />
-            ) : mediaType === 'video' ? (
-              <video src={mediaUrl} controls className="max-w-full rounded-lg" />
-            ) : (
-              <a
-                href={mediaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 underline break-words"
+      <div className="flex items-center gap-1">
+        {isOwn && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <FileText className="h-4 w-4" />
-                View attachment
-              </a>
-            )}
-          </div>
+                <MoreVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={handleDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Message
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-
-        {message.content &&
-          message.content !== '[image]' &&
-          message.content !== '[video]' &&
-          message.content !== '[file]' && (
-            <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-          )}
-
-        <span
+        <div
           className={cn(
-            'text-xs block mt-1',
-            isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+            'max-w-[70%] min-w-0 break-words rounded-lg px-4 py-2',
+            isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted',
+            isAvailability && 'border-l-4 border-secondary'
           )}
         >
-          {format(new Date(message.created_at), 'h:mm a')}
-        </span>
+          {isAvailability && (
+            <div className="flex items-center gap-1 mb-1 text-xs opacity-80">
+              <Clock className="h-3 w-3" />
+              <span>Availability</span>
+            </div>
+          )}
+
+          {isMedia && mediaUrl && (
+            <div className="mb-2">
+              {mediaType === 'image' ? (
+                <img src={mediaUrl} alt="Shared image" className="max-w-full rounded-lg" />
+              ) : mediaType === 'video' ? (
+                <video src={mediaUrl} controls className="max-w-full rounded-lg" />
+              ) : (
+                <a
+                  href={mediaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 underline break-words"
+                >
+                  <FileText className="h-4 w-4" />
+                  View attachment
+                </a>
+              )}
+            </div>
+          )}
+
+          {message.content &&
+            message.content !== '[image]' &&
+            message.content !== '[video]' &&
+            message.content !== '[file]' && (
+              <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+            )}
+
+          <span
+            className={cn(
+              'text-xs block mt-1',
+              isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+            )}
+          >
+            {format(new Date(message.created_at), 'h:mm a')}
+          </span>
+        </div>
+        {!isOwn && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <MoreVertical className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem 
+                onClick={handleDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete for Me
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
     </div>
   );
