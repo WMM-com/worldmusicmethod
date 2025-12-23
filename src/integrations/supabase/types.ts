@@ -606,6 +606,7 @@ export type Database = {
           id: string
           is_published: boolean | null
           region_theme: Json | null
+          tags: string[] | null
           title: string
           tutor_name: string | null
           updated_at: string
@@ -619,6 +620,7 @@ export type Database = {
           id?: string
           is_published?: boolean | null
           region_theme?: Json | null
+          tags?: string[] | null
           title: string
           tutor_name?: string | null
           updated_at?: string
@@ -632,6 +634,7 @@ export type Database = {
           id?: string
           is_published?: boolean | null
           region_theme?: Json | null
+          tags?: string[] | null
           title?: string
           tutor_name?: string | null
           updated_at?: string
@@ -2372,6 +2375,41 @@ export type Database = {
           visibility?: string
         }
         Relationships: []
+      }
+      product_expert_attributions: {
+        Row: {
+          attribution_percentage: number
+          created_at: string
+          expert_name: string
+          id: string
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          attribution_percentage: number
+          created_at?: string
+          expert_name: string
+          id?: string
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          attribution_percentage?: number
+          created_at?: string
+          expert_name?: string
+          id?: string
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_expert_attributions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_regional_pricing: {
         Row: {

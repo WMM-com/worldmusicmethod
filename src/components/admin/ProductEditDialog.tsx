@@ -22,7 +22,30 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus, X } from 'lucide-react';
+
+// Expert names list
+const EXPERTS = [
+  'Bombino',
+  'Camilo Menjura',
+  'Camilo, Fernando & Niwel',
+  'Cyro Zuzi',
+  'Derek Gripper',
+  'Edd Bateman',
+  'Felix Ngindu',
+  'Fernando Perez',
+  'Hamsa Mounif',
+  'Jeannot Bel',
+  'Justin Adams',
+  'La Perla',
+  'Leo Power',
+  'Malick Mbengue',
+  'Matar Ndiongue',
+  'Niwel Tsumbu',
+  'Rafael Valim',
+  'Rubén Ramos Medina',
+  'Vieux Farka Toure',
+];
 
 interface Product {
   id: string;
@@ -41,6 +64,12 @@ interface Product {
 interface EmailTag {
   id: string;
   name: string;
+}
+
+interface ExpertAttribution {
+  id?: string;
+  expert_name: string;
+  attribution_percentage: number;
 }
 
 interface ProductEditDialogProps {
@@ -75,6 +104,7 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
   const [regionalPrices, setRegionalPrices] = useState<Record<string, number>>({});
   const [purchaseTagId, setPurchaseTagId] = useState('');
   const [refundRemoveTag, setRefundRemoveTag] = useState(true);
+  const [expertAttributions, setExpertAttributions] = useState<ExpertAttribution[]>([]);
 
   const { data: courses } = useQuery({
     queryKey: ['admin-courses-for-products'],
@@ -108,6 +138,20 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
     enabled: !!product,
   });
 
+  const { data: existingAttributions } = useQuery({
+    queryKey: ['product-expert-attributions', product?.id],
+    queryFn: async () => {
+      if (!product) return [];
+      const { data, error } = await supabase
+        .from('product_expert_attributions')
+        .select('*')
+        .eq('product_id', product.id);
+      if (error) throw error;
+      return data as ExpertAttribution[];
+    },
+    enabled: !!product,
+  });
+
   useEffect(() => {
     if (product) {
       setName(product.name);
@@ -133,6 +177,16 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
       setRegionalPrices(prices);
     }
   }, [existingRegionalPricing]);
+
+  useEffect(() => {
+    if (existingAttributions) {
+      setExpertAttributions(existingAttributions.map(a => ({
+        id: a.id,
+        expert_name: a.expert_name,
+        attribution_percentage: Number(a.attribution_percentage),
+      })));
+    }
+  }, [existingAttributions]);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -220,6 +274,39 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
     },
   });
 
+  const saveExpertAttributionsMutation = useMutation({
+    mutationFn: async () => {
+      if (!product) return;
+      
+      // Delete existing
+      await supabase
+        .from('product_expert_attributions')
+        .delete()
+        .eq('product_id', product.id);
+      
+      // Insert new ones
+      const inserts = expertAttributions
+        .filter(a => a.expert_name && a.attribution_percentage > 0)
+        .map(a => ({
+          product_id: product.id,
+          expert_name: a.expert_name,
+          attribution_percentage: a.attribution_percentage,
+        }));
+      
+      if (inserts.length > 0) {
+        const { error } = await supabase.from('product_expert_attributions').insert(inserts);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-expert-attributions'] });
+      toast.success('Expert attributions saved');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to save expert attributions');
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate();
@@ -230,6 +317,22 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
     return base * (1 - discount / 100);
   };
 
+  const addExpertAttribution = () => {
+    setExpertAttributions([...expertAttributions, { expert_name: '', attribution_percentage: 0 }]);
+  };
+
+  const updateExpertAttribution = (index: number, field: keyof ExpertAttribution, value: string | number) => {
+    const updated = [...expertAttributions];
+    updated[index] = { ...updated[index], [field]: value };
+    setExpertAttributions(updated);
+  };
+
+  const removeExpertAttribution = (index: number) => {
+    setExpertAttributions(expertAttributions.filter((_, i) => i !== index));
+  };
+
+  const totalAttribution = expertAttributions.reduce((sum, a) => sum + (a.attribution_percentage || 0), 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -238,9 +341,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
         </DialogHeader>
         
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="pricing">Regional Pricing</TabsTrigger>
+            <TabsTrigger value="experts">Experts</TabsTrigger>
             <TabsTrigger value="subscription" disabled={productType !== 'subscription'}>Subscription</TabsTrigger>
             <TabsTrigger value="automation">Automation</TabsTrigger>
           </TabsList>
@@ -376,6 +480,96 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
               
               <Button onClick={() => saveRegionalPricingMutation.mutate()} disabled={saveRegionalPricingMutation.isPending} className="w-full">
                 {saveRegionalPricingMutation.isPending ? 'Saving...' : 'Save Regional Pricing'}
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="experts">
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Expert Attributions</p>
+                  <p className="text-sm text-muted-foreground">Assign percentage of revenue to each expert</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addExpertAttribution}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Expert
+                </Button>
+              </div>
+
+              {expertAttributions.length === 0 ? (
+                <div className="text-center py-8 border rounded-lg bg-muted/50">
+                  <p className="text-muted-foreground">No experts assigned yet</p>
+                  <Button type="button" variant="outline" size="sm" onClick={addExpertAttribution} className="mt-2">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Expert
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {expertAttributions.map((attribution, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 rounded-lg border">
+                      <div className="flex-1">
+                        <Select 
+                          value={attribution.expert_name} 
+                          onValueChange={(val) => updateExpertAttribution(index, 'expert_name', val)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select expert" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {EXPERTS.map((expert) => (
+                              <SelectItem key={expert} value={expert}>{expert}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          className="w-20"
+                          value={attribution.attribution_percentage || ''}
+                          onChange={(e) => updateExpertAttribution(index, 'attribution_percentage', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeExpertAttribution(index)}
+                          className="h-8 w-8"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {expertAttributions.length > 0 && (
+                <div className={`p-3 rounded-lg border ${totalAttribution > 100 ? 'border-destructive bg-destructive/10' : 'bg-muted/50'}`}>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Total Attribution</span>
+                    <span className={`font-bold ${totalAttribution > 100 ? 'text-destructive' : ''}`}>
+                      {totalAttribution.toFixed(1)}%
+                    </span>
+                  </div>
+                  {totalAttribution > 100 && (
+                    <p className="text-sm text-destructive mt-1">Total exceeds 100%</p>
+                  )}
+                </div>
+              )}
+
+              <Button 
+                onClick={() => saveExpertAttributionsMutation.mutate()} 
+                disabled={saveExpertAttributionsMutation.isPending || totalAttribution > 100} 
+                className="w-full"
+              >
+                {saveExpertAttributionsMutation.isPending ? 'Saving...' : 'Save Expert Attributions'}
               </Button>
             </div>
           </TabsContent>
