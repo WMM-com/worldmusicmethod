@@ -2172,36 +2172,51 @@ export type Database = {
           amount: number
           created_at: string
           currency: string
+          customer_name: string | null
           email: string
           id: string
+          net_amount: number | null
           payment_provider: string
+          paypal_fee: number | null
           product_id: string
           provider_payment_id: string | null
           status: string
+          stripe_fee: number | null
+          subscription_id: string | null
           user_id: string | null
         }
         Insert: {
           amount: number
           created_at?: string
           currency?: string
+          customer_name?: string | null
           email: string
           id?: string
+          net_amount?: number | null
           payment_provider: string
+          paypal_fee?: number | null
           product_id: string
           provider_payment_id?: string | null
           status?: string
+          stripe_fee?: number | null
+          subscription_id?: string | null
           user_id?: string | null
         }
         Update: {
           amount?: number
           created_at?: string
           currency?: string
+          customer_name?: string | null
           email?: string
           id?: string
+          net_amount?: number | null
           payment_provider?: string
+          paypal_fee?: number | null
           product_id?: string
           provider_payment_id?: string | null
           status?: string
+          stripe_fee?: number | null
+          subscription_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -2210,6 +2225,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -2902,44 +2924,71 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          amount: number
           cancelled_at: string | null
+          coupon_code: string | null
+          coupon_discount: number | null
           created_at: string
+          currency: string | null
           current_period_end: string | null
           current_period_start: string | null
+          customer_email: string | null
+          customer_name: string | null
           id: string
+          interval: string | null
+          paused_at: string | null
           payment_provider: string
           product_id: string
           provider_subscription_id: string | null
           status: string
           trial_end: string | null
+          trial_ends_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          amount?: number
           cancelled_at?: string | null
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string
+          currency?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
           id?: string
+          interval?: string | null
+          paused_at?: string | null
           payment_provider: string
           product_id: string
           provider_subscription_id?: string | null
           status?: string
           trial_end?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          amount?: number
           cancelled_at?: string | null
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string
+          currency?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
           id?: string
+          interval?: string | null
+          paused_at?: string | null
           payment_provider?: string
           product_id?: string
           provider_subscription_id?: string | null
           status?: string
           trial_end?: string | null
+          trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -65,3 +65,18 @@ verify_jwt = true
 
 [functions.confirm-account-deletion]
 verify_jwt = false
+
+[functions.create-subscription]
+verify_jwt = false
+
+[functions.manage-subscription]
+verify_jwt = true
+
+[functions.get-sales-data]
+verify_jwt = true
+
+[functions.create-paypal-order]
+verify_jwt = false
+
+[functions.capture-paypal-order]
+verify_jwt = false
