@@ -2167,6 +2167,53 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          email: string
+          id: string
+          payment_provider: string
+          product_id: string
+          provider_payment_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          email: string
+          id?: string
+          payment_provider: string
+          product_id: string
+          provider_payment_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          email?: string
+          id?: string
+          payment_provider?: string
+          product_id?: string
+          provider_payment_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       other_income: {
         Row: {
           amount: number
@@ -2330,6 +2377,7 @@ export type Database = {
       products: {
         Row: {
           base_price_usd: number
+          billing_interval: string | null
           course_id: string | null
           created_at: string
           description: string | null
@@ -2341,11 +2389,15 @@ export type Database = {
           refund_remove_tag: boolean | null
           sale_ends_at: string | null
           sale_price_usd: number | null
+          trial_enabled: boolean | null
+          trial_length_days: number | null
+          trial_price_usd: number | null
           tutor_id: string | null
           updated_at: string
         }
         Insert: {
           base_price_usd?: number
+          billing_interval?: string | null
           course_id?: string | null
           created_at?: string
           description?: string | null
@@ -2357,11 +2409,15 @@ export type Database = {
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
+          trial_enabled?: boolean | null
+          trial_length_days?: number | null
+          trial_price_usd?: number | null
           tutor_id?: string | null
           updated_at?: string
         }
         Update: {
           base_price_usd?: number
+          billing_interval?: string | null
           course_id?: string | null
           created_at?: string
           description?: string | null
@@ -2373,6 +2429,9 @@ export type Database = {
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
+          trial_enabled?: boolean | null
+          trial_length_days?: number | null
+          trial_price_usd?: number | null
           tutor_id?: string | null
           updated_at?: string
         }
@@ -2805,6 +2864,91 @@ export type Database = {
             columns: ["tech_spec_id"]
             isOneToOne: false
             referencedRelation: "tech_specs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          subscription_product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          subscription_product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          subscription_product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_items_subscription_product_id_fkey"
+            columns: ["subscription_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          payment_provider: string
+          product_id: string
+          provider_subscription_id: string | null
+          status: string
+          trial_end: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          payment_provider: string
+          product_id: string
+          provider_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          payment_provider?: string
+          product_id?: string
+          provider_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

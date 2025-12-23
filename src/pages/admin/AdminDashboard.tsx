@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -15,6 +15,7 @@ import { ImportCourseData } from '@/components/admin/ImportCourseData';
 import { LandingPageEditor } from '@/components/admin/LandingPageEditor';
 import { AdminEmailCRM } from '@/components/admin/AdminEmailCRM';
 import { AdminReports } from '@/components/admin/AdminReports';
+import { AdminSales } from '@/components/admin/AdminSales';
 import { Skeleton } from '@/components/ui/skeleton';
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -186,7 +187,7 @@ export default function AdminDashboard() {
 
           {/* Tabs */}
           <Tabs defaultValue="users" className="space-y-6">
-            <TabsList>
+            <TabsList className="flex-wrap">
               <TabsTrigger value="users" className="gap-2">
                 <Users className="h-4 w-4" />
                 Users
@@ -198,6 +199,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="products" className="gap-2">
                 <Package className="h-4 w-4" />
                 Products
+              </TabsTrigger>
+              <TabsTrigger value="sales" className="gap-2">
+                <DollarSign className="h-4 w-4" />
+                Sales
               </TabsTrigger>
               <TabsTrigger value="media" className="gap-2">
                 <Image className="h-4 w-4" />
@@ -233,6 +238,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="products">
               <AdminProducts />
+            </TabsContent>
+            <TabsContent value="sales">
+              <AdminSales />
             </TabsContent>
             <TabsContent value="media">
               <AdminMedia />

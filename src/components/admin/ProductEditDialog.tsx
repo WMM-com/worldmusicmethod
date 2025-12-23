@@ -51,6 +51,7 @@ interface ProductEditDialogProps {
 
 const REGIONS = [
   { value: 'africa', label: 'Africa', defaultDiscount: 65 },
+  { value: 'african_euros', label: 'Africa (Francophone/Lusophone)', defaultDiscount: 65, currency: 'EUR' },
   { value: 'south_america', label: 'South America', defaultDiscount: 65 },
   { value: 'usa_canada', label: 'USA & Canada', defaultDiscount: 0 },
   { value: 'uk', label: 'UK', defaultDiscount: 20.2 },
@@ -189,13 +190,19 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
         .delete()
         .eq('product_id', product.id);
       
+      const getCurrency = (region: string) => {
+        if (region === 'uk') return 'GBP';
+        if (region.includes('europe') || region === 'african_euros') return 'EUR';
+        return 'USD';
+      };
+      
       const inserts = Object.entries(regionalPrices)
         .filter(([_, discount]) => discount > 0)
         .map(([region, discount]) => ({
           product_id: product.id,
           region: region as any,
           discount_percentage: discount,
-          currency: region === 'uk' ? 'GBP' : region.includes('europe') ? 'EUR' : 'USD',
+          currency: getCurrency(region),
         }));
       
       if (inserts.length > 0) {
@@ -231,9 +238,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
         </DialogHeader>
         
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="pricing">Regional Pricing</TabsTrigger>
+            <TabsTrigger value="subscription" disabled={productType !== 'subscription'}>Subscription</TabsTrigger>
             <TabsTrigger value="automation">Automation</TabsTrigger>
           </TabsList>
           
@@ -260,6 +268,7 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="course">Course</SelectItem>
+                      <SelectItem value="subscription">Subscription</SelectItem>
                       <SelectItem value="membership">Membership</SelectItem>
                       <SelectItem value="bundle">Bundle</SelectItem>
                       <SelectItem value="private_lesson">Private Lesson</SelectItem>
@@ -267,6 +276,15 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
                   </Select>
                 </div>
               </div>
+
+              {productType === 'subscription' && (
+                <div className="p-4 rounded-lg border bg-secondary/5">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Configure subscription billing, trials, and included items in the Subscription tab after saving.
+                  </p>
+                  <Badge variant="secondary">Subscription Product</Badge>
+                </div>
+              )}
 
               <div className="space-y-4 p-4 rounded-lg border bg-accent/5">
                 <div className="flex items-center justify-between">
@@ -359,6 +377,21 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
               <Button onClick={() => saveRegionalPricingMutation.mutate()} disabled={saveRegionalPricingMutation.isPending} className="w-full">
                 {saveRegionalPricingMutation.isPending ? 'Saving...' : 'Save Regional Pricing'}
               </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="subscription">
+            <div className="space-y-4 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Configure subscription billing intervals, trial periods, and included items.
+                Save the product first, then use the dedicated Subscription Editor for full configuration.
+              </p>
+              <div className="p-4 rounded-lg border bg-muted/50 text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Subscription configuration available after creating the product.
+                </p>
+                <Badge>Coming: Stripe & PayPal recurring billing</Badge>
+              </div>
             </div>
           </TabsContent>
 

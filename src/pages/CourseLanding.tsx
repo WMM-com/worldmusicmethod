@@ -998,21 +998,9 @@ export default function CourseLanding() {
                 {/* Price display */}
                 {priceInfo && !isEnrolled && (
                   <div className="mb-6">
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-3xl font-bold">
-                        {formatPrice(priceInfo.price, priceInfo.currency)}
-                      </span>
-                      {priceInfo.discount_percentage > 0 && (
-                        <span className="text-lg text-muted-foreground line-through">
-                          ${product?.base_price_usd?.toFixed(2)} USD
-                        </span>
-                      )}
-                    </div>
-                    {priceInfo.discount_percentage > 0 && (
-                      <Badge variant="secondary" className="mt-2">
-                        {priceInfo.discount_percentage}% off in your region
-                      </Badge>
-                    )}
+                    <span className="text-3xl font-bold">
+                      {formatPrice(priceInfo.price, priceInfo.currency)}
+                    </span>
                   </div>
                 )}
 

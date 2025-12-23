@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, Check, X } from 'lucide-react';
+import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -540,12 +540,6 @@ function CheckoutContent() {
                           </div>
                         </div>
                       ))}
-                      {cartItems.length > 1 && (
-                        <div className="flex justify-between items-center pt-2 border-t border-border/50">
-                          <p className="font-semibold">Total</p>
-                          <p className="font-bold text-lg">{formatPrice(basePrice, currency)}</p>
-                        </div>
-                      )}
                     </>
                   ) : (
                     <div className="flex justify-between items-start">
@@ -553,6 +547,23 @@ function CheckoutContent() {
                       <p className="font-semibold">{formatPrice(basePrice, currency)}</p>
                     </div>
                   )}
+                </div>
+
+                {/* Total row - always shown */}
+                <div className="py-4 border-b border-border">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">Total</p>
+                      {paymentMethod === 'card' && (
+                        <p className="text-xs text-green-600">
+                          Save 2% ({formatPrice(stripeDiscount, currency)})
+                        </p>
+                      )}
+                    </div>
+                    <p className="font-bold text-lg">
+                      {formatPrice(paymentMethod === 'card' ? cardPrice : basePrice, currency)}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Coupon section */}
@@ -633,35 +644,24 @@ function CheckoutContent() {
                 {/* Payment form */}
                 <div className="py-6">
                   {paymentMethod === 'card' ? (
-                    <>
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mb-4">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                          <Check className="h-4 w-4" />
-                          <span className="text-sm font-medium">Save 2% with card payment</span>
-                          <span className="text-xs text-green-600 dark:text-green-500">
-                            (You save {formatPrice(stripeDiscount, currency)})
-                          </span>
-                        </div>
-                      </div>
-                      <StripeCardFields
-                        productId={productId || cartItems[0]?.productId || ''}
-                        email={user?.email || email}
-                        fullName={fullName || user?.email || email}
-                        password={password}
-                        couponCode={appliedCoupon?.code}
-                        amount={cardPrice}
-                        currency={currency}
-                        onSuccess={handleSuccess}
-                        debugEnabled={debugEnabled}
-                        isLoggedIn={!!user}
-                      />
-                    </>
+                    <StripeCardFields
+                      productId={productId || cartItems[0]?.productId || ''}
+                      email={user?.email || email}
+                      fullName={fullName || user?.email || email}
+                      password={password}
+                      couponCode={appliedCoupon?.code}
+                      amount={cardPrice}
+                      currency={currency}
+                      onSuccess={handleSuccess}
+                      debugEnabled={debugEnabled}
+                      isLoggedIn={!!user}
+                    />
                   ) : (
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">
                         You'll be redirected to PayPal to complete your purchase.
                       </p>
-                    <PayPalButton
+                      <PayPalButton
                         productId={productId || cartItems[0]?.productId || ''}
                         email={user?.email || email}
                         fullName={fullName || user?.email || email}
