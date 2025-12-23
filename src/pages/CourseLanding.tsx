@@ -998,7 +998,7 @@ export default function CourseLanding() {
                 {/* Price display */}
                 {priceInfo && !isEnrolled && (
                   <div className="mb-6">
-                    <span className="text-3xl font-bold">
+                    <span className="text-3xl font-bold text-yellow-500">
                       {formatPrice(priceInfo.price, priceInfo.currency)}
                     </span>
                   </div>

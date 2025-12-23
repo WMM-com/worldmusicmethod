@@ -7,6 +7,8 @@ export interface Course {
   region_theme: Record<string, any>;
   cover_image_url: string | null;
   is_published: boolean;
+  tutor_name: string | null;
+  tags: string[] | null;
   created_at: string;
   updated_at: string;
 }

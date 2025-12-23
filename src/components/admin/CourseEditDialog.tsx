@@ -6,7 +6,39 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+// Expert names list
+const EXPERTS = [
+  'Bombino',
+  'Camilo Menjura',
+  'Camilo, Fernando & Niwel',
+  'Cyro Zuzi',
+  'Derek Gripper',
+  'Edd Bateman',
+  'Felix Ngindu',
+  'Fernando Perez',
+  'Hamsa Mounif',
+  'Jeannot Bel',
+  'Justin Adams',
+  'La Perla',
+  'Leo Power',
+  'Malick Mbengue',
+  'Matar Ndiongue',
+  'Niwel Tsumbu',
+  'Rafael Valim',
+  'Rubén Ramos Medina',
+  'Vieux Farka Toure',
+];
 
 interface CourseEditDialogProps {
   course: {
@@ -15,6 +47,8 @@ interface CourseEditDialogProps {
     description: string | null;
     country: string;
     is_published: boolean;
+    tutor_name?: string | null;
+    tags?: string[] | null;
   };
   onClose: () => void;
 }
@@ -25,6 +59,9 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
   const [description, setDescription] = useState(course.description || '');
   const [country, setCountry] = useState(course.country);
   const [isPublished, setIsPublished] = useState(course.is_published);
+  const [tutorName, setTutorName] = useState(course.tutor_name || '');
+  const [tags, setTags] = useState<string[]>(course.tags || []);
+  const [newTag, setNewTag] = useState('');
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -35,12 +72,15 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
           description: description || null,
           country,
           is_published: isPublished,
+          tutor_name: tutorName || null,
+          tags,
         })
         .eq('id', course.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
       toast.success('Course updated successfully');
       onClose();
     },
@@ -54,6 +94,17 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
     updateMutation.mutate();
   };
 
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
@@ -65,6 +116,7 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
           required
         />
       </div>
+      
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -74,6 +126,59 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
           rows={3}
         />
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="tutor">Expert / Tutor</Label>
+        <Select value={tutorName} onValueChange={setTutorName}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select an expert" />
+          </SelectTrigger>
+          <SelectContent>
+            {EXPERTS.map((expert) => (
+              <SelectItem key={expert} value={expert}>
+                {expert}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Course Tags</Label>
+        <div className="flex gap-2">
+          <Input
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            placeholder="Add a tag..."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag();
+              }
+            }}
+          />
+          <Button type="button" variant="outline" size="icon" onClick={addTag}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map((tag) => (
+              <Badge key={tag} variant="secondary" className="gap-1">
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="country">Country</Label>
         <Input
@@ -82,7 +187,9 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
           onChange={(e) => setCountry(e.target.value)}
           required
         />
+        <p className="text-xs text-muted-foreground">Used for search filtering, not displayed on course cards</p>
       </div>
+      
       <div className="flex items-center justify-between">
         <Label htmlFor="published">Published</Label>
         <Switch
@@ -91,6 +198,7 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
           onCheckedChange={setIsPublished}
         />
       </div>
+      
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel

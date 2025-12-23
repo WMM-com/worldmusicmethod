@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, BookOpen, ChevronRight, Plus, Search } from 'lucide-react';
+import { Clock, BookOpen, ChevronRight, Plus, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourses } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Courses() {
@@ -17,6 +18,21 @@ export default function Courses() {
   const { user } = useAuth();
   const { data: courses, isLoading } = useCourses();
   const [searchQuery, setSearchQuery] = useState('');
+  const { calculatePrice, isLoading: priceLoading } = useGeoPricing();
+
+  // Fetch products for courses to get prices
+  const { data: products } = useQuery({
+    queryKey: ['course-products'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, course_id, base_price_usd, sale_price_usd, is_active')
+        .eq('is_active', true)
+        .not('course_id', 'is', null);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   // Check if user is admin
   const { data: isAdmin } = useQuery({
@@ -29,7 +45,7 @@ export default function Courses() {
     enabled: !!user,
   });
 
-  // Filter courses by search query
+  // Filter courses by search query (title, country, description, tags, tutor)
   const filteredCourses = useMemo(() => {
     if (!courses) return [];
     if (!searchQuery.trim()) return courses;
@@ -38,9 +54,19 @@ export default function Courses() {
     return courses.filter(course => 
       course.title.toLowerCase().includes(query) ||
       course.country?.toLowerCase().includes(query) ||
-      course.description?.toLowerCase().includes(query)
+      course.description?.toLowerCase().includes(query) ||
+      course.tutor_name?.toLowerCase().includes(query) ||
+      (course.tags as string[] || []).some(tag => tag.toLowerCase().includes(query))
     );
   }, [courses, searchQuery]);
+
+  // Get price for a course
+  const getCoursePrice = (courseId: string) => {
+    const product = products?.find(p => p.course_id === courseId);
+    if (!product) return null;
+    const basePrice = product.sale_price_usd || product.base_price_usd;
+    return calculatePrice(basePrice);
+  };
 
   if (isLoading) {
     return (
@@ -86,7 +112,7 @@ export default function Courses() {
           <div className="mt-6 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search courses..."
+              placeholder="Search courses, tutors, styles..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -99,63 +125,78 @@ export default function Courses() {
       <main className="max-w-6xl mx-auto px-6 py-8">
         {filteredCourses.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCourses.map((course, i) => (
-              <motion.div
-                key={course.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-              >
-                <Card
-                  className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
-                  onClick={() => navigate(`/courses/${course.id}`)}
+            {filteredCourses.map((course, i) => {
+              const priceInfo = getCoursePrice(course.id);
+              
+              return (
+                <motion.div
+                  key={course.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
                 >
-                  {/* Cover image */}
-                  <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
-                    {course.cover_image_url ? (
-                      <img
-                        src={course.cover_image_url}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <MapPin className="w-12 h-12 text-primary/30" />
-                      </div>
-                    )}
-                    
-                    {/* Country badge */}
-                    <div className="absolute top-3 left-3 px-3 py-1 bg-background/90 backdrop-blur rounded-full text-sm font-medium">
-                      {course.country}
+                  <Card
+                    className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
+                    onClick={() => navigate(`/courses/${course.id}`)}
+                  >
+                    {/* Cover image */}
+                    <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
+                      {course.cover_image_url ? (
+                        <img
+                          src={course.cover_image_url}
+                          alt={course.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <BookOpen className="w-12 h-12 text-primary/30" />
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Content */}
-                  <div className="p-5">
-                    <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
-                      {course.title}
-                    </h3>
-                    
-                    {course.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                        {course.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <BookOpen className="w-4 h-4" />
-                          Course
-                        </span>
-                      </div>
+                    {/* Content */}
+                    <div className="p-5">
+                      <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
+                        {course.title}
+                      </h3>
                       
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      {/* Tutor name */}
+                      {course.tutor_name && (
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
+                          <User className="w-3.5 h-3.5" />
+                          <span>{course.tutor_name}</span>
+                        </div>
+                      )}
+                      
+                      {course.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                          {course.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <BookOpen className="w-4 h-4" />
+                            Course
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* Price in yellow */}
+                          {priceInfo && !priceLoading && (
+                            <span className="font-bold text-yellow-500">
+                              {formatPrice(priceInfo.price, priceInfo.currency)}
+                            </span>
+                          )}
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
         ) : searchQuery ? (
           <div className="text-center py-20">
