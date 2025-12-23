@@ -51,6 +51,30 @@ serve(async (req) => {
 
       switch (action) {
         case 'cancel': {
+          // Cancel at end of billing period (pending cancellation)
+          const canceledSub = await stripe.subscriptions.update(
+            subscription.provider_subscription_id,
+            { cancel_at_period_end: true }
+          );
+          
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              status: 'pending_cancellation', 
+              cancels_at: new Date(canceledSub.current_period_end * 1000).toISOString(),
+              current_period_end: new Date(canceledSub.current_period_end * 1000).toISOString()
+            })
+            .eq('id', subscriptionId);
+
+          result = { 
+            status: 'pending_cancellation',
+            cancels_at: new Date(canceledSub.current_period_end * 1000).toISOString()
+          };
+          logStep("Subscription set to cancel at period end");
+          break;
+        }
+
+        case 'cancel_immediately': {
           const canceledSub = await stripe.subscriptions.cancel(
             subscription.provider_subscription_id
           );
@@ -63,8 +87,45 @@ serve(async (req) => {
             })
             .eq('id', subscriptionId);
 
-          result = { status: canceledSub.status };
-          logStep("Subscription cancelled");
+          // Revoke product access
+          const { data: subItems } = await supabaseClient
+            .from('subscription_items')
+            .select('course_id, product_id')
+            .eq('subscription_product_id', subscription.product_id);
+
+          if (subItems && subscription.user_id) {
+            for (const item of subItems) {
+              if (item.course_id) {
+                await supabaseClient
+                  .from('course_enrollments')
+                  .update({ is_active: false })
+                  .match({ user_id: subscription.user_id, course_id: item.course_id });
+              }
+            }
+          }
+
+          result = { status: 'cancelled' };
+          logStep("Subscription cancelled immediately");
+          break;
+        }
+
+        case 'reactivate': {
+          // Reactivate a pending cancellation subscription
+          const reactivatedSub = await stripe.subscriptions.update(
+            subscription.provider_subscription_id,
+            { cancel_at_period_end: false }
+          );
+          
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              status: 'active', 
+              cancels_at: null
+            })
+            .eq('id', subscriptionId);
+
+          result = { status: 'active' };
+          logStep("Subscription reactivated");
           break;
         }
 
@@ -223,6 +284,8 @@ serve(async (req) => {
 
       switch (action) {
         case 'cancel': {
+          // For PayPal, we'll cancel immediately but track it as pending
+          // PayPal doesn't have native "cancel at period end"
           await fetch(
             `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
             {
@@ -235,15 +298,32 @@ serve(async (req) => {
             }
           );
 
-          await supabaseClient
-            .from('subscriptions')
-            .update({ 
-              status: 'cancelled', 
-              cancelled_at: new Date().toISOString() 
-            })
-            .eq('id', subscriptionId);
+          // Mark as pending cancellation if there's remaining time
+          const now = new Date();
+          const periodEnd = subscription.current_period_end 
+            ? new Date(subscription.current_period_end) 
+            : now;
 
-          result = { status: 'cancelled' };
+          if (periodEnd > now) {
+            await supabaseClient
+              .from('subscriptions')
+              .update({ 
+                status: 'pending_cancellation', 
+                cancels_at: periodEnd.toISOString()
+              })
+              .eq('id', subscriptionId);
+            result = { status: 'pending_cancellation', cancels_at: periodEnd.toISOString() };
+          } else {
+            await supabaseClient
+              .from('subscriptions')
+              .update({ 
+                status: 'cancelled', 
+                cancelled_at: new Date().toISOString() 
+              })
+              .eq('id', subscriptionId);
+            result = { status: 'cancelled' };
+          }
+
           logStep("PayPal subscription cancelled");
           break;
         }

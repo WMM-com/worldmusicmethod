@@ -25,7 +25,9 @@ import {
   Tag,
   Loader2,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Undo2,
+  RotateCcw
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -43,8 +45,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -62,9 +66,12 @@ export function AdminSales() {
   // Subscription management dialogs
   const [editPriceDialog, setEditPriceDialog] = useState<{ open: boolean; subscription: any }>({ open: false, subscription: null });
   const [couponDialog, setCouponDialog] = useState<{ open: boolean; subscription: any }>({ open: false, subscription: null });
+  const [refundDialog, setRefundDialog] = useState<{ open: boolean; order: any }>({ open: false, order: null });
   const [newPrice, setNewPrice] = useState('');
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState('');
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundReason, setRefundReason] = useState('');
 
   const PAGE_SIZE = 30;
 
@@ -152,6 +159,28 @@ export function AdminSales() {
     },
   });
 
+  // Refund mutation
+  const processRefund = useMutation({
+    mutationFn: async ({ orderId, amount, reason }: { orderId: string; amount?: number; reason?: string }) => {
+      const { data: result, error } = await supabase.functions.invoke('process-refund', {
+        body: { orderId, amount, reason }
+      });
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales-stats'] });
+      toast.success(data.isFullRefund ? 'Full refund processed' : 'Partial refund processed');
+      setRefundDialog({ open: false, order: null });
+      setRefundAmount('');
+      setRefundReason('');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to process refund');
+    },
+  });
+
   const formatPrice = (amount: number, currency: string = 'USD') => {
     const symbols: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
     return `${symbols[currency] || currency}${(amount || 0).toFixed(2)}`;
@@ -202,11 +231,35 @@ export function AdminSales() {
       completed: 'default',
       trialing: 'secondary',
       paused: 'outline',
+      pending_cancellation: 'outline',
       cancelled: 'destructive',
       refunded: 'destructive',
+      partial_refund: 'outline',
       pending: 'secondary',
     };
-    return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
+    const labels: Record<string, string> = {
+      pending_cancellation: 'Cancels Soon',
+      partial_refund: 'Partial Refund',
+    };
+    return <Badge variant={variants[status] || 'secondary'}>{labels[status] || status}</Badge>;
+  };
+
+  const handleRefund = (order: any) => {
+    setRefundAmount(order.amount?.toString() || '');
+    setRefundReason('');
+    setRefundDialog({ open: true, order });
+  };
+
+  const submitRefund = () => {
+    if (!refundAmount || isNaN(parseFloat(refundAmount))) {
+      toast.error('Please enter a valid refund amount');
+      return;
+    }
+    processRefund.mutate({
+      orderId: refundDialog.order.id,
+      amount: parseFloat(refundAmount),
+      reason: refundReason || 'requested_by_customer',
+    });
   };
 
   return (
@@ -382,6 +435,7 @@ export function AdminSales() {
                     <TableHead className="text-right">Net</TableHead>
                     <TableHead>Provider</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -437,6 +491,19 @@ export function AdminSales() {
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(order.status)}
+                          </TableCell>
+                          <TableCell>
+                            {order.status === 'completed' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleRefund(order)}
+                                title="Refund"
+                              >
+                                <Undo2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -734,6 +801,55 @@ export function AdminSales() {
             <Button onClick={handleCouponUpdate} disabled={manageSub.isPending}>
               {manageSub.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Apply Coupon
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refund Dialog */}
+      <Dialog open={refundDialog.open} onOpenChange={(open) => setRefundDialog({ open, order: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Process Refund</DialogTitle>
+            <DialogDescription>
+              Refund will be processed via {refundDialog.order?.payment_provider}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Refund Amount ({refundDialog.order?.currency || 'USD'})</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                placeholder={refundDialog.order?.amount?.toString()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Original amount: {refundDialog.order?.amount?.toFixed(2)}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Reason (optional)</Label>
+              <Textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Customer requested refund..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundDialog({ open: false, order: null })}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={submitRefund} 
+              disabled={processRefund.isPending}
+            >
+              {processRefund.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Process Refund
             </Button>
           </DialogFooter>
         </DialogContent>
