@@ -2180,6 +2180,10 @@ export type Database = {
           paypal_fee: number | null
           product_id: string
           provider_payment_id: string | null
+          provider_refund_id: string | null
+          refund_amount: number | null
+          refund_reason: string | null
+          refunded_at: string | null
           status: string
           stripe_fee: number | null
           subscription_id: string | null
@@ -2197,6 +2201,10 @@ export type Database = {
           paypal_fee?: number | null
           product_id: string
           provider_payment_id?: string | null
+          provider_refund_id?: string | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           status?: string
           stripe_fee?: number | null
           subscription_id?: string | null
@@ -2214,6 +2222,10 @@ export type Database = {
           paypal_fee?: number | null
           product_id?: string
           provider_payment_id?: string | null
+          provider_refund_id?: string | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
           status?: string
           stripe_fee?: number | null
           subscription_id?: string | null
@@ -2926,6 +2938,7 @@ export type Database = {
         Row: {
           amount: number
           cancelled_at: string | null
+          cancels_at: string | null
           coupon_code: string | null
           coupon_discount: number | null
           created_at: string
@@ -2939,6 +2952,7 @@ export type Database = {
           paused_at: string | null
           payment_provider: string
           product_id: string
+          product_name: string | null
           provider_subscription_id: string | null
           status: string
           trial_end: string | null
@@ -2949,6 +2963,7 @@ export type Database = {
         Insert: {
           amount?: number
           cancelled_at?: string | null
+          cancels_at?: string | null
           coupon_code?: string | null
           coupon_discount?: number | null
           created_at?: string
@@ -2962,6 +2977,7 @@ export type Database = {
           paused_at?: string | null
           payment_provider: string
           product_id: string
+          product_name?: string | null
           provider_subscription_id?: string | null
           status?: string
           trial_end?: string | null
@@ -2972,6 +2988,7 @@ export type Database = {
         Update: {
           amount?: number
           cancelled_at?: string | null
+          cancels_at?: string | null
           coupon_code?: string | null
           coupon_discount?: number | null
           created_at?: string
@@ -2985,6 +3002,7 @@ export type Database = {
           paused_at?: string | null
           payment_provider?: string
           product_id?: string
+          product_name?: string | null
           provider_subscription_id?: string | null
           status?: string
           trial_end?: string | null
