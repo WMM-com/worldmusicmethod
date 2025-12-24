@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Clock, BookOpen, ChevronRight, Plus, Search, User } from 'lucide-react';
+import { BookOpen, ChevronRight, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -60,8 +60,9 @@ export default function Courses() {
     );
   }, [courses, searchQuery]);
 
-  // Get price for a course
+  // Get price for a course - returns null if still loading geo data
   const getCoursePrice = (courseId: string) => {
+    if (priceLoading) return null;
     const product = products?.find(p => p.course_id === courseId);
     if (!product) return null;
     const basePrice = product.sale_price_usd || product.base_price_usd;
@@ -162,10 +163,9 @@ export default function Courses() {
                       
                       {/* Tutor name */}
                       {course.tutor_name && (
-                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-2">
-                          <User className="w-3.5 h-3.5" />
-                          <span>{course.tutor_name}</span>
-                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {course.tutor_name}
+                        </p>
                       )}
                       
                       {course.description && (
@@ -183,11 +183,14 @@ export default function Courses() {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          {/* Price in yellow */}
-                          {priceInfo && !priceLoading && (
+                          {/* Price in yellow - only show when geo detection complete */}
+                          {!priceLoading && priceInfo && (
                             <span className="font-bold text-yellow-500">
                               {formatPrice(priceInfo.price, priceInfo.currency)}
                             </span>
+                          )}
+                          {priceLoading && priceInfo && (
+                            <span className="font-bold text-yellow-500 animate-pulse">...</span>
                           )}
                           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                         </div>

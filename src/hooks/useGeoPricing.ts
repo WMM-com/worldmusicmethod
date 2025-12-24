@@ -25,7 +25,7 @@ interface GeoPricingResult {
   countryName: string;
   isLoading: boolean;
   error: string | null;
-  calculatePrice: (basePriceUsd: number) => RegionalPrice;
+  calculatePrice: (basePriceUsd: number) => RegionalPrice | null;
 }
 
 // Currency symbols
@@ -157,7 +157,10 @@ export function useGeoPricing(): GeoPricingResult {
     detectRegion();
   }, []);
 
-  const calculatePrice = (basePriceUsd: number): RegionalPrice => {
+  const calculatePrice = (basePriceUsd: number): RegionalPrice | null => {
+    // Return null if still loading to prevent showing wrong prices
+    if (isLoading) return null;
+    
     const pricing = regionPricing[region];
     const discountedPrice = basePriceUsd * (1 - pricing.discount / 100);
     
