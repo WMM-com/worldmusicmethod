@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  isAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +33,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchProfile(session.user.id);
+            checkAdminRole(session.user.id);
           }, 0);
         } else {
           setProfile(null);
+          setIsAdmin(false);
         }
       }
     );
@@ -43,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        checkAdminRole(session.user.id);
       }
       setLoading(false);
     });
@@ -60,6 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!error && data) {
       setProfile(data as Profile);
     }
+  };
+
+  const checkAdminRole = async (userId: string) => {
+    const { data } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
+    setIsAdmin(data === true);
   };
 
   const signUp = async (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => {
@@ -113,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setIsAdmin(false);
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -136,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         session,
         profile,
+        isAdmin,
         loading,
         signUp,
         signIn,

@@ -75,7 +75,7 @@ const POST_TYPE_CONFIG = {
 };
 
 export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [showComments, setShowComments] = useState(defaultShowComments);
   const [showAllComments, setShowAllComments] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -105,6 +105,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
   }, [defaultShowComments]);
 
   const isOwner = user?.id === post.user_id;
+  const canDelete = isOwner || isAdmin;
   const initials = post.profiles?.full_name
     ?.split(' ')
     .map(n => n[0])
@@ -266,21 +267,22 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {isOwner ? (
-                    <>
-                      <DropdownMenuItem onClick={handleEditOpen}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit post
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => deleteMutation.mutate(post.id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete post
-                      </DropdownMenuItem>
-                    </>
-                  ) : (
+                  {isOwner && (
+                    <DropdownMenuItem onClick={handleEditOpen}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit post
+                    </DropdownMenuItem>
+                  )}
+                  {canDelete && (
+                    <DropdownMenuItem
+                      onClick={() => deleteMutation.mutate(post.id)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete post {isAdmin && !isOwner && '(Admin)'}
+                    </DropdownMenuItem>
+                  )}
+                  {!isOwner && (
                     <>
                       <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
                         <Flag className="h-4 w-4 mr-2" />
@@ -637,7 +639,7 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   
@@ -646,6 +648,7 @@ function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
   const deleteCommentMutation = useDeleteComment();
   
   const isOwner = user?.id === comment.user_id;
+  const canDelete = isOwner || isAdmin;
   const daysSinceCreated = differenceInDays(new Date(), new Date(comment.created_at));
   const canEdit = isOwner && daysSinceCreated <= COMMENT_EDIT_DAYS_LIMIT;
   
@@ -717,7 +720,7 @@ function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
             <div className="bg-accent/30 rounded-lg px-3 py-2">
               <div className="flex items-center justify-between">
                 <p className="font-medium text-sm">{comment.profiles?.full_name || 'Unknown'}</p>
-                {isOwner && (
+                {(isOwner || canDelete) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-6 w-6 -mr-1">
@@ -725,25 +728,29 @@ function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {canEdit ? (
-                        <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                          <Pencil className="h-3 w-3 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem disabled className="text-xs">
-                          <Pencil className="h-3 w-3 mr-2" />
-                          Edit (expired after 30 days)
+                      {isOwner && (
+                        canEdit ? (
+                          <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                            <Pencil className="h-3 w-3 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem disabled className="text-xs">
+                            <Pencil className="h-3 w-3 mr-2" />
+                            Edit (expired after 30 days)
+                          </DropdownMenuItem>
+                        )
+                      )}
+                      {canDelete && (
+                        <DropdownMenuItem
+                          onClick={handleDelete}
+                          className="text-destructive"
+                          disabled={deleteCommentMutation.isPending}
+                        >
+                          <Trash2 className="h-3 w-3 mr-2" />
+                          Delete {isAdmin && !isOwner && '(Admin)'}
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem
-                        onClick={handleDelete}
-                        className="text-destructive"
-                        disabled={deleteCommentMutation.isPending}
-                      >
-                        <Trash2 className="h-3 w-3 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}

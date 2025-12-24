@@ -174,11 +174,13 @@ export function useDeletePost() {
 
   return useMutation({
     mutationFn: async (postId: string) => {
+      // Admin can delete any post via RLS policy, owner can delete their own
       const { error } = await supabase.from('posts').delete().eq('id', postId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['user-posts'] });
       toast.success('Post deleted');
     },
   });
@@ -311,16 +313,13 @@ export function useUpdateComment() {
 
 export function useDeleteComment() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (commentId: string) => {
-      if (!user) throw new Error('Not authenticated');
-      
+      // Admin can delete any comment via RLS policy, owner can delete their own
       const { error } = await supabase.from('comments')
         .delete()
-        .eq('id', commentId)
-        .eq('user_id', user.id);
+        .eq('id', commentId);
       if (error) throw error;
     },
     onSuccess: () => {
