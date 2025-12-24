@@ -45,7 +45,7 @@ function extractYouTubeIds(text: string): string[] {
 // Extract Spotify embed paths from text
 function extractSpotifyPaths(text: string): string[] {
   const paths: string[] = [];
-  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
+  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:embed\/)?(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
   let match;
   while ((match = pattern.exec(text)) !== null) {
     const path = `${match[1]}/${match[2]}`;
@@ -62,7 +62,7 @@ function removeMediaUrls(text: string): string {
     .replace(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}/g, '')
     .replace(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/[a-zA-Z0-9_-]{11}/g, '')
     .replace(/(?:https?:\/\/)?youtu\.be\/[a-zA-Z0-9_-]{11}/g, '')
-    .replace(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/[a-zA-Z0-9]+/g, '')
+    .replace(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:embed\/)?(track|album|playlist|artist)\/[a-zA-Z0-9]+/g, '')
     .trim();
 }
 
