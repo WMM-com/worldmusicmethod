@@ -56,6 +56,100 @@ const extractImages = (html: string): string[] => {
   return [...new Set(images)]; // Remove duplicates
 };
 
+type ParsedEmbedItem = {
+  title: string;
+  kind: 'module' | 'lesson' | 'unknown';
+  youtubeIds: string[];
+  spotifyPaths: string[];
+};
+
+const normalizeTitleForMatch = (title: string): string => {
+  const stripped = title
+    .replace(/\s*\(\d{1,2}:\d{2}\)\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  return stripped;
+};
+
+const looksLikeModuleTitle = (title: string): boolean => {
+  const t = title.trim().toLowerCase();
+  return /^module\s*\d+/.test(t) || t.startsWith('module ');
+};
+
+const extractYouTubeIdsFromText = (text: string): string[] => {
+  const ids: string[] = [];
+  const patterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?(?:www\.)?youtube-nocookie\.com\/embed\/([a-zA-Z0-9_-]{11})/g,
+  ];
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (!ids.includes(match[1])) ids.push(match[1]);
+    }
+  }
+  return ids;
+};
+
+const extractSpotifyPathsFromText = (text: string): string[] => {
+  const paths: string[] = [];
+  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:embed\/)?(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const p = `${match[1]}/${match[2]}`;
+    if (!paths.includes(p)) paths.push(p);
+  }
+  return paths;
+};
+
+const parseWordpressXmlForEmbeds = (xmlContent: string) => {
+  const doc = new DOMParser().parseFromString(xmlContent, 'text/xml');
+  const items = Array.from(doc.querySelectorAll('item'));
+
+  const parsed: ParsedEmbedItem[] = [];
+  let youtubeEmbeds = 0;
+  let spotifyEmbeds = 0;
+
+  for (const item of items) {
+    const title = (item.querySelector('title')?.textContent || '').trim();
+    const postType = (item.querySelector('wp\\:post_type')?.textContent || '').trim();
+
+    const contentNode = item.querySelector('content\\:encoded');
+    const contentAlt = item.getElementsByTagName('content:encoded')?.[0];
+    const content = (contentNode?.textContent || contentAlt?.textContent || '').toString();
+
+    const youtubeIds = extractYouTubeIdsFromText(content);
+    const spotifyPaths = extractSpotifyPathsFromText(content);
+
+    if (youtubeIds.length) youtubeEmbeds += youtubeIds.length;
+    if (spotifyPaths.length) spotifyEmbeds += spotifyPaths.length;
+
+    if (!youtubeIds.length && !spotifyPaths.length) continue;
+
+    let kind: ParsedEmbedItem['kind'] = 'unknown';
+    if (postType === 'sfwd-lessons' || postType === 'sfwd-topic' || postType === 'sfwd-lesson') kind = 'lesson';
+    if (looksLikeModuleTitle(title) || postType === 'sfwd-course') kind = 'module';
+
+    parsed.push({ title, kind, youtubeIds, spotifyPaths });
+  }
+
+  return {
+    items: parsed,
+    summary: {
+      totalItems: items.length,
+      totalItemsWithEmbeds: parsed.length,
+      youtubeEmbeds,
+      spotifyEmbeds,
+      vimeoEmbeds: 0,
+      modulesWithEmbeds: parsed.filter((p) => p.kind === 'module').length,
+      lessonsWithEmbeds: parsed.filter((p) => p.kind === 'lesson').length,
+    },
+  };
+};
+
 export function ImportCourseData() {
   const [courseTitle, setCourseTitle] = useState("");
   const [importing, setImporting] = useState(false);
@@ -491,33 +585,33 @@ export function ImportCourseData() {
                   }
                   setImporting(true);
                   setLogs([]);
-                  addLog("Parsing WordPress XML...");
-                  
+                  addLog("Parsing WordPress XML (client-side)...");
+
                   try {
-                    const { data, error } = await supabase.functions.invoke('process-wordpress-xml', {
-                      body: { action: 'parse-xml', xmlContent: wordpressXml }
-                    });
-                    
-                    if (error) {
-                      addLog(`Error: ${error.message}`);
-                      toast.error(error.message);
-                    } else if (data.success) {
-                      setXmlResults(data);
-                      addLog(`Found ${data.summary.totalItemsWithEmbeds ?? data.summary.totalItems ?? 0} items with embeds`);
-                      addLog(`YouTube embeds: ${data.summary.youtubeEmbeds}`);
-                      addLog(`Spotify embeds: ${data.summary.spotifyEmbeds}`);
-                      addLog(`Modules with embeds: ${data.summary.modulesWithEmbeds}`);
-                      addLog(`Lessons with embeds: ${data.summary.lessonsWithEmbeds}`);
-                      toast.success(`Found ${data.summary.youtubeEmbeds + data.summary.spotifyEmbeds} embeds`);
-                    } else {
-                      addLog(`Failed: ${data.error}`);
-                      toast.error(data.error);
-                    }
+                    const parsed = parseWordpressXmlForEmbeds(wordpressXml);
+                    const modulesWithEmbeds = parsed.items
+                      .filter((p) => p.kind === 'module')
+                      .slice(0, 50)
+                      .map((p) => ({
+                        title: p.title,
+                        embeds: [
+                          ...p.youtubeIds.map((id) => ({ type: 'youtube', embedUrl: `https://www.youtube.com/embed/${id}` })),
+                          ...p.spotifyPaths.map((path) => ({ type: 'spotify', embedUrl: `https://open.spotify.com/embed/${path}` })),
+                        ],
+                      }));
+
+                    setXmlResults({ summary: parsed.summary, modulesWithEmbeds });
+                    addLog(`Found ${parsed.summary.totalItemsWithEmbeds} items with embeds`);
+                    addLog(`YouTube embeds: ${parsed.summary.youtubeEmbeds}`);
+                    addLog(`Spotify embeds: ${parsed.summary.spotifyEmbeds}`);
+                    addLog(`Modules with embeds: ${parsed.summary.modulesWithEmbeds}`);
+                    addLog(`Lessons with embeds: ${parsed.summary.lessonsWithEmbeds}`);
+                    toast.success(`Found ${parsed.summary.youtubeEmbeds + parsed.summary.spotifyEmbeds} embeds`);
                   } catch (err) {
                     addLog(`Exception: ${(err as Error).message}`);
                     toast.error((err as Error).message);
                   }
-                  
+
                   setImporting(false);
                 }}
                 disabled={importing || !wordpressXml}
@@ -535,31 +629,95 @@ export function ImportCourseData() {
 
                   setImporting(true);
                   setLogs([]);
-                  addLog("Applying embeds to all modules/lessons from XML...");
+                  addLog("Applying embeds to all modules/lessons from XML (client-side)...");
 
                   try {
-                    const { data, error } = await supabase.functions.invoke('process-wordpress-xml', {
-                      body: { action: 'sync-embeds', xmlContent: wordpressXml }
-                    });
+                    const parsed = parseWordpressXmlForEmbeds(wordpressXml);
 
-                    if (error) {
-                      addLog(`Error: ${error.message}`);
-                      toast.error(error.message);
-                    } else if (data?.success) {
-                      addLog(`Items with embeds: ${data.results.itemsWithEmbeds}`);
-                      addLog(`Modules updated: ${data.results.modulesUpdated} (links added: ${data.results.linksAddedToModules})`);
-                      addLog(`Lessons updated: ${data.results.lessonsUpdated} (links added: ${data.results.linksAddedToLessons})`);
-                      if (data.results.notFoundCount > 0) {
-                        addLog(`Not matched: ${data.results.notFoundCount} (showing up to 50)`);
-                        (data.results.notFoundSample || []).forEach((nf: any) => {
-                          addLog(`  - ${nf.kind}: ${nf.title}`);
-                        });
+                    const [{ data: modules, error: modulesError }, { data: lessons, error: lessonsError }] = await Promise.all([
+                      supabase.from('course_modules').select('id, title, description').limit(1000),
+                      supabase.from('module_lessons').select('id, title, content').limit(1000),
+                    ]);
+
+                    if (modulesError) throw new Error(modulesError.message);
+                    if (lessonsError) throw new Error(lessonsError.message);
+
+                    const moduleMap = new Map<string, any>();
+                    (modules || []).forEach((m: any) => moduleMap.set(normalizeTitleForMatch(m.title), m));
+
+                    const lessonMap = new Map<string, any>();
+                    (lessons || []).forEach((l: any) => lessonMap.set(normalizeTitleForMatch(l.title), l));
+
+                    let modulesUpdated = 0;
+                    let lessonsUpdated = 0;
+                    let linksAddedToModules = 0;
+                    let linksAddedToLessons = 0;
+                    const notFoundSample: Array<{ kind: string; title: string }> = [];
+
+                    for (const item of parsed.items) {
+                      const key = normalizeTitleForMatch(item.title);
+                      const urlLines = [
+                        ...item.youtubeIds.map((id) => `https://www.youtube.com/watch?v=${id}`),
+                        ...item.spotifyPaths.map((p) => `https://open.spotify.com/${p}`),
+                      ];
+                      if (!urlLines.length) continue;
+
+                      const targetIsModule = item.kind === 'module' || (item.kind === 'unknown' && looksLikeModuleTitle(item.title));
+
+                      if (targetIsModule && moduleMap.has(key)) {
+                        const mod = moduleMap.get(key);
+                        const existing = (mod.description || '').toString();
+                        const toAdd = urlLines.filter((u) => !existing.includes(u));
+                        if (!toAdd.length) continue;
+                        const updated = (existing.trimEnd() + `\n${toAdd.join('\n')}`).trim();
+                        const { error } = await supabase.from('course_modules').update({ description: updated }).eq('id', mod.id);
+                        if (error) throw new Error(error.message);
+                        modulesUpdated += 1;
+                        linksAddedToModules += toAdd.length;
+                        mod.description = updated;
+                        continue;
                       }
-                      toast.success(`Applied embeds: ${data.results.modulesUpdated} modules, ${data.results.lessonsUpdated} lessons`);
-                    } else {
-                      addLog(`Failed: ${data?.error || 'Unknown error'}`);
-                      toast.error(data?.error || 'Failed to apply embeds');
+
+                      if (lessonMap.has(key)) {
+                        const les = lessonMap.get(key);
+                        const existing = (les.content || '').toString();
+                        const toAdd = urlLines.filter((u) => !existing.includes(u));
+                        if (!toAdd.length) continue;
+                        const updated = (existing.trimEnd() + `\n${toAdd.join('\n')}`).trim();
+                        const { error } = await supabase.from('module_lessons').update({ content: updated }).eq('id', les.id);
+                        if (error) throw new Error(error.message);
+                        lessonsUpdated += 1;
+                        linksAddedToLessons += toAdd.length;
+                        les.content = updated;
+                        continue;
+                      }
+
+                      if (moduleMap.has(key)) {
+                        const mod = moduleMap.get(key);
+                        const existing = (mod.description || '').toString();
+                        const toAdd = urlLines.filter((u) => !existing.includes(u));
+                        if (!toAdd.length) continue;
+                        const updated = (existing.trimEnd() + `\n${toAdd.join('\n')}`).trim();
+                        const { error } = await supabase.from('course_modules').update({ description: updated }).eq('id', mod.id);
+                        if (error) throw new Error(error.message);
+                        modulesUpdated += 1;
+                        linksAddedToModules += toAdd.length;
+                        mod.description = updated;
+                        continue;
+                      }
+
+                      if (notFoundSample.length < 50) notFoundSample.push({ kind: item.kind, title: item.title });
                     }
+
+                    addLog(`Items with embeds: ${parsed.summary.totalItemsWithEmbeds}`);
+                    addLog(`Modules updated: ${modulesUpdated} (links added: ${linksAddedToModules})`);
+                    addLog(`Lessons updated: ${lessonsUpdated} (links added: ${linksAddedToLessons})`);
+                    if (notFoundSample.length > 0) {
+                      addLog(`Not matched: ${notFoundSample.length} (showing up to 50)`);
+                      notFoundSample.forEach((nf) => addLog(`  - ${nf.kind}: ${nf.title}`));
+                    }
+
+                    toast.success(`Applied embeds: ${modulesUpdated} modules, ${lessonsUpdated} lessons`);
                   } catch (err) {
                     addLog(`Exception: ${(err as Error).message}`);
                     toast.error((err as Error).message);

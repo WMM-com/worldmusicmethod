@@ -44,7 +44,7 @@ function extractYouTubeIds(text: string): string[] {
 
 function extractSpotifyPaths(text: string): string[] {
   const paths: string[] = [];
-  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
+  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:embed\/)?(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
   let match;
   while ((match = pattern.exec(text)) !== null) {
     const path = `${match[1]}/${match[2]}`;
@@ -259,9 +259,14 @@ export function LessonView({
                     !p.includes('[vocals') &&
                     !p.includes('soundslice.com'),
                   )
-                  .map((paragraph, i) => (
-                    <p key={i}>{paragraph}</p>
-                  ))}
+                  .map((paragraph, i) => {
+                    const cleaned = paragraph
+                      .replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/[\S]+/gi, '')
+                      .replace(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/[\S]+/gi, '')
+                      .trim();
+                    if (!cleaned) return null;
+                    return <p key={i}>{cleaned}</p>;
+                  })}
               </div>
             </Card>
           </motion.div>
