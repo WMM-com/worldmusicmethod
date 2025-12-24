@@ -5,6 +5,7 @@ import { useUserProfile, useUserPosts, useUserStats, useUpdateBio, useUploadAvat
 import { useFriendships, useSendFriendRequest } from '@/hooks/useSocial';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
+import { useR2Upload } from '@/hooks/useR2Upload';
 import { 
   useExtendedProfile, 
   useUpdateExtendedProfile, 
@@ -12,7 +13,8 @@ import {
   useCreateSection, 
   useUpdateSection, 
   useDeleteSection,
-  useReorderSections 
+  useReorderSections,
+  useProfileGallery
 } from '@/hooks/useProfilePortfolio';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,12 +23,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PostCard } from '@/components/social/PostCard';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { BioSection } from '@/components/profile/sections/BioSection';
 import { SpotifyEmbed } from '@/components/profile/sections/SpotifyEmbed';
 import { YouTubeEmbed } from '@/components/profile/sections/YouTubeEmbed';
+import { SoundCloudEmbed } from '@/components/profile/sections/SoundCloudEmbed';
+import { GenericEmbed } from '@/components/profile/sections/GenericEmbed';
 import { GallerySection } from '@/components/profile/sections/GallerySection';
 import { ProjectsSection } from '@/components/profile/sections/ProjectsSection';
 import { EventsEmbed } from '@/components/profile/sections/EventsEmbed';
@@ -35,7 +40,7 @@ import { CustomTabsSection } from '@/components/profile/sections/CustomTabsSecti
 import { 
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
-  Calendar, Share2, Layout, DollarSign, Globe, Lock
+  Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -48,14 +53,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-const SECTION_TYPES = [
-  { type: 'spotify', label: 'Spotify Playlist', icon: Music },
-  { type: 'youtube', label: 'YouTube Videos', icon: Video },
+// Main content sections (left side in About tab)
+const MAIN_SECTION_TYPES = [
   { type: 'gallery', label: 'Image Gallery', icon: Image },
-  { type: 'events', label: 'Events Calendar', icon: Calendar },
-  { type: 'social_feed', label: 'Social Feed', icon: Share2 },
   { type: 'projects', label: 'Projects', icon: Layout },
-  { type: 'custom_tabs', label: 'Custom Tabs', icon: FileText },
+  { type: 'custom_tabs', label: 'Custom Pages', icon: FileText },
+];
+
+// Sidebar embed sections (right side)
+const SIDEBAR_SECTION_TYPES = [
+  { type: 'youtube', label: 'YouTube', icon: Video },
+  { type: 'spotify', label: 'Spotify', icon: Music },
+  { type: 'soundcloud', label: 'SoundCloud', icon: Headphones },
+  { type: 'events', label: 'Events', icon: Calendar },
+  { type: 'generic', label: 'Other Embed', icon: Code },
 ];
 
 export default function Profile() {
@@ -126,15 +137,25 @@ export default function Profile() {
     }
   };
 
+  const { uploadFile } = useR2Upload();
+  
   const handleCropComplete = async (croppedBlob: Blob) => {
     const file = new File([croppedBlob], `${cropType}.jpg`, { type: 'image/jpeg' });
     if (cropType === 'avatar') {
       await uploadAvatar.mutateAsync(file);
     } else {
-      // For cover, we'd need to implement cover upload
-      // For now, using the same avatar upload mechanism but updating cover_image_url
-      await uploadAvatar.mutateAsync(file);
-      // TODO: Implement separate cover upload
+      // Upload cover image to R2 and update profile
+      const result = await uploadFile(file, {
+        bucket: 'user',
+        folder: 'covers',
+        imageOptimization: 'media',
+        trackInDatabase: true,
+        altText: `Cover image`,
+      });
+      if (result) {
+        await updateExtendedProfile.mutateAsync({ cover_image_url: result.url });
+        toast.success('Cover image updated');
+      }
     }
     URL.revokeObjectURL(cropImageSrc);
     setCropImageSrc('');
@@ -157,11 +178,13 @@ export default function Profile() {
     const sectionLabels: Record<string, string> = {
       spotify: 'Music',
       youtube: 'Videos',
+      soundcloud: 'SoundCloud',
       gallery: 'Gallery',
       events: 'Events',
       social_feed: 'Social',
       projects: 'Projects',
       custom_tabs: 'Info',
+      generic: 'Embed',
     };
     
     await createSection.mutateAsync({
@@ -179,7 +202,16 @@ export default function Profile() {
     toast.success('Section removed');
   };
 
-  const renderSection = (section: any) => {
+  // Categorize sections for layout
+  const mainSections = sections?.filter(s => 
+    ['gallery', 'projects', 'custom_tabs', 'social_feed'].includes(s.section_type)
+  ) || [];
+  
+  const sidebarSections = sections?.filter(s => 
+    ['youtube', 'spotify', 'soundcloud', 'events', 'generic'].includes(s.section_type)
+  ) || [];
+
+  const renderSection = (section: any, isSidebar = false) => {
     const props = {
       section,
       isEditing,
@@ -192,6 +224,10 @@ export default function Profile() {
         return <SpotifyEmbed key={section.id} {...props} />;
       case 'youtube':
         return <YouTubeEmbed key={section.id} {...props} />;
+      case 'soundcloud':
+        return <SoundCloudEmbed key={section.id} {...props} />;
+      case 'generic':
+        return <GenericEmbed key={section.id} {...props} />;
       case 'gallery':
         return <GallerySection key={section.id} {...props} userId={profileId!} />;
       case 'events':
@@ -424,13 +460,30 @@ export default function Profile() {
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline">
+                          <Button variant="outline" size="sm">
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Section
+                            Add Main Section
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {SECTION_TYPES.map(({ type, label, icon: Icon }) => (
+                          {MAIN_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
+                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
+                              <Icon className="h-4 w-4 mr-2" />
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Sidebar Embed
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {SIDEBAR_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
                             <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
                               <Icon className="h-4 w-4 mr-2" />
                               {label}
@@ -445,111 +498,162 @@ export default function Profile() {
             </Card>
           </div>
 
-          {/* Main Content */}
-          <div className="py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Bio & Sections */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Bio Section */}
-              {extendedProfile && (
-                <BioSection profile={extendedProfile} isEditing={isEditing} />
-              )}
+          {/* Main Content with Tabs */}
+          <div className="py-8">
+            <Tabs defaultValue="about" className="w-full">
+              <TabsList className="mb-6">
+                <TabsTrigger value="about" className="gap-2">
+                  <User className="h-4 w-4" />
+                  About
+                </TabsTrigger>
+                <TabsTrigger value="posts" className="gap-2">
+                  <FileText className="h-4 w-4" />
+                  Posts
+                </TabsTrigger>
+                <TabsTrigger value="media" className="gap-2">
+                  <Image className="h-4 w-4" />
+                  Media
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Dynamic Sections */}
-              {sectionsLoading ? (
-                <Skeleton className="h-48" />
-              ) : (
-                sections?.map(renderSection)
-              )}
+              {/* About Tab */}
+              <TabsContent value="about">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column - Bio & Main Sections */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {extendedProfile && (
+                      <BioSection profile={extendedProfile} isEditing={isEditing} />
+                    )}
 
-              {/* Posts Section */}
-              <Card>
-                <CardContent className="pt-6">
-                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Posts
-                  </h2>
-                  <div className="space-y-4">
-                    {postsLoading ? (
-                      <>
-                        <Skeleton className="h-32" />
-                        <Skeleton className="h-32" />
-                      </>
-                    ) : posts?.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-8">No posts yet</p>
+                    {sectionsLoading ? (
+                      <Skeleton className="h-48" />
                     ) : (
-                      posts?.map((post) => (
-                        <PostCard 
-                          key={post.id} 
-                          post={{
-                            ...post,
-                            profiles: {
-                              full_name: profile.full_name,
-                              avatar_url: profile.avatar_url,
-                            },
-                            user_appreciated: false,
-                          }} 
-                        />
-                      ))
+                      mainSections.map(section => renderSection(section))
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Right Column - Quick Info */}
-            <div className="space-y-6">
-              {/* Social Links */}
-              {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <Share2 className="h-4 w-4" />
-                      Links
-                    </h3>
-                    <div className="space-y-2">
-                      {extendedProfile.website_url && (
-                        <a 
-                          href={extendedProfile.website_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-primary hover:underline"
-                        >
-                          <Globe className="h-4 w-4" />
-                          Website
-                        </a>
-                      )}
-                      {Object.entries(extendedProfile.social_links as Record<string, string>).map(([platform, url]) => (
-                        <a 
-                          key={platform}
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-primary hover:underline capitalize"
-                        >
-                          <Share2 className="h-4 w-4" />
-                          {platform}
-                        </a>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                  {/* Right Column - Embeds & Info */}
+                  <div className="space-y-6">
+                    {/* Sidebar Embed Sections */}
+                    {sidebarSections.map(section => renderSection(section))}
 
-              {/* Member Info */}
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="font-semibold mb-4">Info</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
-                  </p>
-                  {extendedProfile?.profile_type && (
-                    <Badge variant="outline" className="mt-2 capitalize">
-                      {extendedProfile.profile_type}
-                    </Badge>
+                    {/* Social Links */}
+                    {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
+                      <Card>
+                        <CardContent className="pt-6">
+                          <h3 className="font-semibold mb-4 flex items-center gap-2">
+                            <Share2 className="h-4 w-4" />
+                            Links
+                          </h3>
+                          <div className="space-y-2">
+                            {extendedProfile.website_url && (
+                              <a 
+                                href={extendedProfile.website_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-primary hover:underline"
+                              >
+                                <Globe className="h-4 w-4" />
+                                Website
+                              </a>
+                            )}
+                            {Object.entries(extendedProfile.social_links as Record<string, string>).map(([platform, url]) => (
+                              <a 
+                                key={platform}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-sm text-primary hover:underline capitalize"
+                              >
+                                <Share2 className="h-4 w-4" />
+                                {platform}
+                              </a>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Member Info */}
+                    <Card>
+                      <CardContent className="pt-6">
+                        <h3 className="font-semibold mb-4">Info</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
+                        </p>
+                        {extendedProfile?.profile_type && (
+                          <Badge variant="outline" className="mt-2 capitalize">
+                            {extendedProfile.profile_type}
+                          </Badge>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Posts Tab */}
+              <TabsContent value="posts">
+                <div className="max-w-2xl mx-auto space-y-4">
+                  {postsLoading ? (
+                    <>
+                      <Skeleton className="h-32" />
+                      <Skeleton className="h-32" />
+                    </>
+                  ) : posts?.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">No posts yet</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    posts?.map((post) => (
+                      <PostCard 
+                        key={post.id} 
+                        post={{
+                          ...post,
+                          profiles: {
+                            full_name: profile.full_name,
+                            avatar_url: profile.avatar_url,
+                          },
+                          user_appreciated: false,
+                        }} 
+                      />
+                    ))
                   )}
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </TabsContent>
+
+              {/* Media Tab */}
+              <TabsContent value="media">
+                <div className="space-y-6">
+                  {/* Gallery Section */}
+                  {sections?.filter(s => s.section_type === 'gallery').map(section => renderSection(section))}
+                  
+                  {/* YouTube Videos from posts or sections */}
+                  {sections?.filter(s => s.section_type === 'youtube').length === 0 && 
+                   sections?.filter(s => s.section_type === 'gallery').length === 0 && (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">No media yet</p>
+                        {isEditing && (
+                          <Button 
+                            variant="outline" 
+                            className="mt-4"
+                            onClick={() => handleAddSection('gallery')}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Gallery
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
 
