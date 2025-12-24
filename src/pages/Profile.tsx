@@ -53,13 +53,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-// Main content sections (left side in About tab)
-const MAIN_SECTION_TYPES = [
-  { type: 'gallery', label: 'Image Gallery', icon: Image },
-  { type: 'projects', label: 'Projects', icon: Layout },
-  { type: 'custom_tabs', label: 'Custom Pages', icon: FileText },
-];
-
 // Sidebar embed sections (right side)
 const SIDEBAR_SECTION_TYPES = [
   { type: 'youtube', label: 'YouTube', icon: Video },
@@ -223,7 +216,7 @@ export default function Profile() {
       case 'spotify':
         return <SpotifyEmbed key={section.id} {...props} />;
       case 'youtube':
-        return <YouTubeEmbed key={section.id} {...props} />;
+        return <YouTubeEmbed key={section.id} {...props} isSidebar={isSidebar} />;
       case 'soundcloud':
         return <SoundCloudEmbed key={section.id} {...props} />;
       case 'generic':
@@ -462,23 +455,6 @@ export default function Profile() {
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm">
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Main Section
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {MAIN_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
-                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
-                              <Icon className="h-4 w-4 mr-2" />
-                              {label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Plus className="h-4 w-4 mr-2" />
                             Add Sidebar Embed
                           </Button>
                         </DropdownMenuTrigger>
@@ -518,24 +494,18 @@ export default function Profile() {
 
               {/* About Tab */}
               <TabsContent value="about">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Left Column - Bio & Main Sections */}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  {/* Left Column - Bio (narrower to match posts width) */}
                   <div className="lg:col-span-2 space-y-6">
                     {extendedProfile && (
                       <BioSection profile={extendedProfile} isEditing={isEditing} />
                     )}
-
-                    {sectionsLoading ? (
-                      <Skeleton className="h-48" />
-                    ) : (
-                      mainSections.map(section => renderSection(section))
-                    )}
                   </div>
 
-                  {/* Right Column - Embeds & Info */}
-                  <div className="space-y-6">
+                  {/* Right Column - Embeds & Info (wider) */}
+                  <div className="lg:col-span-3 space-y-6">
                     {/* Sidebar Embed Sections */}
-                    {sidebarSections.map(section => renderSection(section))}
+                    {sidebarSections.map(section => renderSection(section, true))}
 
                     {/* Social Links */}
                     {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
@@ -594,34 +564,41 @@ export default function Profile() {
 
               {/* Posts Tab */}
               <TabsContent value="posts">
-                <div className="max-w-2xl mx-auto space-y-4">
-                  {postsLoading ? (
-                    <>
-                      <Skeleton className="h-32" />
-                      <Skeleton className="h-32" />
-                    </>
-                  ) : posts?.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No posts yet</p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    posts?.map((post) => (
-                      <PostCard 
-                        key={post.id} 
-                        post={{
-                          ...post,
-                          profiles: {
-                            full_name: profile.full_name,
-                            avatar_url: profile.avatar_url,
-                          },
-                          user_appreciated: false,
-                        }} 
-                      />
-                    ))
-                  )}
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                  {/* Left Column - Posts (same width as About bio) */}
+                  <div className="lg:col-span-2 space-y-4">
+                    {postsLoading ? (
+                      <>
+                        <Skeleton className="h-32" />
+                        <Skeleton className="h-32" />
+                      </>
+                    ) : posts?.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center">
+                          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <p className="text-muted-foreground">No posts yet</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      posts?.map((post) => (
+                        <PostCard 
+                          key={post.id} 
+                          post={{
+                            ...post,
+                            profiles: {
+                              full_name: profile.full_name,
+                              avatar_url: profile.avatar_url,
+                            },
+                            user_appreciated: false,
+                          }} 
+                        />
+                      ))
+                    )}
+                  </div>
+                  {/* Right Column - Reserved for future use */}
+                  <div className="lg:col-span-3">
+                    {/* Future sidebar content */}
+                  </div>
                 </div>
               </TabsContent>
 
