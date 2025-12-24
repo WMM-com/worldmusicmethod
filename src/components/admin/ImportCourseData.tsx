@@ -62,6 +62,8 @@ export function ImportCourseData() {
   const [modulesText, setModulesText] = useState("");
   const [lessonsText, setLessonsText] = useState("");
   const [landingPageText, setLandingPageText] = useState("");
+  const [wordpressXml, setWordpressXml] = useState("");
+  const [xmlResults, setXmlResults] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [results, setResults] = useState<{
     modulesCreated: number;
@@ -394,9 +396,10 @@ export function ImportCourseData() {
         </div>
         
         <Tabs defaultValue="modules" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="modules">Modules & Lessons</TabsTrigger>
             <TabsTrigger value="landing">Landing Page</TabsTrigger>
+            <TabsTrigger value="wordpress">WordPress XML</TabsTrigger>
           </TabsList>
           
           <TabsContent value="modules" className="space-y-4">
@@ -460,6 +463,145 @@ export function ImportCourseData() {
             <Button onClick={handleLandingPageImport} disabled={importing}>
               {importing ? "Importing..." : "Import Landing Page"}
             </Button>
+          </TabsContent>
+          
+          <TabsContent value="wordpress" className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">WordPress XML Export</label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="file"
+                  accept=".xml"
+                  onChange={handleFileUpload(setWordpressXml)}
+                  className="max-w-xs"
+                />
+                {wordpressXml && <span className="text-xs text-muted-foreground self-center">{(wordpressXml.length / 1024 / 1024).toFixed(2)} MB loaded</span>}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload a WordPress XML export to extract YouTube and Spotify embeds from module and lesson pages.
+              </p>
+            </div>
+            
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                onClick={async () => {
+                  if (!wordpressXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Parsing WordPress XML...");
+                  
+                  try {
+                    const { data, error } = await supabase.functions.invoke('process-wordpress-xml', {
+                      body: { action: 'parse-xml', xmlContent: wordpressXml }
+                    });
+                    
+                    if (error) {
+                      addLog(`Error: ${error.message}`);
+                      toast.error(error.message);
+                    } else if (data.success) {
+                      setXmlResults(data);
+                      addLog(`Found ${data.summary.totalItems} items`);
+                      addLog(`YouTube embeds: ${data.summary.youtubeEmbeds}`);
+                      addLog(`Spotify embeds: ${data.summary.spotifyEmbeds}`);
+                      addLog(`Vimeo embeds: ${data.summary.vimeoEmbeds}`);
+                      addLog(`Modules with embeds: ${data.summary.modulesWithEmbeds}`);
+                      addLog(`Lessons with embeds: ${data.summary.lessonsWithEmbeds}`);
+                      
+                      if (data.modulesWithEmbeds?.length > 0) {
+                        addLog('\n--- Modules with embeds ---');
+                        data.modulesWithEmbeds.slice(0, 10).forEach((m: any) => {
+                          addLog(`${m.title}: ${m.embeds.map((e: any) => e.type).join(', ')}`);
+                        });
+                      }
+                      
+                      toast.success(`Found ${data.summary.youtubeEmbeds + data.summary.spotifyEmbeds} embeds`);
+                    } else {
+                      addLog(`Failed: ${data.error}`);
+                      toast.error(data.error);
+                    }
+                  } catch (err) {
+                    addLog(`Exception: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+                  
+                  setImporting(false);
+                }}
+                disabled={importing || !wordpressXml}
+              >
+                {importing ? "Processing..." : "Parse XML for Embeds"}
+              </Button>
+              
+              <Button 
+                variant="outline"
+                onClick={async () => {
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Fixing module description formatting...");
+                  
+                  try {
+                    const { data, error } = await supabase.functions.invoke('process-wordpress-xml', {
+                      body: { action: 'fix-descriptions' }
+                    });
+                    
+                    if (error) {
+                      addLog(`Error: ${error.message}`);
+                      toast.error(error.message);
+                    } else if (data.success) {
+                      addLog(`Fixed ${data.modulesFixed} modules`);
+                      if (data.updates?.length > 0) {
+                        data.updates.forEach((u: any) => {
+                          addLog(`Fixed: ${u.title}`);
+                        });
+                      }
+                      toast.success(`Fixed ${data.modulesFixed} module descriptions`);
+                    } else {
+                      addLog(`Failed: ${data.error}`);
+                      toast.error(data.error);
+                    }
+                  } catch (err) {
+                    addLog(`Exception: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+                  
+                  setImporting(false);
+                }}
+                disabled={importing}
+              >
+                Fix Description Formatting
+              </Button>
+            </div>
+            
+            {xmlResults && (
+              <div className="mt-4 p-4 bg-muted rounded-lg space-y-2">
+                <h4 className="font-medium">Extraction Results</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>Total items: {xmlResults.summary?.totalItems}</div>
+                  <div>YouTube: {xmlResults.summary?.youtubeEmbeds}</div>
+                  <div>Spotify: {xmlResults.summary?.spotifyEmbeds}</div>
+                  <div>Vimeo: {xmlResults.summary?.vimeoEmbeds}</div>
+                </div>
+                {xmlResults.modulesWithEmbeds?.length > 0 && (
+                  <div className="mt-2">
+                    <h5 className="text-sm font-medium">Modules with Embeds:</h5>
+                    <ScrollArea className="h-32 mt-1">
+                      <div className="text-xs space-y-1">
+                        {xmlResults.modulesWithEmbeds.map((m: any, i: number) => (
+                          <div key={i} className="p-1 bg-background rounded">
+                            <span className="font-medium">{m.title}</span>
+                            <span className="text-muted-foreground ml-2">
+                              {m.embeds.map((e: any) => `${e.type}: ${e.embedUrl.substring(0, 40)}...`).join(', ')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
         
