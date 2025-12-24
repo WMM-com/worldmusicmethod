@@ -503,20 +503,11 @@ export function ImportCourseData() {
                       toast.error(error.message);
                     } else if (data.success) {
                       setXmlResults(data);
-                      addLog(`Found ${data.summary.totalItems} items`);
+                      addLog(`Found ${data.summary.totalItemsWithEmbeds ?? data.summary.totalItems ?? 0} items with embeds`);
                       addLog(`YouTube embeds: ${data.summary.youtubeEmbeds}`);
                       addLog(`Spotify embeds: ${data.summary.spotifyEmbeds}`);
-                      addLog(`Vimeo embeds: ${data.summary.vimeoEmbeds}`);
                       addLog(`Modules with embeds: ${data.summary.modulesWithEmbeds}`);
                       addLog(`Lessons with embeds: ${data.summary.lessonsWithEmbeds}`);
-                      
-                      if (data.modulesWithEmbeds?.length > 0) {
-                        addLog('\n--- Modules with embeds ---');
-                        data.modulesWithEmbeds.slice(0, 10).forEach((m: any) => {
-                          addLog(`${m.title}: ${m.embeds.map((e: any) => e.type).join(', ')}`);
-                        });
-                      }
-                      
                       toast.success(`Found ${data.summary.youtubeEmbeds + data.summary.spotifyEmbeds} embeds`);
                     } else {
                       addLog(`Failed: ${data.error}`);
@@ -533,44 +524,52 @@ export function ImportCourseData() {
               >
                 {importing ? "Processing..." : "Parse XML for Embeds"}
               </Button>
-              
-              <Button 
-                variant="outline"
+
+              <Button
+                variant="default"
                 onClick={async () => {
+                  if (!wordpressXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+
                   setImporting(true);
                   setLogs([]);
-                  addLog("Fixing module description formatting...");
-                  
+                  addLog("Applying embeds to all modules/lessons from XML...");
+
                   try {
                     const { data, error } = await supabase.functions.invoke('process-wordpress-xml', {
-                      body: { action: 'fix-descriptions' }
+                      body: { action: 'sync-embeds', xmlContent: wordpressXml }
                     });
-                    
+
                     if (error) {
                       addLog(`Error: ${error.message}`);
                       toast.error(error.message);
-                    } else if (data.success) {
-                      addLog(`Fixed ${data.modulesFixed} modules`);
-                      if (data.updates?.length > 0) {
-                        data.updates.forEach((u: any) => {
-                          addLog(`Fixed: ${u.title}`);
+                    } else if (data?.success) {
+                      addLog(`Items with embeds: ${data.results.itemsWithEmbeds}`);
+                      addLog(`Modules updated: ${data.results.modulesUpdated} (links added: ${data.results.linksAddedToModules})`);
+                      addLog(`Lessons updated: ${data.results.lessonsUpdated} (links added: ${data.results.linksAddedToLessons})`);
+                      if (data.results.notFoundCount > 0) {
+                        addLog(`Not matched: ${data.results.notFoundCount} (showing up to 50)`);
+                        (data.results.notFoundSample || []).forEach((nf: any) => {
+                          addLog(`  - ${nf.kind}: ${nf.title}`);
                         });
                       }
-                      toast.success(`Fixed ${data.modulesFixed} module descriptions`);
+                      toast.success(`Applied embeds: ${data.results.modulesUpdated} modules, ${data.results.lessonsUpdated} lessons`);
                     } else {
-                      addLog(`Failed: ${data.error}`);
-                      toast.error(data.error);
+                      addLog(`Failed: ${data?.error || 'Unknown error'}`);
+                      toast.error(data?.error || 'Failed to apply embeds');
                     }
                   } catch (err) {
                     addLog(`Exception: ${(err as Error).message}`);
                     toast.error((err as Error).message);
                   }
-                  
+
                   setImporting(false);
                 }}
-                disabled={importing}
+                disabled={importing || !wordpressXml}
               >
-                Fix Description Formatting
+                {importing ? "Applying..." : "Apply Embeds to Modules/Lessons"}
               </Button>
             </div>
             
