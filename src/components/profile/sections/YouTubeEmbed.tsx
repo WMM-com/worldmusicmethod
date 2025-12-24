@@ -11,9 +11,10 @@ interface YouTubeEmbedProps {
   isEditing: boolean;
   onUpdate: (content: Record<string, any>) => void;
   onDelete: () => void;
+  isSidebar?: boolean;
 }
 
-export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete }: YouTubeEmbedProps) {
+export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete, isSidebar = false }: YouTubeEmbedProps) {
   const [editing, setEditing] = useState(false);
   const [videos, setVideos] = useState<string[]>(section.content?.videos || []);
   const [newUrl, setNewUrl] = useState('');
@@ -112,7 +113,7 @@ export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete }: YouTube
             </div>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className={isSidebar ? "space-y-4" : "grid gap-4 sm:grid-cols-2"}>
             {section.content?.videos?.map((url: string, index: number) => (
               <div key={index} className="aspect-video">
                 <iframe
