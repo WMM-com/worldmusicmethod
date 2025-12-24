@@ -58,7 +58,6 @@ const SIDEBAR_SECTION_TYPES = [
   { type: 'youtube', label: 'YouTube', icon: Video },
   { type: 'spotify', label: 'Spotify', icon: Music },
   { type: 'soundcloud', label: 'SoundCloud', icon: Headphones },
-  { type: 'events', label: 'Events', icon: Calendar },
   { type: 'generic', label: 'Other Embed', icon: Code },
 ];
 
@@ -494,16 +493,16 @@ export default function Profile() {
 
               {/* About Tab */}
               <TabsContent value="about">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  {/* Left Column - Bio (narrower to match posts width) */}
-                  <div className="lg:col-span-2 space-y-6">
+                <div className="flex gap-6">
+                  {/* Left Column - Bio (fixed max-width like posts) */}
+                  <div className="w-full max-w-2xl space-y-6">
                     {extendedProfile && (
                       <BioSection profile={extendedProfile} isEditing={isEditing} />
                     )}
                   </div>
 
-                  {/* Right Column - Embeds & Info (wider) */}
-                  <div className="lg:col-span-3 space-y-6">
+                  {/* Right Column - Embeds & Info (fills remaining space) */}
+                  <div className="hidden lg:block flex-1 space-y-6">
                     {/* Sidebar Embed Sections */}
                     {sidebarSections.map(section => renderSection(section, true))}
 
@@ -564,9 +563,9 @@ export default function Profile() {
 
               {/* Posts Tab */}
               <TabsContent value="posts">
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  {/* Left Column - Posts (same width as About bio) */}
-                  <div className="lg:col-span-2 space-y-4">
+                <div className="flex gap-6">
+                  {/* Left Column - Posts (same max-width as About) */}
+                  <div className="w-full max-w-2xl space-y-4">
                     {postsLoading ? (
                       <>
                         <Skeleton className="h-32" />
@@ -596,7 +595,7 @@ export default function Profile() {
                     )}
                   </div>
                   {/* Right Column - Reserved for future use */}
-                  <div className="lg:col-span-3">
+                  <div className="hidden lg:block flex-1">
                     {/* Future sidebar content */}
                   </div>
                 </div>
