@@ -2694,6 +2694,7 @@ export type Database = {
           username: string | null
           vat_number: string | null
           website_url: string | null
+          wp_user_id: number | null
         }
         Insert: {
           address?: string | null
@@ -2732,6 +2733,7 @@ export type Database = {
           username?: string | null
           vat_number?: string | null
           website_url?: string | null
+          wp_user_id?: number | null
         }
         Update: {
           address?: string | null
@@ -2770,6 +2772,7 @@ export type Database = {
           username?: string | null
           vat_number?: string | null
           website_url?: string | null
+          wp_user_id?: number | null
         }
         Relationships: []
       }

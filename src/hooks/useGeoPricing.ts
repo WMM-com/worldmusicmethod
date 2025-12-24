@@ -183,5 +183,5 @@ export function useGeoPricing(): GeoPricingResult {
 
 export function formatPrice(amount: number, currency: string): string {
   const symbol = currencySymbols[currency] || currency;
-  return `${symbol}${amount.toFixed(2)}`;
+  return `${symbol}${Math.round(amount)}`;
 }
