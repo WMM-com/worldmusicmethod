@@ -556,7 +556,7 @@ function CheckoutContent() {
                       <p className="font-semibold">Total</p>
                       {paymentMethod === 'card' && (
                         <p className="text-xs text-green-600">
-                          Save 2% ({formatPrice(stripeDiscount, currency)})
+                          Save 2% when paying with card ({formatPrice(stripeDiscount, currency)})
                         </p>
                       )}
                     </div>
