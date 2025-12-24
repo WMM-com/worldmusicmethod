@@ -63,6 +63,12 @@ function removeMediaUrls(text: string): string {
     .replace(/(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/[a-zA-Z0-9_-]{11}/g, '')
     .replace(/(?:https?:\/\/)?youtu\.be\/[a-zA-Z0-9_-]{11}/g, '')
     .replace(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/(?:embed\/)?(track|album|playlist|artist)\/[a-zA-Z0-9]+/g, '')
+    // Remove markdown labels for embeds
+    .replace(/\*\*Spotify Playlist:\*\*/gi, '')
+    .replace(/\*\*YouTube Reference:\*\*/gi, '')
+    .replace(/\*\*YouTube:\*\*/gi, '')
+    .replace(/\*\*Spotify:\*\*/gi, '')
+    .replace(/---/g, '')
     .trim();
 }
 

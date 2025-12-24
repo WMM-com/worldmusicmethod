@@ -263,6 +263,11 @@ export function LessonView({
                     const cleaned = paragraph
                       .replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/[\S]+/gi, '')
                       .replace(/(?:https?:\/\/)?(?:open\.)?spotify\.com\/[\S]+/gi, '')
+                      .replace(/\*\*Spotify Playlist:\*\*/gi, '')
+                      .replace(/\*\*YouTube Reference:\*\*/gi, '')
+                      .replace(/\*\*YouTube:\*\*/gi, '')
+                      .replace(/\*\*Spotify:\*\*/gi, '')
+                      .replace(/---/g, '')
                       .trim();
                     if (!cleaned) return null;
                     return <p key={i}>{cleaned}</p>;
