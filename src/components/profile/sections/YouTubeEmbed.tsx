@@ -19,11 +19,19 @@ export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete }: YouTube
   const [newUrl, setNewUrl] = useState('');
 
   const getYouTubeEmbedUrl = (url: string) => {
+    // Already an embed URL
+    if (url.includes('youtube.com/embed/')) {
+      return url;
+    }
     // Extract video ID from various YouTube URL formats
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     if (match && match[2].length === 11) {
       return `https://www.youtube.com/embed/${match[2]}`;
+    }
+    // If no match but looks like a video ID
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
+      return `https://www.youtube.com/embed/${url.trim()}`;
     }
     return url;
   };
