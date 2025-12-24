@@ -1330,7 +1330,7 @@ export default function CourseLanding() {
                   {courseConfig?.ctaDescription || 'Join a worldwide community of musicians.'}
                 </p>
                 {priceInfo && !isEnrolled && (
-                  <p className="text-2xl font-bold mb-4">
+                  <p className="text-2xl font-bold text-yellow-500 mb-4">
                     {formatPrice(priceInfo.price, priceInfo.currency)}
                   </p>
                 )}
@@ -1386,7 +1386,7 @@ export default function CourseLanding() {
               <div className="flex items-center gap-4 min-w-0">
                 {priceInfo && (
                   <div>
-                    <p className="text-lg font-bold">
+                    <p className="text-lg font-bold text-yellow-500">
                       {formatPrice(priceInfo.price, priceInfo.currency)}
                     </p>
                     {priceInfo.discount_percentage > 0 && (
