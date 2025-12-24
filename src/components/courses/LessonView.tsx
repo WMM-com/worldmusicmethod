@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -23,6 +23,65 @@ interface LessonViewProps {
   onNavigate: (direction: 'prev' | 'next') => void;
   hasPrev: boolean;
   hasNext: boolean;
+}
+
+function extractYouTubeIds(text: string): string[] {
+  const ids: string[] = [];
+  const patterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?youtu\.be\/([a-zA-Z0-9_-]{11})/g,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/g,
+  ];
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (!ids.includes(match[1])) ids.push(match[1]);
+    }
+  }
+  return ids;
+}
+
+function extractSpotifyPaths(text: string): string[] {
+  const paths: string[] = [];
+  const pattern = /(?:https?:\/\/)?(?:open\.)?spotify\.com\/(track|album|playlist|artist)\/([a-zA-Z0-9]+)/g;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const path = `${match[1]}/${match[2]}`;
+    if (!paths.includes(path)) paths.push(path);
+  }
+  return paths;
+}
+
+function YouTubeEmbed({ videoId }: { videoId: string }) {
+  return (
+    <div className="max-w-4xl">
+      <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          className="w-full h-full"
+          title="YouTube video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    </div>
+  );
+}
+
+function SpotifyEmbed({ embedPath }: { embedPath: string }) {
+  return (
+    <div className="max-w-xl">
+      <iframe
+        src={`https://open.spotify.com/embed/${embedPath}`}
+        width="100%"
+        height="152"
+        allow="encrypted-media"
+        className="rounded-xl"
+        title="Spotify player"
+      />
+    </div>
+  );
 }
 
 export function LessonView({
@@ -53,6 +112,30 @@ export function LessonView({
   };
 
   const listeningRefs = lesson.listening_references || [];
+
+  const contentText = lesson.content || '';
+  const videoUrl = lesson.video_url || '';
+
+  const contentYoutubeIds = useMemo(() => extractYouTubeIds(contentText), [contentText]);
+  const contentSpotifyPaths = useMemo(() => extractSpotifyPaths(contentText), [contentText]);
+
+  const spotifyPathFromVideoUrl = useMemo(() => {
+    const m = videoUrl.match(/spotify\.com\/(?:embed\/)?(track|album|playlist|artist)\/([a-zA-Z0-9]+)/i);
+    return m ? `${m[1]}/${m[2]}` : null;
+  }, [videoUrl]);
+
+  const youtubeIdsToRender = useMemo(() => {
+    // If main player is already YouTube, don't double-render from content
+    if (videoUrl.includes('youtube') || videoUrl.includes('youtu.be')) return [];
+    return contentYoutubeIds;
+  }, [contentYoutubeIds, videoUrl]);
+
+  const spotifyPathsToRender = useMemo(() => {
+    const all = new Set<string>();
+    if (spotifyPathFromVideoUrl) all.add(spotifyPathFromVideoUrl);
+    contentSpotifyPaths.forEach((p) => all.add(p));
+    return Array.from(all);
+  }, [contentSpotifyPaths, spotifyPathFromVideoUrl]);
 
   return (
     <div className="flex-1 overflow-auto w-full">
@@ -86,7 +169,7 @@ export function LessonView({
         </motion.div>
 
         {/* Soundslice Embed - if video_url contains soundslice or is a short ID */}
-        {lesson.video_url && (lesson.video_url.includes('soundslice') || (!lesson.video_url.includes('youtube') && !lesson.video_url.includes('vimeo') && !lesson.video_url.includes('.mp4'))) && (
+        {lesson.video_url && (lesson.video_url.includes('soundslice') || (!lesson.video_url.includes('youtube') && !lesson.video_url.includes('vimeo') && !lesson.video_url.includes('.mp4') && !lesson.video_url.includes('spotify.com'))) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -114,6 +197,7 @@ export function LessonView({
                 <iframe
                   src={lesson.video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
                   className="w-full h-full"
+                  title="YouTube video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
@@ -135,6 +219,23 @@ export function LessonView({
           </motion.div>
         )}
 
+        {/* Extra embeds found in lesson content (YouTube/Spotify) */}
+        {(youtubeIdsToRender.length > 0 || spotifyPathsToRender.length > 0) && (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mb-8 space-y-4"
+          >
+            {youtubeIdsToRender.map((id) => (
+              <YouTubeEmbed key={id} videoId={id} />
+            ))}
+            {spotifyPathsToRender.map((p) => (
+              <SpotifyEmbed key={p} embedPath={p} />
+            ))}
+          </motion.div>
+        )}
+
         {/* Content */}
         {lesson.content && (
           <motion.div
@@ -149,9 +250,18 @@ export function LessonView({
                 <h2 className="font-semibold">Lesson Notes</h2>
               </div>
               <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90">
-                {lesson.content.split('\n').filter(p => !p.includes('[guitar') && !p.includes('[drum') && !p.includes('[bass') && !p.includes('[vocals') && !p.includes('soundslice.com')).map((paragraph, i) => (
-                  <p key={i}>{paragraph}</p>
-                ))}
+                {lesson.content
+                  .split('\n')
+                  .filter((p) =>
+                    !p.includes('[guitar') &&
+                    !p.includes('[drum') &&
+                    !p.includes('[bass') &&
+                    !p.includes('[vocals') &&
+                    !p.includes('soundslice.com'),
+                  )
+                  .map((paragraph, i) => (
+                    <p key={i}>{paragraph}</p>
+                  ))}
               </div>
             </Card>
           </motion.div>
@@ -249,3 +359,4 @@ export function LessonView({
     </div>
   );
 }
+
