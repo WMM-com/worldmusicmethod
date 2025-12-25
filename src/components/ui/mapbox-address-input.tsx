@@ -16,7 +16,9 @@ interface MapboxSuggestion {
   text: string;
 }
 
-const MAPBOX_API_KEY = import.meta.env.VITE_MAPBOX_API_KEY;
+// Mapbox API key from environment - stored in Supabase secrets for edge functions
+// For frontend, we'll need to fetch it or use a public token
+const MAPBOX_API_KEY = import.meta.env.VITE_MAPBOX_API_KEY || 'pk.eyJ1IjoibG92YWJsZS1haSIsImEiOiJjbGZudGJ3d3owMDF2M3Bxc2NhbzBleGxhIn0.placeholder';
 
 export function MapboxAddressInput({ 
   value, 

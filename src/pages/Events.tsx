@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useEvents } from '@/hooks/useEvents';
 import { useSharedEvents } from '@/hooks/useSharedEvents';
+import { useEventInvoices } from '@/hooks/useInvoices';
 import { ShareEventDialog } from '@/components/events/ShareEventDialog';
 import { EventCalendarView } from '@/components/events/EventCalendarView';
 import { EventDetailDialog } from '@/components/events/EventDetailDialog';
@@ -20,7 +21,7 @@ import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
 import { RecurringEventDialog } from '@/components/events/RecurringEventDialog';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { format } from 'date-fns';
-import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText, Users } from 'lucide-react';
+import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText, Users, Mail } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -59,7 +60,7 @@ export default function Events() {
   } = useEvents();
   
   const { getEventShares } = useSharedEvents();
-  
+  const { eventInvoices } = useEventInvoices();
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -604,7 +605,7 @@ export default function Events() {
                         <div className="flex items-center gap-4">
                           <div className="text-right space-y-1">
                             <p className="font-semibold">{formatCurrency(event.fee)}</p>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap justify-end">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(event.status)}`}>
                                 {event.status}
                               </span>
@@ -614,6 +615,12 @@ export default function Events() {
                                 'bg-muted text-muted-foreground'
                               }`}>{event.payment_status}</span>
                             </div>
+                            {eventInvoices[event.id]?.sent_at && (
+                              <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                <span>Sent {format(new Date(eventInvoices[event.id].sent_at!), 'MMM d')}</span>
+                              </div>
+                            )}
                           </div>
                           <Button
                             variant="ghost"

@@ -10,11 +10,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
-import { CalendarIcon, Trash2, Save, Copy, FileText } from 'lucide-react';
+import { CalendarIcon, Trash2, Save, Copy, FileText, Send } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { eventSchema } from '@/lib/validations';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
+import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface FormErrors {
   title?: string;
@@ -54,6 +58,8 @@ export function EventDetailDialog({
   const [duplicateDate, setDuplicateDate] = useState<Date | undefined>();
   const [errors, setErrors] = useState<FormErrors>({});
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (event) {
@@ -267,12 +273,11 @@ export function EventDetailDialog({
 
           <div className="space-y-2">
             <Label>Venue Address</Label>
-            <Input 
+            <MapboxAddressInput 
               value={editedEvent.venue_address || ''} 
-              onChange={(e) => setEditedEvent({...editedEvent, venue_address: e.target.value})} 
-              placeholder="Full address" 
+              onChange={(value) => setEditedEvent({...editedEvent, venue_address: value})} 
+              placeholder="Start typing an address..." 
             />
-            <p className="text-xs text-muted-foreground">Enter the full venue address</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
