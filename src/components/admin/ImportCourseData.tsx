@@ -864,6 +864,139 @@ export function ImportCourseData() {
               >
                 {importing ? "Checking..." : "👁️ Preview Rebuild (Dry Run)"}
               </Button>
+              
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (!wordpressXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Running module content migration DRY RUN...");
+
+                  try {
+                    const { data, error } = await supabase.functions.invoke('migrate-module-content', {
+                      body: {
+                        xmlContent: wordpressXml,
+                        dryRun: true
+                      }
+                    });
+
+                    if (error) {
+                      addLog(`Error: ${error.message}`);
+                      toast.error('Migration preview failed: ' + error.message);
+                      setImporting(false);
+                      return;
+                    }
+
+                    if (!data.success) {
+                      addLog(`Failed: ${data.error}`);
+                      toast.error(data.error || 'Migration preview failed');
+                      setImporting(false);
+                      return;
+                    }
+
+                    addLog(`=== MODULE CONTENT MIGRATION PREVIEW ===`);
+                    addLog(`Modules matched: ${data.modulesMatched}`);
+                    addLog(`Would update: ${data.updates?.length || 0} modules`);
+                    
+                    if (data.updates?.length > 0) {
+                      addLog(`\n--- Update Details ---`);
+                      data.updates.slice(0, 30).forEach((u: any) => {
+                        const parts = [];
+                        if (u.hasOverview) parts.push('overview');
+                        if (u.learningCount > 0) parts.push(`${u.learningCount} outcomes`);
+                        if (u.hasCultural) parts.push('cultural');
+                        if (u.youtubeCount > 0) parts.push(`${u.youtubeCount} youtube`);
+                        if (u.spotifyCount > 0) parts.push(`${u.spotifyCount} spotify`);
+                        addLog(`  ${u.title}: ${parts.join(', ')}`);
+                      });
+                      if (data.updates.length > 30) addLog(`  ... and ${data.updates.length - 30} more`);
+                    }
+                    
+                    if (data.modulesNotMatched?.length > 0) {
+                      addLog(`\n--- Not Matched (${data.modulesNotMatched.length}) ---`);
+                      data.modulesNotMatched.slice(0, 10).forEach((m: string) => addLog(`  - ${m}`));
+                      if (data.modulesNotMatched.length > 10) addLog(`  ... and ${data.modulesNotMatched.length - 10} more`);
+                    }
+
+                    toast.success(`Preview: Would update ${data.updates?.length || 0} modules`);
+                  } catch (err) {
+                    addLog(`Exception: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+
+                  setImporting(false);
+                }}
+                disabled={importing || !wordpressXml}
+              >
+                {importing ? "Checking..." : "📋 Preview Module Content Migration"}
+              </Button>
+              
+              <Button
+                variant="default"
+                onClick={async () => {
+                  if (!wordpressXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+
+                  const confirmed = window.confirm(
+                    "This will update module fields (overview, learning outcomes, cultural context, YouTube, Spotify) from XML.\n\nExisting content will be overwritten.\n\nContinue?"
+                  );
+                  
+                  if (!confirmed) return;
+
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Running module content migration...");
+
+                  try {
+                    const { data, error } = await supabase.functions.invoke('migrate-module-content', {
+                      body: {
+                        xmlContent: wordpressXml,
+                        dryRun: false
+                      }
+                    });
+
+                    if (error) {
+                      addLog(`Error: ${error.message}`);
+                      toast.error('Migration failed: ' + error.message);
+                      setImporting(false);
+                      return;
+                    }
+
+                    if (!data.success) {
+                      addLog(`Failed: ${data.error}`);
+                      toast.error(data.error || 'Migration failed');
+                      setImporting(false);
+                      return;
+                    }
+
+                    addLog(`=== MODULE CONTENT MIGRATION COMPLETE ===`);
+                    addLog(`Modules matched: ${data.modulesMatched}`);
+                    addLog(`Modules updated: ${data.modulesUpdated}`);
+                    
+                    if (data.errors?.length > 0) {
+                      addLog(`\n--- Errors (${data.errors.length}) ---`);
+                      data.errors.slice(0, 10).forEach((e: string) => addLog(`ERROR: ${e}`));
+                    }
+
+                    toast.success(`Migration complete! ${data.modulesUpdated} modules updated`);
+                  } catch (err) {
+                    addLog(`Exception: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+
+                  setImporting(false);
+                }}
+                disabled={importing || !wordpressXml}
+              >
+                {importing ? "Migrating..." : "📥 Migrate Module Content"}
+              </Button>
             </div>
             
             {xmlResults && (
