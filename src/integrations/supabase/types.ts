@@ -552,40 +552,55 @@ export type Database = {
           color_theme: string | null
           course_id: string
           created_at: string
+          cultural_context: string | null
           description: string | null
           estimated_duration: number | null
           icon_type: string | null
           id: string
+          learning_outcomes: Json | null
+          listening_references: Json | null
           order_index: number
           region_name: string | null
+          spotify_urls: string[] | null
           title: string
           updated_at: string
+          youtube_urls: string[] | null
         }
         Insert: {
           color_theme?: string | null
           course_id: string
           created_at?: string
+          cultural_context?: string | null
           description?: string | null
           estimated_duration?: number | null
           icon_type?: string | null
           id?: string
+          learning_outcomes?: Json | null
+          listening_references?: Json | null
           order_index?: number
           region_name?: string | null
+          spotify_urls?: string[] | null
           title: string
           updated_at?: string
+          youtube_urls?: string[] | null
         }
         Update: {
           color_theme?: string | null
           course_id?: string
           created_at?: string
+          cultural_context?: string | null
           description?: string | null
           estimated_duration?: number | null
           icon_type?: string | null
           id?: string
+          learning_outcomes?: Json | null
+          listening_references?: Json | null
           order_index?: number
           region_name?: string | null
+          spotify_urls?: string[] | null
           title?: string
           updated_at?: string
+          youtube_urls?: string[] | null
         }
         Relationships: [
           {
@@ -1979,40 +1994,49 @@ export type Database = {
           content: string | null
           created_at: string
           duration_seconds: number | null
+          file_attachments: Json | null
           id: string
           lesson_type: string
           listening_references: Json | null
           module_id: string
           order_index: number
+          spotify_urls: string[] | null
           title: string
           updated_at: string
           video_url: string | null
+          youtube_urls: string[] | null
         }
         Insert: {
           content?: string | null
           created_at?: string
           duration_seconds?: number | null
+          file_attachments?: Json | null
           id?: string
           lesson_type?: string
           listening_references?: Json | null
           module_id: string
           order_index?: number
+          spotify_urls?: string[] | null
           title: string
           updated_at?: string
           video_url?: string | null
+          youtube_urls?: string[] | null
         }
         Update: {
           content?: string | null
           created_at?: string
           duration_seconds?: number | null
+          file_attachments?: Json | null
           id?: string
           lesson_type?: string
           listening_references?: Json | null
           module_id?: string
           order_index?: number
+          spotify_urls?: string[] | null
           title?: string
           updated_at?: string
           video_url?: string | null
+          youtube_urls?: string[] | null
         }
         Relationships: [
           {
