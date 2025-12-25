@@ -82,7 +82,7 @@ export default function Events() {
     fee: 0,
     currency: 'GBP',
     time: '',
-    status: 'pending' as EventStatus,
+    status: 'pencilled' as EventStatus,
     payment_status: 'unpaid' as PaymentStatus,
     notes: '',
   });
@@ -170,7 +170,7 @@ export default function Events() {
       fee: 0,
       currency: 'GBP',
       time: '',
-      status: 'pending',
+      status: 'pencilled',
       payment_status: 'unpaid',
       notes: '',
     });
@@ -197,8 +197,7 @@ export default function Events() {
     switch (status) {
       case 'confirmed': return 'bg-success/20 text-success';
       case 'completed': return 'bg-primary/20 text-primary';
-      case 'pending': return 'bg-warning/20 text-warning';
-      case 'pencilled': return 'bg-secondary text-secondary-foreground';
+      case 'pencilled': return 'bg-warning/20 text-warning';
       case 'cancelled': return 'bg-destructive/20 text-destructive';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -344,7 +343,6 @@ export default function Events() {
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pencilled">Pencilled</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="confirmed">Confirmed</SelectItem>
                         </SelectContent>
                       </Select>
@@ -514,7 +512,6 @@ export default function Events() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pencilled">Pencilled</SelectItem>
-                            <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="confirmed">Confirmed</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>

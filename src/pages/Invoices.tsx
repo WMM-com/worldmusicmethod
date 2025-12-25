@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -13,12 +15,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useInvoices } from '@/hooks/useInvoices';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, isPast, parseISO, startOfDay } from 'date-fns';
-import { FileText, Send, Mail, CheckCircle, Plus, Download, DollarSign } from 'lucide-react';
+import { FileText, Send, Mail, CheckCircle, Plus, Download, DollarSign, Trash2, RotateCcw, Edit } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,19 +40,22 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { sendInvoiceSchema } from '@/lib/validations';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
+import { InvoiceEditDialog } from '@/components/invoices/InvoiceEditDialog';
 import { downloadInvoicePdf } from '@/lib/generateInvoicePdf';
 import { Invoice } from '@/types/database';
 
 export default function Invoices() {
-  const { invoices, isLoading, refetch, updateInvoice } = useInvoices();
+  const { invoices, deletedInvoices, isLoading, isLoadingDeleted, refetch, updateInvoice, softDeleteInvoice, restoreInvoice, deleteInvoice } = useInvoices();
   const { profile } = useAuth();
   const { toast } = useToast();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [activeTab, setActiveTab] = useState('active');
 
   const handleMarkAsPaid = (invoice: Invoice) => {
     updateInvoice.mutate({
@@ -100,8 +116,12 @@ export default function Invoices() {
     setSendDialogOpen(true);
   };
 
+  const handleOpenEditDialog = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setEditDialogOpen(true);
+  };
+
   const handleSendInvoice = async () => {
-    // Validate email with Zod
     const result = sendInvoiceSchema.safeParse({ recipientEmail });
     if (!result.success) {
       setEmailError(result.error.errors[0]?.message || 'Invalid email');
@@ -110,27 +130,17 @@ export default function Invoices() {
     setEmailError(null);
 
     if (!selectedInvoice) {
-      toast({
-        title: "Error",
-        description: "No invoice selected",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "No invoice selected", variant: "destructive" });
       return;
     }
 
     setIsSending(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Not authenticated");
-      }
+      if (!session) throw new Error("Not authenticated");
 
       const { data, error } = await supabase.functions.invoke('send-invoice', {
-        body: {
-          invoiceId: selectedInvoice.id,
-          recipientEmail: recipientEmail,
-        },
+        body: { invoiceId: selectedInvoice.id, recipientEmail },
       });
 
       if (error) throw error;
@@ -156,6 +166,103 @@ export default function Invoices() {
     }
   };
 
+  const renderInvoiceCard = (invoice: Invoice, isDeleted = false) => (
+    <Card key={invoice.id} className="glass">
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">{invoice.invoice_number}</p>
+            <p className="text-sm text-muted-foreground truncate">{invoice.client_name}</p>
+            {invoice.sent_at && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <CheckCircle className="h-3 w-3 text-success" />
+                Sent on {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
+              </p>
+            )}
+            {invoice.paid_at && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
+              </p>
+            )}
+            {!invoice.paid_at && invoice.due_date && !isDeleted && (
+              <p className={`text-xs mt-1 ${isOverdue(invoice) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="font-semibold">{formatCurrency(invoice.amount, invoice.currency)}</p>
+              {!isDeleted && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className={`text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${getStatusStyles(invoice)}`}>
+                      {getDisplayStatus(invoice)}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {invoice.status !== 'paid' && (
+                      <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Mark as Paid
+                      </DropdownMenuItem>
+                    )}
+                    {invoice.status === 'paid' && (
+                      <DropdownMenuItem onClick={() => handleMarkAsUnpaid(invoice)}>
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Mark as Unpaid
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+            {isDeleted ? (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => restoreInvoice.mutate(invoice.id)}>
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Restore
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete permanently?</AlertDialogTitle>
+                      <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteInvoice.mutate(invoice.id)}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleOpenEditDialog(invoice)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleOpenSendDialog(invoice)}>
+                  <Send className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => softDeleteInvoice.mutate(invoice.id)}>
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-6">
@@ -170,104 +277,58 @@ export default function Invoices() {
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading...</div>
-        ) : invoices.length === 0 ? (
-          <Card className="glass">
-            <CardContent className="py-12 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No invoices yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first invoice or generate one from an event</p>
-              <Button className="gradient-primary" onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Invoice
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {invoices.map((invoice) => (
-              <Card key={invoice.id} className="glass">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{invoice.invoice_number}</p>
-                      <p className="text-sm text-muted-foreground truncate">{invoice.client_name}</p>
-                      {invoice.sent_at && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <CheckCircle className="h-3 w-3 text-success" />
-                          Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
-                        </p>
-                      )}
-                      {invoice.paid_at && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
-                        </p>
-                      )}
-                      {!invoice.paid_at && invoice.due_date && (
-                        <p className={`text-xs mt-1 ${isOverdue(invoice as Invoice) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                          Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(invoice.amount, invoice.currency)}</p>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className={`text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${getStatusStyles(invoice as Invoice)}`}>
-                              {getDisplayStatus(invoice as Invoice)}
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {invoice.status !== 'paid' && (
-                              <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice as Invoice)}>
-                                <DollarSign className="h-4 w-4 mr-2" />
-                                Mark as Paid
-                              </DropdownMenuItem>
-                            )}
-                            {invoice.status === 'paid' && (
-                              <DropdownMenuItem onClick={() => handleMarkAsUnpaid(invoice as Invoice)}>
-                                <DollarSign className="h-4 w-4 mr-2" />
-                                Mark as Unpaid
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownloadPdf(invoice as Invoice)}
-                          className="flex items-center gap-1"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span className="hidden sm:inline">PDF</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenSendDialog(invoice as Invoice)}
-                          className="flex items-center gap-1"
-                        >
-                          <Send className="h-4 w-4" />
-                          <span className="hidden sm:inline">Send</span>
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="active">Active</TabsTrigger>
+            <TabsTrigger value="bin" className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Bin
+              {deletedInvoices.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1">{deletedInvoices.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="mt-6">
+            {isLoading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading...</div>
+            ) : invoices.length === 0 ? (
+              <Card className="glass">
+                <CardContent className="py-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No invoices yet</h3>
+                  <p className="text-muted-foreground mb-4">Create your first invoice or generate one from an event</p>
+                  <Button className="gradient-primary" onClick={() => setCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Invoice
+                  </Button>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="space-y-3">{invoices.map(inv => renderInvoiceCard(inv as Invoice))}</div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bin" className="mt-6">
+            {isLoadingDeleted ? (
+              <div className="text-center py-12 text-muted-foreground">Loading...</div>
+            ) : deletedInvoices.length === 0 ? (
+              <Card className="glass">
+                <CardContent className="py-12 text-center">
+                  <Trash2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Bin is empty</h3>
+                  <p className="text-muted-foreground">Deleted invoices will appear here</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">{deletedInvoices.map(inv => renderInvoiceCard(inv as Invoice, true))}</div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
-      <InvoiceCreateDialog 
-        open={createDialogOpen} 
-        onOpenChange={setCreateDialogOpen}
-      />
+      <InvoiceCreateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
+      <InvoiceEditDialog invoice={selectedInvoice} open={editDialogOpen} onOpenChange={setEditDialogOpen} />
 
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
         <DialogContent>
@@ -277,9 +338,7 @@ export default function Invoices() {
               Send Invoice
             </DialogTitle>
             <DialogDescription>
-              {selectedInvoice && (
-                <>Send invoice <strong>{selectedInvoice.invoice_number}</strong> to your client via email.</>
-              )}
+              {selectedInvoice && <>Send invoice <strong>{selectedInvoice.invoice_number}</strong> to your client via email.</>}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -290,10 +349,7 @@ export default function Invoices() {
                 type="email"
                 placeholder="client@example.com"
                 value={recipientEmail}
-                onChange={(e) => {
-                  setRecipientEmail(e.target.value);
-                  if (emailError) setEmailError(null);
-                }}
+                onChange={(e) => { setRecipientEmail(e.target.value); if (emailError) setEmailError(null); }}
                 className={emailError ? 'border-destructive' : ''}
               />
               {emailError && <p className="text-sm text-destructive">{emailError}</p>}
@@ -312,9 +368,7 @@ export default function Invoices() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSendDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setSendDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSendInvoice} disabled={isSending || !recipientEmail}>
               {isSending ? "Sending..." : "Send Invoice"}
             </Button>

@@ -93,7 +93,7 @@ export default function Dashboard() {
                       <p className="font-medium">{formatCurrency(event.fee)}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         event.status === 'confirmed' ? 'bg-success/20 text-success' :
-                        event.status === 'pending' ? 'bg-warning/20 text-warning' :
+                        event.status === 'pencilled' ? 'bg-warning/20 text-warning' :
                         'bg-muted text-muted-foreground'
                       }`}>
                         {event.status}
