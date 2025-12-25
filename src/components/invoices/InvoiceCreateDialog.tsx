@@ -14,11 +14,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Plus, Trash2, FileText } from 'lucide-react';
+import { CalendarIcon, Plus, Trash2, FileText, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvoices, useGenerateInvoiceNumber } from '@/hooks/useInvoices';
 import { Event, InvoiceItem } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const CURRENCIES = [
   { code: 'GBP', symbol: '£', name: 'British Pound' },
@@ -77,7 +79,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const [sendingAfterCreate, setSendingAfterCreate] = useState(false);
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
@@ -143,7 +145,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
     return CURRENCIES.find(c => c.code === code)?.symbol || code;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (andSend: boolean = false) => {
     const data = {
       ...form,
       due_date: form.due_date ? format(form.due_date, 'yyyy-MM-dd') : undefined,
@@ -160,7 +162,14 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       return;
     }
 
-    await createInvoice.mutateAsync({
+    if (andSend && !form.client_email) {
+      toast.error('Client email is required to send invoice');
+      return;
+    }
+
+    setSendingAfterCreate(andSend);
+
+    const invoice = await createInvoice.mutateAsync({
       invoice_number: form.invoice_number,
       client_name: form.client_name,
       client_email: form.client_email || null,
@@ -176,6 +185,25 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       paid_at: null,
     });
 
+    if (andSend && invoice) {
+      try {
+        const { error } = await supabase.functions.invoke('send-invoice', {
+          body: {
+            invoiceId: invoice.id,
+            recipientEmail: form.client_email,
+            senderName: profile?.business_name || profile?.full_name,
+          },
+        });
+        if (error) throw error;
+        toast.success('Invoice created and sent successfully');
+      } catch (error: any) {
+        toast.error('Invoice created but failed to send: ' + (error.message || 'Unknown error'));
+      }
+    } else {
+      toast.success('Invoice created successfully');
+    }
+
+    setSendingAfterCreate(false);
     onOpenChange(false);
   };
 
@@ -393,11 +421,20 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
               Cancel
             </Button>
             <Button 
-              className="gradient-primary" 
-              onClick={handleSubmit}
-              disabled={createInvoice.isPending}
+              variant="outline"
+              onClick={() => handleSubmit(false)}
+              disabled={createInvoice.isPending || sendingAfterCreate}
             >
-              {createInvoice.isPending ? 'Creating...' : 'Create Invoice'}
+              <FileText className="h-4 w-4 mr-2" />
+              {createInvoice.isPending && !sendingAfterCreate ? 'Creating...' : 'Save Invoice'}
+            </Button>
+            <Button 
+              className="gradient-primary" 
+              onClick={() => handleSubmit(true)}
+              disabled={createInvoice.isPending || sendingAfterCreate || !form.client_email}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {sendingAfterCreate ? 'Sending...' : 'Save & Send'}
             </Button>
           </div>
         </div>

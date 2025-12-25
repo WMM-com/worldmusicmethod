@@ -213,3 +213,42 @@ export function useGenerateInvoiceNumber() {
     enabled: !!user,
   });
 }
+
+export function useEventInvoices() {
+  const { user } = useAuth();
+
+  const query = useQuery({
+    queryKey: ['event-invoices', user?.id],
+    queryFn: async () => {
+      if (!user) return {};
+
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('id, event_id, sent_at, invoice_number')
+        .eq('user_id', user.id)
+        .not('event_id', 'is', null)
+        .is('deleted_at', null);
+
+      if (error) throw error;
+
+      // Create a map of event_id -> invoice info
+      const invoiceMap: Record<string, { id: string; sent_at: string | null; invoice_number: string }> = {};
+      data.forEach(inv => {
+        if (inv.event_id) {
+          invoiceMap[inv.event_id] = {
+            id: inv.id,
+            sent_at: inv.sent_at,
+            invoice_number: inv.invoice_number,
+          };
+        }
+      });
+      return invoiceMap;
+    },
+    enabled: !!user,
+  });
+
+  return {
+    eventInvoices: query.data || {},
+    isLoading: query.isLoading,
+  };
+}
