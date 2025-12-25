@@ -76,10 +76,10 @@ export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): j
   // Invoice details on right
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  let rightY = 35;
+  let rightY = 38;
 
   doc.setFont('helvetica', 'bold');
-  doc.text('Invoice Number:', pageWidth - margin - 50, rightY);
+  doc.text('Invoice Number:', pageWidth - margin - 55, rightY);
   doc.setFont('helvetica', 'normal');
   doc.text(invoice.invoice_number, pageWidth - margin, rightY, { align: 'right' });
   rightY += 6;

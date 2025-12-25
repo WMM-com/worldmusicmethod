@@ -8,6 +8,7 @@ export function useInvoices() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Active invoices (not deleted)
   const invoicesQuery = useQuery({
     queryKey: ['invoices', user?.id],
     queryFn: async () => {
@@ -17,7 +18,30 @@ export function useInvoices() {
         .from('invoices')
         .select('*')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data as any[]).map(inv => ({
+        ...inv,
+        items: inv.items as InvoiceItem[],
+      })) as Invoice[];
+    },
+    enabled: !!user,
+  });
+
+  // Deleted invoices (bin)
+  const deletedInvoicesQuery = useQuery({
+    queryKey: ['invoices-deleted', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
 
       if (error) throw error;
       return (data as any[]).map(inv => ({
@@ -97,21 +121,66 @@ export function useInvoices() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success('Invoice deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['invoices-deleted'] });
+      toast.success('Invoice deleted permanently');
     },
     onError: (error) => {
       toast.error('Failed to delete invoice: ' + error.message);
     },
   });
 
+  // Soft delete (move to bin)
+  const softDeleteInvoice = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices-deleted'] });
+      toast.success('Invoice moved to bin');
+    },
+    onError: (error) => {
+      toast.error('Failed to move invoice to bin: ' + error.message);
+    },
+  });
+
+  // Restore from bin
+  const restoreInvoice = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('invoices')
+        .update({ deleted_at: null })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices-deleted'] });
+      toast.success('Invoice restored');
+    },
+    onError: (error) => {
+      toast.error('Failed to restore invoice: ' + error.message);
+    },
+  });
+
   return {
     invoices: invoicesQuery.data ?? [],
+    deletedInvoices: deletedInvoicesQuery.data ?? [],
     isLoading: invoicesQuery.isLoading,
+    isLoadingDeleted: deletedInvoicesQuery.isLoading,
     error: invoicesQuery.error,
     refetch: invoicesQuery.refetch,
     createInvoice,
     updateInvoice,
     deleteInvoice,
+    softDeleteInvoice,
+    restoreInvoice,
   };
 }
 

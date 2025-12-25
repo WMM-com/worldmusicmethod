@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { SiteHeader } from './SiteHeader';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: PieChart },
+  { href: '/dashboard', label: 'Dashboard', icon: PieChart },
   { href: '/events', label: 'Events', icon: Calendar },
   { href: '/shared', label: 'Shared With Me', icon: Users },
   { href: '/invoices', label: 'Invoices', icon: FileText },

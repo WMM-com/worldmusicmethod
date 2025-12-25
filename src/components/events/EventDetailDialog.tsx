@@ -189,7 +189,6 @@ export function EventDetailDialog({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pencilled">Pencilled</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -273,6 +272,7 @@ export function EventDetailDialog({
               onChange={(e) => setEditedEvent({...editedEvent, venue_address: e.target.value})} 
               placeholder="Full address" 
             />
+            <p className="text-xs text-muted-foreground">Enter the full venue address</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
