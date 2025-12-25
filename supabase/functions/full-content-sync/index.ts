@@ -13,18 +13,21 @@ interface ParsedModule {
   formattedDescription: string;
   youtubeUrls: string[];
   spotifyUrls: string[];
+  listeningReferences: { title: string; artist: string; spotifyUrl?: string; youtubeUrl?: string }[];
   order: number;
 }
 
 interface ParsedLesson {
   title: string;
   wpPostId: string;
-  wpLessonId: string; // parent module WP ID
+  wpLessonId: string;
   wpCourseId: string;
   content: string;
   videoUrl: string | null;
   soundsliceUrl: string | null;
   formattedContent: string;
+  lessonType: string;
+  listeningReferences: { title: string; artist: string; spotifyUrl?: string; youtubeUrl?: string }[];
   order: number;
 }
 
@@ -34,54 +37,63 @@ function decodeEntities(text: string): string {
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '\"')
+    .replace(/&quot;/g, '"')
     .replace(/&#039;/g, "'")
     .replace(/&#8217;/g, "'")
     .replace(/&#8216;/g, "'")
     .replace(/&#8211;/g, '–')
     .replace(/&#8212;/g, '—')
-    .replace(/&#8220;/g, '\"')
-    .replace(/&#8221;/g, '\"')
-    .replace(/&nbsp;/g, ' ');
+    .replace(/&#8220;/g, '"')
+    .replace(/&#8221;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#x27;/g, "'");
 }
 
-// Convert WordPress block content to clean markdown-like text
+// Convert WordPress block content to clean formatted text
 function formatContent(rawContent: string): string {
   let content = decodeEntities(rawContent);
   
   // Remove WordPress block comments
   content = content.replace(/<!-- \/?wp:[^>]+ -->/g, '');
   
-  // Convert <strong> and <b> to **
+  // Extract and preserve headings
+  content = content.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n\n## $1\n');
+  content = content.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n\n### $1\n');
+  content = content.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n\n### $1\n');
+  
+  // Convert <strong> and <b>
   content = content.replace(/<strong>([^<]*)<\/strong>/gi, '**$1**');
   content = content.replace(/<b>([^<]*)<\/b>/gi, '**$1**');
   
-  // Convert <em> and <i> to *
+  // Convert <em> and <i>
   content = content.replace(/<em>([^<]*)<\/em>/gi, '*$1*');
   content = content.replace(/<i>([^<]*)<\/i>/gi, '*$1*');
   
   // Convert links
-  content = content.replace(/<a[^>]*href=\"([^\"]*)\"[^>]*>([^<]*)<\/a>/gi, '[$2]($1)');
+  content = content.replace(/<a[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/gi, '[$2]($1)');
   
   // Convert list items - add bullet points
-  content = content.replace(/<li>([^<]*)<\/li>/gi, '• $1');
+  content = content.replace(/<li[^>]*>([^<]*)<\/li>/gi, '\n• $1');
   
-  // Remove remaining HTML tags (ul, p, div, etc.) but keep content
-  content = content.replace(/<\/?(ul|ol|p|div|span|br\s*\/?)[^>]*>/gi, '\n');
+  // Paragraphs to double newlines
+  content = content.replace(/<\/p>/gi, '\n\n');
+  content = content.replace(/<p[^>]*>/gi, '');
   
-  // Remove iframe tags but extract info
+  // Remove remaining HTML tags but keep content
+  content = content.replace(/<\/?(ul|ol|div|span|br\s*\/?|figure|figcaption)[^>]*>/gi, '\n');
+  
+  // Remove iframe and script tags entirely
   content = content.replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '');
+  content = content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+  content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
   
   // Clean up multiple newlines
   content = content.replace(/\n{3,}/g, '\n\n');
   
   // Trim each line
-  content = content.split('\n').map(line => line.trim()).join('\n');
+  content = content.split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n');
   
-  // Final cleanup
-  content = content.trim();
-  
-  return content;
+  return content.trim();
 }
 
 // Extract YouTube video IDs from content
@@ -135,11 +147,14 @@ function extractSpotifyUrls(content: string): string[] {
 // Extract Soundslice URLs
 function extractSoundsliceUrl(content: string): string | null {
   const patterns = [
-    /\\[drum url=['"]([^'"]+)['"]\\]/i,
-    /\\[vocals url\s*=\s*['"]([^'"]+)['"]\\]/i,
-    /\\[bass url=['"]([^'"]+)['"]\\]/i,
-    /\\[guitar url=['"]([^'"]+)['"]\\]/i,
-    /https?:\/\/www\.soundslice\.com\/slices\/[a-zA-Z0-9]+/i,
+    /\[drum url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /\[vocals url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /\[bass url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /\[guitar url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /\[piano url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /\[kora url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /\[banjo url\s*=\s*['"]([^'"]+)['"]\s*\]/i,
+    /(https?:\/\/www\.soundslice\.com\/slices\/[a-zA-Z0-9]+)/i,
   ];
   
   for (const pattern of patterns) {
@@ -155,14 +170,14 @@ function extractSoundsliceUrl(content: string): string | null {
 // Extract R2/DynTube video URLs for self-hosted videos
 function extractHostedVideoUrl(content: string): string | null {
   // DynTube pattern
-  const dyntubePattern = /data-dyntube-key=\"([^\"]+)\"/i;
+  const dyntubePattern = /data-dyntube-key="([^"]+)"/i;
   const dynMatch = content.match(dyntubePattern);
   if (dynMatch) {
     return `dyntube:${dynMatch[1]}`;
   }
   
   // R2 URL pattern
-  const r2Pattern = /https?:\/\/pub-[a-z0-9]+\.r2\.dev\/[^\s<>]+\.(mp4|webm|mov)/gi;
+  const r2Pattern = /https?:\/\/pub-[a-z0-9]+\.r2\.dev\/[^\s<>"']+\.(mp4|webm|mov)/gi;
   const r2Match = content.match(r2Pattern);
   if (r2Match) {
     return r2Match[0];
@@ -171,12 +186,23 @@ function extractHostedVideoUrl(content: string): string | null {
   return null;
 }
 
+// Determine lesson type based on content
+function determineLessonType(content: string): string {
+  if (extractSoundsliceUrl(content)) return 'soundslice';
+  if (extractYouTubeUrls(content).length > 0) return 'video';
+  if (extractHostedVideoUrl(content)) return 'video';
+  if (content.toLowerCase().includes('backing track')) return 'backing_track';
+  if (content.toLowerCase().includes('download')) return 'download';
+  return 'text';
+}
+
 // Normalize title for matching
 function normalizeTitle(title: string): string {
   return decodeEntities(title)
     .toLowerCase()
     .replace(/\s+/g, ' ')
-    .replace(/[–—-]\s*\d+\.\d+\s*$/g, '') // Remove timecodes like "- 3.05"
+    .replace(/module\s*\d+\s*[-–—:]\s*/gi, '')
+    .replace(/\s*[-–—]\s*\d+\.\d+\s*$/g, '')
     .trim();
 }
 
@@ -185,20 +211,23 @@ function parseWordPressXML(xmlContent: string): {
   modules: ParsedModule[];
   lessons: ParsedLesson[];
   wpCourses: Record<string, string>;
+  wpLessonToModuleMap: Map<string, string>;
 } {
   const modules: ParsedModule[] = [];
   const lessons: ParsedLesson[] = [];
-  const wpCourses: Record<string, string> = {}; // wpId -> title
+  const wpCourses: Record<string, string> = {};
+  const wpLessonToModuleMap = new Map<string, string>();
   
   const itemPattern = /<item>([\s\S]*?)<\/item>/gi;
   let itemMatch;
-  let moduleOrder = 0;
-  let lessonOrder = 0;
+  
+  // First pass: collect courses and modules
+  const modulesByCourse = new Map<string, ParsedModule[]>();
+  const lessonsByModule = new Map<string, ParsedLesson[]>();
   
   while ((itemMatch = itemPattern.exec(xmlContent)) !== null) {
     const itemXml = itemMatch[1];
     
-    // Extract basic fields
     const titleMatch = itemXml.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/);
     const title = titleMatch ? decodeEntities(titleMatch[1].trim()) : '';
     
@@ -214,23 +243,27 @@ function parseWordPressXML(xmlContent: string): {
     const courseIdMatch = itemXml.match(/<wp:meta_key><!\[CDATA\[course_id\]\]><\/wp:meta_key>\s*<wp:meta_value><!\[CDATA\[(\d+)\]\]><\/wp:meta_value>/);
     const wpCourseId = courseIdMatch ? courseIdMatch[1] : '';
     
-    // Extract lesson_id for topics (lessons within modules)
     const lessonIdMatch = itemXml.match(/<wp:meta_key><!\[CDATA\[lesson_id\]\]><\/wp:meta_key>\s*<wp:meta_value><!\[CDATA\[(\d+)\]\]><\/wp:meta_value>/);
     const wpLessonId = lessonIdMatch ? lessonIdMatch[1] : '';
     
-    // Capture courses for mapping
+    const menuOrderMatch = itemXml.match(/<wp:menu_order>(\d+)<\/wp:menu_order>/);
+    const menuOrder = menuOrderMatch ? parseInt(menuOrderMatch[1]) : 0;
+    
+    // Skip preview modules
+    if (title.toLowerCase().includes('preview')) continue;
+    
     if (postType === 'sfwd-courses' && wpPostId && title) {
       wpCourses[wpPostId] = title;
       continue;
     }
     
-    // Module (sfwd-lessons in LearnDash terminology)
+    // Module (sfwd-lessons in LearnDash)
     if (postType === 'sfwd-lessons' && title && wpCourseId) {
       const formattedDescription = formatContent(content);
       const youtubeUrls = extractYouTubeUrls(content);
       const spotifyUrls = extractSpotifyUrls(content);
       
-      modules.push({
+      const mod: ParsedModule = {
         title,
         wpPostId,
         wpCourseId,
@@ -238,22 +271,26 @@ function parseWordPressXML(xmlContent: string): {
         formattedDescription,
         youtubeUrls,
         spotifyUrls,
-        order: moduleOrder++,
-      });
+        listeningReferences: [],
+        order: menuOrder,
+      };
+      
+      if (!modulesByCourse.has(wpCourseId)) modulesByCourse.set(wpCourseId, []);
+      modulesByCourse.get(wpCourseId)!.push(mod);
       continue;
     }
     
-    // Lesson (sfwd-topic in LearnDash terminology)
+    // Lesson (sfwd-topic in LearnDash)
     if (postType === 'sfwd-topic' && title && wpCourseId) {
       const formattedContent = formatContent(content);
       const soundsliceUrl = extractSoundsliceUrl(content);
       const hostedVideo = extractHostedVideoUrl(content);
       const youtubeUrls = extractYouTubeUrls(content);
       
-      // Prioritize: Soundslice > Hosted Video > YouTube
       let videoUrl = soundsliceUrl || hostedVideo || (youtubeUrls.length > 0 ? youtubeUrls[0] : null);
+      const lessonType = determineLessonType(content);
       
-      lessons.push({
+      const lesson: ParsedLesson = {
         title,
         wpPostId,
         wpLessonId: wpLessonId || '',
@@ -262,12 +299,39 @@ function parseWordPressXML(xmlContent: string): {
         videoUrl,
         soundsliceUrl,
         formattedContent,
-        order: lessonOrder++,
-      });
+        lessonType,
+        listeningReferences: [],
+        order: menuOrder,
+      };
+      
+      if (wpLessonId) {
+        if (!lessonsByModule.has(wpLessonId)) lessonsByModule.set(wpLessonId, []);
+        lessonsByModule.get(wpLessonId)!.push(lesson);
+        wpLessonToModuleMap.set(lesson.wpPostId, wpLessonId);
+      }
     }
   }
   
-  return { modules, lessons, wpCourses };
+  // Sort modules and lessons by order, then assign sequential indices
+  for (const [courseId, mods] of modulesByCourse) {
+    mods.sort((a, b) => a.order - b.order);
+    mods.forEach((m, idx) => {
+      m.order = idx;
+      modules.push(m);
+    });
+  }
+  
+  for (const [moduleId, lsns] of lessonsByModule) {
+    lsns.sort((a, b) => a.order - b.order);
+    lsns.forEach((l, idx) => {
+      l.order = idx;
+      lessons.push(l);
+    });
+  }
+  
+  console.log(`[parse] Found ${Object.keys(wpCourses).length} courses, ${modules.length} modules, ${lessons.length} lessons`);
+  
+  return { modules, lessons, wpCourses, wpLessonToModuleMap };
 }
 
 // Main handler
@@ -337,6 +401,192 @@ Deno.serve(async (req) => {
       });
     }
 
+    // REBUILD: Delete all and recreate from XML
+    if (action === 'rebuild') {
+      const xmlContent = body?.xmlContent as string;
+      const dryRun = body?.dryRun !== false;
+      
+      if (!xmlContent) {
+        return new Response(JSON.stringify({ success: false, error: 'XML content required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      console.log(`[rebuild] Starting ${dryRun ? 'DRY RUN' : 'LIVE'} rebuild...`);
+      
+      // Parse XML
+      const { modules: wpModules, lessons: wpLessons, wpCourses, wpLessonToModuleMap } = parseWordPressXML(xmlContent);
+      
+      // Load existing courses from DB
+      const { data: dbCourses } = await supabase.from('courses').select('id, title');
+      
+      // Build WP course ID -> DB course ID mapping
+      const wpToDbCourse = new Map<string, { id: string; title: string }>();
+      for (const [wpId, wpTitle] of Object.entries(wpCourses)) {
+        const normalizedWpTitle = normalizeTitle(wpTitle);
+        const dbCourse = (dbCourses || []).find(c => {
+          const dbNorm = normalizeTitle(c.title);
+          return dbNorm === normalizedWpTitle || 
+                 dbNorm.includes(normalizedWpTitle) || 
+                 normalizedWpTitle.includes(dbNorm);
+        });
+        if (dbCourse) {
+          wpToDbCourse.set(wpId, { id: dbCourse.id, title: dbCourse.title });
+        }
+      }
+      
+      console.log(`[rebuild] Mapped ${wpToDbCourse.size}/${Object.keys(wpCourses).length} WP courses to DB courses`);
+      
+      // Group modules by course
+      const modulesByCourse = new Map<string, ParsedModule[]>();
+      for (const m of wpModules) {
+        const dbCourse = wpToDbCourse.get(m.wpCourseId);
+        if (!dbCourse) continue;
+        if (!modulesByCourse.has(dbCourse.id)) modulesByCourse.set(dbCourse.id, []);
+        modulesByCourse.get(dbCourse.id)!.push(m);
+      }
+      
+      const results = {
+        coursesProcessed: 0,
+        modulesDeleted: 0,
+        lessonsDeleted: 0,
+        modulesCreated: 0,
+        lessonsCreated: 0,
+        errors: [] as string[],
+        courseDetails: [] as { course: string; modules: number; lessons: number }[],
+      };
+      
+      // Process each course
+      for (const [dbCourseId, mods] of modulesByCourse) {
+        const courseTitle = (dbCourses || []).find(c => c.id === dbCourseId)?.title || dbCourseId;
+        console.log(`[rebuild] Processing ${courseTitle}: ${mods.length} modules`);
+        
+        if (!dryRun) {
+          // Delete existing lessons for this course's modules
+          const { data: existingModules } = await supabase
+            .from('course_modules')
+            .select('id')
+            .eq('course_id', dbCourseId);
+          
+          if (existingModules && existingModules.length > 0) {
+            const moduleIds = existingModules.map(m => m.id);
+            const { error: lessonDelError, count: deletedLessons } = await supabase
+              .from('module_lessons')
+              .delete({ count: 'exact' })
+              .in('module_id', moduleIds);
+            
+            if (lessonDelError) {
+              results.errors.push(`Failed to delete lessons for ${courseTitle}: ${lessonDelError.message}`);
+            } else {
+              results.lessonsDeleted += deletedLessons || 0;
+            }
+          }
+          
+          // Delete existing modules for this course
+          const { error: modDelError, count: deletedModules } = await supabase
+            .from('course_modules')
+            .delete({ count: 'exact' })
+            .eq('course_id', dbCourseId);
+          
+          if (modDelError) {
+            results.errors.push(`Failed to delete modules for ${courseTitle}: ${modDelError.message}`);
+            continue;
+          }
+          results.modulesDeleted += deletedModules || 0;
+        }
+        
+        // Create new modules
+        const wpModuleToDbModule = new Map<string, string>();
+        let courseModuleCount = 0;
+        let courseLessonCount = 0;
+        
+        for (const mod of mods) {
+          // Build full description with embeds
+          let description = mod.formattedDescription;
+          if (mod.youtubeUrls.length > 0) {
+            description += '\n\n**Video Resources:**\n' + mod.youtubeUrls.join('\n');
+          }
+          if (mod.spotifyUrls.length > 0) {
+            description += '\n\n**Listening:**\n' + mod.spotifyUrls.join('\n');
+          }
+          
+          const moduleData = {
+            course_id: dbCourseId,
+            title: mod.title,
+            description: description || null,
+            order_index: mod.order,
+            color_theme: 'earth',
+            icon_type: 'mountain',
+          };
+          
+          if (!dryRun) {
+            const { data: newModule, error: modError } = await supabase
+              .from('course_modules')
+              .insert(moduleData)
+              .select('id')
+              .single();
+            
+            if (modError || !newModule) {
+              results.errors.push(`Failed to create module ${mod.title}: ${modError?.message}`);
+              continue;
+            }
+            
+            wpModuleToDbModule.set(mod.wpPostId, newModule.id);
+            results.modulesCreated++;
+            courseModuleCount++;
+            
+            // Create lessons for this module
+            const moduleLessons = wpLessons.filter(l => l.wpLessonId === mod.wpPostId);
+            
+            for (const lesson of moduleLessons) {
+              const lessonData = {
+                module_id: newModule.id,
+                title: lesson.title,
+                content: lesson.formattedContent || null,
+                video_url: lesson.videoUrl,
+                lesson_type: lesson.lessonType,
+                order_index: lesson.order,
+                listening_references: lesson.listeningReferences.length > 0 ? lesson.listeningReferences : null,
+              };
+              
+              const { error: lessonError } = await supabase
+                .from('module_lessons')
+                .insert(lessonData);
+              
+              if (lessonError) {
+                results.errors.push(`Failed to create lesson ${lesson.title}: ${lessonError.message}`);
+              } else {
+                results.lessonsCreated++;
+                courseLessonCount++;
+              }
+            }
+          } else {
+            courseModuleCount++;
+            const moduleLessons = wpLessons.filter(l => l.wpLessonId === mod.wpPostId);
+            courseLessonCount += moduleLessons.length;
+          }
+        }
+        
+        results.coursesProcessed++;
+        results.courseDetails.push({
+          course: courseTitle,
+          modules: courseModuleCount,
+          lessons: courseLessonCount,
+        });
+      }
+      
+      console.log(`[rebuild] Complete. Created ${results.modulesCreated} modules, ${results.lessonsCreated} lessons`);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        dryRun,
+        ...results,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // PARSE: Parse XML and return summary
     if (action === 'parse-xml') {
       const xmlContent = body?.xmlContent as string;
@@ -357,20 +607,19 @@ Deno.serve(async (req) => {
         courseModules.get(courseName)!.push(m);
       }
       
-      const courseLessons = new Map<string, ParsedLesson[]>();
+      const courseLessons = new Map<string, number>();
       for (const l of lessons) {
         const courseName = wpCourses[l.wpCourseId] || `WP Course ${l.wpCourseId}`;
-        if (!courseLessons.has(courseName)) courseLessons.set(courseName, []);
-        courseLessons.get(courseName)!.push(l);
+        courseLessons.set(courseName, (courseLessons.get(courseName) || 0) + 1);
       }
       
       const summary = Array.from(courseModules.entries()).map(([courseName, mods]) => ({
         course: courseName,
         moduleCount: mods.length,
-        lessonCount: courseLessons.get(courseName)?.length || 0,
-        modules: mods.slice(0, 5).map(m => ({
+        lessonCount: courseLessons.get(courseName) || 0,
+        modules: mods.map(m => ({
           title: m.title,
-          hasContent: m.formattedDescription.length > 50,
+          hasContent: m.formattedDescription.length > 20,
           youtubeCount: m.youtubeUrls.length,
           spotifyCount: m.spotifyUrls.length,
         })),
@@ -387,170 +636,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // SYNC: Full content sync from XML
-    if (action === 'sync-content') {
-      const xmlContent = body?.xmlContent as string;
-      const dryRun = body?.dryRun !== false; // Default to dry run
-      
-      if (!xmlContent) {
-        return new Response(JSON.stringify({ success: false, error: 'XML content required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
-      console.log('[full-content-sync] Parsing XML...');
-      const { modules: wpModules, lessons: wpLessons, wpCourses } = parseWordPressXML(xmlContent);
-      
-      // Load DB data
-      const [{ data: dbCourses }, { data: dbModules }, { data: dbLessons }] = await Promise.all([
-        supabase.from('courses').select('id, title'),
-        supabase.from('course_modules').select('id, course_id, title, description, order_index'),
-        supabase.from('module_lessons').select('id, module_id, title, content, video_url'),
-      ]);
-      
-      // Build course mapping: WP course ID -> DB course ID
-      const wpToDbCourse = new Map<string, string>();
-      for (const [wpId, wpTitle] of Object.entries(wpCourses)) {
-        const normalizedWpTitle = normalizeTitle(wpTitle);
-        const dbCourse = (dbCourses || []).find(c => {
-          const dbNorm = normalizeTitle(c.title);
-          return dbNorm === normalizedWpTitle || dbNorm.includes(normalizedWpTitle) || normalizedWpTitle.includes(dbNorm);
-        });
-        if (dbCourse) wpToDbCourse.set(wpId, dbCourse.id);
-      }
-      
-      // Build module mapping: (course_id, normalized_title) -> module
-      const moduleByKey = new Map<string, { id: string; description: string | null }>();
-      for (const m of dbModules || []) {
-        const key = `${m.course_id}|${normalizeTitle(m.title)}`;
-        moduleByKey.set(key, { id: m.id, description: m.description });
-      }
-      
-      // Build WP module ID -> DB module ID mapping
-      const wpModuleToDbModule = new Map<string, string>();
-      
-      const moduleUpdates: Array<{ id: string; description: string }> = [];
-      const modulesNotFound: string[] = [];
-      
-      for (const wpModule of wpModules) {
-        const dbCourseId = wpToDbCourse.get(wpModule.wpCourseId);
-        if (!dbCourseId) continue;
-        
-        const key = `${dbCourseId}|${normalizeTitle(wpModule.title)}`;
-        const dbModule = moduleByKey.get(key);
-        
-        if (!dbModule) {
-          modulesNotFound.push(`${wpCourses[wpModule.wpCourseId]} > ${wpModule.title}`);
-          continue;
-        }
-        
-        wpModuleToDbModule.set(wpModule.wpPostId, dbModule.id);
-        
-        // Update description if we have content and existing is empty/short
-        if (wpModule.formattedDescription.length > 50) {
-          const existingLen = dbModule.description?.length || 0;
-          if (existingLen < 100) {
-            // Build full description with embeds
-            let fullDesc = wpModule.formattedDescription;
-            if (wpModule.youtubeUrls.length > 0) {
-              fullDesc += '\n\n' + wpModule.youtubeUrls.join('\n');
-            }
-            if (wpModule.spotifyUrls.length > 0) {
-              fullDesc += '\n\n' + wpModule.spotifyUrls.join('\n');
-            }
-            
-            moduleUpdates.push({ id: dbModule.id, description: fullDesc });
-          }
-        }
-      }
-      
-      // Build lesson mapping and find missing
-      const lessonByKey = new Map<string, { id: string; content: string | null; video_url: string | null }>();
-      const moduleCourseId = new Map<string, string>();
-      for (const m of dbModules || []) moduleCourseId.set(m.id, m.course_id);
-      
-      for (const l of dbLessons || []) {
-        const courseId = moduleCourseId.get(l.module_id);
-        if (!courseId) continue;
-        const key = `${courseId}|${normalizeTitle(l.title)}`;
-        lessonByKey.set(key, { id: l.id, content: l.content, video_url: l.video_url });
-      }
-      
-      const lessonUpdates: Array<{ id: string; content?: string; video_url?: string }> = [];
-      const lessonsNotFound: string[] = [];
-      
-      for (const wpLesson of wpLessons) {
-        const dbCourseId = wpToDbCourse.get(wpLesson.wpCourseId);
-        if (!dbCourseId) continue;
-        
-        const key = `${dbCourseId}|${normalizeTitle(wpLesson.title)}`;
-        const dbLesson = lessonByKey.get(key);
-        
-        if (!dbLesson) {
-          lessonsNotFound.push(`${wpCourses[wpLesson.wpCourseId]} > ${wpLesson.title}`);
-          continue;
-        }
-        
-        const update: { id: string; content?: string; video_url?: string } = { id: dbLesson.id };
-        let needsUpdate = false;
-        
-        // Update video_url if empty and we have one
-        if (!dbLesson.video_url && wpLesson.videoUrl) {
-          update.video_url = wpLesson.videoUrl;
-          needsUpdate = true;
-        }
-        
-        // Update content if short and we have content
-        if (wpLesson.formattedContent.length > 20 && (!dbLesson.content || dbLesson.content.length < 50)) {
-          update.content = wpLesson.formattedContent;
-          needsUpdate = true;
-        }
-        
-        if (needsUpdate) {
-          lessonUpdates.push(update);
-        }
-      }
-      
-      const results = {
-        dryRun,
-        wpModulesFound: wpModules.length,
-        wpLessonsFound: wpLessons.length,
-        coursesMapped: wpToDbCourse.size,
-        moduleUpdatesQueued: moduleUpdates.length,
-        lessonUpdatesQueued: lessonUpdates.length,
-        modulesNotFound: modulesNotFound.slice(0, 30),
-        lessonsNotFound: lessonsNotFound.slice(0, 30),
-        sampleModuleUpdates: moduleUpdates.slice(0, 3).map(m => ({ id: m.id, descLen: m.description.length })),
-      };
-      
-      if (!dryRun) {
-        console.log(`[full-content-sync] Applying ${moduleUpdates.length} module updates...`);
-        if (moduleUpdates.length > 0) {
-          const { error } = await supabase.from('course_modules').upsert(moduleUpdates, { onConflict: 'id' });
-          if (error) throw new Error(`Module update error: ${error.message}`);
-        }
-        
-        console.log(`[full-content-sync] Applying ${lessonUpdates.length} lesson updates...`);
-        if (lessonUpdates.length > 0) {
-          const { error } = await supabase.from('module_lessons').upsert(lessonUpdates, { onConflict: 'id' });
-          if (error) throw new Error(`Lesson update error: ${error.message}`);
-        }
-      }
-      
-      return new Response(JSON.stringify({ success: true, results }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: false, error: 'Unknown action. Use: audit, parse-xml, sync-content' }), {
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Invalid action. Use: audit, parse-xml, or rebuild' 
+    }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }), {
+    console.error('[full-content-sync] Error:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
