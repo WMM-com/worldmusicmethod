@@ -729,6 +729,141 @@ export function ImportCourseData() {
               >
                 {importing ? "Applying..." : "Apply Embeds to Modules/Lessons"}
               </Button>
+              
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!wordpressXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+
+                  const confirmed = window.confirm(
+                    "⚠️ FULL REBUILD\n\nThis will DELETE all existing modules and lessons for matched courses, then recreate them from the XML.\n\nThis action cannot be undone.\n\nContinue?"
+                  );
+                  
+                  if (!confirmed) return;
+
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Starting full content rebuild from XML...");
+                  addLog("Calling edge function with dryRun=false...");
+
+                  try {
+                    const { data, error } = await supabase.functions.invoke('full-content-sync', {
+                      body: {
+                        action: 'rebuild',
+                        xmlContent: wordpressXml,
+                        dryRun: false
+                      }
+                    });
+
+                    if (error) {
+                      addLog(`Error: ${error.message}`);
+                      toast.error('Rebuild failed: ' + error.message);
+                      setImporting(false);
+                      return;
+                    }
+
+                    if (!data.success) {
+                      addLog(`Failed: ${data.error}`);
+                      toast.error(data.error || 'Rebuild failed');
+                      setImporting(false);
+                      return;
+                    }
+
+                    addLog(`=== REBUILD COMPLETE ===`);
+                    addLog(`Courses processed: ${data.coursesProcessed}`);
+                    addLog(`Modules deleted: ${data.modulesDeleted}`);
+                    addLog(`Lessons deleted: ${data.lessonsDeleted}`);
+                    addLog(`Modules created: ${data.modulesCreated}`);
+                    addLog(`Lessons created: ${data.lessonsCreated}`);
+                    
+                    if (data.courseDetails?.length > 0) {
+                      addLog(`\n--- Course Details ---`);
+                      data.courseDetails.forEach((cd: any) => {
+                        addLog(`${cd.course}: ${cd.modules} modules, ${cd.lessons} lessons`);
+                      });
+                    }
+                    
+                    if (data.errors?.length > 0) {
+                      addLog(`\n--- Errors (${data.errors.length}) ---`);
+                      data.errors.slice(0, 20).forEach((e: string) => addLog(`ERROR: ${e}`));
+                      if (data.errors.length > 20) addLog(`... and ${data.errors.length - 20} more`);
+                    }
+
+                    toast.success(`Rebuild complete! ${data.modulesCreated} modules, ${data.lessonsCreated} lessons created`);
+                  } catch (err) {
+                    addLog(`Exception: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+
+                  setImporting(false);
+                }}
+                disabled={importing || !wordpressXml}
+              >
+                {importing ? "Rebuilding..." : "🔄 Full Rebuild (Delete & Recreate All)"}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!wordpressXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Running DRY RUN rebuild preview...");
+
+                  try {
+                    const { data, error } = await supabase.functions.invoke('full-content-sync', {
+                      body: {
+                        action: 'rebuild',
+                        xmlContent: wordpressXml,
+                        dryRun: true
+                      }
+                    });
+
+                    if (error) {
+                      addLog(`Error: ${error.message}`);
+                      toast.error('Preview failed: ' + error.message);
+                      setImporting(false);
+                      return;
+                    }
+
+                    if (!data.success) {
+                      addLog(`Failed: ${data.error}`);
+                      toast.error(data.error || 'Preview failed');
+                      setImporting(false);
+                      return;
+                    }
+
+                    addLog(`=== DRY RUN PREVIEW ===`);
+                    addLog(`Courses to process: ${data.coursesProcessed}`);
+                    addLog(`Total modules: ${data.courseDetails?.reduce((s: number, c: any) => s + c.modules, 0) || 0}`);
+                    addLog(`Total lessons: ${data.courseDetails?.reduce((s: number, c: any) => s + c.lessons, 0) || 0}`);
+                    
+                    if (data.courseDetails?.length > 0) {
+                      addLog(`\n--- Course Details ---`);
+                      data.courseDetails.forEach((cd: any) => {
+                        addLog(`${cd.course}: ${cd.modules} modules, ${cd.lessons} lessons`);
+                      });
+                    }
+
+                    toast.success(`Preview: Would create ${data.courseDetails?.reduce((s: number, c: any) => s + c.modules, 0) || 0} modules, ${data.courseDetails?.reduce((s: number, c: any) => s + c.lessons, 0) || 0} lessons`);
+                  } catch (err) {
+                    addLog(`Exception: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+
+                  setImporting(false);
+                }}
+                disabled={importing || !wordpressXml}
+              >
+                {importing ? "Checking..." : "👁️ Preview Rebuild (Dry Run)"}
+              </Button>
             </div>
             
             {xmlResults && (
