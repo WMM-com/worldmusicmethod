@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,6 +22,7 @@ import { EventDetailDialog } from '@/components/events/EventDetailDialog';
 import { DeletedEventsTab } from '@/components/events/DeletedEventsTab';
 import { RecurringEventDialog } from '@/components/events/RecurringEventDialog';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
+import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { format } from 'date-fns';
 import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText, Users, Mail } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
@@ -84,8 +86,10 @@ export default function Events() {
     title: '',
     event_type: 'gig' as EventType,
     venue_name: '',
+    venue_address: '',
     client_name: '',
     client_email: '',
+    client_phone: '',
     fee: 0,
     currency: defaultCurrency,
     time: '',
@@ -160,8 +164,8 @@ export default function Events() {
     await createEvent.mutateAsync({
       ...eventBase,
       start_time: startTime.toISOString(),
-      venue_address: null,
-      client_phone: null,
+      venue_address: eventBase.venue_address || null,
+      client_phone: eventBase.client_phone || null,
       arrival_time: null,
       end_time: null,
       payment_date: null,
@@ -179,8 +183,10 @@ export default function Events() {
       title: '',
       event_type: 'gig',
       venue_name: '',
+      venue_address: '',
       client_name: '',
       client_email: '',
+      client_phone: '',
       fee: 0,
       currency: defaultCurrency,
       time: '',
@@ -418,9 +424,20 @@ export default function Events() {
                     />
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Venue</Label>
+                      <Input value={newEvent.venue_name} onChange={(e) => setNewEvent({...newEvent, venue_name: e.target.value})} placeholder="Venue name" />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label>Venue</Label>
-                    <Input value={newEvent.venue_name} onChange={(e) => setNewEvent({...newEvent, venue_name: e.target.value})} placeholder="Venue name" />
+                    <Label>Venue Address</Label>
+                    <MapboxAddressInput 
+                      value={newEvent.venue_address} 
+                      onChange={(value) => setNewEvent({...newEvent, venue_address: value})} 
+                      placeholder="Start typing an address..." 
+                    />
                   </div>
 
                   {/* Fee and Currency Section */}
@@ -488,6 +505,7 @@ export default function Events() {
                       </div>
                     )}
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Client Name</Label>
@@ -498,6 +516,42 @@ export default function Events() {
                       <Input type="email" value={newEvent.client_email} onChange={(e) => setNewEvent({...newEvent, client_email: e.target.value})} />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Client Phone</Label>
+                    <Input 
+                      type="tel" 
+                      value={newEvent.client_phone} 
+                      onChange={(e) => setNewEvent({...newEvent, client_phone: e.target.value})} 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Payment Status</Label>
+                    <Select 
+                      value={newEvent.payment_status} 
+                      onValueChange={(v) => setNewEvent({...newEvent, payment_status: v as PaymentStatus})}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                        <SelectItem value="partial">Partial</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea 
+                      value={newEvent.notes} 
+                      onChange={(e) => setNewEvent({...newEvent, notes: e.target.value})} 
+                      placeholder="Any additional notes..."
+                      rows={3}
+                    />
+                  </div>
+
                   <Button className="w-full gradient-primary" onClick={handleCreateEvent} disabled={createEvent.isPending}>
                     {createEvent.isPending ? 'Creating...' : 'Create Event'}
                   </Button>

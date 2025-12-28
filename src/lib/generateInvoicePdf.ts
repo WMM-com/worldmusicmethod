@@ -28,6 +28,16 @@ export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): j
     return `${currencySymbol}${amount.toFixed(2)}`;
   };
 
+  // Format address nicely - split by comma and display on separate lines
+  const formatAddress = (address: string | null | undefined): string[] => {
+    if (!address) return [];
+    // Split by comma or newline and trim each part
+    return address
+      .split(/,|\n/)
+      .map(part => part.trim())
+      .filter(part => part.length > 0);
+  };
+
   // Header - Business Info
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
@@ -39,7 +49,7 @@ export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): j
   doc.setTextColor(100, 100, 100);
 
   if (profile?.address) {
-    const addressLines = profile.address.split('\n');
+    const addressLines = formatAddress(profile.address);
     addressLines.forEach(line => {
       doc.text(line, margin, y);
       y += 5;
@@ -131,7 +141,7 @@ export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): j
   }
 
   if (invoice.client_address) {
-    const clientAddressLines = invoice.client_address.split('\n');
+    const clientAddressLines = formatAddress(invoice.client_address);
     clientAddressLines.forEach(line => {
       doc.text(line, margin + 5, y);
       y += 5;
