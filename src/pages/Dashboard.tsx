@@ -2,15 +2,33 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUpcomingEvents } from '@/hooks/useEvents';
 import { useFinancials } from '@/hooks/useFinancials';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Calendar, PoundSterling, TrendingUp, AlertCircle } from 'lucide-react';
+import { Calendar, TrendingUp, AlertCircle, Coins } from 'lucide-react';
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  GBP: '£',
+  EUR: '€',
+  USD: '$',
+  CAD: 'C$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  SEK: 'kr',
+  NOK: 'kr',
+  DKK: 'kr',
+  JPY: '¥',
+};
 
 export default function Dashboard() {
   const { data: upcomingEvents = [], isLoading: eventsLoading } = useUpcomingEvents(5);
   const { summary } = useFinancials();
+  const { profile } = useAuth();
+
+  const defaultCurrency = profile?.default_currency || 'GBP';
+  const currencySymbol = CURRENCY_SYMBOLS[defaultCurrency] || defaultCurrency;
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: defaultCurrency }).format(amount);
   };
 
   return (
@@ -26,7 +44,7 @@ export default function Dashboard() {
           <Card className="glass">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Earnings</CardTitle>
-              <PoundSterling className="h-4 w-4 text-muted-foreground" />
+              <Coins className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(summary.monthlyEarnings)}</div>

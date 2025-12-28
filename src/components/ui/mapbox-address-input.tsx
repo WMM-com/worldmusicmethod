@@ -27,12 +27,14 @@ export function MapboxAddressInput({
   const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [hasUserTyped, setHasUserTyped] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
 
   const fetchSuggestions = useCallback(async (query: string) => {
-    if (!query || query.length < 3) {
+    if (!query || query.length < 3 || !hasUserTyped) {
       setSuggestions([]);
       return;
     }
@@ -54,16 +56,20 @@ export function MapboxAddressInput({
           place_name: f.place_name,
           text: f.text,
         })));
-        setShowSuggestions(true);
+        if (isFocused && hasUserTyped) {
+          setShowSuggestions(true);
+        }
       }
     } catch (error) {
       console.error('Error fetching address suggestions:', error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isFocused, hasUserTyped]);
 
   useEffect(() => {
+    if (!hasUserTyped) return;
+    
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
@@ -77,12 +83,13 @@ export function MapboxAddressInput({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [value, fetchSuggestions]);
+  }, [value, fetchSuggestions, hasUserTyped]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
+        setIsFocused(false);
       }
     };
 
@@ -94,6 +101,29 @@ export function MapboxAddressInput({
     onChange(suggestion.place_name);
     setSuggestions([]);
     setShowSuggestions(false);
+    setHasUserTyped(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHasUserTyped(true);
+    onChange(e.target.value);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    // Only show suggestions if user has typed and there are suggestions
+    if (hasUserTyped && suggestions.length > 0) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleBlur = () => {
+    // Delay to allow click on suggestion
+    setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement)) {
+        setIsFocused(false);
+      }
+    }, 150);
   };
 
   return (
@@ -101,8 +131,9 @@ export function MapboxAddressInput({
       <Input
         ref={inputRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+        onChange={handleInputChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder}
         className={cn(isLoading && "pr-8", className)}
         disabled={disabled}
