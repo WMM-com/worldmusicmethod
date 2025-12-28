@@ -74,7 +74,7 @@ export function useInvoices() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success('Invoice created successfully');
+      queryClient.invalidateQueries({ queryKey: ['invoice-number'] });
     },
     onError: (error) => {
       toast.error('Failed to create invoice: ' + error.message);

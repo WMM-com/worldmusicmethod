@@ -3,6 +3,12 @@ export type PaymentStatus = 'unpaid' | 'paid' | 'partial' | 'overdue';
 export type EventType = 'gig' | 'session' | 'lesson' | 'rehearsal' | 'meeting' | 'other';
 export type ExpenseCategory = 'travel' | 'equipment' | 'food' | 'accommodation' | 'marketing' | 'software' | 'other';
 
+export interface InvoiceMessageTemplate {
+  id: string;
+  name: string;
+  text: string;
+}
+
 export interface Profile {
   id: string;
   email: string;
@@ -26,6 +32,14 @@ export interface Profile {
   notification_email_mentions: boolean | null;
   notification_push_events: boolean | null;
   notification_push_messages: boolean | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  invoice_late_payment_messages: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  invoice_thank_you_messages: any;
+  auto_add_late_payment_message: boolean | null;
+  auto_add_thank_you_message: boolean | null;
+  default_late_payment_message_id: string | null;
+  default_thank_you_message_id: string | null;
   created_at: string;
   updated_at: string;
 }
