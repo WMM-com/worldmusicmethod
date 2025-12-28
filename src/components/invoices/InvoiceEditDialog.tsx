@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { CalendarIcon, Plus, Trash2, FileText, Save } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvoices } from '@/hooks/useInvoices';
@@ -226,10 +227,10 @@ export function InvoiceEditDialog({ invoice, open, onOpenChange }: InvoiceEditDi
             </div>
             <div className="space-y-2">
               <Label>Client Address</Label>
-              <Textarea
+              <MapboxAddressInput
                 value={form.client_address}
-                onChange={(e) => setForm({ ...form, client_address: e.target.value })}
-                rows={2}
+                onChange={(value) => setForm({ ...form, client_address: value })}
+                placeholder="Start typing an address..."
               />
             </div>
           </div>

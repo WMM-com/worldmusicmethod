@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { useAuth } from '@/contexts/AuthContext';
+import { useR2Upload } from '@/hooks/useR2Upload';
 import { toast } from 'sonner';
+import { Upload, X, Loader2 } from 'lucide-react';
 
 const CURRENCIES = [
   { code: 'GBP', symbol: '£', name: 'British Pound' },
@@ -31,7 +33,9 @@ const TAX_COUNTRIES = [
 
 export default function LeftBrainSettings() {
   const { profile, updateProfile } = useAuth();
+  const { uploadFile, isUploading, progress } = useR2Upload();
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [businessForm, setBusinessForm] = useState({
     business_name: '',
@@ -41,6 +45,7 @@ export default function LeftBrainSettings() {
     tax_id: '',
     vat_number: '',
     tax_country: '',
+    logo_url: '',
   });
 
   useEffect(() => {
@@ -53,6 +58,7 @@ export default function LeftBrainSettings() {
         tax_id: profile.tax_id || '',
         vat_number: profile.vat_number || '',
         tax_country: profile.tax_country || '',
+        logo_url: profile.logo_url || '',
       });
     }
   }, [profile]);
@@ -66,6 +72,27 @@ export default function LeftBrainSettings() {
       toast.success('Business settings saved');
     }
     setSaving(false);
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadFile(file, {
+      bucket: 'user',
+      folder: 'logos',
+      imageOptimization: 'media',
+      trackInDatabase: false,
+    });
+
+    if (result?.url) {
+      setBusinessForm({ ...businessForm, logo_url: result.url });
+      toast.success('Logo uploaded');
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setBusinessForm({ ...businessForm, logo_url: '' });
   };
 
   return (
@@ -127,6 +154,77 @@ export default function LeftBrainSettings() {
                 placeholder="Account name, sort code, account number, IBAN, BIC/SWIFT..." 
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Logo</CardTitle>
+            <CardDescription>Upload your logo to appear on invoices</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleLogoUpload}
+            />
+            
+            {businessForm.logo_url ? (
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <img 
+                    src={businessForm.logo_url} 
+                    alt="Business logo" 
+                    className="h-20 w-auto max-w-[200px] object-contain rounded border"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6"
+                    onClick={handleRemoveLogo}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading... {progress}%
+                    </>
+                  ) : (
+                    'Change Logo'
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading... {progress}%
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Logo
+                  </>
+                )}
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Recommended: Square or horizontal logo, PNG or JPG, max 2MB
+            </p>
           </CardContent>
         </Card>
 
