@@ -36,6 +36,7 @@ export function useFinancials() {
     const yearStart = startOfYear(now);
     const yearEnd = endOfYear(now);
 
+    // Exclude cancelled events from all earnings calculations
     const completedEvents = events.filter(e => e.status === 'completed');
     
     const totalEarnings = completedEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
