@@ -15,7 +15,7 @@ const navItems = [
   { href: '/expenses', label: 'Expenses', icon: Receipt },
   { href: '/finances', label: 'Finances', icon: PieChart },
   { href: '/documents', label: 'Documents', icon: FolderOpen },
-  { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/left-brain-settings', label: 'Settings', icon: Settings },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {

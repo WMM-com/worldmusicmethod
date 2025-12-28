@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MapboxAddressInputProps {
   value: string;
@@ -15,10 +16,6 @@ interface MapboxSuggestion {
   place_name: string;
   text: string;
 }
-
-// Mapbox API key from environment - stored in Supabase secrets for edge functions
-// For frontend, we'll need to fetch it or use a public token
-const MAPBOX_API_KEY = import.meta.env.VITE_MAPBOX_API_KEY || 'pk.eyJ1IjoibG92YWJsZS1haSIsImEiOiJjbGZudGJ3d3owMDF2M3Bxc2NhbzBleGxhIn0.placeholder';
 
 export function MapboxAddressInput({ 
   value, 
@@ -35,19 +32,23 @@ export function MapboxAddressInput({
   const debounceRef = useRef<NodeJS.Timeout>();
 
   const fetchSuggestions = useCallback(async (query: string) => {
-    if (!query || query.length < 3 || !MAPBOX_API_KEY) {
+    if (!query || query.length < 3) {
       setSuggestions([]);
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_API_KEY}&types=address,place,locality,neighborhood&limit=5`
-      );
-      const data = await response.json();
+      const { data, error } = await supabase.functions.invoke('mapbox-geocode', {
+        body: { query }
+      });
       
-      if (data.features) {
+      if (error) {
+        console.error('Mapbox geocode error:', error);
+        return;
+      }
+      
+      if (data?.features) {
         setSuggestions(data.features.map((f: any) => ({
           id: f.id,
           place_name: f.place_name,
@@ -94,19 +95,6 @@ export function MapboxAddressInput({
     setSuggestions([]);
     setShowSuggestions(false);
   };
-
-  if (!MAPBOX_API_KEY) {
-    // Fallback to regular input if no API key
-    return (
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={className}
-        disabled={disabled}
-      />
-    );
-  }
 
   return (
     <div ref={containerRef} className="relative">
