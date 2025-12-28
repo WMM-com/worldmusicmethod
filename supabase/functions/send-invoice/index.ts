@@ -1,7 +1,5 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const sendGridApiKey = Deno.env.get("SENDGRID_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -98,7 +96,6 @@ const formatDate = (dateString: string | null) => {
 };
 
 const generateEmailHtml = (invoice: any, senderName: string) => {
-  // Escape all user-controlled values to prevent XSS
   const safeInvoiceNumber = escapeHtml(invoice.invoice_number);
   const safeClientName = escapeHtml(invoice.client_name);
   const safeSenderName = escapeHtml(senderName);
@@ -200,7 +197,174 @@ const generateEmailHtml = (invoice: any, senderName: string) => {
   `;
 };
 
-const handler = async (req: Request): Promise<Response> => {
+// AWS SES API Signature V4 implementation
+async function signRequest(
+  method: string,
+  url: URL,
+  body: string,
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string,
+  service: string
+): Promise<Headers> {
+  const encoder = new TextEncoder();
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+
+  const headers = new Headers({
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Host': url.host,
+    'X-Amz-Date': amzDate,
+  });
+
+  const canonicalUri = url.pathname;
+  const canonicalQueryString = '';
+  const signedHeaders = 'content-type;host;x-amz-date';
+  
+  const payloadHash = await crypto.subtle.digest('SHA-256', encoder.encode(body));
+  const payloadHashHex = Array.from(new Uint8Array(payloadHash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const canonicalHeaders = 
+    `content-type:${headers.get('Content-Type')}\n` +
+    `host:${url.host}\n` +
+    `x-amz-date:${amzDate}\n`;
+
+  const canonicalRequest = [
+    method,
+    canonicalUri,
+    canonicalQueryString,
+    canonicalHeaders,
+    signedHeaders,
+    payloadHashHex,
+  ].join('\n');
+
+  const algorithm = 'AWS4-HMAC-SHA256';
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  
+  const canonicalRequestHash = await crypto.subtle.digest(
+    'SHA-256',
+    encoder.encode(canonicalRequest)
+  );
+  const canonicalRequestHashHex = Array.from(new Uint8Array(canonicalRequestHash))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const stringToSign = [
+    algorithm,
+    amzDate,
+    credentialScope,
+    canonicalRequestHashHex,
+  ].join('\n');
+
+  const getSignatureKey = async (
+    key: string,
+    dateStamp: string,
+    regionName: string,
+    serviceName: string
+  ) => {
+    const kDate = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', encoder.encode('AWS4' + key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(dateStamp)
+    );
+    const kRegion = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', kDate, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(regionName)
+    );
+    const kService = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', kRegion, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(serviceName)
+    );
+    const kSigning = await crypto.subtle.sign(
+      'HMAC',
+      await crypto.subtle.importKey('raw', kService, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode('aws4_request')
+    );
+    return kSigning;
+  };
+
+  const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, service);
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    await crypto.subtle.importKey('raw', signingKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+    encoder.encode(stringToSign)
+  );
+  const signatureHex = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  const authorizationHeader = `${algorithm} Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signatureHex}`;
+  headers.set('Authorization', authorizationHeader);
+
+  return headers;
+}
+
+async function sendEmailViaSES(
+  to: string[],
+  subject: string,
+  html: string,
+  from: string,
+  replyTo: string | undefined,
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const url = new URL(`https://email.${region}.amazonaws.com/`);
+  
+  const params = new URLSearchParams();
+  params.append('Action', 'SendEmail');
+  params.append('Version', '2010-12-01');
+  params.append('Source', from);
+  
+  to.forEach((email, index) => {
+    params.append(`Destination.ToAddresses.member.${index + 1}`, email);
+  });
+  
+  params.append('Message.Subject.Data', subject);
+  params.append('Message.Subject.Charset', 'UTF-8');
+  params.append('Message.Body.Html.Data', html);
+  params.append('Message.Body.Html.Charset', 'UTF-8');
+  
+  if (replyTo) {
+    params.append('ReplyToAddresses.member.1', replyTo);
+  }
+
+  const body = params.toString();
+  const headers = await signRequest('POST', url, body, accessKeyId, secretAccessKey, region, 'ses');
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      console.error('SES Error Response:', responseText);
+      const errorMatch = responseText.match(/<Message>(.*?)<\/Message>/);
+      const errorMessage = errorMatch ? errorMatch[1] : 'Unknown SES error';
+      return { success: false, error: errorMessage };
+    }
+
+    const messageIdMatch = responseText.match(/<MessageId>(.*?)<\/MessageId>/);
+    const messageId = messageIdMatch ? messageIdMatch[1] : undefined;
+    
+    return { success: true, messageId };
+  } catch (error: unknown) {
+    console.error('SES Request Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: errorMessage };
+  }
+}
+
+Deno.serve(async (req) => {
   console.log("Send invoice function called");
   
   if (req.method === "OPTIONS") {
@@ -208,8 +372,12 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    if (!sendGridApiKey) {
-      console.error("SENDGRID_API_KEY not configured");
+    const accessKeyId = Deno.env.get('AWS_SES_ACCESS_KEY_ID');
+    const secretAccessKey = Deno.env.get('AWS_SES_SECRET_ACCESS_KEY');
+    const region = Deno.env.get('AWS_SES_REGION') || 'eu-west-1';
+
+    if (!accessKeyId || !secretAccessKey) {
+      console.error("AWS SES credentials not configured");
       return new Response(
         JSON.stringify({ error: "Email service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -226,7 +394,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Verify the user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -238,7 +405,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Parse and validate request body
     let requestBody: unknown;
     try {
       requestBody = await req.json();
@@ -261,7 +427,6 @@ const handler = async (req: Request): Promise<Response> => {
     const { invoiceId, recipientEmail, senderName, senderEmail } = validation.data;
     console.log("Sending invoice:", invoiceId, "to:", recipientEmail);
 
-    // Fetch the invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
       .select("*")
@@ -277,7 +442,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Fetch user profile for sender details
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
@@ -285,46 +449,35 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     const fromName = senderName || profile?.business_name || profile?.full_name || "Left Brain";
-    const fromEmail = senderEmail || "noreply@leftbrain.app";
+    // Use the SES verified sender address - in future this will be configurable per domain
+    const fromAddress = `${fromName} <info@worldmusicmethod.com>`;
+    const replyToAddress = senderEmail || user.email;
 
     const emailHtml = generateEmailHtml(invoice, fromName);
+    const subject = `Invoice ${invoice.invoice_number} from ${fromName}`;
 
-    // Send email via SendGrid
-    const sendGridResponse = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${sendGridApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        personalizations: [
-          {
-            to: [{ email: recipientEmail }],
-            subject: `Invoice ${invoice.invoice_number} from ${fromName}`,
-          },
-        ],
-        from: {
-          email: fromEmail,
-          name: fromName,
-        },
-        content: [
-          {
-            type: "text/html",
-            value: emailHtml,
-          },
-        ],
-      }),
-    });
+    console.log(`Sending invoice email to ${recipientEmail} from ${fromAddress}`);
 
-    if (!sendGridResponse.ok) {
-      console.error("SendGrid error: delivery failed with status", sendGridResponse.status);
+    const result = await sendEmailViaSES(
+      [recipientEmail],
+      subject,
+      emailHtml,
+      fromAddress,
+      replyToAddress,
+      accessKeyId,
+      secretAccessKey,
+      region
+    );
+
+    if (!result.success) {
+      console.error("Failed to send invoice email:", result.error);
       return new Response(
         JSON.stringify({ error: "Email delivery failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Email sent successfully");
+    console.log("Invoice email sent successfully, MessageId:", result.messageId);
 
     // Update invoice sent_at timestamp
     await supabase
@@ -337,7 +490,7 @@ const handler = async (req: Request): Promise<Response> => {
       user_id: user.id,
       event_id: invoice.event_id,
       recipient_email: recipientEmail,
-      subject: `Invoice ${invoice.invoice_number} from ${fromName}`,
+      subject: subject,
       template_type: "invoice",
       status: "sent",
     });
@@ -350,7 +503,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error) {
-    console.error("Error in send-invoice function: operation failed");
+    console.error("Error in send-invoice function: operation failed", error);
     return new Response(
       JSON.stringify({ error: "Operation failed" }),
       {
@@ -359,6 +512,4 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   }
-};
-
-serve(handler);
+});

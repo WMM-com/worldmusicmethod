@@ -19,6 +19,34 @@ import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+
+const CURRENCIES = [
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'DKK', symbol: 'kr', name: 'Danish Krone' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+];
+
+// Approximate exchange rates to GBP (for estimation only)
+const EXCHANGE_RATES_TO_GBP: Record<string, number> = {
+  GBP: 1,
+  EUR: 0.85,
+  USD: 0.79,
+  CAD: 0.58,
+  AUD: 0.52,
+  CHF: 0.88,
+  SEK: 0.073,
+  NOK: 0.072,
+  DKK: 0.11,
+  JPY: 0.0053,
+};
 
 interface FormErrors {
   title?: string;
@@ -50,6 +78,7 @@ export function EventDetailDialog({
   onDuplicate,
   isPending 
 }: EventDetailDialogProps) {
+  const { profile } = useAuth();
   const [editedEvent, setEditedEvent] = useState<Partial<Event>>({});
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [time, setTime] = useState('');
@@ -59,7 +88,25 @@ export function EventDetailDialog({
   const [errors, setErrors] = useState<FormErrors>({});
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [estimatedDefaultAmount, setEstimatedDefaultAmount] = useState<number>(0);
   const queryClient = useQueryClient();
+
+  const defaultCurrency = profile?.default_currency || 'GBP';
+
+  // Calculate estimated amount in default currency
+  const calculateEstimatedAmount = (fee: number, currency: string) => {
+    if (currency === defaultCurrency) {
+      return fee;
+    }
+    // Convert to GBP first, then to default currency
+    const toGBP = EXCHANGE_RATES_TO_GBP[currency] || 1;
+    const fromGBP = EXCHANGE_RATES_TO_GBP[defaultCurrency] || 1;
+    return Math.round((fee * toGBP / fromGBP) * 100) / 100;
+  };
+
+  const getCurrencySymbol = (code: string) => {
+    return CURRENCIES.find(c => c.code === code)?.symbol || code;
+  };
 
   useEffect(() => {
     if (event) {
@@ -78,8 +125,12 @@ export function EventDetailDialog({
       } else {
         setTime('');
       }
+
+      // Set estimated amount
+      const eventCurrency = event.currency || defaultCurrency;
+      setEstimatedDefaultAmount(calculateEstimatedAmount(event.fee || 0, eventCurrency));
     }
-  }, [event]);
+  }, [event, defaultCurrency]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -261,16 +312,68 @@ export function EventDetailDialog({
                 placeholder="Venue name" 
               />
             </div>
-            <div className="space-y-2">
-              <Label>Fee (£)</Label>
-              <Input 
-                type="number" 
-                value={editedEvent.fee || 0} 
-                onChange={(e) => setEditedEvent({...editedEvent, fee: parseFloat(e.target.value) || 0})} 
-              />
-            </div>
           </div>
 
+          {/* Fee and Currency Section */}
+          <div className="space-y-3 p-4 rounded-lg bg-secondary/30">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-2">
+                <Label>Fee</Label>
+                <Input 
+                  type="number" 
+                  value={editedEvent.fee || 0} 
+                  onChange={(e) => {
+                    const newFee = parseFloat(e.target.value) || 0;
+                    const eventCurrency = editedEvent.currency || defaultCurrency;
+                    setEditedEvent({...editedEvent, fee: newFee});
+                    setEstimatedDefaultAmount(calculateEstimatedAmount(newFee, eventCurrency));
+                  }} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Currency</Label>
+                <Select 
+                  value={editedEvent.currency || defaultCurrency} 
+                  onValueChange={(v) => {
+                    setEditedEvent({...editedEvent, currency: v});
+                    setEstimatedDefaultAmount(calculateEstimatedAmount(editedEvent.fee || 0, v));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.symbol} {c.code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {/* Estimated amount in default currency - only show if different currency */}
+            {editedEvent.currency && editedEvent.currency !== defaultCurrency && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Estimated in {defaultCurrency} (editable)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground">{getCurrencySymbol(defaultCurrency)}</span>
+                  <Input 
+                    type="number" 
+                    value={estimatedDefaultAmount} 
+                    onChange={(e) => setEstimatedDefaultAmount(parseFloat(e.target.value) || 0)}
+                    className="flex-1"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This is an estimate for reporting. Actual amount may vary.
+                </p>
+              </div>
+            )}
+          </div>
           <div className="space-y-2">
             <Label>Venue Address</Label>
             <MapboxAddressInput 
