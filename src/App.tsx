@@ -14,6 +14,7 @@ import Invoices from "./pages/Invoices";
 import Finances from "./pages/Finances";
 import Expenses from "./pages/Expenses";
 import Settings from "./pages/Settings";
+import LeftBrainSettings from "./pages/LeftBrainSettings";
 import SharedWithMe from "./pages/SharedWithMe";
 import IncomeProof from "./pages/IncomeProof";
 import Documents from "./pages/Documents";
@@ -94,6 +95,7 @@ const App = () => (
                 <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
                 <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
                 <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
                 <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
                 <Route path="/courses" element={<Courses />} />
