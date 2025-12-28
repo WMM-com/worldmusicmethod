@@ -126,21 +126,19 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       refetchInvoiceNumber();
       
       // Set default selections: first user template > other user templates > default > none
-      // If auto-add is enabled, respect that; otherwise start with first user template or none
+      // Priority: user's first template > default > none (never start with none if we have options)
       if (latePaymentMessages.length > 0) {
         setSelectedLatePaymentId(latePaymentMessages[0].id);
-      } else if (autoAddLatePayment) {
-        setSelectedLatePaymentId(defaultLatePaymentId || 'default');
       } else {
-        setSelectedLatePaymentId('none');
+        // No user templates - default to the built-in default message
+        setSelectedLatePaymentId('default');
       }
       
       if (thankYouMessages.length > 0) {
         setSelectedThankYouId(thankYouMessages[0].id);
-      } else if (autoAddThankYou) {
-        setSelectedThankYouId(defaultThankYouId || 'default');
       } else {
-        setSelectedThankYouId('none');
+        // No user templates - default to the built-in default message
+        setSelectedThankYouId('default');
       }
       
       if (fromEvent) {

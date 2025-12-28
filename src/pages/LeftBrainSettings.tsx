@@ -193,7 +193,16 @@ export default function LeftBrainSettings() {
             {businessForm.logo_url ? (
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className="bg-white p-4 rounded border">
+                  {/* Checkerboard pattern to show transparency */}
+                  <div 
+                    className="p-4 rounded border"
+                    style={{
+                      backgroundImage: 'linear-gradient(45deg, #e0e0e0 25%, transparent 25%), linear-gradient(-45deg, #e0e0e0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e0e0e0 75%), linear-gradient(-45deg, transparent 75%, #e0e0e0 75%)',
+                      backgroundSize: '20px 20px',
+                      backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                      backgroundColor: '#ffffff'
+                    }}
+                  >
                     <img 
                       src={businessForm.logo_url} 
                       alt="Business logo" 
