@@ -27,11 +27,12 @@ interface InvoiceMessagesCardProps {
     default_late_payment_message_id?: string | null;
     default_thank_you_message_id?: string | null;
   }) => void;
+  onSave?: () => void;
   saving?: boolean;
 }
 
-const DEFAULT_LATE_PAYMENT = "Interest will be charged at 2% per month on overdue invoices. Payment is due within the terms stated above.";
-const DEFAULT_THANK_YOU = "Thank you for your business. We appreciate working with you!";
+const DEFAULT_LATE_PAYMENT = "A late payment fee of 1.5% per month applies to overdue balances.";
+const DEFAULT_THANK_YOU = "Thank You";
 
 export function InvoiceMessagesCard({
   latePaymentMessages,
@@ -41,6 +42,7 @@ export function InvoiceMessagesCard({
   defaultLatePaymentId,
   defaultThankYouId,
   onUpdate,
+  onSave,
   saving,
 }: InvoiceMessagesCardProps) {
   const [newLatePayment, setNewLatePayment] = useState({ name: '', text: '' });
@@ -282,6 +284,14 @@ export function InvoiceMessagesCard({
             </div>
           )}
         </div>
+
+        {onSave && (
+          <div className="pt-4 border-t">
+            <Button className="gradient-primary" onClick={onSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Invoice Messages'}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

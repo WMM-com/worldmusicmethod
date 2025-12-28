@@ -162,11 +162,16 @@ export default function LeftBrainSettings() {
             <div className="space-y-2">
               <Label>Bank Details (for invoices)</Label>
               <Textarea 
-                value={businessForm.bank_details} 
-                onChange={(e) => setBusinessForm({...businessForm, bank_details: e.target.value})} 
+                value={businessForm.bank_details}
+                onChange={(e) => setBusinessForm({...businessForm, bank_details: e.target.value})}
                 rows={3} 
-                placeholder="Account name, sort code, account number, IBAN, BIC/SWIFT..." 
+              placeholder="Account name, sort code, account number, IBAN, BIC/SWIFT..." 
               />
+            </div>
+            <div className="pt-4 border-t">
+              <Button className="gradient-primary" onClick={handleSaveBusiness} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Business Info'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -188,11 +193,13 @@ export default function LeftBrainSettings() {
             {businessForm.logo_url ? (
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <img 
-                    src={businessForm.logo_url} 
-                    alt="Business logo" 
-                    className="h-20 w-auto max-w-[200px] object-contain rounded border"
-                  />
+                  <div className="bg-white p-4 rounded border">
+                    <img 
+                      src={businessForm.logo_url} 
+                      alt="Business logo" 
+                      className="h-20 w-auto max-w-[200px] object-contain"
+                    />
+                  </div>
                   <Button
                     variant="destructive"
                     size="icon"
@@ -239,6 +246,11 @@ export default function LeftBrainSettings() {
             <p className="text-xs text-muted-foreground">
               Recommended: Square or horizontal logo, PNG or JPG, max 2MB
             </p>
+            <div className="pt-4 border-t">
+              <Button className="gradient-primary" onClick={handleSaveBusiness} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Logo'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -302,6 +314,7 @@ export default function LeftBrainSettings() {
           defaultLatePaymentId={businessForm.default_late_payment_message_id}
           defaultThankYouId={businessForm.default_thank_you_message_id}
           onUpdate={(updates) => setBusinessForm({ ...businessForm, ...updates })}
+          onSave={handleSaveBusiness}
           saving={saving}
         />
 

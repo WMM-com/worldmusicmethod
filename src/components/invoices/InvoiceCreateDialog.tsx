@@ -125,14 +125,19 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       // Refetch to get latest invoice number
       refetchInvoiceNumber();
       
-      // Set default selections based on auto-add settings
-      if (autoAddLatePayment) {
+      // Set default selections: first user template > other user templates > default > none
+      // If auto-add is enabled, respect that; otherwise start with first user template or none
+      if (latePaymentMessages.length > 0) {
+        setSelectedLatePaymentId(latePaymentMessages[0].id);
+      } else if (autoAddLatePayment) {
         setSelectedLatePaymentId(defaultLatePaymentId || 'default');
       } else {
         setSelectedLatePaymentId('none');
       }
       
-      if (autoAddThankYou) {
+      if (thankYouMessages.length > 0) {
+        setSelectedThankYouId(thankYouMessages[0].id);
+      } else if (autoAddThankYou) {
         setSelectedThankYouId(defaultThankYouId || 'default');
       } else {
         setSelectedThankYouId('none');
@@ -470,11 +475,11 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="default">Default message</SelectItem>
                     {latePaymentMessages.map(m => (
                       <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
+                    <SelectItem value="default">Default message</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -485,11 +490,11 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="default">Default message</SelectItem>
                     {thankYouMessages.map(m => (
                       <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                     ))}
+                    <SelectItem value="default">Default message</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
