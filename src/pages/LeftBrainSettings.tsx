@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
+import { InvoiceMessagesCard } from '@/components/settings/InvoiceMessagesCard';
+import { InvoiceMessageTemplate } from '@/types/database';
 import { toast } from 'sonner';
 import { Upload, X, Loader2 } from 'lucide-react';
 
@@ -46,6 +48,12 @@ export default function LeftBrainSettings() {
     vat_number: '',
     tax_country: '',
     logo_url: '',
+    invoice_late_payment_messages: [] as InvoiceMessageTemplate[],
+    invoice_thank_you_messages: [] as InvoiceMessageTemplate[],
+    auto_add_late_payment_message: false,
+    auto_add_thank_you_message: false,
+    default_late_payment_message_id: null as string | null,
+    default_thank_you_message_id: null as string | null,
   });
 
   useEffect(() => {
@@ -59,6 +67,12 @@ export default function LeftBrainSettings() {
         vat_number: profile.vat_number || '',
         tax_country: profile.tax_country || '',
         logo_url: profile.logo_url || '',
+        invoice_late_payment_messages: (profile.invoice_late_payment_messages as InvoiceMessageTemplate[] | null) || [],
+        invoice_thank_you_messages: (profile.invoice_thank_you_messages as InvoiceMessageTemplate[] | null) || [],
+        auto_add_late_payment_message: profile.auto_add_late_payment_message || false,
+        auto_add_thank_you_message: profile.auto_add_thank_you_message || false,
+        default_late_payment_message_id: profile.default_late_payment_message_id || null,
+        default_thank_you_message_id: profile.default_thank_you_message_id || null,
       });
     }
   }, [profile]);
@@ -279,6 +293,23 @@ export default function LeftBrainSettings() {
             </Button>
           </CardContent>
         </Card>
+
+        <InvoiceMessagesCard
+          latePaymentMessages={businessForm.invoice_late_payment_messages}
+          thankYouMessages={businessForm.invoice_thank_you_messages}
+          autoAddLatePayment={businessForm.auto_add_late_payment_message}
+          autoAddThankYou={businessForm.auto_add_thank_you_message}
+          defaultLatePaymentId={businessForm.default_late_payment_message_id}
+          defaultThankYouId={businessForm.default_thank_you_message_id}
+          onUpdate={(updates) => setBusinessForm({ ...businessForm, ...updates })}
+          saving={saving}
+        />
+
+        <div className="flex justify-end">
+          <Button className="gradient-primary" onClick={handleSaveBusiness} disabled={saving}>
+            {saving ? 'Saving...' : 'Save All Settings'}
+          </Button>
+        </div>
       </div>
     </AppLayout>
   );

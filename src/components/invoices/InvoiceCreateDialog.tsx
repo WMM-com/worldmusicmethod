@@ -18,10 +18,11 @@ import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { CalendarIcon, Plus, Trash2, FileText, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvoices, useGenerateInvoiceNumber } from '@/hooks/useInvoices';
-import { Event, InvoiceItem } from '@/types/database';
+import { Event, InvoiceItem, InvoiceMessageTemplate } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { DEFAULT_LATE_PAYMENT, DEFAULT_THANK_YOU } from '@/components/settings/InvoiceMessagesCard';
 
 const CURRENCIES = [
   { code: 'GBP', symbol: '£', name: 'British Pound' },
@@ -61,9 +62,17 @@ interface InvoiceCreateDialogProps {
 export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCreateDialogProps) {
   const { profile } = useAuth();
   const { createInvoice } = useInvoices();
-  const { data: generatedNumber } = useGenerateInvoiceNumber();
+  const { data: generatedNumber, refetch: refetchInvoiceNumber } = useGenerateInvoiceNumber();
 
   const defaultCurrency = profile?.default_currency || 'GBP';
+  
+  // Get saved message templates from profile
+  const latePaymentMessages = (profile?.invoice_late_payment_messages as InvoiceMessageTemplate[] | null) || [];
+  const thankYouMessages = (profile?.invoice_thank_you_messages as InvoiceMessageTemplate[] | null) || [];
+  const autoAddLatePayment = profile?.auto_add_late_payment_message || false;
+  const autoAddThankYou = profile?.auto_add_thank_you_message || false;
+  const defaultLatePaymentId = profile?.default_late_payment_message_id || null;
+  const defaultThankYouId = profile?.default_thank_you_message_id || null;
   
   const [form, setForm] = useState({
     invoice_number: '',
@@ -75,15 +84,60 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
     notes: '',
   });
 
+  const [selectedLatePaymentId, setSelectedLatePaymentId] = useState<string>('none');
+  const [selectedThankYouId, setSelectedThankYouId] = useState<string>('none');
+
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', quantity: 1, rate: 0, amount: 0 }
   ]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sendingAfterCreate, setSendingAfterCreate] = useState(false);
+
+  // Get message text based on selection
+  const getMessageText = () => {
+    const parts: string[] = [];
+    
+    if (selectedLatePaymentId !== 'none') {
+      if (selectedLatePaymentId === 'default') {
+        parts.push(DEFAULT_LATE_PAYMENT);
+      } else {
+        const msg = latePaymentMessages.find(m => m.id === selectedLatePaymentId);
+        if (msg) parts.push(msg.text);
+      }
+    }
+    
+    if (selectedThankYouId !== 'none') {
+      if (selectedThankYouId === 'default') {
+        parts.push(DEFAULT_THANK_YOU);
+      } else {
+        const msg = thankYouMessages.find(m => m.id === selectedThankYouId);
+        if (msg) parts.push(msg.text);
+      }
+    }
+    
+    return parts.join('\n\n');
+  };
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
+      // Refetch to get latest invoice number
+      refetchInvoiceNumber();
+      
+      // Set default selections based on auto-add settings
+      if (autoAddLatePayment) {
+        setSelectedLatePaymentId(defaultLatePaymentId || 'default');
+      } else {
+        setSelectedLatePaymentId('none');
+      }
+      
+      if (autoAddThankYou) {
+        setSelectedThankYouId(defaultThankYouId || 'default');
+      } else {
+        setSelectedThankYouId('none');
+      }
+      
       if (fromEvent) {
         // Pre-fill from event
         setForm({
@@ -116,7 +170,8 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       }
       setErrors({});
     }
-  }, [open, fromEvent, generatedNumber, defaultCurrency]);
+  }, [open, fromEvent, generatedNumber, defaultCurrency, autoAddLatePayment, autoAddThankYou, defaultLatePaymentId, defaultThankYouId, refetchInvoiceNumber]);
+
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
     setItems(prev => {
@@ -170,6 +225,10 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
 
     setSendingAfterCreate(andSend);
 
+    // Combine selected messages with additional notes
+    const messageText = getMessageText();
+    const combinedNotes = [messageText, form.notes].filter(Boolean).join('\n\n') || null;
+
     const invoice = await createInvoice.mutateAsync({
       invoice_number: form.invoice_number,
       client_name: form.client_name,
@@ -178,7 +237,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       amount: totalAmount,
       currency: form.currency,
       due_date: form.due_date ? format(form.due_date, 'yyyy-MM-dd') : null,
-      notes: form.notes || null,
+      notes: combinedNotes,
       items,
       status: 'unpaid',
       event_id: fromEvent?.id || null,
@@ -401,18 +460,56 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
             </div>
           </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label>Notes / Payment Terms</Label>
-            <Textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={3}
-              placeholder="e.g. Interest will be charged at 2% per month on overdue invoices. Payment via bank transfer preferred."
-            />
-            <p className="text-xs text-muted-foreground">
-              Add late payment terms, bank details, or thank you message
-            </p>
+          {/* Notes & Messages */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Late Payment Terms</Label>
+                <Select value={selectedLatePaymentId} onValueChange={setSelectedLatePaymentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="default">Default message</SelectItem>
+                    {latePaymentMessages.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Thank You Message</Label>
+                <Select value={selectedThankYouId} onValueChange={setSelectedThankYouId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="default">Default message</SelectItem>
+                    {thankYouMessages.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            {getMessageText() && (
+              <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">
+                {getMessageText()}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label>Additional Notes</Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={2}
+                placeholder="Any additional notes..."
+              />
+            </div>
           </div>
 
           {/* Submit */}

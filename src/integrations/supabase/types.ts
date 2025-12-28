@@ -2686,6 +2686,8 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          auto_add_late_payment_message: boolean | null
+          auto_add_thank_you_message: boolean | null
           avatar_url: string | null
           bank_details: string | null
           bio: string | null
@@ -2693,10 +2695,14 @@ export type Database = {
           cover_image_url: string | null
           created_at: string
           default_currency: string | null
+          default_late_payment_message_id: string | null
+          default_thank_you_message_id: string | null
           email: string
           first_name: string | null
           full_name: string | null
           id: string
+          invoice_late_payment_messages: Json | null
+          invoice_thank_you_messages: Json | null
           is_public: boolean | null
           last_name: string | null
           logo_url: string | null
@@ -2725,6 +2731,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auto_add_late_payment_message?: boolean | null
+          auto_add_thank_you_message?: boolean | null
           avatar_url?: string | null
           bank_details?: string | null
           bio?: string | null
@@ -2732,10 +2740,14 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           default_currency?: string | null
+          default_late_payment_message_id?: string | null
+          default_thank_you_message_id?: string | null
           email: string
           first_name?: string | null
           full_name?: string | null
           id: string
+          invoice_late_payment_messages?: Json | null
+          invoice_thank_you_messages?: Json | null
           is_public?: boolean | null
           last_name?: string | null
           logo_url?: string | null
@@ -2764,6 +2776,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auto_add_late_payment_message?: boolean | null
+          auto_add_thank_you_message?: boolean | null
           avatar_url?: string | null
           bank_details?: string | null
           bio?: string | null
@@ -2771,10 +2785,14 @@ export type Database = {
           cover_image_url?: string | null
           created_at?: string
           default_currency?: string | null
+          default_late_payment_message_id?: string | null
+          default_thank_you_message_id?: string | null
           email?: string
           first_name?: string | null
           full_name?: string | null
           id?: string
+          invoice_late_payment_messages?: Json | null
+          invoice_thank_you_messages?: Json | null
           is_public?: boolean | null
           last_name?: string | null
           logo_url?: string | null
