@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -111,11 +112,10 @@ export default function LeftBrainSettings() {
             </div>
             <div className="space-y-2">
               <Label>Business Address</Label>
-              <Textarea 
+              <MapboxAddressInput 
                 value={businessForm.address} 
-                onChange={(e) => setBusinessForm({...businessForm, address: e.target.value})} 
-                rows={2} 
-                placeholder="Your business address for invoices" 
+                onChange={(value) => setBusinessForm({...businessForm, address: value})} 
+                placeholder="Start typing your business address..." 
               />
             </div>
             <div className="space-y-2">
