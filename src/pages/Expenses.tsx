@@ -295,15 +295,66 @@ export default function Expenses() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Currency</FormLabel>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            const amount = parseFloat(form.getValues('amount')) || 0;
+                            if (value !== defaultCurrency && amount > 0) {
+                              setEstimatedDefaultAmount(convertCurrency(amount, value, defaultCurrency));
+                            } else {
+                              setEstimatedDefaultAmount(0);
+                            }
+                          }} 
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CURRENCIES.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.symbol} {c.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="amount"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Amount (£)</FormLabel>
+                          <FormLabel>Amount ({getCurrencySymbol(form.watch('currency'))})</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                const amount = parseFloat(e.target.value) || 0;
+                                const currency = form.getValues('currency');
+                                if (currency !== defaultCurrency && amount > 0) {
+                                  setEstimatedDefaultAmount(convertCurrency(amount, currency, defaultCurrency));
+                                } else {
+                                  setEstimatedDefaultAmount(0);
+                                }
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -323,6 +374,25 @@ export default function Expenses() {
                       )}
                     />
                   </div>
+
+                  {/* Show estimated amount in default currency when using different currency */}
+                  {form.watch('currency') !== defaultCurrency && (
+                    <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                      <Label className="text-sm text-muted-foreground">
+                        Estimated in {defaultCurrency}
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={estimatedDefaultAmount || ''}
+                        onChange={(e) => setEstimatedDefaultAmount(parseFloat(e.target.value) || 0)}
+                        placeholder={`Amount in ${defaultCurrency}`}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Auto-calculated estimate. You can adjust if needed.
+                      </p>
+                    </div>
+                  )}
 
                   <FormField
                     control={form.control}
