@@ -20,33 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-
-const CURRENCIES = [
-  { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'EUR', symbol: '€', name: 'Euro' },
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
-  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
-  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
-  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
-  { code: 'DKK', symbol: 'kr', name: 'Danish Krone' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
-];
-
-// Approximate exchange rates to GBP (for estimation only)
-const EXCHANGE_RATES_TO_GBP: Record<string, number> = {
-  GBP: 1,
-  EUR: 0.85,
-  USD: 0.79,
-  CAD: 0.58,
-  AUD: 0.52,
-  CHF: 0.88,
-  SEK: 0.073,
-  NOK: 0.072,
-  DKK: 0.11,
-  JPY: 0.0053,
-};
+import { CURRENCIES, getCurrencySymbol, convertCurrency } from '@/lib/currency';
 
 interface FormErrors {
   title?: string;
@@ -93,30 +67,16 @@ export function EventDetailDialog({
 
   const defaultCurrency = profile?.default_currency || 'GBP';
 
-  // Calculate estimated amount in default currency
-  const calculateEstimatedAmount = (fee: number, currency: string) => {
-    if (currency === defaultCurrency) {
-      return fee;
-    }
-    // Convert to GBP first, then to default currency
-    const toGBP = EXCHANGE_RATES_TO_GBP[currency] || 1;
-    const fromGBP = EXCHANGE_RATES_TO_GBP[defaultCurrency] || 1;
-    return Math.round((fee * toGBP / fromGBP) * 100) / 100;
-  };
-
-  const getCurrencySymbol = (code: string) => {
-    return CURRENCIES.find(c => c.code === code)?.symbol || code;
-  };
-
   useEffect(() => {
     if (event) {
-      setEditedEvent(event);
+      // Ensure currency defaults to user's default if not set
+      const eventCurrency = event.currency || defaultCurrency;
+      setEditedEvent({ ...event, currency: eventCurrency });
       const eventDate = new Date(event.start_time);
       setSelectedDate(eventDate);
       setDuplicateDate(eventDate);
       setErrors({});
       
-      // Check if time_tbc is set, otherwise try to detect from time
       const isTbc = (event as any).time_tbc === true;
       setTimeTbc(isTbc);
       
@@ -127,8 +87,7 @@ export function EventDetailDialog({
       }
 
       // Set estimated amount
-      const eventCurrency = event.currency || defaultCurrency;
-      setEstimatedDefaultAmount(calculateEstimatedAmount(event.fee || 0, eventCurrency));
+      setEstimatedDefaultAmount(convertCurrency(event.fee || 0, eventCurrency, defaultCurrency));
     }
   }, [event, defaultCurrency]);
 
@@ -326,7 +285,7 @@ export function EventDetailDialog({
                     const newFee = parseFloat(e.target.value) || 0;
                     const eventCurrency = editedEvent.currency || defaultCurrency;
                     setEditedEvent({...editedEvent, fee: newFee});
-                    setEstimatedDefaultAmount(calculateEstimatedAmount(newFee, eventCurrency));
+                    setEstimatedDefaultAmount(convertCurrency(newFee, eventCurrency, defaultCurrency));
                   }} 
                 />
               </div>
@@ -336,7 +295,7 @@ export function EventDetailDialog({
                   value={editedEvent.currency || defaultCurrency} 
                   onValueChange={(v) => {
                     setEditedEvent({...editedEvent, currency: v});
-                    setEstimatedDefaultAmount(calculateEstimatedAmount(editedEvent.fee || 0, v));
+                    setEstimatedDefaultAmount(convertCurrency(editedEvent.fee || 0, v, defaultCurrency));
                   }}
                 >
                   <SelectTrigger>
