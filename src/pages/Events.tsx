@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { useEvents } from '@/hooks/useEvents';
 import { useSharedEvents } from '@/hooks/useSharedEvents';
 import { useEventInvoices } from '@/hooks/useInvoices';
+import { useAuth } from '@/contexts/AuthContext';
 import { ShareEventDialog } from '@/components/events/ShareEventDialog';
 import { EventCalendarView } from '@/components/events/EventCalendarView';
 import { EventDetailDialog } from '@/components/events/EventDetailDialog';
@@ -24,6 +25,7 @@ import { format } from 'date-fns';
 import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText, Users, Mail } from 'lucide-react';
 import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { CURRENCIES, getCurrencySymbol, convertCurrency } from '@/lib/currency';
 
 import { eventSchema } from '@/lib/validations';
 
@@ -40,6 +42,9 @@ interface FormErrors {
 }
 
 export default function Events() {
+  const { profile } = useAuth();
+  const defaultCurrency = profile?.default_currency || 'GBP';
+  
   const { 
     events, 
     deletedEvents,
@@ -73,6 +78,7 @@ export default function Events() {
   const [selectedEventIds, setSelectedEventIds] = useState<Set<string>>(new Set());
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceEvent, setInvoiceEvent] = useState<Event | null>(null);
+  const [estimatedDefaultAmount, setEstimatedDefaultAmount] = useState<number>(0);
   
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -81,12 +87,19 @@ export default function Events() {
     client_name: '',
     client_email: '',
     fee: 0,
-    currency: 'GBP',
+    currency: defaultCurrency,
     time: '',
     status: 'pencilled' as EventStatus,
     payment_status: 'unpaid' as PaymentStatus,
     notes: '',
   });
+
+  // Update currency when profile loads
+  useEffect(() => {
+    if (defaultCurrency && newEvent.currency !== defaultCurrency) {
+      setNewEvent(prev => ({ ...prev, currency: defaultCurrency }));
+    }
+  }, [defaultCurrency]);
 
   const filteredEvents = events.filter(e => 
     e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -169,7 +182,7 @@ export default function Events() {
       client_name: '',
       client_email: '',
       fee: 0,
-      currency: 'GBP',
+      currency: defaultCurrency,
       time: '',
       status: 'pencilled',
       payment_status: 'unpaid',
@@ -178,10 +191,11 @@ export default function Events() {
     setSelectedDate(undefined);
     setTimeUnknown(false);
     setErrors({});
+    setEstimatedDefaultAmount(0);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+  const formatCurrencyAmount = (amount: number, currency: string = defaultCurrency) => {
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(amount);
   };
 
   const formatEventTime = (event: Event) => {
@@ -404,15 +418,75 @@ export default function Events() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Venue</Label>
-                      <Input value={newEvent.venue_name} onChange={(e) => setNewEvent({...newEvent, venue_name: e.target.value})} placeholder="Venue name" />
+                  <div className="space-y-2">
+                    <Label>Venue</Label>
+                    <Input value={newEvent.venue_name} onChange={(e) => setNewEvent({...newEvent, venue_name: e.target.value})} placeholder="Venue name" />
+                  </div>
+
+                  {/* Fee and Currency Section */}
+                  <div className="space-y-3 p-4 rounded-lg bg-secondary/30">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2 space-y-2">
+                        <Label>Fee</Label>
+                        <Input 
+                          type="number" 
+                          value={newEvent.fee} 
+                          onChange={(e) => {
+                            const newFee = parseFloat(e.target.value) || 0;
+                            setNewEvent({...newEvent, fee: newFee});
+                            if (newEvent.currency !== defaultCurrency) {
+                              setEstimatedDefaultAmount(convertCurrency(newFee, newEvent.currency, defaultCurrency));
+                            }
+                          }} 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Currency</Label>
+                        <Select 
+                          value={newEvent.currency} 
+                          onValueChange={(v) => {
+                            setNewEvent({...newEvent, currency: v});
+                            if (v !== defaultCurrency) {
+                              setEstimatedDefaultAmount(convertCurrency(newEvent.fee, v, defaultCurrency));
+                            } else {
+                              setEstimatedDefaultAmount(0);
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CURRENCIES.map(c => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.symbol} {c.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Fee (£)</Label>
-                      <Input type="number" value={newEvent.fee} onChange={(e) => setNewEvent({...newEvent, fee: parseFloat(e.target.value) || 0})} />
-                    </div>
+                    
+                    {/* Estimated amount in default currency - only show if different currency */}
+                    {newEvent.currency !== defaultCurrency && (
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground">
+                          Estimated in {defaultCurrency} (editable)
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">{getCurrencySymbol(defaultCurrency)}</span>
+                          <Input 
+                            type="number" 
+                            value={estimatedDefaultAmount} 
+                            onChange={(e) => setEstimatedDefaultAmount(parseFloat(e.target.value) || 0)}
+                            className="flex-1"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          This is an estimate for reporting. Actual amount may vary.
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -604,7 +678,7 @@ export default function Events() {
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right space-y-1">
-                            <p className="font-semibold">{formatCurrency(event.fee)}</p>
+                            <p className="font-semibold">{formatCurrencyAmount(event.fee || 0, event.currency || defaultCurrency)}</p>
                             <div className="flex gap-2 flex-wrap justify-end">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(event.status)}`}>
                                 {event.status}

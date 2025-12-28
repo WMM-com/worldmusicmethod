@@ -1,18 +1,22 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFinancials } from '@/hooks/useFinancials';
+import { useAuth } from '@/contexts/AuthContext';
 import { TaxEstimator } from '@/components/finances/TaxEstimator';
 import { OtherIncomeSection } from '@/components/finances/OtherIncomeSection';
 import { IncomeProofShareSection } from '@/components/finances/IncomeProofShare';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { formatCurrency } from '@/lib/currency';
 
 const COLORS = ['hsl(262, 83%, 58%)', 'hsl(173, 80%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(340, 75%, 55%)', 'hsl(210, 80%, 55%)'];
 
 export default function Finances() {
+  const { profile } = useAuth();
+  const defaultCurrency = profile?.default_currency || 'GBP';
   const { summary, monthlyData, expensesByCategory } = useFinancials();
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+  const formatAmount = (amount: number) => {
+    return formatCurrency(amount, defaultCurrency);
   };
 
   return (
@@ -29,7 +33,7 @@ export default function Finances() {
               <CardTitle className="text-sm text-muted-foreground">Year-to-Date Earnings</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(summary.yearlyEarnings)}</p>
+              <p className="text-2xl font-bold">{formatAmount(summary.yearlyEarnings)}</p>
             </CardContent>
           </Card>
           <Card className="glass">
@@ -37,7 +41,7 @@ export default function Finances() {
               <CardTitle className="text-sm text-muted-foreground">Year-to-Date Expenses</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(summary.yearlyExpenses)}</p>
+              <p className="text-2xl font-bold">{formatAmount(summary.yearlyExpenses)}</p>
             </CardContent>
           </Card>
           <Card className="glass">
@@ -45,7 +49,7 @@ export default function Finances() {
               <CardTitle className="text-sm text-muted-foreground">Net Income</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-success">{formatCurrency(summary.yearlyEarnings - summary.yearlyExpenses)}</p>
+              <p className="text-2xl font-bold text-success">{formatAmount(summary.yearlyEarnings - summary.yearlyExpenses)}</p>
             </CardContent>
           </Card>
         </div>
@@ -95,7 +99,7 @@ export default function Finances() {
                         paddingAngle={2}
                         dataKey="value"
                         nameKey="name"
-                        label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
+                        label={({ name, value }) => `${name}: ${formatAmount(value)}`}
                       >
                         {expensesByCategory.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

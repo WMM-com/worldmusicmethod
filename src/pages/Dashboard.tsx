@@ -5,19 +5,7 @@ import { useFinancials } from '@/hooks/useFinancials';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Calendar, TrendingUp, AlertCircle, Coins } from 'lucide-react';
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  GBP: '£',
-  EUR: '€',
-  USD: '$',
-  CAD: 'C$',
-  AUD: 'A$',
-  CHF: 'CHF',
-  SEK: 'kr',
-  NOK: 'kr',
-  DKK: 'kr',
-  JPY: '¥',
-};
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 
 export default function Dashboard() {
   const { data: upcomingEvents = [], isLoading: eventsLoading } = useUpcomingEvents(5);
@@ -25,10 +13,9 @@ export default function Dashboard() {
   const { profile } = useAuth();
 
   const defaultCurrency = profile?.default_currency || 'GBP';
-  const currencySymbol = CURRENCY_SYMBOLS[defaultCurrency] || defaultCurrency;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: defaultCurrency }).format(amount);
+  const formatAmount = (amount: number) => {
+    return formatCurrency(amount, defaultCurrency);
   };
 
   return (
@@ -47,7 +34,7 @@ export default function Dashboard() {
               <Coins className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(summary.monthlyEarnings)}</div>
+              <div className="text-2xl font-bold">{formatAmount(summary.monthlyEarnings)}</div>
               <p className="text-xs text-muted-foreground mt-1">This month</p>
             </CardContent>
           </Card>
@@ -58,7 +45,7 @@ export default function Dashboard() {
               <AlertCircle className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(summary.unpaidEarnings)}</div>
+              <div className="text-2xl font-bold">{formatAmount(summary.unpaidEarnings)}</div>
               <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
             </CardContent>
           </Card>
@@ -69,7 +56,7 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(summary.yearlyEarnings - summary.yearlyExpenses)}</div>
+              <div className="text-2xl font-bold">{formatAmount(summary.yearlyEarnings - summary.yearlyExpenses)}</div>
               <p className="text-xs text-muted-foreground mt-1">This year</p>
             </CardContent>
           </Card>
@@ -108,7 +95,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">{formatCurrency(event.fee)}</p>
+                      <p className="font-medium">{formatAmount(event.fee || 0)}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         event.status === 'confirmed' ? 'bg-success/20 text-success' :
                         event.status === 'pencilled' ? 'bg-warning/20 text-warning' :

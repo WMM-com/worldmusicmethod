@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,6 +25,7 @@ import { ExpenseCategory } from '@/types/database';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { CURRENCIES, getCurrencySymbol, convertCurrency, formatCurrency } from '@/lib/currency';
 
 const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
   { value: 'travel', label: 'Travel' },
@@ -38,6 +40,7 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
 const expenseSchema = z.object({
   description: z.string().min(1, 'Description is required').max(200),
   amount: z.string().min(1, 'Amount is required'),
+  currency: z.string().default('GBP'),
   category: z.enum(['travel', 'equipment', 'food', 'accommodation', 'marketing', 'software', 'other']),
   date: z.string().min(1, 'Date is required'),
   event_id: z.string().optional(),
@@ -49,13 +52,15 @@ const expenseSchema = z.object({
 type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 export default function Expenses() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const defaultCurrency = profile?.default_currency || 'GBP';
   const { expenses, isLoading, createExpense, updateExpense, deleteExpense } = useExpenses();
   const { events } = useEvents();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [uploading, setUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [estimatedDefaultAmount, setEstimatedDefaultAmount] = useState<number>(0);
   
   // Filter state
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -67,6 +72,7 @@ export default function Expenses() {
     defaultValues: {
       description: '',
       amount: '',
+      currency: defaultCurrency,
       category: 'other',
       date: format(new Date(), 'yyyy-MM-dd'),
       event_id: '',
@@ -75,6 +81,13 @@ export default function Expenses() {
       deductible_percentage: '100',
     },
   });
+
+  // Update default currency when profile loads
+  useEffect(() => {
+    if (defaultCurrency) {
+      form.setValue('currency', defaultCurrency);
+    }
+  }, [defaultCurrency, form]);
 
   // Filtered expenses
   const filteredExpenses = useMemo(() => {
@@ -111,8 +124,8 @@ export default function Expenses() {
 
   const hasActiveFilters = categoryFilter !== 'all' || startDate || endDate;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount);
+  const formatAmount = (amount: number, currency: string = defaultCurrency) => {
+    return formatCurrency(amount, currency);
   };
 
   const getCategoryColor = (category: ExpenseCategory) => {
@@ -169,6 +182,7 @@ export default function Expenses() {
         id: editingExpense.id,
         description: data.description,
         amount: parseFloat(data.amount),
+        currency: data.currency,
         category: data.category as ExpenseCategory,
         date: data.date,
         event_id: data.event_id || null,
@@ -181,12 +195,12 @@ export default function Expenses() {
       await createExpense.mutateAsync({
         description: data.description,
         amount: parseFloat(data.amount),
+        currency: data.currency,
         category: data.category as ExpenseCategory,
         date: data.date,
         event_id: data.event_id || null,
         notes: data.notes || null,
         receipt_url: receiptUrl,
-        currency: 'GBP',
         is_tax_deductible: data.is_tax_deductible,
         deductible_percentage: parseInt(data.deductible_percentage),
       });
@@ -195,15 +209,18 @@ export default function Expenses() {
     setUploading(false);
     setReceiptFile(null);
     setEditingExpense(null);
+    setEstimatedDefaultAmount(0);
     form.reset();
     setIsDialogOpen(false);
   };
 
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
+    const expenseCurrency = expense.currency || defaultCurrency;
     form.reset({
       description: expense.description,
       amount: String(expense.amount),
+      currency: expenseCurrency,
       category: expense.category as ExpenseCategory,
       date: expense.date,
       event_id: expense.event_id || '',
@@ -211,6 +228,9 @@ export default function Expenses() {
       is_tax_deductible: expense.is_tax_deductible ?? true,
       deductible_percentage: String(expense.deductible_percentage ?? 100),
     });
+    if (expenseCurrency !== defaultCurrency) {
+      setEstimatedDefaultAmount(convertCurrency(expense.amount, expenseCurrency, defaultCurrency));
+    }
     setIsDialogOpen(true);
   };
 
@@ -220,6 +240,7 @@ export default function Expenses() {
       form.reset({
         description: '',
         amount: '',
+        currency: defaultCurrency,
         category: 'other',
         date: format(new Date(), 'yyyy-MM-dd'),
         event_id: '',
@@ -228,6 +249,7 @@ export default function Expenses() {
         deductible_percentage: '100',
       });
       setReceiptFile(null);
+      setEstimatedDefaultAmount(0);
     }
     setIsDialogOpen(open);
   };
