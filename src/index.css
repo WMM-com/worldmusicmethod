@@ -20,9 +20,9 @@
     --primary: 355 74% 43%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Yellow (#CCC016) */
-    --secondary: 54 82% 44%;
-    --secondary-foreground: 0 0% 0%;
+    /* Secondary - Yellow (#CCC016) - using lighter variant for better contrast */
+    --secondary: 54 82% 54%;
+    --secondary-foreground: 0 0% 7%;
 
     /* Muted - Subtle text */
     --muted: 0 0% 29%;
@@ -191,5 +191,15 @@
 
   a:not([class]) {
     @apply text-secondary hover:underline transition-all;
+  }
+
+  /* Fix date input icons for dark mode */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+  }
+
+  .light input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: none;
   }
 }

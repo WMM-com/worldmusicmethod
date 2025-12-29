@@ -42,7 +42,7 @@ export function TaxEstimator() {
             <Settings className="h-4 w-4" />
             <AlertDescription>
               Set your tax residency country in{' '}
-              <Link to="/settings" className="text-primary underline hover:no-underline">
+              <Link to="/left-brain-settings" className="text-primary underline hover:no-underline">
                 Settings
               </Link>{' '}
               to see your estimated tax liability.
@@ -253,7 +253,7 @@ export function TaxEstimator() {
 
             <div className="flex justify-end">
               <Button variant="outline" asChild size="sm">
-                <Link to="/settings">
+                <Link to="/left-brain-settings">
                   <Settings className="h-4 w-4 mr-2" />
                   Change Tax Settings
                 </Link>

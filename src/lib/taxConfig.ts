@@ -49,6 +49,12 @@ const ukConfig: TaxConfig = {
   currencySymbol: '£',
   taxYears: [
     {
+      label: '2025/26',
+      value: '2025-26',
+      startDate: new Date('2025-04-06'),
+      endDate: new Date('2026-04-05'),
+    },
+    {
       label: '2024/25',
       value: '2024-25',
       startDate: new Date('2024-04-06'),
@@ -100,6 +106,12 @@ const ieConfig: TaxConfig = {
   currencyCode: 'EUR',
   currencySymbol: '€',
   taxYears: [
+    {
+      label: '2025',
+      value: '2025',
+      startDate: new Date('2025-01-01'),
+      endDate: new Date('2025-12-31'),
+    },
     {
       label: '2024',
       value: '2024',
@@ -153,6 +165,12 @@ const usConfig: TaxConfig = {
   currencyCode: 'USD',
   currencySymbol: '$',
   taxYears: [
+    {
+      label: '2025',
+      value: '2025',
+      startDate: new Date('2025-01-01'),
+      endDate: new Date('2025-12-31'),
+    },
     {
       label: '2024',
       value: '2024',
