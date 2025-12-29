@@ -15,7 +15,7 @@ const CURRENCIES: Record<string, string> = {
   JPY: '¥',
 };
 
-export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): jsPDF {
+export async function generateInvoicePdf(invoice: Invoice, profile: Profile | null): Promise<jsPDF> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -37,6 +37,28 @@ export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): j
       .map(part => part.trim())
       .filter(part => part.length > 0);
   };
+
+  // Try to add logo if available
+  if (profile?.logo_url) {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject();
+        img.src = profile.logo_url!;
+      });
+      // Add logo - max 40x40
+      const maxSize = 40;
+      const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+      const imgWidth = img.width * ratio;
+      const imgHeight = img.height * ratio;
+      doc.addImage(img, 'PNG', margin, y, imgWidth, imgHeight);
+      y += imgHeight + 5;
+    } catch {
+      // Logo failed to load, continue without it
+    }
+  }
 
   // Header - Business Info
   doc.setFontSize(20);
@@ -238,16 +260,10 @@ export function generateInvoicePdf(invoice: Invoice, profile: Profile | null): j
     });
   }
 
-  // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 15;
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text('Thank you for your business', pageWidth / 2, footerY, { align: 'center' });
-
   return doc;
 }
 
-export function downloadInvoicePdf(invoice: Invoice, profile: Profile | null) {
-  const doc = generateInvoicePdf(invoice, profile);
+export async function downloadInvoicePdf(invoice: Invoice, profile: Profile | null) {
+  const doc = await generateInvoicePdf(invoice, profile);
   doc.save(`${invoice.invoice_number}.pdf`);
 }

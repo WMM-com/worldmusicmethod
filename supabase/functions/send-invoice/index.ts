@@ -522,30 +522,38 @@ async function sendRawEmailViaSES(
   const url = new URL(`https://email.${region}.amazonaws.com/`);
   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(2)}`;
   
-  // Build MIME message
-  const mimeMessage = [
+  // Build MIME message - construct parts separately to avoid duplicate headers
+  const mimeHeaders = [
     `From: ${from}`,
     `To: ${to.join(', ')}`,
     `Subject: ${subject}`,
-    replyTo ? `Reply-To: ${replyTo}` : '',
-    'MIME-Version: 1.0',
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
-    '',
+  ];
+  
+  if (replyTo) {
+    mimeHeaders.push(`Reply-To: ${replyTo}`);
+  }
+  
+  mimeHeaders.push('MIME-Version: 1.0');
+  mimeHeaders.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  
+  const htmlPart = [
     `--${boundary}`,
     'Content-Type: text/html; charset=UTF-8',
     'Content-Transfer-Encoding: 7bit',
     '',
     html,
-    '',
+  ].join('\r\n');
+  
+  const pdfPart = [
     `--${boundary}`,
     'Content-Type: application/pdf',
     'Content-Transfer-Encoding: base64',
     `Content-Disposition: attachment; filename="${pdfFilename}"`,
     '',
     base64Encode(pdfData),
-    '',
-    `--${boundary}--`,
-  ].filter(Boolean).join('\r\n');
+  ].join('\r\n');
+  
+  const mimeMessage = mimeHeaders.join('\r\n') + '\r\n\r\n' + htmlPart + '\r\n' + pdfPart + '\r\n' + `--${boundary}--`;
   
   // Base64 encode the entire message
   const rawMessage = base64Encode(new TextEncoder().encode(mimeMessage));

@@ -56,15 +56,15 @@ export default function IncomeProof() {
         return;
       }
 
-      // Map the RPC response - RPC returns different column names
+      // Map the RPC response - RPC returns: id, include_*, user_id
       const rawSettings = shareData[0] as any;
       const settings: ShareSettings = {
-        share_id: rawSettings.id || rawSettings.share_id,
-        include_income_summary: rawSettings.include_income_summary,
-        include_monthly_breakdown: rawSettings.include_monthly_breakdown,
-        include_tax_calculations: rawSettings.include_tax_calculations,
-        include_other_income: rawSettings.include_other_income,
-        owner_user_id: rawSettings.user_id || rawSettings.owner_user_id,
+        share_id: rawSettings.id,
+        include_income_summary: rawSettings.include_income_summary ?? true,
+        include_monthly_breakdown: rawSettings.include_monthly_breakdown ?? true,
+        include_tax_calculations: rawSettings.include_tax_calculations ?? false,
+        include_other_income: rawSettings.include_other_income ?? true,
+        owner_user_id: rawSettings.user_id,
       };
       setShareSettings(settings);
 
