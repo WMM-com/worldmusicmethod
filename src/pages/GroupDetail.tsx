@@ -35,6 +35,7 @@ import { CATEGORY_LABELS, type GroupSettings } from '@/types/groups';
 import { formatDistanceToNow, format } from 'date-fns';
 import { CreateEventDialog } from '@/components/groups/CreateEventDialog';
 import { CreatePollDialog } from '@/components/groups/CreatePollDialog';
+import { CreateQuestionnaireDialog } from '@/components/groups/CreateQuestionnaireDialog';
 import { GroupSettingsDialog } from '@/components/groups/GroupSettingsDialog';
 import { GroupPostCard } from '@/components/groups/GroupPostCard';
 import { InviteMembersDialog } from '@/components/groups/InviteMembersDialog';
@@ -265,8 +266,8 @@ export default function GroupDetail() {
           {/* Group Content */}
           {group.is_member ? (
             <div className="flex gap-6">
-              {/* Channels Sidebar */}
-              {channels && channels.length > 0 && (
+              {/* Channels Sidebar - Always show for admins or when channels exist */}
+              {(isAdmin || (channels && channels.length > 0)) && (
                 <div className="w-64 shrink-0 hidden lg:block">
                   <ChannelList
                     groupId={group.id}
@@ -316,14 +317,15 @@ export default function GroupDetail() {
                           <CreateEventDialog groupId={group.id} />
                         )}
                         {settings.allow_polls !== false && (
-                          <CreatePollDialog groupId={group.id} />
+                          <CreatePollDialog groupId={group.id} channelId={selectedChannelId} />
                         )}
+                        <CreateQuestionnaireDialog groupId={group.id} channelId={selectedChannelId} />
                       </div>
                     )}
                   </div>
                   
-                  {/* Mobile Channel Selector */}
-                  {channels && channels.length > 0 && (
+                  {/* Mobile Channel Selector - Always show for admins or when channels exist */}
+                  {(isAdmin || (channels && channels.length > 0)) && (
                     <div className="lg:hidden">
                       <ChannelList
                         groupId={group.id}
@@ -471,17 +473,20 @@ export default function GroupDetail() {
                             {poll.options.map((option, index) => {
                               const voteCount = poll.votes?.find(v => v.option_index === index)?.count || 0;
                               const percentage = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
-                              const hasVoted = poll.user_votes?.includes(index);
-                              const canVote = !poll.user_votes?.length || poll.is_multiple_choice;
+                              const hasVotedThisOption = poll.user_votes?.includes(index);
+                              const hasVotedAny = (poll.user_votes?.length || 0) > 0;
+                              // For single-choice polls: can vote if not voted, or click own vote to remove
+                              // For multi-choice polls: can always click any option
+                              const canClick = poll.is_multiple_choice || !hasVotedAny || hasVotedThisOption;
                               
                               return (
                                 <button 
                                   key={index}
-                                  onClick={() => canVote && handleVote(poll.id, index)}
-                                  disabled={!canVote || voteOnPoll.isPending}
+                                  onClick={() => handleVote(poll.id, index)}
+                                  disabled={!canClick || voteOnPoll.isPending}
                                   className={`relative w-full p-3 rounded-lg border text-left transition-colors ${
-                                    hasVoted ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
-                                  } ${canVote ? 'cursor-pointer' : 'cursor-default'}`}
+                                    hasVotedThisOption ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                                  } ${canClick ? 'cursor-pointer' : 'cursor-default opacity-60'}`}
                                 >
                                   <div 
                                     className="absolute inset-0 bg-primary/10 rounded-lg transition-all"
