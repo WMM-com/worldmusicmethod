@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
 import { AdminMedia } from '@/components/admin/AdminMedia';
+import { AdminStreaming } from '@/components/admin/AdminStreaming';
 import { AdminCourseGroups } from '@/components/admin/AdminCourseGroups';
 import { ImportCourseData } from '@/components/admin/ImportCourseData';
 import { LandingPageEditor } from '@/components/admin/LandingPageEditor';
@@ -206,7 +207,11 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="media" className="gap-2">
                 <Image className="h-4 w-4" />
-                Media
+                Media Library
+              </TabsTrigger>
+              <TabsTrigger value="streaming" className="gap-2">
+                <Music className="h-4 w-4" />
+                Streaming
               </TabsTrigger>
               <TabsTrigger value="groups" className="gap-2">
                 <FolderOpen className="h-4 w-4" />
@@ -244,6 +249,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="media">
               <AdminMedia />
+            </TabsContent>
+            <TabsContent value="streaming">
+              <AdminStreaming />
             </TabsContent>
             <TabsContent value="groups">
               <AdminCourseGroups />

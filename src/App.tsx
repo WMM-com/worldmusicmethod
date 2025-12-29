@@ -6,7 +6,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
+import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import { ChatPopup } from "@/components/messaging/ChatPopup";
+import { StickyAudioPlayer } from "@/components/media/StickyAudioPlayer";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
@@ -30,6 +32,8 @@ import PaymentCancelled from "./pages/PaymentCancelled";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Social from "./pages/Social";
 import Account from "./pages/Account";
+import Media from "./pages/Media";
+import MediaPlaylist from "./pages/MediaPlaylist";
 
 import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
@@ -82,46 +86,51 @@ const App = () => (
     <AuthProvider>
       <CartProvider>
         <MessagingProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/" element={<Navigate to="/courses" replace />} />
-                <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
-                <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-                <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
-                <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
-                <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
-                <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-                <Route path="/courses" element={<Courses />} />
-                <Route path="/courses/:courseId" element={<CourseLanding />} />
-                <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
-                <Route path="/my-courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout/:productId?" element={<Checkout />} />
-                <Route path="/payment-success" element={<PaymentSuccess />} />
-                <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-                <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
-                <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
-                <Route path="/friends" element={<Navigate to="/community?tab=friends" replace />} />
-                <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-                <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
-                
-                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <ChatPopup />
-            </BrowserRouter>
-          </TooltipProvider>
+          <MediaPlayerProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/" element={<Navigate to="/courses" replace />} />
+                  <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+                  <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+                  <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
+                  <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
+                  <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
+                  <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+                  <Route path="/courses" element={<Courses />} />
+                  <Route path="/courses/:courseId" element={<CourseLanding />} />
+                  <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
+                  <Route path="/my-courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/checkout/:productId?" element={<Checkout />} />
+                  <Route path="/payment-success" element={<PaymentSuccess />} />
+                  <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+                  <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
+                  <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
+                  <Route path="/friends" element={<Navigate to="/community?tab=friends" replace />} />
+                  <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                  <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                  <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
+                  <Route path="/media" element={<Media />} />
+                  <Route path="/media/playlist/:playlistId" element={<MediaPlaylist />} />
+                  
+                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <ChatPopup />
+                <StickyAudioPlayer />
+              </BrowserRouter>
+            </TooltipProvider>
+          </MediaPlayerProvider>
         </MessagingProvider>
       </CartProvider>
     </AuthProvider>
