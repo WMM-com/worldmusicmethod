@@ -54,5 +54,6 @@ export function convertCurrency(
   const toUSD = EXCHANGE_RATES_TO_USD[fromCurrency] || 1;
   const fromUSD = EXCHANGE_RATES_TO_USD[toCurrency] || 1;
   
-  return Math.round((amount * toUSD / fromUSD) * 100) / 100;
+  // Return exact value without rounding
+  return (amount * toUSD / fromUSD);
 }

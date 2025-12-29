@@ -4,12 +4,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useTaxCalculator } from '@/hooks/useTaxCalculator';
 import { TAX_CONFIGS, TaxCountry, getCurrentTaxYear, getTaxYearsForCountry } from '@/lib/taxConfig';
-import { exportTaxBreakdownToCSV } from '@/lib/exportTaxBreakdown';
+import { exportTaxBreakdownToCSV, exportTaxBreakdownToPDF } from '@/lib/exportTaxBreakdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { Calculator, Settings, AlertTriangle, TrendingDown, TrendingUp, Receipt, Download } from 'lucide-react';
+import { Calculator, Settings, AlertTriangle, TrendingDown, TrendingUp, Receipt, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function TaxEstimator() {
@@ -56,7 +57,7 @@ export function TaxEstimator() {
   const config = TAX_CONFIGS[taxCountry];
   const taxYears = getTaxYearsForCountry(taxCountry);
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     if (!calculation || !taxCountry) return;
     
     try {
@@ -66,6 +67,21 @@ export function TaxEstimator() {
         taxYear: selectedTaxYear,
       });
       toast.success('Tax breakdown exported to CSV');
+    } catch (error) {
+      toast.error('Failed to export tax breakdown');
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (!calculation || !taxCountry) return;
+    
+    try {
+      exportTaxBreakdownToPDF({
+        calculation,
+        country: taxCountry,
+        taxYear: selectedTaxYear,
+      });
+      toast.success('Tax breakdown exported to PDF');
     } catch (error) {
       toast.error('Failed to export tax breakdown');
     }
@@ -96,9 +112,23 @@ export function TaxEstimator() {
               </SelectContent>
             </Select>
             {calculation && (
-              <Button variant="outline" size="icon" onClick={handleExport} title="Export to CSV">
-                <Download className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" title="Export">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportPDF}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>

@@ -142,18 +142,19 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
       }
       
       if (fromEvent) {
-        // Pre-fill from event
+        // Pre-fill from event - due date is 7 days after gig date
+        const gigDate = new Date(fromEvent.start_time);
         setForm({
           invoice_number: generatedNumber || '',
           client_name: fromEvent.client_name || '',
           client_email: fromEvent.client_email || '',
           client_address: '',
           currency: fromEvent.currency || defaultCurrency,
-          due_date: addDays(new Date(), 30),
+          due_date: addDays(gigDate, 7),
           notes: '',
         });
         setItems([{
-          description: `${fromEvent.title} - ${format(new Date(fromEvent.start_time), 'MMMM d, yyyy')}${fromEvent.venue_name ? ` at ${fromEvent.venue_name}` : ''}`,
+          description: `${fromEvent.title} - ${format(gigDate, 'MMMM d, yyyy')}${fromEvent.venue_name ? ` at ${fromEvent.venue_name}` : ''}`,
           quantity: 1,
           rate: fromEvent.fee || 0,
           amount: fromEvent.fee || 0,

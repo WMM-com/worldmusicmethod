@@ -25,8 +25,9 @@ export default function Dashboard() {
   });
 
   const filteredData = useMemo(() => {
+    // Include all events (confirmed, completed, pencilled) with fees for earnings
     const filteredEvents = events.filter(e => {
-      if (e.status !== 'completed') return false;
+      if (!e.fee || e.fee <= 0) return false;
       const date = parseISO(e.start_time);
       return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
     });
@@ -36,23 +37,43 @@ export default function Dashboard() {
       return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
     });
 
-    const totalEarnings = filteredEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+    // Total earnings from all events, converted to default currency
+    const totalEarnings = filteredEvents.reduce((sum, e) => {
+      const eventCurrency = e.currency || defaultCurrency;
+      const fee = e.fee || 0;
+      if (eventCurrency === defaultCurrency) {
+        return sum + fee;
+      }
+      return sum + convertCurrency(fee, eventCurrency, defaultCurrency);
+    }, 0);
+    
+    // Unpaid earnings from events not yet paid
     const unpaidEarnings = filteredEvents
       .filter(e => e.payment_status === 'unpaid')
-      .reduce((sum, e) => sum + (e.fee || 0), 0);
+      .reduce((sum, e) => {
+        const eventCurrency = e.currency || defaultCurrency;
+        const fee = e.fee || 0;
+        if (eventCurrency === defaultCurrency) {
+          return sum + fee;
+        }
+        return sum + convertCurrency(fee, eventCurrency, defaultCurrency);
+      }, 0);
+    
+    // Paid earnings
+    const paidEarnings = totalEarnings - unpaidEarnings;
     
     const totalExpenses = filteredExpenses.reduce((sum, e) => {
       const expenseCurrency = e.currency || defaultCurrency;
       if (expenseCurrency === defaultCurrency) {
         return sum + (e.amount || 0);
       }
-      const converted = convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
-      return sum + converted;
+      return sum + convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
     }, 0);
 
     return {
       totalEarnings,
       unpaidEarnings,
+      paidEarnings,
       totalExpenses,
       netIncome: totalEarnings - totalExpenses,
     };
