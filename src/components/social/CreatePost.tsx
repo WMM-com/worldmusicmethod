@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
@@ -228,11 +228,10 @@ export function CreatePost() {
             
             {/* Upload progress */}
             {isUploading && (
-              <div className="space-y-2">
-                <Progress value={progress} className="h-2" />
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Uploading... {progress}%
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                <CircularProgress value={progress} size={40} strokeWidth={3} />
+                <p className="text-sm text-muted-foreground">
+                  Uploading media...
                 </p>
               </div>
             )}

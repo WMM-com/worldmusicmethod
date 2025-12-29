@@ -230,6 +230,77 @@ export function useUpdateGroup() {
   });
 }
 
+// Delete group
+export function useDeleteGroup() {
+  const queryClient = useQueryClient();
+  const { user, isAdmin } = useAuth();
+  
+  return useMutation({
+    mutationFn: async (groupId: string) => {
+      if (!user) throw new Error('Must be logged in');
+      
+      // Check if user is the creator or admin
+      const { data: group } = await supabase
+        .from('groups')
+        .select('created_by')
+        .eq('id', groupId)
+        .single();
+      
+      if (!group) throw new Error('Group not found');
+      
+      const isCreator = group.created_by === user.id;
+      if (!isCreator && !isAdmin) {
+        throw new Error('Only the group creator or an admin can delete this group');
+      }
+      
+      // Get poll IDs for this group
+      const { data: polls } = await supabase
+        .from('group_polls')
+        .select('id')
+        .eq('group_id', groupId);
+      
+      if (polls?.length) {
+        await supabase.from('group_poll_votes').delete().in('poll_id', polls.map(p => p.id));
+      }
+      await supabase.from('group_polls').delete().eq('group_id', groupId);
+      
+      // Get post IDs for this group
+      const { data: posts } = await supabase
+        .from('group_posts')
+        .select('id')
+        .eq('group_id', groupId);
+      
+      if (posts?.length) {
+        await supabase.from('group_post_comments').delete().in('post_id', posts.map(p => p.id));
+      }
+      await supabase.from('group_posts').delete().eq('group_id', groupId);
+      
+      await supabase.from('group_events').delete().eq('group_id', groupId);
+      await supabase.from('group_invites').delete().eq('group_id', groupId);
+      await supabase.from('group_join_requests').delete().eq('group_id', groupId);
+      await supabase.from('group_members').delete().eq('group_id', groupId);
+      await supabase.from('pinned_audio').delete().eq('group_id', groupId);
+      
+      // Finally delete the group
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', groupId);
+      
+      if (error) throw error;
+      return groupId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      queryClient.invalidateQueries({ queryKey: ['my-groups'] });
+      toast.success('Group deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 // Join group (public)
 export function useJoinGroup() {
   const queryClient = useQueryClient();
