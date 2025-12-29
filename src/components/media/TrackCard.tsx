@@ -1,4 +1,4 @@
-import { Play, Pause, Heart, MoreHorizontal, Plus, ListMusic } from 'lucide-react';
+import { Play, Pause, Heart, MoreHorizontal, Plus, ListMusic, ListPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { MediaTrack, useUserLikes, useToggleLike, useUserPlaylists, useAddToPlaylist } from '@/hooks/useMedia';
 import { useMediaPlayer } from '@/contexts/MediaPlayerContext';
@@ -31,7 +32,7 @@ function formatDuration(seconds: number | null): string {
 
 export function TrackCard({ track, trackList, showArtist = true, compact = false }: TrackCardProps) {
   const { user } = useAuth();
-  const { currentTrack, isPlaying, playTrack, togglePlay } = useMediaPlayer();
+  const { currentTrack, isPlaying, playTrack, togglePlay, addToQueue } = useMediaPlayer();
   const { data: likedTrackIds = [] } = useUserLikes();
   const { data: playlists = [] } = useUserPlaylists();
   const toggleLike = useToggleLike();
@@ -64,6 +65,11 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
         onError: () => toast.error('Already in playlist'),
       }
     );
+  };
+
+  const handleAddToQueue = () => {
+    addToQueue(track);
+    toast.success('Added to queue');
   };
 
   if (compact) {
@@ -205,10 +211,9 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
                 )}
-                <DropdownMenuItem onClick={() => {
-                  const { addToQueue } = useMediaPlayer();
-                  // Note: this won't work directly, need to use context properly
-                }}>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleAddToQueue}>
+                  <ListPlus className="h-4 w-4 mr-2" />
                   Add to Queue
                 </DropdownMenuItem>
               </DropdownMenuContent>
