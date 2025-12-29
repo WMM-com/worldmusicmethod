@@ -410,3 +410,41 @@ export function useLikedTracks() {
     enabled: !!user,
   });
 }
+
+// Fetch playlist by name
+export function usePlaylistByName(name: string) {
+  return useQuery({
+    queryKey: ['media-playlist-by-name', name],
+    queryFn: async () => {
+      const { data: playlist, error: playlistError } = await supabase
+        .from('media_playlists')
+        .select('*')
+        .eq('name', name)
+        .maybeSingle();
+
+      if (playlistError) throw playlistError;
+      if (!playlist) return null;
+
+      const { data: playlistTracks, error: tracksError } = await supabase
+        .from('media_playlist_tracks')
+        .select(`
+          position,
+          track:media_tracks(
+            *,
+            artist:media_artists(*),
+            podcast:media_podcasts(*)
+          )
+        `)
+        .eq('playlist_id', playlist.id)
+        .order('position');
+
+      if (tracksError) throw tracksError;
+
+      return {
+        ...playlist,
+        tracks: playlistTracks.map(pt => pt.track),
+      } as MediaPlaylist;
+    },
+    enabled: !!name,
+  });
+}
