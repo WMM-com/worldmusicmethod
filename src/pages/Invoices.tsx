@@ -101,8 +101,8 @@ export default function Invoices() {
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(amount);
   };
 
-  const handleDownloadPdf = (invoice: Invoice) => {
-    downloadInvoicePdf(invoice, profile);
+  const handleDownloadPdf = async (invoice: Invoice) => {
+    await downloadInvoicePdf(invoice, profile);
     toast({
       title: "PDF Downloaded",
       description: `Invoice ${invoice.invoice_number} has been downloaded`,
