@@ -422,16 +422,25 @@ export function useGroupMembers(groupId: string) {
 }
 
 // Fetch group posts
-export function useGroupPosts(groupId: string) {
+export function useGroupPosts(groupId: string, channelId?: string) {
   return useQuery({
-    queryKey: ['group-posts', groupId],
+    queryKey: ['group-posts', groupId, channelId],
     queryFn: async () => {
-      const { data: posts, error } = await supabase
+      let query = supabase
         .from('group_posts')
         .select('*')
         .eq('group_id', groupId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
+      
+      // Filter by channel if specified
+      if (channelId) {
+        query = query.eq('channel_id', channelId);
+      } else {
+        query = query.is('channel_id', null);
+      }
+      
+      const { data: posts, error } = await query;
       
       if (error) throw error;
       
@@ -474,6 +483,7 @@ export function useCreateGroupPost() {
   return useMutation({
     mutationFn: async (data: {
       group_id: string;
+      channel_id?: string;
       content: string;
       media_url?: string;
       media_type?: string;

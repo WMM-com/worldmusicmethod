@@ -98,7 +98,7 @@ export default function Courses() {
             <div>
               <h1 className="text-3xl font-bold mb-2">World Music Method</h1>
               <p className="text-muted-foreground">
-                Explore traditional guitar styles from around the world
+                Master Your Instrument, Develop Musical Freedom
               </p>
             </div>
             {isAdmin && (
