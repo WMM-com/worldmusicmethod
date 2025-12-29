@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { 
   ArrowLeft, Users, Lock, EyeOff, Settings, 
-  MessageSquare, Calendar, BarChart3, Trash2
+  MessageSquare, Calendar, BarChart3, Trash2, Hash, ClipboardList
 } from 'lucide-react';
 import { 
   useGroup, useGroupMembers, useGroupPosts, useGroupEvents, 
@@ -28,6 +28,8 @@ import {
   useVoteOnPoll, useUpdateGroup, useDeleteGroup
 } from '@/hooks/useGroups';
 import { useGroupPinnedAudio } from '@/hooks/usePinnedAudio';
+import { useGroupChannels } from '@/hooks/useGroupChannels';
+import { useGroupQuestionnaires } from '@/hooks/useQuestionnaires';
 import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORY_LABELS, type GroupSettings } from '@/types/groups';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -40,17 +42,21 @@ import { GroupCoverUpload } from '@/components/groups/GroupCoverUpload';
 import { PinnedAudioPlayer } from '@/components/groups/PinnedAudioPlayer';
 import { PinAudioDialog } from '@/components/groups/PinAudioDialog';
 import { CreateGroupPost } from '@/components/groups/CreateGroupPost';
+import { ChannelList } from '@/components/groups/ChannelList';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   
   const { data: group, isLoading: loadingGroup } = useGroup(groupId || '');
   const { data: members } = useGroupMembers(groupId || '');
-  const { data: posts } = useGroupPosts(groupId || '');
+  const { data: posts } = useGroupPosts(groupId || '', selectedChannelId || undefined);
   const { data: events } = useGroupEvents(groupId || '');
   const { data: polls } = useGroupPolls(groupId || '');
   const { data: pinnedAudio } = useGroupPinnedAudio(groupId || '');
+  const { data: channels } = useGroupChannels(groupId || '');
+  const { data: questionnaires } = useGroupQuestionnaires(groupId || '');
   const { user, isAdmin: isSiteAdmin } = useAuth();
   
   const joinGroup = useJoinGroup();
@@ -258,80 +264,111 @@ export default function GroupDetail() {
           
           {/* Group Content */}
           {group.is_member ? (
-            <Tabs defaultValue="posts" className="space-y-4">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <TabsList>
-                  <TabsTrigger value="posts">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Posts
-                  </TabsTrigger>
-                  <TabsTrigger value="members">
-                    <Users className="h-4 w-4 mr-2" />
-                    Members
-                  </TabsTrigger>
-                  {settings.allow_events !== false && (
-                    <TabsTrigger value="events">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Events
-                    </TabsTrigger>
-                  )}
-                  {settings.allow_polls !== false && (
-                    <TabsTrigger value="polls">
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      Polls
-                    </TabsTrigger>
-                  )}
-                </TabsList>
-                
-                {isAdmin && (
-                  <div className="flex gap-2 flex-wrap">
-                    {settings.allow_audio !== false && (
-                      <PinAudioDialog groupId={group.id} />
-                    )}
-                    {settings.allow_events !== false && (
-                      <CreateEventDialog groupId={group.id} />
-                    )}
-                    {settings.allow_polls !== false && (
-                      <CreatePollDialog groupId={group.id} />
+            <div className="flex gap-6">
+              {/* Channels Sidebar */}
+              {channels && channels.length > 0 && (
+                <div className="w-64 shrink-0 hidden lg:block">
+                  <ChannelList
+                    groupId={group.id}
+                    selectedChannelId={selectedChannelId}
+                    onSelectChannel={setSelectedChannelId}
+                    isAdmin={isAdmin}
+                  />
+                </div>
+              )}
+              
+              <div className="flex-1 min-w-0">
+                <Tabs defaultValue="posts" className="space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <TabsList>
+                      <TabsTrigger value="posts">
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Posts
+                      </TabsTrigger>
+                      <TabsTrigger value="members">
+                        <Users className="h-4 w-4 mr-2" />
+                        Members
+                      </TabsTrigger>
+                      {settings.allow_events !== false && (
+                        <TabsTrigger value="events">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Events
+                        </TabsTrigger>
+                      )}
+                      {settings.allow_polls !== false && (
+                        <TabsTrigger value="polls">
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Polls
+                        </TabsTrigger>
+                      )}
+                      <TabsTrigger value="feedback">
+                        <ClipboardList className="h-4 w-4 mr-2" />
+                        Feedback
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    {isAdmin && (
+                      <div className="flex gap-2 flex-wrap">
+                        {settings.allow_audio !== false && (
+                          <PinAudioDialog groupId={group.id} />
+                        )}
+                        {settings.allow_events !== false && (
+                          <CreateEventDialog groupId={group.id} />
+                        )}
+                        {settings.allow_polls !== false && (
+                          <CreatePollDialog groupId={group.id} />
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-              
-              <TabsContent value="posts" className="space-y-4">
-                {/* Create Post */}
-                {canPost && groupId && (
-                  <CreateGroupPost 
-                    groupId={groupId} 
-                    allowImages={settings.allow_images !== false}
-                    allowAudio={settings.allow_audio !== false}
-                  />
-                )}
-                
-                {!canPost && group.is_member && (
-                  <Card>
-                    <CardContent className="py-6 text-center text-muted-foreground">
-                      Only {settings.who_can_post === 'admins_only' ? 'admins' : 'admins and moderators'} can post in this group
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {/* Posts List */}
-                {posts?.map((post) => (
-                  <GroupPostCard 
-                    key={post.id} 
-                    post={post} 
-                    getInitials={getInitials}
-                  />
-                ))}
-                
-                {posts?.length === 0 && (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">No posts yet</h3>
-                      <p className="text-muted-foreground">Be the first to share something!</p>
-                    </CardContent>
+                  
+                  {/* Mobile Channel Selector */}
+                  {channels && channels.length > 0 && (
+                    <div className="lg:hidden">
+                      <ChannelList
+                        groupId={group.id}
+                        selectedChannelId={selectedChannelId}
+                        onSelectChannel={setSelectedChannelId}
+                        isAdmin={isAdmin}
+                      />
+                    </div>
+                  )}
+                  
+                  <TabsContent value="posts" className="space-y-4">
+                    {/* Create Post */}
+                    {canPost && groupId && (
+                      <CreateGroupPost 
+                        groupId={groupId} 
+                        channelId={selectedChannelId}
+                        allowImages={settings.allow_images !== false}
+                        allowAudio={settings.allow_audio !== false}
+                      />
+                    )}
+                    
+                    {!canPost && group.is_member && (
+                      <Card>
+                        <CardContent className="py-6 text-center text-muted-foreground">
+                          Only {settings.who_can_post === 'admins_only' ? 'admins' : 'admins and moderators'} can post in this group
+                        </CardContent>
+                      </Card>
+                    )}
+                    
+                    {/* Posts List */}
+                    {posts?.map((post) => (
+                      <GroupPostCard 
+                        key={post.id} 
+                        post={post} 
+                        getInitials={getInitials}
+                      />
+                    ))}
+                    
+                    {posts?.length === 0 && (
+                      <Card>
+                        <CardContent className="py-12 text-center">
+                          <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <h3 className="font-semibold mb-2">No posts yet</h3>
+                          <p className="text-muted-foreground">Be the first to share something!</p>
+                        </CardContent>
                   </Card>
                 )}
               </TabsContent>
@@ -481,7 +518,54 @@ export default function GroupDetail() {
                   )}
                 </TabsContent>
               )}
+              
+              {/* Feedback Tab */}
+              <TabsContent value="feedback" className="space-y-4">
+                {questionnaires?.map((q) => (
+                  <Card key={q.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{q.title}</CardTitle>
+                        <Badge variant={q.is_active ? 'default' : 'secondary'}>
+                          {q.is_active ? 'Active' : 'Closed'}
+                        </Badge>
+                      </div>
+                      {q.description && (
+                        <p className="text-sm text-muted-foreground">{q.description}</p>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          {q.response_count || 0} responses • {q.questions.length} questions
+                        </p>
+                        <Button 
+                          variant={q.user_has_responded ? 'outline' : 'default'}
+                          size="sm"
+                          disabled={!q.is_active || (q.user_has_responded && !q.allow_multiple_responses)}
+                        >
+                          {q.user_has_responded ? 'View Response' : 'Take Survey'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                
+                {questionnaires?.length === 0 && (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="font-semibold mb-2">No feedback forms yet</h3>
+                      <p className="text-muted-foreground">
+                        {isAdmin ? 'Create a questionnaire to gather feedback' : 'Feedback forms will appear here when created'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
             </Tabs>
+              </div>
+            </div>
           ) : (
             <Card>
               <CardContent className="py-12 text-center">

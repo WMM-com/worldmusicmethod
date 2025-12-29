@@ -12,11 +12,12 @@ type MediaType = 'image' | 'video' | 'audio' | null;
 
 interface CreateGroupPostProps {
   groupId: string;
+  channelId?: string | null;
   allowImages?: boolean;
   allowAudio?: boolean;
 }
 
-export function CreateGroupPost({ groupId, allowImages = true, allowAudio = true }: CreateGroupPostProps) {
+export function CreateGroupPost({ groupId, channelId, allowImages = true, allowAudio = true }: CreateGroupPostProps) {
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
@@ -86,6 +87,7 @@ export function CreateGroupPost({ groupId, allowImages = true, allowAudio = true
     createPostMutation.mutate(
       { 
         group_id: groupId,
+        channel_id: channelId || undefined,
         content: content.trim() || (mediaUrl ? `[${mediaType}]` : ''),
         media_url: mediaUrl || undefined, 
         media_type: mediaType || undefined,
