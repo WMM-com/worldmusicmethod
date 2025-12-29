@@ -9,10 +9,11 @@ import { useCreateGroupPoll } from '@/hooks/useGroups';
 
 interface CreatePollDialogProps {
   groupId: string;
+  channelId?: string | null;
   trigger?: React.ReactNode;
 }
 
-export function CreatePollDialog({ groupId, trigger }: CreatePollDialogProps) {
+export function CreatePollDialog({ groupId, channelId, trigger }: CreatePollDialogProps) {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);

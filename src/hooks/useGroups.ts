@@ -950,7 +950,7 @@ export function useGroupPolls(groupId: string) {
   });
 }
 
-// Vote on poll
+// Vote on poll (toggle - clicking again removes vote)
 export function useVoteOnPoll() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -959,15 +959,35 @@ export function useVoteOnPoll() {
     mutationFn: async ({ pollId, optionIndex, groupId }: { pollId: string; optionIndex: number; groupId: string }) => {
       if (!user) throw new Error('Must be logged in');
       
-      const { error } = await supabase
+      // Check if user already voted for this option
+      const { data: existingVote } = await supabase
         .from('group_poll_votes')
-        .insert({
-          poll_id: pollId,
-          user_id: user.id,
-          option_index: optionIndex,
-        });
+        .select('id')
+        .eq('poll_id', pollId)
+        .eq('user_id', user.id)
+        .eq('option_index', optionIndex)
+        .maybeSingle();
       
-      if (error) throw error;
+      if (existingVote) {
+        // Remove the vote (toggle off)
+        const { error } = await supabase
+          .from('group_poll_votes')
+          .delete()
+          .eq('id', existingVote.id);
+        
+        if (error) throw error;
+      } else {
+        // Add the vote
+        const { error } = await supabase
+          .from('group_poll_votes')
+          .insert({
+            poll_id: pollId,
+            user_id: user.id,
+            option_index: optionIndex,
+          });
+        
+        if (error) throw error;
+      }
       return groupId;
     },
     onSuccess: (groupId) => {
