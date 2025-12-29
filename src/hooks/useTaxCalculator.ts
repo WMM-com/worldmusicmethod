@@ -2,13 +2,13 @@ import { useMemo } from 'react';
 import { useEvents } from './useEvents';
 import { useExpenses } from './useExpenses';
 import { useOtherIncome } from './useOtherIncome';
-import { 
-  TaxCountry, 
-  TAX_CONFIGS, 
+import {
+  TaxCountry,
+  TAX_CONFIGS,
   TaxBracket,
-  CountryTaxConfig,
-  formatCurrencyForCountry
+  formatCurrencyForCountry,
 } from '@/lib/taxConfig';
+import { convertCurrency } from '@/lib/currency';
 import { startOfYear, endOfYear, isWithinInterval, parseISO } from 'date-fns';
 
 export interface TaxBreakdown {
@@ -29,34 +29,40 @@ export interface TaxBreakdown {
   effectiveRate: number;
 }
 
-function calculateBracketedTax(income: number, brackets: TaxBracket[]): { total: number; breakdown: { bracket: string; amount: number; rate: number }[] } {
+function calculateBracketedTax(
+  income: number,
+  brackets: TaxBracket[]
+): { total: number; breakdown: { bracket: string; amount: number; rate: number }[] } {
   let remaining = income;
   let total = 0;
   const breakdown: { bracket: string; amount: number; rate: number }[] = [];
 
   for (const bracket of brackets) {
     if (remaining <= 0) break;
-    
+
     const bracketMin = bracket.min;
     const bracketMax = bracket.max ?? Infinity;
     const bracketSize = bracketMax - bracketMin;
-    
+
     if (income <= bracketMin) continue;
-    
-    const incomeInBracket = Math.min(remaining, income > bracketMax ? bracketSize : income - bracketMin);
+
+    const incomeInBracket = Math.min(
+      remaining,
+      income > bracketMax ? bracketSize : income - bracketMin
+    );
     const taxInBracket = incomeInBracket * bracket.rate;
-    
+
     if (incomeInBracket > 0) {
       total += taxInBracket;
       breakdown.push({
-        bracket: bracket.max 
+        bracket: bracket.max
           ? `${formatNumber(bracket.min)} - ${formatNumber(bracket.max)}`
           : `Over ${formatNumber(bracket.min)}`,
         amount: taxInBracket,
         rate: bracket.rate * 100,
       });
     }
-    
+
     remaining = Math.max(0, income - bracketMax);
   }
 
@@ -67,20 +73,28 @@ function formatNumber(num: number): string {
   return new Intl.NumberFormat('en-GB').format(num);
 }
 
-function getTaxYearDates(country: TaxCountry, taxYear: string): { start: Date; end: Date } {
+function getTaxYearDates(
+  country: TaxCountry,
+  taxYear: string
+): { start: Date; end: Date } {
   const config = TAX_CONFIGS[country];
-  const ty = config.taxYears.find(t => t.value === taxYear);
-  
+  const ty = config.taxYears.find((t) => t.value === taxYear);
+
   if (ty) {
     return { start: ty.startDate, end: ty.endDate };
   }
-  
+
   // Fallback to calendar year
   const year = parseInt(taxYear.split('-')[0] || taxYear);
   return {
     start: startOfYear(new Date(year, 0, 1)),
     end: endOfYear(new Date(year, 0, 1)),
   };
+}
+
+function toTaxCurrency(amount: number, fromCurrency: string | null | undefined, toCurrency: string): number {
+  const from = fromCurrency || toCurrency;
+  return convertCurrency(amount || 0, from, toCurrency);
 }
 
 export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
@@ -92,38 +106,50 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
     if (!country) return null;
 
     const config = TAX_CONFIGS[country];
+    const taxCurrency = config.currencyCode;
     const taxConfig = config.getTaxConfig(taxYear);
     const { start, end } = getTaxYearDates(country, taxYear);
 
     // Calculate gross income from completed events in the tax year
-    const yearEvents = events.filter(e => {
+    const yearEvents = events.filter((e) => {
       if (e.status !== 'completed') return false;
       const eventDate = parseISO(e.start_time);
       return isWithinInterval(eventDate, { start, end });
     });
-    const eventIncome = yearEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+    const eventIncome = yearEvents.reduce(
+      (sum, e) => sum + toTaxCurrency(e.fee || 0, (e as any).currency, taxCurrency),
+      0
+    );
 
     // Calculate other income in the tax year
-    const yearOtherIncome = otherIncome.filter(inc => {
+    const yearOtherIncome = otherIncome.filter((inc) => {
       const incomeDate = parseISO(inc.date);
       return isWithinInterval(incomeDate, { start, end });
     });
-    const otherIncomeTotal = yearOtherIncome.reduce((sum, inc) => sum + inc.amount, 0);
+    const otherIncomeTotal = yearOtherIncome.reduce(
+      (sum, inc) => sum + toTaxCurrency(inc.amount || 0, (inc as any).currency, taxCurrency),
+      0
+    );
 
     // Total gross income
     const grossIncome = eventIncome + otherIncomeTotal;
 
     // Calculate expenses in the tax year (total and deductible)
-    const yearExpenses = expenses.filter(e => {
+    const yearExpenses = expenses.filter((e) => {
       const expenseDate = parseISO(e.date);
       return isWithinInterval(expenseDate, { start, end });
     });
-    const totalExpenses = yearExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    
+
+    const totalExpenses = yearExpenses.reduce(
+      (sum, e) => sum + toTaxCurrency(e.amount || 0, (e as any).currency, taxCurrency),
+      0
+    );
+
     // Calculate deductible expenses (only count the deductible portion)
     const deductibleExpenses = yearExpenses.reduce((sum, e) => {
       if (!e.is_tax_deductible) return sum;
-      const deductiblePortion = (e.amount || 0) * ((e.deductible_percentage ?? 100) / 100);
+      const deductiblePortionRaw = (e.amount || 0) * ((e.deductible_percentage ?? 100) / 100);
+      const deductiblePortion = toTaxCurrency(deductiblePortionRaw, (e as any).currency, taxCurrency);
       return sum + deductiblePortion;
     }, 0);
 
@@ -132,7 +158,7 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
 
     // Apply allowances
     const { personalAllowance, tradingAllowance, incomeTaxBrackets, socialContributions } = taxConfig;
-    
+
     // For US, tradingAllowance is standard deduction
     // For UK, personal allowance reduces at £125,140
     let effectivePersonalAllowance = personalAllowance;
@@ -151,14 +177,17 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
     const incomeForTax = country === 'US' ? usDeductedIncome : taxableIncome;
 
     // Calculate income tax
-    const { total: incomeTax, breakdown: incomeTaxBreakdown } = calculateBracketedTax(incomeForTax, incomeTaxBrackets);
+    const { total: incomeTax, breakdown: incomeTaxBreakdown } = calculateBracketedTax(
+      incomeForTax,
+      incomeTaxBrackets
+    );
 
     // Calculate social contributions
     const socialContributionResults: { name: string; amount: number; info?: string }[] = [];
-    
+
     for (const sc of socialContributions) {
       let amount = 0;
-      
+
       if (sc.type === 'flat') {
         if (netIncome > (sc.threshold || 0)) {
           amount = sc.flatRate || 0;
@@ -199,7 +228,7 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
       deductibleExpenses,
       netIncome,
       personalAllowance: effectivePersonalAllowance,
-      tradingAllowance: country === 'US' ? tradingAllowance : (country === 'UK' ? tradingAllowance : 0),
+      tradingAllowance: country === 'US' ? tradingAllowance : country === 'UK' ? tradingAllowance : 0,
       taxableIncome: incomeForTax,
       incomeTax,
       incomeTaxBreakdown,
@@ -212,6 +241,8 @@ export function useTaxCalculator(country: TaxCountry | null, taxYear: string) {
 
   return {
     calculation,
-    formatCurrency: (amount: number) => country ? formatCurrencyForCountry(amount, country) : `£${amount.toFixed(2)}`,
+    formatCurrency: (amount: number) =>
+      country ? formatCurrencyForCountry(amount, country) : `£${amount.toFixed(2)}`,
   };
 }
+
