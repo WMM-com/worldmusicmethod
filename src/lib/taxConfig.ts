@@ -250,5 +250,7 @@ export function formatCurrencyForCountry(amount: number, country: TaxCountry): s
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: config.currencyCode,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }

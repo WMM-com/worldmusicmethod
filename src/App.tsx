@@ -115,6 +115,7 @@ const App = () => (
                 <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                 <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
+                <Route path="/income-proof/:token" element={<IncomeProof />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

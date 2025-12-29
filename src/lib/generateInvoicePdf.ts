@@ -139,7 +139,7 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   y = Math.max(y, rightY) + 15;
 
   doc.setFillColor(245, 245, 245);
-  doc.rect(margin, y, contentWidth / 2 - 5, 35, 'F');
+  doc.rect(margin, y, contentWidth / 2 - 5, 40, 'F');
 
   y += 8;
   doc.setFontSize(11);
@@ -157,17 +157,19 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
 
-  if (invoice.client_email) {
-    doc.text(invoice.client_email, margin + 5, y);
-    y += 5;
-  }
-
+  // Client address first
   if (invoice.client_address) {
     const clientAddressLines = formatAddress(invoice.client_address);
     clientAddressLines.forEach(line => {
       doc.text(line, margin + 5, y);
       y += 5;
     });
+  }
+
+  // Client email after address
+  if (invoice.client_email) {
+    doc.text(invoice.client_email, margin + 5, y);
+    y += 5;
   }
 
   // Items table
@@ -226,13 +228,13 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   doc.setFontSize(14);
   doc.text(formatAmount(invoice.amount), margin + contentWidth, y, { align: 'right' });
 
-  // Notes section
+  // Terms section (was "Notes")
   if (invoice.notes) {
     y += 20;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 100, 100);
-    doc.text('Notes / Payment Terms', margin, y);
+    doc.text('Terms', margin, y);
     y += 7;
 
     doc.setFont('helvetica', 'normal');
@@ -259,6 +261,13 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
       y += 5;
     });
   }
+
+  // Thank you message at the bottom (after bank details)
+  y += 15;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(100, 100, 100);
+  doc.text('Thank you for your business.', pageWidth / 2, y, { align: 'center' });
 
   return doc;
 }
