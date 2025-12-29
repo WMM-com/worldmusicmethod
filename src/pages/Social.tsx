@@ -6,6 +6,8 @@ import { GroupsList } from '@/components/groups/GroupsList';
 import { MembersList } from '@/components/community/MembersList';
 import { FriendsTab } from '@/components/community/FriendsTab';
 import { PendingInvitesBanner } from '@/components/groups/PendingInvitesBanner';
+import { CommunitySidebar } from '@/components/community/CommunitySidebar';
+import { CommunityPlaylistPlayer } from '@/components/community/CommunityPlaylistPlayer';
 import { useFeed } from '@/hooks/useSocial';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -64,7 +66,7 @@ export default function Social() {
       <SiteHeader />
       <div className="min-h-screen bg-background">
         <header className="border-b border-border bg-card">
-          <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto px-4 py-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -87,26 +89,29 @@ export default function Social() {
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full max-w-lg grid-cols-4">
-              <TabsTrigger value="feed" className="flex items-center gap-2">
-                <Newspaper className="h-4 w-4" />
-                Feed
-              </TabsTrigger>
-              <TabsTrigger value="friends" className="flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                Friends
-              </TabsTrigger>
-              <TabsTrigger value="members" className="flex items-center gap-2">
-                <UserSearch className="h-4 w-4" />
-                Members
-              </TabsTrigger>
-              <TabsTrigger value="groups" className="flex items-center gap-2">
-                <UsersRound className="h-4 w-4" />
-                Groups
-              </TabsTrigger>
-            </TabsList>
+            {/* Centered Tabs */}
+            <div className="flex justify-center">
+              <TabsList className="grid w-full max-w-lg grid-cols-4">
+                <TabsTrigger value="feed" className="flex items-center gap-2">
+                  <Newspaper className="h-4 w-4" />
+                  Feed
+                </TabsTrigger>
+                <TabsTrigger value="friends" className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Friends
+                </TabsTrigger>
+                <TabsTrigger value="members" className="flex items-center gap-2">
+                  <UserSearch className="h-4 w-4" />
+                  Members
+                </TabsTrigger>
+                <TabsTrigger value="groups" className="flex items-center gap-2">
+                  <UsersRound className="h-4 w-4" />
+                  Groups
+                </TabsTrigger>
+              </TabsList>
+            </div>
             
             <TabsContent value="feed">
               {!user ? (
@@ -123,33 +128,50 @@ export default function Social() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="max-w-2xl mx-auto space-y-4">
-                  <CreatePost />
-                  
-                  {isLoading ? (
-                    <>
-                      <Skeleton className="h-48" />
-                      <Skeleton className="h-48" />
-                    </>
-                  ) : posts?.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <h3 className="font-semibold mb-2">No posts yet</h3>
-                        <p className="text-muted-foreground">
-                          Be the first to share something, or add friends to see their posts.
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    posts?.map((post) => (
-                      <PostCard 
-                        key={post.id} 
-                        post={post} 
-                        defaultShowComments={post.id === postId && openComments}
-                      />
-                    ))
-                  )}
+                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
+                  {/* Left Sidebar - Posting Options */}
+                  <div className="hidden lg:block">
+                    <div className="sticky top-24">
+                      <CommunitySidebar />
+                    </div>
+                  </div>
+
+                  {/* Center Feed */}
+                  <div className="max-w-2xl mx-auto w-full space-y-4">
+                    <CreatePost />
+                    
+                    {isLoading ? (
+                      <>
+                        <Skeleton className="h-48" />
+                        <Skeleton className="h-48" />
+                      </>
+                    ) : posts?.length === 0 ? (
+                      <Card>
+                        <CardContent className="py-12 text-center">
+                          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                          <h3 className="font-semibold mb-2">No posts yet</h3>
+                          <p className="text-muted-foreground">
+                            Be the first to share something, or add friends to see their posts.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      posts?.map((post) => (
+                        <PostCard 
+                          key={post.id} 
+                          post={post} 
+                          defaultShowComments={post.id === postId && openComments}
+                        />
+                      ))
+                    )}
+                  </div>
+
+                  {/* Right Sidebar - Playlist Player */}
+                  <div className="hidden lg:block">
+                    <div className="sticky top-24">
+                      <CommunityPlaylistPlayer playlistName="Artists I played with in 2025" />
+                    </div>
+                  </div>
                 </div>
               )}
             </TabsContent>
