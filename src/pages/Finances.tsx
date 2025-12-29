@@ -1,19 +1,117 @@
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFinancials } from '@/hooks/useFinancials';
+import { useEvents } from '@/hooks/useEvents';
+import { useExpenses } from '@/hooks/useExpenses';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaxEstimator } from '@/components/finances/TaxEstimator';
 import { OtherIncomeSection } from '@/components/finances/OtherIncomeSection';
 import { IncomeProofShareSection } from '@/components/finances/IncomeProofShare';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { formatCurrency } from '@/lib/currency';
+import { formatCurrency, convertCurrency } from '@/lib/currency';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
+import { startOfYear, endOfYear, isWithinInterval, parseISO, startOfMonth, endOfMonth, format } from 'date-fns';
 
 const COLORS = ['hsl(262, 83%, 58%)', 'hsl(173, 80%, 40%)', 'hsl(38, 92%, 50%)', 'hsl(340, 75%, 55%)', 'hsl(210, 80%, 55%)'];
 
 export default function Finances() {
   const { profile } = useAuth();
   const defaultCurrency = profile?.default_currency || 'GBP';
-  const { summary, monthlyData, expensesByCategory } = useFinancials();
+  const { events } = useEvents();
+  const { expenses } = useExpenses();
+
+  const now = new Date();
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfYear(now),
+    to: endOfYear(now),
+  });
+
+  const filteredData = useMemo(() => {
+    const filteredEvents = events.filter(e => {
+      if (e.status !== 'completed') return false;
+      const date = parseISO(e.start_time);
+      return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
+    });
+
+    const filteredExpenses = expenses.filter(e => {
+      const date = parseISO(e.date);
+      return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
+    });
+
+    const totalEarnings = filteredEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+    
+    const totalExpenses = filteredExpenses.reduce((sum, e) => {
+      const expenseCurrency = e.currency || defaultCurrency;
+      if (expenseCurrency === defaultCurrency) {
+        return sum + (e.amount || 0);
+      }
+      const converted = convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
+      return sum + converted;
+    }, 0);
+
+    // Expenses by category
+    const categories: Record<string, number> = {};
+    filteredExpenses.forEach(e => {
+      if (!categories[e.category]) {
+        categories[e.category] = 0;
+      }
+      const expenseCurrency = e.currency || defaultCurrency;
+      const amount = expenseCurrency === defaultCurrency 
+        ? (e.amount || 0) 
+        : convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
+      categories[e.category] += amount;
+    });
+    const expensesByCategory = Object.entries(categories).map(([name, value]) => ({
+      name,
+      value,
+    }));
+
+    // Monthly data - generate months within the date range
+    const monthlyData: { month: string; earnings: number; expenses: number; net: number }[] = [];
+    let currentMonth = startOfMonth(dateRange.from);
+    const endMonth = endOfMonth(dateRange.to);
+    
+    while (currentMonth <= endMonth) {
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+      const monthName = format(currentMonth, 'MMM');
+
+      const monthEvents = filteredEvents.filter(e => {
+        const eventDate = parseISO(e.start_time);
+        return isWithinInterval(eventDate, { start: monthStart, end: monthEnd });
+      });
+      const monthEarnings = monthEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+
+      const monthExpenses = filteredExpenses.filter(e => {
+        const expenseDate = parseISO(e.date);
+        return isWithinInterval(expenseDate, { start: monthStart, end: monthEnd });
+      });
+      const monthExpenseTotal = monthExpenses.reduce((sum, e) => {
+        const expenseCurrency = e.currency || defaultCurrency;
+        const amount = expenseCurrency === defaultCurrency 
+          ? (e.amount || 0) 
+          : convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
+        return sum + amount;
+      }, 0);
+
+      monthlyData.push({
+        month: monthName,
+        earnings: monthEarnings,
+        expenses: monthExpenseTotal,
+        net: monthEarnings - monthExpenseTotal,
+      });
+
+      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+    }
+
+    return {
+      totalEarnings,
+      totalExpenses,
+      netIncome: totalEarnings - totalExpenses,
+      expensesByCategory,
+      monthlyData,
+    };
+  }, [events, expenses, dateRange, defaultCurrency]);
 
   const formatAmount = (amount: number) => {
     return formatCurrency(amount, defaultCurrency);
@@ -22,26 +120,29 @@ export default function Finances() {
   return (
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Finances</h1>
-          <p className="text-muted-foreground mt-1">Track your earnings and expenses</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Finances</h1>
+            <p className="text-muted-foreground mt-1">Track your earnings and expenses</p>
+          </div>
+          <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="glass">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Year-to-Date Earnings</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">Earnings</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{formatAmount(summary.yearlyEarnings)}</p>
+              <p className="text-2xl font-bold">{formatAmount(filteredData.totalEarnings)}</p>
             </CardContent>
           </Card>
           <Card className="glass">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Year-to-Date Expenses</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">Expenses</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{formatAmount(summary.yearlyExpenses)}</p>
+              <p className="text-2xl font-bold">{formatAmount(filteredData.totalExpenses)}</p>
             </CardContent>
           </Card>
           <Card className="glass">
@@ -49,7 +150,7 @@ export default function Finances() {
               <CardTitle className="text-sm text-muted-foreground">Net Income</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-success">{formatAmount(summary.yearlyEarnings - summary.yearlyExpenses)}</p>
+              <p className="text-2xl font-bold text-success">{formatAmount(filteredData.netIncome)}</p>
             </CardContent>
           </Card>
         </div>
@@ -62,7 +163,7 @@ export default function Finances() {
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData}>
+                  <BarChart data={filteredData.monthlyData}>
                     <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                     <Tooltip 
@@ -82,7 +183,7 @@ export default function Finances() {
               <CardTitle>Expenses by Category</CardTitle>
             </CardHeader>
             <CardContent>
-              {expensesByCategory.length === 0 ? (
+              {filteredData.expensesByCategory.length === 0 ? (
                 <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                   No expenses recorded
                 </div>
@@ -91,7 +192,7 @@ export default function Finances() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={expensesByCategory}
+                        data={filteredData.expensesByCategory}
                         cx="50%"
                         cy="50%"
                         innerRadius={60}
@@ -101,7 +202,7 @@ export default function Finances() {
                         nameKey="name"
                         label={({ name, value }) => `${name}: ${formatAmount(value)}`}
                       >
-                        {expensesByCategory.map((_, index) => (
+                        {filteredData.expensesByCategory.map((_, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>

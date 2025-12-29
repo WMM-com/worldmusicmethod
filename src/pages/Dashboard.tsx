@@ -1,18 +1,62 @@
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useUpcomingEvents } from '@/hooks/useEvents';
-import { useFinancials } from '@/hooks/useFinancials';
+import { useUpcomingEvents, useEvents } from '@/hooks/useEvents';
+import { useExpenses } from '@/hooks/useExpenses';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
-import { Calendar, TrendingUp, AlertCircle, Coins } from 'lucide-react';
-import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
+import { format, startOfYear, endOfYear, isWithinInterval, parseISO } from 'date-fns';
+import { Calendar, TrendingUp, AlertCircle, Coins, Receipt } from 'lucide-react';
+import { formatCurrency } from '@/lib/currency';
+import { convertCurrency } from '@/lib/currency';
+import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
 
 export default function Dashboard() {
   const { data: upcomingEvents = [], isLoading: eventsLoading } = useUpcomingEvents(5);
-  const { summary } = useFinancials();
+  const { events } = useEvents();
+  const { expenses } = useExpenses();
   const { profile } = useAuth();
 
   const defaultCurrency = profile?.default_currency || 'GBP';
+
+  const now = new Date();
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: startOfYear(now),
+    to: endOfYear(now),
+  });
+
+  const filteredData = useMemo(() => {
+    const filteredEvents = events.filter(e => {
+      if (e.status !== 'completed') return false;
+      const date = parseISO(e.start_time);
+      return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
+    });
+
+    const filteredExpenses = expenses.filter(e => {
+      const date = parseISO(e.date);
+      return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
+    });
+
+    const totalEarnings = filteredEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+    const unpaidEarnings = filteredEvents
+      .filter(e => e.payment_status === 'unpaid')
+      .reduce((sum, e) => sum + (e.fee || 0), 0);
+    
+    const totalExpenses = filteredExpenses.reduce((sum, e) => {
+      const expenseCurrency = e.currency || defaultCurrency;
+      if (expenseCurrency === defaultCurrency) {
+        return sum + (e.amount || 0);
+      }
+      const converted = convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
+      return sum + converted;
+    }, 0);
+
+    return {
+      totalEarnings,
+      unpaidEarnings,
+      totalExpenses,
+      netIncome: totalEarnings - totalExpenses,
+    };
+  }, [events, expenses, dateRange, defaultCurrency]);
 
   const formatAmount = (amount: number) => {
     return formatCurrency(amount, defaultCurrency);
@@ -21,32 +65,46 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="p-6 lg:p-8 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Your business at a glance</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Your business at a glance</p>
+          </div>
+          <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card className="glass">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Earnings</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Earnings</CardTitle>
               <Coins className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(summary.monthlyEarnings)}</div>
-              <p className="text-xs text-muted-foreground mt-1">This month</p>
+              <div className="text-2xl font-bold">{formatAmount(filteredData.totalEarnings)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Selected period</p>
             </CardContent>
           </Card>
 
           <Card className="glass">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Unpaid Invoices</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Unpaid</CardTitle>
               <AlertCircle className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(summary.unpaidEarnings)}</div>
+              <div className="text-2xl font-bold">{formatAmount(filteredData.unpaidEarnings)}</div>
               <p className="text-xs text-muted-foreground mt-1">Awaiting payment</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Expenses</CardTitle>
+              <Receipt className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatAmount(filteredData.totalExpenses)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Selected period</p>
             </CardContent>
           </Card>
 
@@ -56,8 +114,8 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(summary.yearlyEarnings - summary.yearlyExpenses)}</div>
-              <p className="text-xs text-muted-foreground mt-1">This year</p>
+              <div className="text-2xl font-bold">{formatAmount(filteredData.netIncome)}</div>
+              <p className="text-xs text-muted-foreground mt-1">Selected period</p>
             </CardContent>
           </Card>
 
