@@ -35,6 +35,53 @@ import { useR2Upload } from '@/hooks/useR2Upload';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+// Facebook-style video player that adapts to video dimensions
+function VideoPlayer({ src }: { src: string }) {
+  const [aspectRatio, setAspectRatio] = useState<'square' | 'portrait' | 'landscape'>('landscape');
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    const { videoWidth, videoHeight } = video;
+    const ratio = videoWidth / videoHeight;
+    
+    if (Math.abs(ratio - 1) < 0.1) {
+      // Square (ratio ~1:1)
+      setAspectRatio('square');
+    } else if (ratio < 0.8) {
+      // Portrait (taller than wide, like 9:16)
+      setAspectRatio('portrait');
+    } else {
+      // Landscape (wider than tall)
+      setAspectRatio('landscape');
+    }
+  };
+
+  return (
+    <div 
+      className={cn(
+        "relative rounded-lg overflow-hidden",
+        aspectRatio === 'square' && "aspect-square",
+        aspectRatio === 'portrait' && "aspect-[4/5] max-h-[500px] bg-black",
+        aspectRatio === 'landscape' && "aspect-video"
+      )}
+    >
+      <video
+        ref={videoRef}
+        src={src}
+        controls
+        onLoadedMetadata={handleLoadedMetadata}
+        className={cn(
+          "absolute inset-0 w-full h-full",
+          aspectRatio === 'portrait' ? "object-contain" : "object-cover"
+        )}
+      />
+    </div>
+  );
+}
+
 interface PostCardProps {
   post: Post;
   defaultShowComments?: boolean;
@@ -306,14 +353,10 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
         
         <CardContent className="pb-3">
           <p className="whitespace-pre-wrap">{post.content}</p>
-          {post.image_url && (
+{post.image_url && (
             <div className="mt-3">
               {displayMediaType === 'video' ? (
-                <video 
-                  src={post.image_url} 
-                  controls 
-                  className="rounded-lg max-h-96 w-full object-contain bg-black"
-                />
+                <VideoPlayer src={post.image_url} />
               ) : displayMediaType === 'audio' ? (
                 <audio src={post.image_url} controls className="w-full mt-2" />
               ) : (
