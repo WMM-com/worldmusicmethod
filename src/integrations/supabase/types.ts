@@ -1316,6 +1316,50 @@ export type Database = {
         }
         Relationships: []
       }
+      group_channels: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          group_id: string
+          icon: string | null
+          id: string
+          name: string
+          order_index: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          group_id: string
+          icon?: string | null
+          id?: string
+          name: string
+          order_index?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          group_id?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          order_index?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_channels_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_events: {
         Row: {
           created_at: string
@@ -1581,6 +1625,7 @@ export type Database = {
       }
       group_posts: {
         Row: {
+          channel_id: string | null
           content: string
           created_at: string
           group_id: string
@@ -1593,6 +1638,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          channel_id?: string | null
           content: string
           created_at?: string
           group_id: string
@@ -1605,6 +1651,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          channel_id?: string | null
           content?: string
           created_at?: string
           group_id?: string
@@ -1618,7 +1665,74 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "group_posts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "group_channels"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "group_posts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_questionnaires: {
+        Row: {
+          allow_multiple_responses: boolean | null
+          channel_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string | null
+          group_id: string
+          id: string
+          is_active: boolean | null
+          questions: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allow_multiple_responses?: boolean | null
+          channel_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_at?: string | null
+          group_id: string
+          id?: string
+          is_active?: boolean | null
+          questions?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allow_multiple_responses?: boolean | null
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_at?: string | null
+          group_id?: string
+          id?: string
+          is_active?: boolean | null
+          questions?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_questionnaires_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "group_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_questionnaires_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
@@ -2214,6 +2328,71 @@ export type Database = {
             columns: ["podcast_id"]
             isOneToOne: false
             referencedRelation: "media_podcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mentions: {
+        Row: {
+          comment_id: string | null
+          created_at: string
+          group_comment_id: string | null
+          group_post_id: string | null
+          id: string
+          is_read: boolean | null
+          mentioned_by_user_id: string
+          mentioned_user_id: string
+          post_id: string | null
+        }
+        Insert: {
+          comment_id?: string | null
+          created_at?: string
+          group_comment_id?: string | null
+          group_post_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          mentioned_by_user_id: string
+          mentioned_user_id: string
+          post_id?: string | null
+        }
+        Update: {
+          comment_id?: string | null
+          created_at?: string
+          group_comment_id?: string | null
+          group_post_id?: string | null
+          id?: string
+          is_read?: boolean | null
+          mentioned_by_user_id?: string
+          mentioned_user_id?: string
+          post_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_group_comment_id_fkey"
+            columns: ["group_comment_id"]
+            isOneToOne: false
+            referencedRelation: "group_post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_group_post_id_fkey"
+            columns: ["group_post_id"]
+            isOneToOne: false
+            referencedRelation: "group_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
             referencedColumns: ["id"]
           },
         ]
@@ -3079,6 +3258,41 @@ export type Database = {
           wp_user_id?: number | null
         }
         Relationships: []
+      }
+      questionnaire_responses: {
+        Row: {
+          answers: Json
+          created_at: string
+          id: string
+          questionnaire_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          questionnaire_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          questionnaire_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questionnaire_responses_questionnaire_id_fkey"
+            columns: ["questionnaire_id"]
+            isOneToOne: false
+            referencedRelation: "group_questionnaires"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
