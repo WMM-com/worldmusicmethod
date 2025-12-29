@@ -34,6 +34,7 @@ import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/h
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { UserHoverCard } from './UserHoverCard';
 
 // Global video manager to ensure only one video plays at a time
 const videoRegistry = new Set<HTMLVideoElement>();
@@ -316,15 +317,27 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
     <>
       <Card id={`post-${post.id}`} className={cn("overflow-hidden border-l-4", typeConfig.borderColor)}>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={post.profiles?.avatar_url || undefined} />
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
+              <UserHoverCard 
+                userId={post.user_id} 
+                userName={post.profiles?.full_name || null}
+                avatarUrl={post.profiles?.avatar_url || null}
+              >
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={post.profiles?.avatar_url || undefined} />
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+              </UserHoverCard>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-medium">{post.profiles?.full_name || 'Unknown'}</p>
+                  <UserHoverCard 
+                    userId={post.user_id} 
+                    userName={post.profiles?.full_name || null}
+                    avatarUrl={post.profiles?.avatar_url || null}
+                  >
+                    <p className="font-medium hover:underline">{post.profiles?.full_name || 'Unknown'}</p>
+                  </UserHoverCard>
                   <Badge variant="outline" className={cn("text-xs gap-1 py-0", typeConfig.badgeClass)}>
                     <TypeIcon className="h-3 w-3" />
                     {typeConfig.label}

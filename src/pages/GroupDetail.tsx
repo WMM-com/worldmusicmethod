@@ -7,16 +7,28 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { 
   ArrowLeft, Users, Lock, EyeOff, Settings, 
-  MessageSquare, Calendar, BarChart3
+  MessageSquare, Calendar, BarChart3, Trash2
 } from 'lucide-react';
 import { 
   useGroup, useGroupMembers, useGroupPosts, useGroupEvents, 
   useGroupPolls, useJoinGroup, useLeaveGroup,
-  useVoteOnPoll, useUpdateGroup
+  useVoteOnPoll, useUpdateGroup, useDeleteGroup
 } from '@/hooks/useGroups';
 import { useGroupPinnedAudio } from '@/hooks/usePinnedAudio';
+import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORY_LABELS, type GroupSettings } from '@/types/groups';
 import { formatDistanceToNow, format } from 'date-fns';
 import { CreateEventDialog } from '@/components/groups/CreateEventDialog';
@@ -39,11 +51,15 @@ export default function GroupDetail() {
   const { data: events } = useGroupEvents(groupId || '');
   const { data: polls } = useGroupPolls(groupId || '');
   const { data: pinnedAudio } = useGroupPinnedAudio(groupId || '');
+  const { user, isAdmin: isSiteAdmin } = useAuth();
   
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
   const voteOnPoll = useVoteOnPoll();
   const updateGroup = useUpdateGroup();
+  const deleteGroup = useDeleteGroup();
+  
+  const canDeleteGroup = group && (group.created_by === user?.id || isSiteAdmin);
   
   const handleVote = (pollId: string, optionIndex: number) => {
     if (!groupId) return;
@@ -168,6 +184,38 @@ export default function GroupDetail() {
                             </Button>
                           }
                         />
+                      )}
+                      {canDeleteGroup && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Group</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{group.name}"? This action cannot be undone. 
+                                All posts, events, polls, and members will be permanently removed.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => {
+                                  deleteGroup.mutate(group.id, {
+                                    onSuccess: () => navigate('/community?tab=groups'),
+                                  });
+                                }}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deleteGroup.isPending ? 'Deleting...' : 'Delete Group'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                       <Button 
                         variant="outline" 
