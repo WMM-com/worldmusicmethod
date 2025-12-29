@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Music, Podcast, Heart, ListMusic, Search } from 'lucide-react';
-import { useTracks, usePodcasts, useUserPlaylists, useLikedTracks } from '@/hooks/useMedia';
+import { Music, Podcast, Heart, ListMusic, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTracks, usePodcasts, useUserPlaylists, useLikedTracks, MediaPodcast } from '@/hooks/useMedia';
 import { TrackList } from '@/components/media/TrackList';
 import { MediaSearch } from '@/components/media/MediaSearch';
 import { CreatePlaylistDialog } from '@/components/media/CreatePlaylistDialog';
@@ -10,9 +10,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { SiteHeader } from '@/components/layout/SiteHeader';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export default function Media() {
   const [activeTab, setActiveTab] = useState('browse');
+  const [expandedPodcast, setExpandedPodcast] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -26,9 +29,14 @@ export default function Media() {
     document.title = 'Media Library | World Music Method';
   }, []);
 
+  // Get episodes for a specific podcast
+  const getEpisodesForPodcast = (podcastId: string) => {
+    return podcasts?.filter(ep => ep.podcast_id === podcastId) || [];
+  };
+
   return (
     <>
-
+      <SiteHeader />
       <div className="container py-8 pb-28 space-y-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -133,26 +141,64 @@ export default function Media() {
             {podcastFeeds && podcastFeeds.length > 0 && (
               <section className="space-y-4">
                 <h2 className="text-xl font-semibold">Shows</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {podcastFeeds.map(podcast => (
-                    <Card key={podcast.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <CardContent className="p-4">
-                        {podcast.cover_image_url ? (
-                          <img 
-                            src={podcast.cover_image_url} 
-                            alt={podcast.title}
-                            className="aspect-square rounded-lg object-cover mb-3"
-                          />
-                        ) : (
-                          <div className="aspect-square rounded-lg bg-muted flex items-center justify-center mb-3">
-                            <Podcast className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        <h3 className="font-semibold truncate">{podcast.title}</h3>
-                        <p className="text-sm text-muted-foreground truncate">{podcast.author}</p>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="space-y-4">
+                  {podcastFeeds.map(podcast => {
+                    const episodes = getEpisodesForPodcast(podcast.id);
+                    const isExpanded = expandedPodcast === podcast.id;
+                    
+                    return (
+                      <Collapsible 
+                        key={podcast.id} 
+                        open={isExpanded}
+                        onOpenChange={(open) => setExpandedPodcast(open ? podcast.id : null)}
+                      >
+                        <Card className="overflow-hidden">
+                          <CollapsibleTrigger asChild>
+                            <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                              <div className="flex items-center gap-4">
+                                {podcast.cover_image_url ? (
+                                  <img 
+                                    src={podcast.cover_image_url} 
+                                    alt={podcast.title}
+                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                                    <Podcast className="h-8 w-8 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold">{podcast.title}</h3>
+                                  <p className="text-sm text-muted-foreground truncate">{podcast.author}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {episodes.length} episode{episodes.length !== 1 ? 's' : ''}
+                                  </p>
+                                </div>
+                                <Button variant="ghost" size="icon">
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-5 w-5" />
+                                  ) : (
+                                    <ChevronDown className="h-5 w-5" />
+                                  )}
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="border-t border-border px-4 py-2">
+                              {episodes.length > 0 ? (
+                                <TrackList tracks={episodes} compact />
+                              ) : (
+                                <p className="text-sm text-muted-foreground py-4 text-center">
+                                  No episodes available
+                                </p>
+                              )}
+                            </div>
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+                    );
+                  })}
                 </div>
               </section>
             )}

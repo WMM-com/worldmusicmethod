@@ -278,6 +278,32 @@ export function useRemoveFromPlaylist() {
   });
 }
 
+// Delete playlist
+export function useDeletePlaylist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (playlistId: string) => {
+      // First delete all tracks from playlist
+      await supabase
+        .from('media_playlist_tracks')
+        .delete()
+        .eq('playlist_id', playlistId);
+
+      // Then delete the playlist
+      const { error } = await supabase
+        .from('media_playlists')
+        .delete()
+        .eq('id', playlistId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media-playlists'] });
+    },
+  });
+}
+
 // User likes
 export function useUserLikes() {
   const { user } = useAuth();
@@ -324,6 +350,7 @@ export function useToggleLike() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media-likes'] });
+      queryClient.invalidateQueries({ queryKey: ['media-liked-tracks'] });
     },
   });
 }

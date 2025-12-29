@@ -57,12 +57,22 @@ export function StickyAudioPlayer() {
       "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 transition-all duration-300",
       isExpanded ? "h-auto" : "h-20"
     )}>
-      {/* Progress bar (thin line at top) */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
+      {/* Clickable progress bar (thin line at top) */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group"
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const percentage = clickX / rect.width;
+          seek(percentage * duration);
+        }}
+      >
         <div 
-          className="h-full bg-primary transition-all duration-100"
+          className="h-full bg-primary transition-all duration-100 group-hover:bg-primary/80"
           style={{ width: `${progress}%` }}
         />
+        {/* Hover indicator */}
+        <div className="absolute top-0 left-0 right-0 h-2 -mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       <div className="container mx-auto px-4 h-full">
@@ -125,7 +135,22 @@ export function StickyAudioPlayer() {
 
           {/* Right controls */}
           <div className="flex items-center gap-2 flex-1 justify-end">
-            <span className="text-xs text-muted-foreground hidden md:block">
+            {/* Desktop seek bar */}
+            <div className="hidden lg:flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-10 text-right">
+                {formatTime(currentTime)}
+              </span>
+              <Slider
+                value={[currentTime]}
+                onValueChange={([v]) => seek(v)}
+                max={duration || 100}
+                className="w-32"
+              />
+              <span className="text-xs text-muted-foreground w-10">
+                {formatTime(duration)}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground hidden md:block lg:hidden">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
             
