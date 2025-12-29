@@ -15,6 +15,38 @@ const CURRENCIES: Record<string, string> = {
   JPY: '¥',
 };
 
+/**
+ * Load an image from a URL and return it as a base64 data URL.
+ * Uses a canvas to avoid CORS issues with external images.
+ */
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/png');
+        resolve(dataUrl);
+      } catch {
+        // Canvas tainted - CORS issue
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    // Add cache-busting to avoid stale CORS headers
+    img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+  });
+}
+
 export async function generateInvoicePdf(invoice: Invoice, profile: Profile | null): Promise<jsPDF> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -41,22 +73,25 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   // Try to add logo if available
   if (profile?.logo_url) {
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject();
-        img.src = profile.logo_url!;
-      });
-      // Add logo - max 40x40
-      const maxSize = 40;
-      const ratio = Math.min(maxSize / img.width, maxSize / img.height);
-      const imgWidth = img.width * ratio;
-      const imgHeight = img.height * ratio;
-      doc.addImage(img, 'PNG', margin, y, imgWidth, imgHeight);
-      y += imgHeight + 5;
+      const dataUrl = await loadImageAsDataUrl(profile.logo_url);
+      if (dataUrl) {
+        const img = new Image();
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = dataUrl;
+        });
+        // Add logo - max 40x40
+        const maxSize = 40;
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height);
+        const imgWidth = img.width * ratio;
+        const imgHeight = img.height * ratio;
+        doc.addImage(dataUrl, 'PNG', margin, y, imgWidth, imgHeight);
+        y += imgHeight + 5;
+      }
     } catch {
       // Logo failed to load, continue without it
+      console.warn('Failed to load logo for invoice PDF');
     }
   }
 
