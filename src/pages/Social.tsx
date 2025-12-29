@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Newspaper, UsersRound, UserSearch, LogIn, UserPlus } from 'lucide-react';
+import { Users, Newspaper, UsersRound, UserSearch, LogIn, UserPlus, User } from 'lucide-react';
 import { useSearchParams, Link } from 'react-router-dom';
 
 export default function Social() {
@@ -93,7 +93,7 @@ export default function Social() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             {/* Centered Tabs */}
             <div className="flex justify-center">
-              <TabsList className="grid w-full max-w-lg grid-cols-4">
+              <TabsList className="grid w-full max-w-2xl grid-cols-5">
                 <TabsTrigger value="feed" className="flex items-center gap-2">
                   <Newspaper className="h-4 w-4" />
                   Feed
@@ -110,6 +110,14 @@ export default function Social() {
                   <UsersRound className="h-4 w-4" />
                   Groups
                 </TabsTrigger>
+                {user && (
+                  <TabsTrigger value="profile" className="flex items-center gap-2" asChild>
+                    <Link to="/profile">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </Link>
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
             

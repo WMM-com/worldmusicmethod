@@ -81,6 +81,51 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Wrapper to add bottom padding when player is visible
+function AppContent() {
+  return (
+    <div className="pb-24">
+      <Routes>
+        <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/" element={<Navigate to="/courses" replace />} />
+        <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
+        <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+        <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
+        <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
+        <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+        <Route path="/courses" element={<Courses />} />
+        <Route path="/courses/:courseId" element={<CourseLanding />} />
+        <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
+        <Route path="/my-courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout/:productId?" element={<Checkout />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+        <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
+        <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
+        <Route path="/friends" element={<Navigate to="/community?tab=friends" replace />} />
+        <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+        <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
+        <Route path="/media" element={<Media />} />
+        <Route path="/media/playlist/:playlistId" element={<MediaPlaylist />} />
+        
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+      <ChatPopup />
+      <StickyAudioPlayer />
+    </div>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -91,43 +136,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <Routes>
-                  <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
-                  <Route path="/" element={<Navigate to="/courses" replace />} />
-                  <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
-                  <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
-                  <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
-                  <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                  <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
-                  <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
-                  <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
-                  <Route path="/courses" element={<Courses />} />
-                  <Route path="/courses/:courseId" element={<CourseLanding />} />
-                  <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
-                  <Route path="/my-courses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout/:productId?" element={<Checkout />} />
-                  <Route path="/payment-success" element={<PaymentSuccess />} />
-                  <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-                  <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-                  <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                  <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
-                  <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
-                  <Route path="/friends" element={<Navigate to="/community?tab=friends" replace />} />
-                  <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
-                  <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                  <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                  <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
-                  <Route path="/media" element={<Media />} />
-                  <Route path="/media/playlist/:playlistId" element={<MediaPlaylist />} />
-                  
-                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <ChatPopup />
-                <StickyAudioPlayer />
+                <AppContent />
               </BrowserRouter>
             </TooltipProvider>
           </MediaPlayerProvider>

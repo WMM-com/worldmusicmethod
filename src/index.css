@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,6 +42,11 @@
     --destructive: 355 74% 43%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Brand colors */
+    --brand-yellow: 54 82% 44%;
+    --brand-blue: 222 100% 22%;
+    --brand-green: 122 38% 23%;
+    --brand-red: 355 74% 43%;
 
     /* Warning - Yellow */
     --warning: 54 82% 44%;
@@ -97,6 +104,12 @@
 
     --success: 122 38% 23%;
     --success-foreground: 0 0% 100%;
+
+    /* Brand colors */
+    --brand-yellow: 54 82% 44%;
+    --brand-blue: 222 100% 22%;
+    --brand-green: 122 38% 23%;
+    --brand-red: 355 74% 43%;
 
     --warning: 54 82% 44%;
     --warning-foreground: 0 0% 0%;

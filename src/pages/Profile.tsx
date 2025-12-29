@@ -40,9 +40,10 @@ import { CustomTabsSection } from '@/components/profile/sections/CustomTabsSecti
 import { 
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
-  Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code
+  Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code,
+  Newspaper, UsersRound, UserSearch
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import {
   DropdownMenu,
@@ -268,7 +269,49 @@ export default function Profile() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
+        {/* Community Navigation */}
+        <div className="border-b border-border bg-card">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
+                <Link 
+                  to="/community?tab=feed" 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                >
+                  <Newspaper className="h-4 w-4" />
+                  Feed
+                </Link>
+                <Link 
+                  to="/community?tab=friends" 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Friends
+                </Link>
+                <Link 
+                  to="/community?tab=members" 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                >
+                  <UserSearch className="h-4 w-4" />
+                  Members
+                </Link>
+                <Link 
+                  to="/community?tab=groups" 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                >
+                  <UsersRound className="h-4 w-4" />
+                  Groups
+                </Link>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-background text-foreground">
+                  <User className="h-4 w-4" />
+                  My Profile
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Cover Image */}
         <div 
           className={`relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
