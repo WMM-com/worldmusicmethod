@@ -258,7 +258,17 @@ export default function Expenses() {
     await deleteExpense.mutateAsync(id);
   };
 
-  const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+  // Calculate total expenses in default currency
+  const totalExpenses = useMemo(() => {
+    return filteredExpenses.reduce((sum, exp) => {
+      const expCurrency = exp.currency || defaultCurrency;
+      const amount = Number(exp.amount);
+      if (expCurrency === defaultCurrency) {
+        return sum + amount;
+      }
+      return sum + convertCurrency(amount, expCurrency, defaultCurrency);
+    }, 0);
+  }, [filteredExpenses, defaultCurrency]);
 
   return (
     <AppLayout>
@@ -619,7 +629,8 @@ export default function Expenses() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold gradient-text">{formatCurrency(totalExpenses)}</p>
+            <p className="text-3xl font-bold text-foreground">{formatAmount(totalExpenses, defaultCurrency)}</p>
+            <p className="text-sm text-muted-foreground mt-1">Converted to {defaultCurrency}</p>
           </CardContent>
         </Card>
         {/* Expenses Table */}
