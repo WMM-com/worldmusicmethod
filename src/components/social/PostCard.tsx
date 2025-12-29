@@ -53,6 +53,8 @@ function pauseAllExcept(currentVideo: HTMLVideoElement) {
       video.pause();
     }
   });
+  // Also pause the global audio player
+  window.dispatchEvent(new CustomEvent('pause-audio-player'));
 }
 
 // Facebook-style video player that adapts to video dimensions
@@ -131,30 +133,30 @@ const POST_TYPE_CONFIG = {
   statement: {
     label: 'Statement',
     icon: Megaphone,
-    borderColor: 'border-l-red-500',
-    badgeClass: 'bg-red-500/10 text-red-600 border-red-500/20',
-    buttonColor: 'bg-red-500 hover:bg-red-600 text-white',
+    borderColor: 'border-l-brand-red',
+    badgeClass: 'bg-brand-red/10 text-brand-red border-brand-red/20',
+    buttonColor: 'bg-brand-red hover:bg-brand-red/90 text-white',
   },
   update: {
     label: 'Update',
     icon: RefreshCw,
-    borderColor: 'border-l-blue-500',
-    badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
-    buttonColor: 'bg-blue-500 hover:bg-blue-600 text-white',
+    borderColor: 'border-l-brand-blue',
+    badgeClass: 'bg-brand-blue/10 text-brand-blue border-brand-blue/20',
+    buttonColor: 'bg-brand-blue hover:bg-brand-blue/90 text-white',
   },
   recommendation: {
     label: 'Recommendation',
     icon: Star,
-    borderColor: 'border-l-yellow-500',
-    badgeClass: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-    buttonColor: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    borderColor: 'border-l-brand-yellow',
+    badgeClass: 'bg-brand-yellow/10 text-brand-yellow border-brand-yellow/20',
+    buttonColor: 'bg-brand-yellow hover:bg-brand-yellow/90 text-black',
   },
   practice: {
     label: 'Practice Room',
     icon: Music2,
-    borderColor: 'border-l-green-500',
-    badgeClass: 'bg-green-500/10 text-green-600 border-green-500/20',
-    buttonColor: 'bg-green-500 hover:bg-green-600 text-white',
+    borderColor: 'border-l-brand-green',
+    badgeClass: 'bg-brand-green/10 text-brand-green border-brand-green/20',
+    buttonColor: 'bg-brand-green hover:bg-brand-green/90 text-white',
   },
 };
 

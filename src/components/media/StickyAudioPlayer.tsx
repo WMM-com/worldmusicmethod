@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, 
-  Shuffle, Repeat, Repeat1, Heart, ListMusic, ChevronUp, ChevronDown
+  Shuffle, Repeat, Repeat1, Heart, ListMusic, ChevronUp, ChevronDown, Minimize2, Music
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -19,9 +20,11 @@ function formatTime(seconds: number): string {
 
 export function StickyAudioPlayer() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const { user } = useAuth();
   const { data: likedTrackIds = [] } = useUserLikes();
   const toggleLike = useToggleLike();
+  const location = useLocation();
 
   const {
     currentTrack,
@@ -40,9 +43,35 @@ export function StickyAudioPlayer() {
     toggleMute,
     toggleShuffle,
     cycleRepeat,
+    pause,
   } = useMediaPlayer();
 
-  if (!currentTrack) return null;
+  // Hide player inside courses (learn pages)
+  const isInCourse = location.pathname.includes('/learn');
+
+  // Listen for video play events to pause audio
+  useEffect(() => {
+    const handlePauseAudio = () => {
+      if (isPlaying) {
+        pause();
+      }
+    };
+
+    window.addEventListener('pause-audio-player', handlePauseAudio);
+    return () => {
+      window.removeEventListener('pause-audio-player', handlePauseAudio);
+    };
+  }, [isPlaying, pause]);
+
+  // Stop and hide player when entering a course
+  useEffect(() => {
+    if (isInCourse && isPlaying) {
+      pause();
+    }
+  }, [isInCourse, isPlaying, pause]);
+
+  // Don't render if no track, inside a course, or minimized with restore button
+  if (!currentTrack || isInCourse) return null;
 
   const isLiked = likedTrackIds.includes(currentTrack.id);
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -51,6 +80,19 @@ export function StickyAudioPlayer() {
     if (!user) return;
     toggleLike.mutate({ trackId: currentTrack.id, isLiked });
   };
+
+  // Minimized restore button
+  if (isMinimized) {
+    return (
+      <Button
+        onClick={() => setIsMinimized(false)}
+        className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
+        size="icon"
+      >
+        <Music className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   return (
     <div className={cn(
@@ -177,6 +219,17 @@ export function StickyAudioPlayer() {
               />
             </div>
 
+            {/* Minimize button */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setIsMinimized(true)}
+              className="hidden sm:flex"
+              title="Minimize player"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+
             <Button 
               variant="ghost" 
               size="icon"
@@ -234,6 +287,14 @@ export function StickyAudioPlayer() {
                   className="w-24"
                 />
               </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setIsMinimized(true)}
+                title="Minimize player"
+              >
+                <Minimize2 className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         )}
@@ -241,3 +302,6 @@ export function StickyAudioPlayer() {
     </div>
   );
 }
+
+// Export the player height for use in other components
+export const STICKY_PLAYER_HEIGHT = 80;
