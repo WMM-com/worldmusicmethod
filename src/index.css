@@ -20,9 +20,9 @@
     --primary: 355 74% 43%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Yellow (#CCC016) - using lighter variant for better contrast */
-    --secondary: 54 82% 54%;
-    --secondary-foreground: 0 0% 7%;
+    /* Secondary - Yellow (#CCC016) */
+    --secondary: 54 82% 44%;
+    --secondary-foreground: 0 0% 0%;
 
     /* Muted - Subtle text */
     --muted: 0 0% 29%;
@@ -32,13 +32,14 @@
     --accent: 222 100% 22%;
     --accent-foreground: 0 0% 100%;
 
+    /* Success - Green (#244F26) */
+    --success: 122 38% 23%;
+    --success-foreground: 0 0% 100%;
+
     /* Destructive - Red */
     --destructive: 355 74% 43%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success */
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 100%;
 
     /* Warning - Yellow */
     --warning: 54 82% 44%;
@@ -94,7 +95,7 @@
     --destructive: 355 74% 43%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
+    --success: 122 38% 23%;
     --success-foreground: 0 0% 100%;
 
     --warning: 54 82% 44%;

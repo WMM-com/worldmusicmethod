@@ -69,42 +69,44 @@ export function UserHoverCard({ userId, userName, avatarUrl, children }: UserHov
           </div>
 
           {!isOwnProfile && user && (
-            <div className="flex gap-2">
-              {loadingStatus ? (
-                <Button variant="outline" size="sm" className="flex-1" disabled>
-                  <Clock className="h-4 w-4 mr-2 animate-pulse" />
-                  Loading...
-                </Button>
-              ) : isFriend ? (
-                <Button variant="outline" size="sm" className="flex-1" disabled>
-                  <UserCheck className="h-4 w-4 mr-2" />
-                  Connected
-                </Button>
-              ) : hasPendingRequest ? (
-                <Button variant="outline" size="sm" className="flex-1" disabled>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Pending
-                </Button>
-              ) : (
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={handleConnect}
-                  disabled={connectMutation.isPending}
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Connect
-                </Button>
-              )}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                {loadingStatus ? (
+                  <Button variant="outline" size="sm" className="flex-1" disabled>
+                    <Clock className="h-4 w-4 mr-1.5 animate-pulse" />
+                    Loading...
+                  </Button>
+                ) : isFriend ? (
+                  <Button variant="outline" size="sm" className="flex-1" disabled>
+                    <UserCheck className="h-4 w-4 mr-1.5" />
+                    Connected
+                  </Button>
+                ) : hasPendingRequest ? (
+                  <Button variant="outline" size="sm" className="flex-1" disabled>
+                    <Clock className="h-4 w-4 mr-1.5" />
+                    Pending
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={handleConnect}
+                    disabled={connectMutation.isPending}
+                  >
+                    <UserPlus className="h-4 w-4 mr-1.5" />
+                    Connect
+                  </Button>
+                )}
+              </div>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1"
+                className="w-full"
                 asChild
               >
                 <Link to={`/profile/${userId}`}>
-                  <User className="h-4 w-4 mr-2" />
+                  <User className="h-4 w-4 mr-1.5" />
                   View Profile
                 </Link>
               </Button>
