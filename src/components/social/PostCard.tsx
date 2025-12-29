@@ -57,6 +57,19 @@ function pauseAllExcept(currentVideo: HTMLVideoElement) {
   window.dispatchEvent(new CustomEvent('pause-audio-player'));
 }
 
+function pauseAllVideos() {
+  videoRegistry.forEach((video) => {
+    if (!video.paused) {
+      video.pause();
+    }
+  });
+}
+
+// Listen for pause-all-videos event (fired when audio player resumes)
+if (typeof window !== 'undefined') {
+  window.addEventListener('pause-all-videos', pauseAllVideos);
+}
+
 // Facebook-style video player that adapts to video dimensions
 function VideoPlayer({ src }: { src: string }) {
   const [aspectRatio, setAspectRatio] = useState<'square' | 'portrait' | 'landscape'>('landscape');

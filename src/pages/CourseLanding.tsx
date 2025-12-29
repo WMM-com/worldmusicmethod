@@ -1367,6 +1367,10 @@ export default function CourseLanding() {
               controlsList="nodownload noplaybackrate"
               disablePictureInPicture
               className="w-full aspect-video"
+              onPlay={() => {
+                // Pause the sticky audio player when this video starts
+                window.dispatchEvent(new CustomEvent('pause-audio-player'));
+              }}
             />
           )}
         </DialogContent>

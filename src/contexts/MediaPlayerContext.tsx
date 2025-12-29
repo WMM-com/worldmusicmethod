@@ -178,6 +178,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const resume = useCallback(() => {
+    // Dispatch event to pause any playing videos before resuming audio
+    window.dispatchEvent(new CustomEvent('pause-all-videos'));
     audioRef.current?.play().catch(console.error);
   }, []);
 
