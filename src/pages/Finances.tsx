@@ -6,7 +6,7 @@ import { useExpenses } from '@/hooks/useExpenses';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaxEstimator } from '@/components/finances/TaxEstimator';
 import { OtherIncomeSection } from '@/components/finances/OtherIncomeSection';
-import { IncomeProofShareSection } from '@/components/finances/IncomeProofShare';
+
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { formatCurrency, convertCurrency } from '@/lib/currency';
 import { DateRangeFilter, DateRange } from '@/components/filters/DateRangeFilter';
@@ -234,8 +234,7 @@ export default function Finances() {
         {/* Other Income Section */}
         <OtherIncomeSection />
 
-        {/* Income Proof Sharing */}
-        <IncomeProofShareSection />
+
 
         {/* Tax Estimator Section */}
         <TaxEstimator />
