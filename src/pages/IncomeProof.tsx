@@ -56,7 +56,16 @@ export default function IncomeProof() {
         return;
       }
 
-      const settings = shareData[0] as ShareSettings;
+      // Map the RPC response - RPC returns different column names
+      const rawSettings = shareData[0] as any;
+      const settings: ShareSettings = {
+        share_id: rawSettings.id || rawSettings.share_id,
+        include_income_summary: rawSettings.include_income_summary,
+        include_monthly_breakdown: rawSettings.include_monthly_breakdown,
+        include_tax_calculations: rawSettings.include_tax_calculations,
+        include_other_income: rawSettings.include_other_income,
+        owner_user_id: rawSettings.user_id || rawSettings.owner_user_id,
+      };
       setShareSettings(settings);
 
       const { data: finData, error: finError } = await supabase
@@ -64,6 +73,7 @@ export default function IncomeProof() {
 
       if (finError) throw finError;
       
+      // Fetch owner's profile for default currency
       const { data: profileData } = await supabase
         .from('profiles')
         .select('default_currency')
@@ -71,9 +81,14 @@ export default function IncomeProof() {
         .single();
       
       if (finData && finData.length > 0) {
+        const rawFinData = finData[0] as any;
         setFinancialData({
-          ...finData[0] as FinancialData,
-          default_currency: profileData?.default_currency || 'GBP'
+          business_name: rawFinData.business_name,
+          full_name: rawFinData.full_name,
+          total_event_income: rawFinData.total_event_income ?? rawFinData.total ?? 0,
+          total_other_income: rawFinData.total_other_income ?? 0,
+          default_currency: profileData?.default_currency || 'GBP',
+          monthly_data: rawFinData.monthly_data ?? rawFinData.data ?? [],
         });
       }
     } catch (err) {

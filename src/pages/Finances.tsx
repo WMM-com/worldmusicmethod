@@ -27,8 +27,9 @@ export default function Finances() {
   });
 
   const filteredData = useMemo(() => {
+    // Include all events with fees (not just completed) for full financial picture
     const filteredEvents = events.filter(e => {
-      if (e.status !== 'completed') return false;
+      if (!e.fee || e.fee <= 0) return false;
       const date = parseISO(e.start_time);
       return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
     });
@@ -38,15 +39,22 @@ export default function Finances() {
       return isWithinInterval(date, { start: dateRange.from, end: dateRange.to });
     });
 
-    const totalEarnings = filteredEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+    // Total earnings from all events, converted to default currency
+    const totalEarnings = filteredEvents.reduce((sum, e) => {
+      const eventCurrency = e.currency || defaultCurrency;
+      const fee = e.fee || 0;
+      if (eventCurrency === defaultCurrency) {
+        return sum + fee;
+      }
+      return sum + convertCurrency(fee, eventCurrency, defaultCurrency);
+    }, 0);
     
     const totalExpenses = filteredExpenses.reduce((sum, e) => {
       const expenseCurrency = e.currency || defaultCurrency;
       if (expenseCurrency === defaultCurrency) {
         return sum + (e.amount || 0);
       }
-      const converted = convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
-      return sum + converted;
+      return sum + convertCurrency(e.amount || 0, expenseCurrency, defaultCurrency);
     }, 0);
 
     // Expenses by category
@@ -80,7 +88,15 @@ export default function Finances() {
         const eventDate = parseISO(e.start_time);
         return isWithinInterval(eventDate, { start: monthStart, end: monthEnd });
       });
-      const monthEarnings = monthEvents.reduce((sum, e) => sum + (e.fee || 0), 0);
+      // Convert each event fee to default currency
+      const monthEarnings = monthEvents.reduce((sum, e) => {
+        const eventCurrency = e.currency || defaultCurrency;
+        const fee = e.fee || 0;
+        if (eventCurrency === defaultCurrency) {
+          return sum + fee;
+        }
+        return sum + convertCurrency(fee, eventCurrency, defaultCurrency);
+      }, 0);
 
       const monthExpenses = filteredExpenses.filter(e => {
         const expenseDate = parseISO(e.date);
