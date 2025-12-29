@@ -1875,6 +1875,39 @@ export type Database = {
         }
         Relationships: []
       }
+      media_artists: {
+        Row: {
+          bio: string | null
+          created_at: string
+          external_links: Json | null
+          id: string
+          image_url: string | null
+          name: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          external_links?: Json | null
+          id?: string
+          image_url?: string | null
+          name: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          external_links?: Json | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       media_library: {
         Row: {
           alt_text: string | null
@@ -1919,6 +1952,271 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      media_likes: {
+        Row: {
+          created_at: string
+          id: string
+          track_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          track_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          track_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_likes_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "media_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_playlist_tracks: {
+        Row: {
+          added_at: string
+          id: string
+          playlist_id: string
+          position: number
+          track_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          playlist_id: string
+          position?: number
+          track_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          playlist_id?: string
+          position?: number
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_playlist_tracks_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "media_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_playlist_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "media_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_playlists: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_public: boolean | null
+          name: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_public?: boolean | null
+          name?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      media_plays: {
+        Row: {
+          completed: boolean | null
+          duration_played_seconds: number | null
+          id: string
+          ip_hash: string | null
+          played_at: string
+          session_id: string | null
+          track_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          duration_played_seconds?: number | null
+          id?: string
+          ip_hash?: string | null
+          played_at?: string
+          session_id?: string | null
+          track_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          duration_played_seconds?: number | null
+          id?: string
+          ip_hash?: string | null
+          played_at?: string
+          session_id?: string | null
+          track_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_plays_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "media_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      media_podcasts: {
+        Row: {
+          author: string | null
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_fetched_at: string | null
+          rss_url: string | null
+          title: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          author?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_fetched_at?: string | null
+          rss_url?: string | null
+          title: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          author?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_fetched_at?: string | null
+          rss_url?: string | null
+          title?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      media_tracks: {
+        Row: {
+          album_name: string | null
+          artist_id: string | null
+          audio_url: string
+          content_type: string
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          duration_seconds: number | null
+          episode_number: number | null
+          genre: string | null
+          id: string
+          is_published: boolean | null
+          media_type: string
+          play_count: number | null
+          podcast_id: string | null
+          release_date: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          album_name?: string | null
+          artist_id?: string | null
+          audio_url: string
+          content_type?: string
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          episode_number?: number | null
+          genre?: string | null
+          id?: string
+          is_published?: boolean | null
+          media_type?: string
+          play_count?: number | null
+          podcast_id?: string | null
+          release_date?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          album_name?: string | null
+          artist_id?: string | null
+          audio_url?: string
+          content_type?: string
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          duration_seconds?: number | null
+          episode_number?: number | null
+          genre?: string | null
+          id?: string
+          is_published?: boolean | null
+          media_type?: string
+          play_count?: number | null
+          podcast_id?: string | null
+          release_date?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_tracks_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "media_artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_tracks_podcast_id_fkey"
+            columns: ["podcast_id"]
+            isOneToOne: false
+            referencedRelation: "media_podcasts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {

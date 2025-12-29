@@ -1,0 +1,275 @@
+import { useState, useEffect } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Music, Podcast, Heart, ListMusic, Search } from 'lucide-react';
+import { useTracks, usePodcasts, useUserPlaylists, useLikedTracks } from '@/hooks/useMedia';
+import { TrackList } from '@/components/media/TrackList';
+import { MediaSearch } from '@/components/media/MediaSearch';
+import { CreatePlaylistDialog } from '@/components/media/CreatePlaylistDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+
+export default function Media() {
+  const [activeTab, setActiveTab] = useState('browse');
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const { data: songs, isLoading: songsLoading } = useTracks('song');
+  const { data: podcasts, isLoading: podcastsLoading } = useTracks('podcast_episode');
+  const { data: podcastFeeds } = usePodcasts();
+  const { data: playlists, isLoading: playlistsLoading } = useUserPlaylists();
+  const { data: likedTracks, isLoading: likedLoading } = useLikedTracks();
+
+  useEffect(() => {
+    document.title = 'Media Library | World Music Method';
+  }, []);
+
+  return (
+    <>
+
+      <div className="container py-8 pb-28 space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Media Library</h1>
+            <p className="text-muted-foreground">Stream music and podcasts</p>
+          </div>
+          {user && <CreatePlaylistDialog />}
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="browse" className="gap-2">
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline">Browse</span>
+            </TabsTrigger>
+            <TabsTrigger value="songs" className="gap-2">
+              <Music className="h-4 w-4" />
+              <span className="hidden sm:inline">Songs</span>
+            </TabsTrigger>
+            <TabsTrigger value="podcasts" className="gap-2">
+              <Podcast className="h-4 w-4" />
+              <span className="hidden sm:inline">Podcasts</span>
+            </TabsTrigger>
+            <TabsTrigger value="playlists" className="gap-2">
+              <ListMusic className="h-4 w-4" />
+              <span className="hidden sm:inline">Playlists</span>
+            </TabsTrigger>
+            <TabsTrigger value="liked" className="gap-2">
+              <Heart className="h-4 w-4" />
+              <span className="hidden sm:inline">Liked</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="browse" className="space-y-8">
+            <MediaSearch />
+
+            {/* Recent Songs */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Recent Songs</h2>
+                <Button variant="link" onClick={() => setActiveTab('songs')}>
+                  View all
+                </Button>
+              </div>
+              {songsLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-square rounded-lg" />
+                  ))}
+                </div>
+              ) : songs && songs.length > 0 ? (
+                <TrackList tracks={songs.slice(0, 6)} />
+              ) : (
+                <p className="text-muted-foreground">No songs available yet</p>
+              )}
+            </section>
+
+            {/* Recent Podcasts */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Recent Podcasts</h2>
+                <Button variant="link" onClick={() => setActiveTab('podcasts')}>
+                  View all
+                </Button>
+              </div>
+              {podcastsLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-square rounded-lg" />
+                  ))}
+                </div>
+              ) : podcasts && podcasts.length > 0 ? (
+                <TrackList tracks={podcasts.slice(0, 6)} />
+              ) : (
+                <p className="text-muted-foreground">No podcasts available yet</p>
+              )}
+            </section>
+          </TabsContent>
+
+          <TabsContent value="songs" className="space-y-6">
+            <h2 className="text-xl font-semibold">All Songs</h2>
+            {songsLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {[...Array(12)].map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-lg" />
+                ))}
+              </div>
+            ) : songs && songs.length > 0 ? (
+              <TrackList tracks={songs} />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Music className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No songs available yet</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="podcasts" className="space-y-6">
+            {/* Podcast Shows */}
+            {podcastFeeds && podcastFeeds.length > 0 && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-semibold">Shows</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {podcastFeeds.map(podcast => (
+                    <Card key={podcast.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                      <CardContent className="p-4">
+                        {podcast.cover_image_url ? (
+                          <img 
+                            src={podcast.cover_image_url} 
+                            alt={podcast.title}
+                            className="aspect-square rounded-lg object-cover mb-3"
+                          />
+                        ) : (
+                          <div className="aspect-square rounded-lg bg-muted flex items-center justify-center mb-3">
+                            <Podcast className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        <h3 className="font-semibold truncate">{podcast.title}</h3>
+                        <p className="text-sm text-muted-foreground truncate">{podcast.author}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Episodes */}
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Latest Episodes</h2>
+              {podcastsLoading ? (
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-lg" />
+                  ))}
+                </div>
+              ) : podcasts && podcasts.length > 0 ? (
+                <TrackList tracks={podcasts} compact />
+              ) : (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <Podcast className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No podcast episodes available yet</p>
+                  </CardContent>
+                </Card>
+              )}
+            </section>
+          </TabsContent>
+
+          <TabsContent value="playlists" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Your Playlists</h2>
+              {user && <CreatePlaylistDialog />}
+            </div>
+
+            {!user ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ListMusic className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">Sign in to create and manage playlists</p>
+                  <Button onClick={() => navigate('/auth')}>Sign In</Button>
+                </CardContent>
+              </Card>
+            ) : playlistsLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-lg" />
+                ))}
+              </div>
+            ) : playlists && playlists.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {playlists.map(playlist => (
+                  <Card 
+                    key={playlist.id} 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => navigate(`/media/playlist/${playlist.id}`)}
+                  >
+                    <CardContent className="p-4">
+                      {playlist.cover_image_url ? (
+                        <img 
+                          src={playlist.cover_image_url} 
+                          alt={playlist.name}
+                          className="aspect-square rounded-lg object-cover mb-3"
+                        />
+                      ) : (
+                        <div className="aspect-square rounded-lg bg-muted flex items-center justify-center mb-3">
+                          <ListMusic className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      )}
+                      <h3 className="font-semibold truncate">{playlist.name}</h3>
+                      {playlist.description && (
+                        <p className="text-sm text-muted-foreground truncate">{playlist.description}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <ListMusic className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">You haven't created any playlists yet</p>
+                  <CreatePlaylistDialog />
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="liked" className="space-y-6">
+            <h2 className="text-xl font-semibold">Liked Songs</h2>
+
+            {!user ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">Sign in to see your liked songs</p>
+                  <Button onClick={() => navigate('/auth')}>Sign In</Button>
+                </CardContent>
+              </Card>
+            ) : likedLoading ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 rounded-lg" />
+                ))}
+              </div>
+            ) : likedTracks && likedTracks.length > 0 ? (
+              <TrackList tracks={likedTracks} compact />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Heart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    Songs you like will appear here
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </>
+  );
+}
