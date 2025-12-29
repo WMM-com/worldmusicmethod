@@ -35,10 +35,37 @@ import { useR2Upload } from '@/hooks/useR2Upload';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+// Global video manager to ensure only one video plays at a time
+const videoRegistry = new Set<HTMLVideoElement>();
+
+function registerVideo(video: HTMLVideoElement) {
+  videoRegistry.add(video);
+}
+
+function unregisterVideo(video: HTMLVideoElement) {
+  videoRegistry.delete(video);
+}
+
+function pauseAllExcept(currentVideo: HTMLVideoElement) {
+  videoRegistry.forEach((video) => {
+    if (video !== currentVideo && !video.paused) {
+      video.pause();
+    }
+  });
+}
+
 // Facebook-style video player that adapts to video dimensions
 function VideoPlayer({ src }: { src: string }) {
   const [aspectRatio, setAspectRatio] = useState<'square' | 'portrait' | 'landscape'>('landscape');
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video) {
+      registerVideo(video);
+      return () => unregisterVideo(video);
+    }
+  }, []);
 
   const handleLoadedMetadata = () => {
     const video = videoRef.current;
@@ -59,12 +86,18 @@ function VideoPlayer({ src }: { src: string }) {
     }
   };
 
+  const handlePlay = () => {
+    if (videoRef.current) {
+      pauseAllExcept(videoRef.current);
+    }
+  };
+
   return (
     <div 
       className={cn(
-        "relative rounded-lg overflow-hidden",
-        aspectRatio === 'square' && "aspect-square",
-        aspectRatio === 'portrait' && "aspect-[4/5] max-h-[500px] bg-black",
+        "relative rounded-lg overflow-hidden mx-auto",
+        aspectRatio === 'square' && "aspect-square max-w-[500px]",
+        aspectRatio === 'portrait' && "aspect-[4/5] max-h-[500px] max-w-[400px] bg-black",
         aspectRatio === 'landscape' && "aspect-video"
       )}
     >
@@ -72,7 +105,10 @@ function VideoPlayer({ src }: { src: string }) {
         ref={videoRef}
         src={src}
         controls
+        controlsList="nodownload noplaybackrate"
+        disablePictureInPicture
         onLoadedMetadata={handleLoadedMetadata}
+        onPlay={handlePlay}
         className={cn(
           "absolute inset-0 w-full h-full",
           aspectRatio === 'portrait' ? "object-contain" : "object-cover"
