@@ -27,34 +27,38 @@ const POST_TYPE_CONFIG = {
   statement: {
     label: 'Statement',
     icon: Megaphone,
-    verification: 'I verify this represents my genuine beliefs and is worth public discourse',
-    color: 'border-l-red-500',
-    buttonColor: 'bg-red-500 hover:bg-red-600 text-white',
+    verification: 'This represents my current beliefs and is worth posting',
+    color: 'border-l-primary',
+    buttonColor: 'bg-primary hover:bg-primary/90 text-primary-foreground',
     requiresVerification: true,
+    description: null,
   },
   update: {
     label: 'Update',
     icon: RefreshCw,
-    verification: 'I verify this update is relevant for my audience to know about',
-    color: 'border-l-blue-500',
-    buttonColor: 'bg-blue-500 hover:bg-blue-600 text-white',
+    verification: 'This update is relevant for people to see',
+    color: 'border-l-accent',
+    buttonColor: 'bg-accent hover:bg-accent/90 text-accent-foreground',
     requiresVerification: true,
+    description: null,
   },
   recommendation: {
     label: 'Recommendation',
     icon: Star,
-    verification: 'I verify this is a legitimate recommendation and I wholeheartedly believe this to be of the highest quality and that others will be interested in this',
-    color: 'border-l-yellow-500',
-    buttonColor: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    verification: 'I recommend that this is worth checking out',
+    color: 'border-l-secondary',
+    buttonColor: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground',
     requiresVerification: true,
+    description: null,
   },
   practice: {
     label: 'Practice Room',
     icon: Music2,
     verification: null,
-    color: 'border-l-green-500',
-    buttonColor: 'bg-green-500 hover:bg-green-600 text-white',
+    color: 'border-l-success',
+    buttonColor: 'bg-success hover:bg-success/90 text-success-foreground',
     requiresVerification: false,
+    description: 'This is what I\'m working on',
   },
 };
 
@@ -263,7 +267,7 @@ export function CreatePost() {
             />
             
             {/* Post Type Selection */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {(Object.keys(POST_TYPE_CONFIG) as PostType[]).map((type) => {
                 const config = POST_TYPE_CONFIG[type];
                 const Icon = config.icon;
@@ -273,7 +277,7 @@ export function CreatePost() {
                     variant={postType === type ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handlePostTypeChange(type)}
-                    className={postType === type ? config.buttonColor + ' gap-1.5' : 'gap-1.5'}
+                    className={postType === type ? config.buttonColor + ' gap-1 px-2' : 'gap-1 px-2'}
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {config.label}
@@ -296,6 +300,15 @@ export function CreatePost() {
                 >
                   {POST_TYPE_CONFIG[postType].verification}
                 </Label>
+              </div>
+            )}
+
+            {/* Description text for Practice Room (no checkbox needed) */}
+            {POST_TYPE_CONFIG[postType].description && (
+              <div className="p-3 rounded-lg bg-muted/50 border">
+                <p className="text-sm text-muted-foreground">
+                  {POST_TYPE_CONFIG[postType].description}
+                </p>
               </div>
             )}
 

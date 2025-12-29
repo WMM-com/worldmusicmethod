@@ -185,38 +185,6 @@ export default function GroupDetail() {
                           }
                         />
                       )}
-                      {canDeleteGroup && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Group</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{group.name}"? This action cannot be undone. 
-                                All posts, events, polls, and members will be permanently removed.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => {
-                                  deleteGroup.mutate(group.id, {
-                                    onSuccess: () => navigate('/community?tab=groups'),
-                                  });
-                                }}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                {deleteGroup.isPending ? 'Deleting...' : 'Delete Group'}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
                       <Button 
                         variant="outline" 
                         size="sm"
@@ -233,6 +201,40 @@ export default function GroupDetail() {
                     >
                       {group.privacy === 'private' ? 'Request to Join' : 'Join Group'}
                     </Button>
+                  )}
+                  
+                  {/* Delete group - show for creator OR site admin regardless of membership */}
+                  {canDeleteGroup && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Group</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{group.name}"? This action cannot be undone. 
+                            All posts, events, polls, and members will be permanently removed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => {
+                              deleteGroup.mutate(group.id, {
+                                onSuccess: () => navigate('/community?tab=groups'),
+                              });
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {deleteGroup.isPending ? 'Deleting...' : 'Delete Group'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
               </div>
