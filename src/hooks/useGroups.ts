@@ -595,15 +595,24 @@ export function useDeleteGroupPost() {
   });
 }
 
-// Update group post
+// Update group post (supports content and is_pinned)
 export function useUpdateGroupPost() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ postId, groupId, content }: { postId: string; groupId: string; content: string }) => {
+    mutationFn: async ({ postId, groupId, content, is_pinned }: { 
+      postId: string; 
+      groupId: string; 
+      content?: string;
+      is_pinned?: boolean;
+    }) => {
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (content !== undefined) updates.content = content;
+      if (is_pinned !== undefined) updates.is_pinned = is_pinned;
+      
       const { error } = await supabase
         .from('group_posts')
-        .update({ content, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq('id', postId);
       
       if (error) throw error;

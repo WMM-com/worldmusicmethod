@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MessageSquare, Pin, Megaphone, ChevronDown, ChevronUp, Send, MoreHorizontal, Pencil, Trash2, X, Check } from 'lucide-react';
+import { MessageSquare, Pin, PinOff, Megaphone, ChevronDown, ChevronUp, Send, MoreHorizontal, Pencil, Trash2, X, Check } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import type { GroupPost, GroupPostComment } from '@/types/groups';
 import { useGroupPostComments, useCreateGroupPostComment, useDeleteGroupPost, useUpdateGroupPost, useDeleteGroupPostComment, useUpdateGroupPostComment } from '@/hooks/useGroups';
@@ -20,9 +20,11 @@ import { useAuth } from '@/contexts/AuthContext';
 interface GroupPostCardProps {
   post: GroupPost;
   getInitials: (name: string | null | undefined) => string;
+  isAdmin?: boolean;
+  onPin?: (postId: string, pinned: boolean) => void;
 }
 
-export function GroupPostCard({ post, getInitials }: GroupPostCardProps) {
+export function GroupPostCard({ post, getInitials, isAdmin, onPin }: GroupPostCardProps) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
@@ -82,7 +84,7 @@ export function GroupPostCard({ post, getInitials }: GroupPostCardProps) {
                 {post.is_announcement && <Megaphone className="h-3 w-3 text-orange-500" />}
               </div>
               
-              {isOwner && (
+              {(isOwner || isAdmin) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -90,14 +92,24 @@ export function GroupPostCard({ post, getInitials }: GroupPostCardProps) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setIsEditingPost(true)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit post
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleDeletePost} className="text-destructive">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete post
-                    </DropdownMenuItem>
+                    {isAdmin && onPin && (
+                      <DropdownMenuItem onClick={() => onPin(post.id, !post.is_pinned)}>
+                        {post.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                        {post.is_pinned ? 'Unpin' : 'Pin to top'}
+                      </DropdownMenuItem>
+                    )}
+                    {isOwner && (
+                      <DropdownMenuItem onClick={() => setIsEditingPost(true)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit post
+                      </DropdownMenuItem>
+                    )}
+                    {isOwner && (
+                      <DropdownMenuItem onClick={handleDeletePost} className="text-destructive">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete post
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
