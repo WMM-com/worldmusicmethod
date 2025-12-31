@@ -281,8 +281,8 @@ export default function GroupDetail() {
             </CardContent>
           </Card>
           
-          {/* Group Content */}
-          {group.is_member ? (
+          {/* Group Content - Show for members OR public groups */}
+          {(group.is_member || group.privacy === 'public') ? (
             <div className="flex gap-6">
               {/* Channels Sidebar - Always show for admins or when channels exist */}
               {(isAdmin || (channels && channels.length > 0)) && (
@@ -373,6 +373,17 @@ export default function GroupDetail() {
                       </Card>
                     )}
                     
+                    {/* Pinned Post */}
+                    {posts?.filter(p => p.is_pinned).map((post) => (
+                      <GroupPostCard 
+                        key={post.id} 
+                        post={post} 
+                        getInitials={getInitials}
+                        isAdmin={isAdmin}
+                        onPin={(id, pinned) => updatePost.mutate({ postId: id, groupId: group.id, is_pinned: pinned })}
+                      />
+                    ))}
+                    
                     {/* Pinned Polls */}
                     {polls?.filter(p => p.is_pinned).map((poll) => (
                       <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id} 
@@ -388,12 +399,14 @@ export default function GroupDetail() {
                         onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
                     ))}
                     
-                    {/* Posts List */}
-                    {posts?.map((post) => (
+                    {/* Non-pinned Posts */}
+                    {posts?.filter(p => !p.is_pinned).map((post) => (
                       <GroupPostCard 
                         key={post.id} 
                         post={post} 
                         getInitials={getInitials}
+                        isAdmin={isAdmin}
+                        onPin={(id, pinned) => updatePost.mutate({ postId: id, groupId: group.id, is_pinned: pinned })}
                       />
                     ))}
                     
@@ -632,6 +645,15 @@ export default function GroupDetail() {
           )}
         </div>
       </div>
+      
+      {/* Edit Questionnaire Dialog */}
+      {editingQuestionnaire && (
+        <EditQuestionnaireDialog
+          questionnaire={editingQuestionnaire}
+          open={!!editingQuestionnaire}
+          onOpenChange={(open) => !open && setEditingQuestionnaire(null)}
+        />
+      )}
     </>
   );
 }
