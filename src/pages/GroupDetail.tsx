@@ -55,6 +55,7 @@ import { PinnedAudioPlayer } from '@/components/groups/PinnedAudioPlayer';
 import { PinAudioDialog } from '@/components/groups/PinAudioDialog';
 import { CreateGroupPost } from '@/components/groups/CreateGroupPost';
 import { ChannelList } from '@/components/groups/ChannelList';
+import { TakeSurveyDialog } from '@/components/groups/TakeSurveyDialog';
 import type { Questionnaire } from '@/hooks/useQuestionnaires';
 
 export default function GroupDetail() {
@@ -62,6 +63,7 @@ export default function GroupDetail() {
   const navigate = useNavigate();
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [editingQuestionnaire, setEditingQuestionnaire] = useState<Questionnaire | null>(null);
+  const [takingSurvey, setTakingSurvey] = useState<Questionnaire | null>(null);
   
   const { data: group, isLoading: loadingGroup } = useGroup(groupId || '');
   const { data: members } = useGroupMembers(groupId || '');
@@ -384,8 +386,7 @@ export default function GroupDetail() {
                       const canPinQuestionnaire = pinnedQuestionnaireCount < 1;
                       
                       const handleTakeSurvey = (q: Questionnaire) => {
-                        // For now, just log - you can implement survey dialog here
-                        console.log('Take survey:', q.id);
+                        setTakingSurvey(q);
                       };
                       
                       return (
@@ -676,6 +677,15 @@ export default function GroupDetail() {
           questionnaire={editingQuestionnaire}
           open={!!editingQuestionnaire}
           onOpenChange={(open) => !open && setEditingQuestionnaire(null)}
+        />
+      )}
+
+      {/* Take Survey Dialog */}
+      {takingSurvey && (
+        <TakeSurveyDialog
+          questionnaire={takingSurvey}
+          open={!!takingSurvey}
+          onOpenChange={(open) => !open && setTakingSurvey(null)}
         />
       )}
     </>
