@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -16,15 +17,17 @@ import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import type { GroupPost, GroupPostComment } from '@/types/groups';
 import { useGroupPostComments, useCreateGroupPostComment, useDeleteGroupPost, useUpdateGroupPost, useDeleteGroupPostComment, useUpdateGroupPostComment } from '@/hooks/useGroups';
 import { useAuth } from '@/contexts/AuthContext';
+import { UserHoverCard } from '@/components/social/UserHoverCard';
 
 interface GroupPostCardProps {
   post: GroupPost;
   getInitials: (name: string | null | undefined) => string;
   isAdmin?: boolean;
+  canPin?: boolean;
   onPin?: (postId: string, pinned: boolean) => void;
 }
 
-export function GroupPostCard({ post, getInitials, isAdmin, onPin }: GroupPostCardProps) {
+export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin }: GroupPostCardProps) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
@@ -65,22 +68,32 @@ export function GroupPostCard({ post, getInitials, isAdmin, onPin }: GroupPostCa
     <Card>
       <CardContent className="pt-4">
         <div className="flex items-start gap-3">
-          <Link to={`/profile/${post.user_id}`}>
+          <UserHoverCard
+            userId={post.user_id}
+            userName={post.profile?.full_name || null}
+            avatarUrl={post.profile?.avatar_url || null}
+          >
             <Avatar>
               <AvatarImage src={post.profile?.avatar_url || undefined} />
               <AvatarFallback>{getInitials(post.profile?.full_name)}</AvatarFallback>
             </Avatar>
-          </Link>
+          </UserHoverCard>
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Link to={`/profile/${post.user_id}`} className="font-semibold hover:underline">
-                  {post.profile?.full_name || 'Anonymous'}
-                </Link>
+                <UserHoverCard
+                  userId={post.user_id}
+                  userName={post.profile?.full_name || null}
+                  avatarUrl={post.profile?.avatar_url || null}
+                >
+                  <span className="font-semibold hover:underline">
+                    {post.profile?.full_name || 'Anonymous'}
+                  </span>
+                </UserHoverCard>
                 <span className="text-sm text-muted-foreground">
                   {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                 </span>
-                {post.is_pinned && <Pin className="h-3 w-3 text-primary" />}
+                {post.is_pinned && <Badge className="text-xs bg-yellow-500 text-yellow-950 hover:bg-yellow-500/90"><Pin className="h-3 w-3 mr-1" />Pinned</Badge>}
                 {post.is_announcement && <Megaphone className="h-3 w-3 text-orange-500" />}
               </div>
               
@@ -92,8 +105,8 @@ export function GroupPostCard({ post, getInitials, isAdmin, onPin }: GroupPostCa
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    {isAdmin && onPin && (
-                      <DropdownMenuItem onClick={() => onPin(post.id, !post.is_pinned)}>
+                    {isAdmin && onPin && (canPin || post.is_pinned) && (
+                      <DropdownMenuItem onClick={() => onPin(post.id, !post.is_pinned)} disabled={!canPin && !post.is_pinned}>
                         {post.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
                         {post.is_pinned ? 'Unpin' : 'Pin to top'}
                       </DropdownMenuItem>

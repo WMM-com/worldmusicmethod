@@ -373,57 +373,81 @@ export default function GroupDetail() {
                       </Card>
                     )}
                     
-                    {/* Pinned Post */}
-                    {posts?.filter(p => p.is_pinned).map((post) => (
-                      <GroupPostCard 
-                        key={post.id} 
-                        post={post} 
-                        getInitials={getInitials}
-                        isAdmin={isAdmin}
-                        onPin={(id, pinned) => updatePost.mutate({ postId: id, groupId: group.id, is_pinned: pinned })}
-                      />
-                    ))}
-                    
-                    {/* Pinned Polls */}
-                    {polls?.filter(p => p.is_pinned).map((poll) => (
-                      <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id} 
-                        onVote={handleVote} onPin={(id, pinned) => updatePoll.mutate({ pollId: id, groupId: group.id, updates: { is_pinned: pinned } })}
-                        onDelete={(id) => deletePoll.mutate({ pollId: id, groupId: group.id })} />
-                    ))}
-                    
-                    {/* Pinned Questionnaires */}
-                    {questionnaires?.filter(q => q.is_pinned).map((q) => (
-                      <QuestionnaireCard key={`quest-${q.id}`} questionnaire={q} isAdmin={isAdmin} groupId={group.id}
-                        onEdit={() => setEditingQuestionnaire(q)}
-                        onPin={(id, pinned) => updateQuestionnaire.mutate({ questionnaireId: id, groupId: group.id, updates: { is_pinned: pinned } })}
-                        onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
-                    ))}
-                    
-                    {/* Non-pinned Posts */}
-                    {posts?.filter(p => !p.is_pinned).map((post) => (
-                      <GroupPostCard 
-                        key={post.id} 
-                        post={post} 
-                        getInitials={getInitials}
-                        isAdmin={isAdmin}
-                        onPin={(id, pinned) => updatePost.mutate({ postId: id, groupId: group.id, is_pinned: pinned })}
-                      />
-                    ))}
-                    
-                    {/* Non-pinned Polls in feed */}
-                    {polls?.filter(p => !p.is_pinned).map((poll) => (
-                      <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id}
-                        onVote={handleVote} onPin={(id, pinned) => updatePoll.mutate({ pollId: id, groupId: group.id, updates: { is_pinned: pinned } })}
-                        onDelete={(id) => deletePoll.mutate({ pollId: id, groupId: group.id })} />
-                    ))}
-                    
-                    {/* Non-pinned Questionnaires in feed */}
-                    {questionnaires?.filter(q => !q.is_pinned).map((q) => (
-                      <QuestionnaireCard key={`quest-${q.id}`} questionnaire={q} isAdmin={isAdmin} groupId={group.id}
-                        onEdit={() => setEditingQuestionnaire(q)}
-                        onPin={(id, pinned) => updateQuestionnaire.mutate({ questionnaireId: id, groupId: group.id, updates: { is_pinned: pinned } })}
-                        onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
-                    ))}
+                    {/* Check pinned counts for limiting to 1 each */}
+                    {(() => {
+                      const pinnedPostCount = posts?.filter(p => p.is_pinned).length || 0;
+                      const pinnedPollCount = polls?.filter(p => p.is_pinned).length || 0;
+                      const pinnedQuestionnaireCount = questionnaires?.filter(q => q.is_pinned).length || 0;
+                      
+                      const canPinPost = pinnedPostCount < 1;
+                      const canPinPoll = pinnedPollCount < 1;
+                      const canPinQuestionnaire = pinnedQuestionnaireCount < 1;
+                      
+                      const handleTakeSurvey = (q: Questionnaire) => {
+                        // For now, just log - you can implement survey dialog here
+                        console.log('Take survey:', q.id);
+                      };
+                      
+                      return (
+                        <>
+                          {/* Pinned Post (max 1) */}
+                          {posts?.filter(p => p.is_pinned).slice(0, 1).map((post) => (
+                            <GroupPostCard 
+                              key={post.id} 
+                              post={post} 
+                              getInitials={getInitials}
+                              isAdmin={isAdmin}
+                              canPin={true}
+                              onPin={(id, pinned) => updatePost.mutate({ postId: id, groupId: group.id, is_pinned: pinned })}
+                            />
+                          ))}
+                          
+                          {/* Pinned Poll (max 1) */}
+                          {polls?.filter(p => p.is_pinned).slice(0, 1).map((poll) => (
+                            <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id} canPin={true}
+                              onVote={handleVote} onPin={(id, pinned) => updatePoll.mutate({ pollId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                              onDelete={(id) => deletePoll.mutate({ pollId: id, groupId: group.id })} />
+                          ))}
+                          
+                          {/* Pinned Questionnaire (max 1) */}
+                          {questionnaires?.filter(q => q.is_pinned).slice(0, 1).map((q) => (
+                            <QuestionnaireCard key={`quest-${q.id}`} questionnaire={q} isAdmin={isAdmin} groupId={group.id} canPin={true}
+                              onEdit={() => setEditingQuestionnaire(q)}
+                              onTakeSurvey={() => handleTakeSurvey(q)}
+                              onPin={(id, pinned) => updateQuestionnaire.mutate({ questionnaireId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                              onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
+                          ))}
+                          
+                          {/* Non-pinned Posts */}
+                          {posts?.filter(p => !p.is_pinned).map((post) => (
+                            <GroupPostCard 
+                              key={post.id} 
+                              post={post} 
+                              getInitials={getInitials}
+                              isAdmin={isAdmin}
+                              canPin={canPinPost}
+                              onPin={(id, pinned) => updatePost.mutate({ postId: id, groupId: group.id, is_pinned: pinned })}
+                            />
+                          ))}
+                          
+                          {/* Non-pinned Polls in feed */}
+                          {polls?.filter(p => !p.is_pinned).map((poll) => (
+                            <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id} canPin={canPinPoll}
+                              onVote={handleVote} onPin={(id, pinned) => updatePoll.mutate({ pollId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                              onDelete={(id) => deletePoll.mutate({ pollId: id, groupId: group.id })} />
+                          ))}
+                          
+                          {/* Non-pinned Questionnaires in feed */}
+                          {questionnaires?.filter(q => !q.is_pinned).map((q) => (
+                            <QuestionnaireCard key={`quest-${q.id}`} questionnaire={q} isAdmin={isAdmin} groupId={group.id} canPin={canPinQuestionnaire}
+                              onEdit={() => setEditingQuestionnaire(q)}
+                              onTakeSurvey={() => handleTakeSurvey(q)}
+                              onPin={(id, pinned) => updateQuestionnaire.mutate({ questionnaireId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                              onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
+                          ))}
+                        </>
+                      );
+                    })()}
                     
                     {posts?.length === 0 && polls?.length === 0 && questionnaires?.length === 0 && (
                       <Card>

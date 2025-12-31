@@ -10,22 +10,23 @@ interface PollCardProps {
   poll: GroupPoll;
   isAdmin: boolean;
   groupId: string;
+  canPin?: boolean;
   onVote: (pollId: string, optionIndex: number) => void;
   onPin: (pollId: string, pinned: boolean) => void;
   onDelete: (pollId: string) => void;
 }
 
-export function PollCard({ poll, isAdmin, groupId, onVote, onPin, onDelete }: PollCardProps) {
+export function PollCard({ poll, isAdmin, groupId, canPin = true, onVote, onPin, onDelete }: PollCardProps) {
   const totalVotes = poll.votes?.reduce((sum, v) => sum + v.count, 0) || 0;
   
   return (
-    <Card className={poll.is_pinned ? 'border-primary/50 bg-primary/5' : ''}>
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" />
             <CardTitle className="text-lg">{poll.question}</CardTitle>
-            {poll.is_pinned && <Badge variant="secondary" className="text-xs"><Pin className="h-3 w-3 mr-1" />Pinned</Badge>}
+            {poll.is_pinned && <Badge className="text-xs bg-yellow-500 text-yellow-950 hover:bg-yellow-500/90"><Pin className="h-3 w-3 mr-1" />Pinned</Badge>}
           </div>
           {isAdmin && (
             <DropdownMenu>
@@ -35,10 +36,12 @@ export function PollCard({ poll, isAdmin, groupId, onVote, onPin, onDelete }: Po
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onPin(poll.id, !poll.is_pinned)}>
-                  {poll.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
-                  {poll.is_pinned ? 'Unpin' : 'Pin to top'}
-                </DropdownMenuItem>
+                {(canPin || poll.is_pinned) && (
+                  <DropdownMenuItem onClick={() => onPin(poll.id, !poll.is_pinned)} disabled={!canPin && !poll.is_pinned}>
+                    {poll.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                    {poll.is_pinned ? 'Unpin' : 'Pin to top'}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => onDelete(poll.id)} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />Delete
                 </DropdownMenuItem>
