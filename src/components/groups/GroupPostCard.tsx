@@ -5,18 +5,36 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MessageSquare, Pin, PinOff, Megaphone, ChevronDown, ChevronUp, Send, MoreHorizontal, Pencil, Trash2, X, Check } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { MessageSquare, Pin, PinOff, Megaphone, ChevronDown, ChevronUp, Send, MoreHorizontal, Pencil, Trash2, X, Check, Flag, Ban } from 'lucide-react';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
 import type { GroupPost, GroupPostComment } from '@/types/groups';
 import { useGroupPostComments, useCreateGroupPostComment, useDeleteGroupPost, useUpdateGroupPost, useDeleteGroupPostComment, useUpdateGroupPostComment } from '@/hooks/useGroups';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 import { UserHoverCard } from '@/components/social/UserHoverCard';
 
 interface GroupPostCardProps {
@@ -33,13 +51,19 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
   const [newComment, setNewComment] = useState('');
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editedPostContent, setEditedPostContent] = useState(post.content);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason | ''>('');
+  const [reportDetails, setReportDetails] = useState('');
   
   const { data: comments, isLoading: loadingComments } = useGroupPostComments(isOpen ? post.id : '');
   const createComment = useCreateGroupPostComment();
   const deletePost = useDeleteGroupPost();
   const updatePost = useUpdateGroupPost();
+  const reportMutation = useCreateReport();
+  const blockMutation = useBlockUser();
   
   const isOwner = user?.id === post.user_id;
+  const canDelete = isOwner || isAdmin;
   
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
@@ -62,6 +86,22 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
     if (!editedPostContent.trim()) return;
     updatePost.mutate({ postId: post.id, groupId: post.group_id, content: editedPostContent });
     setIsEditingPost(false);
+  };
+
+  const handleReport = () => {
+    if (!reportReason) return;
+    reportMutation.mutate({
+      reportType: 'post',
+      reason: reportReason,
+      reportedUserId: post.user_id,
+      details: reportDetails || undefined,
+    }, {
+      onSuccess: () => {
+        setShowReportDialog(false);
+        setReportReason('');
+        setReportDetails('');
+      }
+    });
   };
   
   return (
@@ -97,7 +137,7 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
                 {post.is_announcement && <Megaphone className="h-3 w-3 text-orange-500" />}
               </div>
               
-              {(isOwner || isAdmin) && (
+              {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -117,11 +157,27 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
                         Edit post
                       </DropdownMenuItem>
                     )}
-                    {isOwner && (
+                    {canDelete && (
                       <DropdownMenuItem onClick={handleDeletePost} className="text-destructive">
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Delete post
+                        Delete post {isAdmin && !isOwner && '(Admin)'}
                       </DropdownMenuItem>
+                    )}
+                    {!isOwner && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
+                          <Flag className="h-4 w-4 mr-2" />
+                          Report post
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => blockMutation.mutate(post.user_id)}
+                          className="text-destructive"
+                        >
+                          <Ban className="h-4 w-4 mr-2" />
+                          Block user
+                        </DropdownMenuItem>
+                      </>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -221,6 +277,49 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
           </div>
         </div>
       </CardContent>
+
+      {/* Report Dialog */}
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Report Post</DialogTitle>
+            <DialogDescription>
+              Help us understand what's wrong with this post.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Select value={reportReason} onValueChange={(v) => setReportReason(v as ReportReason)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REPORT_REASONS.map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Additional details (optional)</Label>
+              <Textarea
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Provide more context..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReportDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleReport} disabled={!reportReason || reportMutation.isPending}>
+              {reportMutation.isPending ? 'Submitting...' : 'Submit Report'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
