@@ -9,20 +9,22 @@ interface QuestionnaireCardProps {
   questionnaire: Questionnaire;
   isAdmin: boolean;
   groupId: string;
+  canPin?: boolean;
   onEdit: () => void;
+  onTakeSurvey: () => void;
   onPin: (id: string, pinned: boolean) => void;
   onDelete: (id: string) => void;
 }
 
-export function QuestionnaireCard({ questionnaire: q, isAdmin, groupId, onEdit, onPin, onDelete }: QuestionnaireCardProps) {
+export function QuestionnaireCard({ questionnaire: q, isAdmin, groupId, canPin = true, onEdit, onTakeSurvey, onPin, onDelete }: QuestionnaireCardProps) {
   return (
-    <Card className={q.is_pinned ? 'border-primary/50 bg-primary/5' : ''}>
+    <Card>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-primary" />
             <CardTitle className="text-lg">{q.title}</CardTitle>
-            {q.is_pinned && <Badge variant="secondary" className="text-xs"><Pin className="h-3 w-3 mr-1" />Pinned</Badge>}
+            {q.is_pinned && <Badge className="text-xs bg-yellow-500 text-yellow-950 hover:bg-yellow-500/90"><Pin className="h-3 w-3 mr-1" />Pinned</Badge>}
             <Badge variant={q.is_active ? 'default' : 'secondary'}>{q.is_active ? 'Active' : 'Closed'}</Badge>
           </div>
           {isAdmin && (
@@ -36,10 +38,12 @@ export function QuestionnaireCard({ questionnaire: q, isAdmin, groupId, onEdit, 
                 <DropdownMenuItem onClick={onEdit}>
                   <Pencil className="h-4 w-4 mr-2" />Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onPin(q.id, !q.is_pinned)}>
-                  {q.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
-                  {q.is_pinned ? 'Unpin' : 'Pin to top'}
-                </DropdownMenuItem>
+                {(canPin || q.is_pinned) && (
+                  <DropdownMenuItem onClick={() => onPin(q.id, !q.is_pinned)} disabled={!canPin && !q.is_pinned}>
+                    {q.is_pinned ? <PinOff className="h-4 w-4 mr-2" /> : <Pin className="h-4 w-4 mr-2" />}
+                    {q.is_pinned ? 'Unpin' : 'Pin to top'}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => onDelete(q.id)} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />Delete
                 </DropdownMenuItem>
@@ -58,6 +62,7 @@ export function QuestionnaireCard({ questionnaire: q, isAdmin, groupId, onEdit, 
             variant={q.user_has_responded ? 'outline' : 'default'}
             size="sm"
             disabled={!q.is_active || (q.user_has_responded && !q.allow_multiple_responses)}
+            onClick={onTakeSurvey}
           >
             {q.user_has_responded ? 'View Response' : 'Take Survey'}
           </Button>
