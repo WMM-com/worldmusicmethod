@@ -48,6 +48,8 @@ import { EditQuestionnaireDialog } from '@/components/groups/EditQuestionnaireDi
 import { GroupSettingsDialog } from '@/components/groups/GroupSettingsDialog';
 import { GroupPostCard } from '@/components/groups/GroupPostCard';
 import { InviteMembersDialog } from '@/components/groups/InviteMembersDialog';
+import { PollCard } from '@/components/groups/PollCard';
+import { QuestionnaireCard } from '@/components/groups/QuestionnaireCard';
 import { GroupCoverUpload } from '@/components/groups/GroupCoverUpload';
 import { PinnedAudioPlayer } from '@/components/groups/PinnedAudioPlayer';
 import { PinAudioDialog } from '@/components/groups/PinAudioDialog';
