@@ -880,6 +880,7 @@ export function useCreateGroupPoll() {
   return useMutation({
     mutationFn: async (data: {
       group_id: string;
+      channel_id?: string | null;
       question: string;
       options: string[];
       ends_at?: string;
@@ -890,8 +891,12 @@ export function useCreateGroupPoll() {
       const { error } = await supabase
         .from('group_polls')
         .insert({
-          ...data,
+          group_id: data.group_id,
+          channel_id: data.channel_id || null,
+          question: data.question,
           options: JSON.stringify(data.options),
+          ends_at: data.ends_at,
+          is_multiple_choice: data.is_multiple_choice,
           created_by: user.id,
         });
       
@@ -907,18 +912,30 @@ export function useCreateGroupPoll() {
   });
 }
 
-// Fetch group polls
-export function useGroupPolls(groupId: string) {
+// Fetch group polls (optionally filtered by channel)
+export function useGroupPolls(groupId: string, channelId?: string | null) {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['group-polls', groupId],
+    queryKey: ['group-polls', groupId, channelId],
     queryFn: async () => {
-      const { data: polls, error } = await supabase
+      let query = supabase
         .from('group_polls')
         .select('*')
         .eq('group_id', groupId)
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
+      
+      // Filter by channel if specified
+      if (channelId !== undefined) {
+        if (channelId) {
+          query = query.eq('channel_id', channelId);
+        } else {
+          query = query.is('channel_id', null);
+        }
+      }
+      
+      const { data: polls, error } = await query;
       
       if (error) throw error;
       
@@ -947,6 +964,58 @@ export function useGroupPolls(groupId: string) {
       }) as GroupPoll[];
     },
     enabled: !!groupId,
+  });
+}
+
+// Update poll (for pinning, etc.)
+export function useUpdateGroupPoll() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ pollId, groupId, updates }: {
+      pollId: string;
+      groupId: string;
+      updates: Partial<{ is_pinned: boolean; question: string; ends_at: string | null }>;
+    }) => {
+      const { error } = await supabase
+        .from('group_polls')
+        .update(updates)
+        .eq('id', pollId);
+      
+      if (error) throw error;
+      return groupId;
+    },
+    onSuccess: (groupId) => {
+      queryClient.invalidateQueries({ queryKey: ['group-polls', groupId] });
+      toast.success('Poll updated!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+// Delete poll
+export function useDeleteGroupPoll() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ pollId, groupId }: { pollId: string; groupId: string }) => {
+      const { error } = await supabase
+        .from('group_polls')
+        .delete()
+        .eq('id', pollId);
+      
+      if (error) throw error;
+      return groupId;
+    },
+    onSuccess: (groupId) => {
+      queryClient.invalidateQueries({ queryKey: ['group-polls', groupId] });
+      toast.success('Poll deleted!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
   });
 }
 

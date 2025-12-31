@@ -18,24 +18,33 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   ArrowLeft, Users, Lock, EyeOff, Settings, 
-  MessageSquare, Calendar, BarChart3, Trash2, Hash, ClipboardList
+  MessageSquare, Calendar, BarChart3, Trash2, Hash, ClipboardList,
+  Pin, PinOff, MoreHorizontal, Pencil
 } from 'lucide-react';
 import { 
   useGroup, useGroupMembers, useGroupPosts, useGroupEvents, 
   useGroupPolls, useJoinGroup, useLeaveGroup,
-  useVoteOnPoll, useUpdateGroup, useDeleteGroup
+  useVoteOnPoll, useUpdateGroup, useDeleteGroup,
+  useUpdateGroupPoll, useDeleteGroupPoll, useUpdateGroupPost
 } from '@/hooks/useGroups';
 import { useGroupPinnedAudio } from '@/hooks/usePinnedAudio';
 import { useGroupChannels } from '@/hooks/useGroupChannels';
-import { useGroupQuestionnaires } from '@/hooks/useQuestionnaires';
+import { useGroupQuestionnaires, useUpdateQuestionnaire, useDeleteQuestionnaire } from '@/hooks/useQuestionnaires';
 import { useAuth } from '@/contexts/AuthContext';
-import { CATEGORY_LABELS, type GroupSettings } from '@/types/groups';
+import { CATEGORY_LABELS, type GroupSettings, type GroupPoll } from '@/types/groups';
 import { formatDistanceToNow, format } from 'date-fns';
 import { CreateEventDialog } from '@/components/groups/CreateEventDialog';
 import { CreatePollDialog } from '@/components/groups/CreatePollDialog';
 import { CreateQuestionnaireDialog } from '@/components/groups/CreateQuestionnaireDialog';
+import { EditQuestionnaireDialog } from '@/components/groups/EditQuestionnaireDialog';
 import { GroupSettingsDialog } from '@/components/groups/GroupSettingsDialog';
 import { GroupPostCard } from '@/components/groups/GroupPostCard';
 import { InviteMembersDialog } from '@/components/groups/InviteMembersDialog';
@@ -44,20 +53,22 @@ import { PinnedAudioPlayer } from '@/components/groups/PinnedAudioPlayer';
 import { PinAudioDialog } from '@/components/groups/PinAudioDialog';
 import { CreateGroupPost } from '@/components/groups/CreateGroupPost';
 import { ChannelList } from '@/components/groups/ChannelList';
+import type { Questionnaire } from '@/hooks/useQuestionnaires';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [editingQuestionnaire, setEditingQuestionnaire] = useState<Questionnaire | null>(null);
   
   const { data: group, isLoading: loadingGroup } = useGroup(groupId || '');
   const { data: members } = useGroupMembers(groupId || '');
   const { data: posts } = useGroupPosts(groupId || '', selectedChannelId || undefined);
   const { data: events } = useGroupEvents(groupId || '');
-  const { data: polls } = useGroupPolls(groupId || '');
+  const { data: polls } = useGroupPolls(groupId || '', selectedChannelId);
   const { data: pinnedAudio } = useGroupPinnedAudio(groupId || '');
   const { data: channels } = useGroupChannels(groupId || '');
-  const { data: questionnaires } = useGroupQuestionnaires(groupId || '');
+  const { data: questionnaires } = useGroupQuestionnaires(groupId || '', selectedChannelId);
   const { user, isAdmin: isSiteAdmin } = useAuth();
   
   const joinGroup = useJoinGroup();
@@ -65,6 +76,11 @@ export default function GroupDetail() {
   const voteOnPoll = useVoteOnPoll();
   const updateGroup = useUpdateGroup();
   const deleteGroup = useDeleteGroup();
+  const updatePoll = useUpdateGroupPoll();
+  const deletePoll = useDeleteGroupPoll();
+  const updatePost = useUpdateGroupPost();
+  const updateQuestionnaire = useUpdateQuestionnaire();
+  const deleteQuestionnaire = useDeleteQuestionnaire();
   
   const canDeleteGroup = group && (group.created_by === user?.id || isSiteAdmin);
   
@@ -355,6 +371,21 @@ export default function GroupDetail() {
                       </Card>
                     )}
                     
+                    {/* Pinned Polls */}
+                    {polls?.filter(p => p.is_pinned).map((poll) => (
+                      <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id} 
+                        onVote={handleVote} onPin={(id, pinned) => updatePoll.mutate({ pollId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                        onDelete={(id) => deletePoll.mutate({ pollId: id, groupId: group.id })} />
+                    ))}
+                    
+                    {/* Pinned Questionnaires */}
+                    {questionnaires?.filter(q => q.is_pinned).map((q) => (
+                      <QuestionnaireCard key={`quest-${q.id}`} questionnaire={q} isAdmin={isAdmin} groupId={group.id}
+                        onEdit={() => setEditingQuestionnaire(q)}
+                        onPin={(id, pinned) => updateQuestionnaire.mutate({ questionnaireId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                        onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
+                    ))}
+                    
                     {/* Posts List */}
                     {posts?.map((post) => (
                       <GroupPostCard 
@@ -364,7 +395,22 @@ export default function GroupDetail() {
                       />
                     ))}
                     
-                    {posts?.length === 0 && (
+                    {/* Non-pinned Polls in feed */}
+                    {polls?.filter(p => !p.is_pinned).map((poll) => (
+                      <PollCard key={`poll-${poll.id}`} poll={poll} isAdmin={isAdmin} groupId={group.id}
+                        onVote={handleVote} onPin={(id, pinned) => updatePoll.mutate({ pollId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                        onDelete={(id) => deletePoll.mutate({ pollId: id, groupId: group.id })} />
+                    ))}
+                    
+                    {/* Non-pinned Questionnaires in feed */}
+                    {questionnaires?.filter(q => !q.is_pinned).map((q) => (
+                      <QuestionnaireCard key={`quest-${q.id}`} questionnaire={q} isAdmin={isAdmin} groupId={group.id}
+                        onEdit={() => setEditingQuestionnaire(q)}
+                        onPin={(id, pinned) => updateQuestionnaire.mutate({ questionnaireId: id, groupId: group.id, updates: { is_pinned: pinned } })}
+                        onDelete={(id) => deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })} />
+                    ))}
+                    
+                    {posts?.length === 0 && polls?.length === 0 && questionnaires?.length === 0 && (
                       <Card>
                         <CardContent className="py-12 text-center">
                           <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
