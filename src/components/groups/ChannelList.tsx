@@ -49,8 +49,8 @@ function getIconComponent(iconName: string) {
 interface ChannelListProps {
   groupId: string;
   isAdmin: boolean;
-  selectedChannelId: string | null;
-  onSelectChannel: (channelId: string | null) => void;
+  selectedChannelId: string | undefined;
+  onSelectChannel: (channelId: string | undefined) => void;
 }
 
 export function ChannelList({ groupId, isAdmin, selectedChannelId, onSelectChannel }: ChannelListProps) {
@@ -75,10 +75,10 @@ export function ChannelList({ groupId, isAdmin, selectedChannelId, onSelectChann
 
       {/* All Posts option */}
       <button
-        onClick={() => onSelectChannel(null)}
+        onClick={() => onSelectChannel(undefined)}
         className={cn(
           "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
-          selectedChannelId === null 
+          selectedChannelId === undefined 
             ? "bg-primary/10 text-primary" 
             : "hover:bg-muted text-muted-foreground hover:text-foreground"
         )}

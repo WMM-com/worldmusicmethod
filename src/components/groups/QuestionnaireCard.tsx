@@ -2,7 +2,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Pin, PinOff, MoreHorizontal, Trash2, Pencil, ClipboardList } from 'lucide-react';
+import { Pin, PinOff, MoreHorizontal, Trash2, Pencil, ClipboardList, Users } from 'lucide-react';
+import { ViewResponsesDialog } from './ViewResponsesDialog';
 import type { Questionnaire } from '@/hooks/useQuestionnaires';
 
 interface QuestionnaireCardProps {
@@ -58,14 +59,27 @@ export function QuestionnaireCard({ questionnaire: q, isAdmin, groupId, canPin =
           <p className="text-sm text-muted-foreground">
             {q.response_count || 0} responses • {q.questions.length} questions
           </p>
-          <Button 
-            variant={q.user_has_responded ? 'outline' : 'default'}
-            size="sm"
-            disabled={!q.is_active || (q.user_has_responded && !q.allow_multiple_responses)}
-            onClick={onTakeSurvey}
-          >
-            {q.user_has_responded ? 'View Response' : 'Take Survey'}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <ViewResponsesDialog 
+                questionnaire={q}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Users className="h-4 w-4 mr-1" />
+                    View ({q.response_count || 0})
+                  </Button>
+                }
+              />
+            )}
+            <Button 
+              variant={q.user_has_responded ? 'outline' : 'default'}
+              size="sm"
+              disabled={!q.is_active || (q.user_has_responded && !q.allow_multiple_responses)}
+              onClick={onTakeSurvey}
+            >
+              {q.user_has_responded ? 'View Response' : 'Take Survey'}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

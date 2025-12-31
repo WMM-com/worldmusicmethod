@@ -433,12 +433,15 @@ export function useGroupPosts(groupId: string, channelId?: string) {
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
       
-      // Filter by channel if specified
-      if (channelId) {
-        query = query.eq('channel_id', channelId);
-      } else {
-        query = query.is('channel_id', null);
+// Filter by channel if specified (channelId === undefined means "all posts")
+      if (channelId !== undefined) {
+        if (channelId) {
+          query = query.eq('channel_id', channelId);
+        } else {
+          query = query.is('channel_id', null);
+        }
       }
+      // When channelId is undefined, fetch all posts (no filter)
       
       const { data: posts, error } = await query;
       
