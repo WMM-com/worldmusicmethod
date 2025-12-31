@@ -100,6 +100,10 @@ export default function GroupDetail() {
       updates: { cover_image_url: url }
     });
   };
+
+  const handleTakeSurvey = (q: Questionnaire) => {
+    setTakingSurvey(q);
+  };
   
   const getInitials = (name: string | null | undefined) => {
     if (!name) return '?';
@@ -385,10 +389,6 @@ export default function GroupDetail() {
                       const canPinPoll = pinnedPollCount < 1;
                       const canPinQuestionnaire = pinnedQuestionnaireCount < 1;
                       
-                      const handleTakeSurvey = (q: Questionnaire) => {
-                        setTakingSurvey(q);
-                      };
-                      
                       return (
                         <>
                           {/* Pinned Post (max 1) */}
@@ -612,47 +612,50 @@ export default function GroupDetail() {
               
               {/* Feedback Tab */}
               <TabsContent value="feedback" className="space-y-4">
-                {questionnaires?.map((q) => (
-                  <Card key={q.id}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{q.title}</CardTitle>
-                        <Badge variant={q.is_active ? 'default' : 'secondary'}>
-                          {q.is_active ? 'Active' : 'Closed'}
-                        </Badge>
-                      </div>
-                      {q.description && (
-                        <p className="text-sm text-muted-foreground">{q.description}</p>
+                {(() => {
+                  const pinnedQuestionnaireCount = questionnaires?.filter(q => q.is_pinned).length || 0;
+                  const canPinQuestionnaire = pinnedQuestionnaireCount < 1;
+
+                  return (
+                    <>
+                      {questionnaires?.map((q) => (
+                        <QuestionnaireCard
+                          key={`feedback-${q.id}`}
+                          questionnaire={q}
+                          isAdmin={isAdmin}
+                          groupId={group.id}
+                          canPin={canPinQuestionnaire}
+                          onEdit={() => setEditingQuestionnaire(q)}
+                          onTakeSurvey={() => handleTakeSurvey(q)}
+                          onPin={(id, pinned) =>
+                            updateQuestionnaire.mutate({
+                              questionnaireId: id,
+                              groupId: group.id,
+                              updates: { is_pinned: pinned },
+                            })
+                          }
+                          onDelete={(id) =>
+                            deleteQuestionnaire.mutate({ questionnaireId: id, groupId: group.id })
+                          }
+                        />
+                      ))}
+
+                      {questionnaires?.length === 0 && (
+                        <Card>
+                          <CardContent className="py-12 text-center">
+                            <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                            <h3 className="font-semibold mb-2">No feedback forms yet</h3>
+                            <p className="text-muted-foreground">
+                              {isAdmin
+                                ? 'Create a questionnaire to gather feedback'
+                                : 'Feedback forms will appear here when created'}
+                            </p>
+                          </CardContent>
+                        </Card>
                       )}
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">
-                          {q.response_count || 0} responses • {q.questions.length} questions
-                        </p>
-                        <Button 
-                          variant={q.user_has_responded ? 'outline' : 'default'}
-                          size="sm"
-                          disabled={!q.is_active || (q.user_has_responded && !q.allow_multiple_responses)}
-                        >
-                          {q.user_has_responded ? 'View Response' : 'Take Survey'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {questionnaires?.length === 0 && (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-semibold mb-2">No feedback forms yet</h3>
-                      <p className="text-muted-foreground">
-                        {isAdmin ? 'Create a questionnaire to gather feedback' : 'Feedback forms will appear here when created'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+                    </>
+                  );
+                })()}
               </TabsContent>
             </Tabs>
               </div>

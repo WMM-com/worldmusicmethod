@@ -30,9 +30,9 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
   const submitResponse = useSubmitQuestionnaireResponse();
   const { user } = useAuth();
 
-  // Load user's previous response if they've already responded
+  // Always try to load the user's previous response (if any)
   useEffect(() => {
-    if (!open || !user || !questionnaire.user_has_responded) {
+    if (!open || !user) {
       setAnswers({});
       setIsViewOnly(false);
       return;
@@ -41,16 +41,21 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
     const loadPreviousResponse = async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('questionnaire_responses')
           .select('answers')
           .eq('questionnaire_id', questionnaire.id)
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (error) throw error;
 
         if (data?.answers) {
           setAnswers(data.answers as Record<string, string | string[] | number>);
           setIsViewOnly(!questionnaire.allow_multiple_responses);
+        } else {
+          setAnswers({});
+          setIsViewOnly(false);
         }
       } catch (error) {
         console.error('Error loading response:', error);
@@ -60,7 +65,7 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
     };
 
     loadPreviousResponse();
-  }, [open, user, questionnaire.id, questionnaire.user_has_responded, questionnaire.allow_multiple_responses]);
+  }, [open, user, questionnaire.id, questionnaire.allow_multiple_responses]);
 
   const handleSubmit = () => {
     submitResponse.mutate(

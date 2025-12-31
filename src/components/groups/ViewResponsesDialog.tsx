@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,16 +10,15 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Users } from 'lucide-react';
 import { useQuestionnaireResponses } from '@/hooks/useQuestionnaires';
 import { format } from 'date-fns';
-import type { Questionnaire, Question, QuestionnaireResponse } from '@/hooks/useQuestionnaires';
+import type { Questionnaire, Question } from '@/hooks/useQuestionnaires';
 
 interface ViewResponsesDialogProps {
   questionnaire: Questionnaire;
-  trigger?: React.ReactNode;
+  trigger?: ReactNode;
 }
 
 export function ViewResponsesDialog({ questionnaire, trigger }: ViewResponsesDialogProps) {
