@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
 import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
+import { GeoPricingProvider } from "@/contexts/GeoPricingContext";
 import { ChatPopup } from "@/components/messaging/ChatPopup";
 import { StickyAudioPlayer } from "@/components/media/StickyAudioPlayer";
 import Auth from "./pages/Auth";
@@ -128,21 +129,23 @@ function AppContent() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <CartProvider>
-        <MessagingProvider>
-          <MediaPlayerProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppContent />
-              </BrowserRouter>
-            </TooltipProvider>
-          </MediaPlayerProvider>
-        </MessagingProvider>
-      </CartProvider>
-    </AuthProvider>
+    <GeoPricingProvider>
+      <AuthProvider>
+        <CartProvider>
+          <MessagingProvider>
+            <MediaPlayerProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AppContent />
+                </BrowserRouter>
+              </TooltipProvider>
+            </MediaPlayerProvider>
+          </MessagingProvider>
+        </CartProvider>
+      </AuthProvider>
+    </GeoPricingProvider>
   </QueryClientProvider>
 );
 
