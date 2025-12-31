@@ -74,7 +74,7 @@ export function QuestionnaireCard({ questionnaire: q, isAdmin, groupId, canPin =
             <Button 
               variant={q.user_has_responded ? 'outline' : 'default'}
               size="sm"
-              disabled={!q.is_active || (q.user_has_responded && !q.allow_multiple_responses)}
+disabled={!q.is_active && !q.user_has_responded}
               onClick={onTakeSurvey}
             >
               {q.user_has_responded ? 'View Response' : 'Take Survey'}
