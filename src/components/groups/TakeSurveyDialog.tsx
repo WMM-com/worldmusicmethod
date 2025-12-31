@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { useSubmitQuestionnaireResponse } from '@/hooks/useQuestionnaires';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Questionnaire, Question } from '@/hooks/useQuestionnaires';
 
 interface TakeSurveyDialogProps {
@@ -23,7 +25,42 @@ interface TakeSurveyDialogProps {
 
 export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurveyDialogProps) {
   const [answers, setAnswers] = useState<Record<string, string | string[] | number>>({});
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [loading, setLoading] = useState(false);
   const submitResponse = useSubmitQuestionnaireResponse();
+  const { user } = useAuth();
+
+  // Load user's previous response if they've already responded
+  useEffect(() => {
+    if (!open || !user || !questionnaire.user_has_responded) {
+      setAnswers({});
+      setIsViewOnly(false);
+      return;
+    }
+
+    const loadPreviousResponse = async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('questionnaire_responses')
+          .select('answers')
+          .eq('questionnaire_id', questionnaire.id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (data?.answers) {
+          setAnswers(data.answers as Record<string, string | string[] | number>);
+          setIsViewOnly(!questionnaire.allow_multiple_responses);
+        }
+      } catch (error) {
+        console.error('Error loading response:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPreviousResponse();
+  }, [open, user, questionnaire.id, questionnaire.user_has_responded, questionnaire.allow_multiple_responses]);
 
   const handleSubmit = () => {
     submitResponse.mutate(
@@ -38,10 +75,12 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
   };
 
   const updateAnswer = (questionId: string, value: string | string[] | number) => {
+    if (isViewOnly) return;
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
   const toggleCheckboxAnswer = (questionId: string, option: string) => {
+    if (isViewOnly) return;
     setAnswers(prev => {
       const current = (prev[questionId] as string[]) || [];
       if (current.includes(option)) {
@@ -72,6 +111,7 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
             <RadioGroup
               value={answers[question.id] as string || ''}
               onValueChange={(value) => updateAnswer(question.id, value)}
+              disabled={isViewOnly}
             >
               {question.options?.map((option, i) => (
                 <div key={i} className="flex items-center space-x-2">
@@ -99,6 +139,7 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
                     id={`${question.id}-${i}`}
                     checked={((answers[question.id] as string[]) || []).includes(option)}
                     onCheckedChange={() => toggleCheckboxAnswer(question.id, option)}
+                    disabled={isViewOnly}
                   />
                   <Label htmlFor={`${question.id}-${i}`} className="font-normal cursor-pointer">
                     {option}
@@ -128,6 +169,7 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
                 step={1}
                 onValueChange={([value]) => updateAnswer(question.id, value)}
                 className="flex-1"
+                disabled={isViewOnly}
               />
               <span className="text-sm text-muted-foreground">{max}</span>
               <span className="w-8 text-center font-medium">{currentValue}</span>
@@ -147,6 +189,7 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
               onChange={(e) => updateAnswer(question.id, e.target.value)}
               placeholder="Your answer..."
               rows={3}
+              disabled={isViewOnly}
             />
           </div>
         );
@@ -156,11 +199,26 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
     }
   };
 
+  if (loading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{questionnaire.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-8 text-center text-muted-foreground">Loading your response...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{questionnaire.title}</DialogTitle>
+          <DialogTitle>
+            {isViewOnly ? 'Your Response' : questionnaire.title}
+          </DialogTitle>
           {questionnaire.description && (
             <p className="text-sm text-muted-foreground">{questionnaire.description}</p>
           )}
@@ -172,14 +230,16 @@ export function TakeSurveyDialog({ questionnaire, open, onOpenChange }: TakeSurv
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {isViewOnly ? 'Close' : 'Cancel'}
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={!isFormValid || submitResponse.isPending}
-          >
-            {submitResponse.isPending ? 'Submitting...' : 'Submit'}
-          </Button>
+          {!isViewOnly && (
+            <Button 
+              onClick={handleSubmit} 
+              disabled={!isFormValid || submitResponse.isPending}
+            >
+              {submitResponse.isPending ? 'Submitting...' : questionnaire.user_has_responded ? 'Update Response' : 'Submit'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

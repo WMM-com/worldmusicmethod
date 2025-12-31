@@ -61,13 +61,13 @@ import type { Questionnaire } from '@/hooks/useQuestionnaires';
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
   const [editingQuestionnaire, setEditingQuestionnaire] = useState<Questionnaire | null>(null);
   const [takingSurvey, setTakingSurvey] = useState<Questionnaire | null>(null);
   
   const { data: group, isLoading: loadingGroup } = useGroup(groupId || '');
   const { data: members } = useGroupMembers(groupId || '');
-  const { data: posts } = useGroupPosts(groupId || '', selectedChannelId || undefined);
+  const { data: posts } = useGroupPosts(groupId || '', selectedChannelId);
   const { data: events } = useGroupEvents(groupId || '');
   const { data: polls } = useGroupPolls(groupId || '', selectedChannelId);
   const { data: pinnedAudio } = useGroupPinnedAudio(groupId || '');
