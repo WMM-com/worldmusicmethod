@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourses } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
+import { useGeoPricing, formatPrice } from '@/contexts/GeoPricingContext';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Courses() {
