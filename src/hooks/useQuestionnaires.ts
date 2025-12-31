@@ -24,6 +24,7 @@ export interface Questionnaire {
   description: string | null;
   questions: Question[];
   is_active: boolean;
+  is_pinned: boolean;
   allow_multiple_responses: boolean;
   ends_at: string | null;
   created_by: string;
@@ -46,17 +47,29 @@ export interface QuestionnaireResponse {
   };
 }
 
-export function useGroupQuestionnaires(groupId: string) {
+export function useGroupQuestionnaires(groupId: string, channelId?: string | null) {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['group-questionnaires', groupId],
+    queryKey: ['group-questionnaires', groupId, channelId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('group_questionnaires')
         .select('*')
         .eq('group_id', groupId)
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
+      
+      // Filter by channel if specified
+      if (channelId !== undefined) {
+        if (channelId) {
+          query = query.eq('channel_id', channelId);
+        } else {
+          query = query.is('channel_id', null);
+        }
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -232,6 +245,47 @@ export function useSubmitQuestionnaireResponse() {
       queryClient.invalidateQueries({ queryKey: ['group-questionnaires'] });
       queryClient.invalidateQueries({ queryKey: ['questionnaire-responses', data.questionnaire_id] });
       toast.success('Response submitted!');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useUpdateQuestionnaire() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ questionnaireId, groupId, updates }: {
+      questionnaireId: string;
+      groupId: string;
+      updates: Partial<{
+        title: string;
+        description: string | null;
+        questions: Question[];
+        allow_multiple_responses: boolean;
+        is_active: boolean;
+        is_pinned: boolean;
+        ends_at: string | null;
+      }>;
+    }) => {
+      const updateData: Record<string, unknown> = { ...updates };
+      if (updates.questions) {
+        updateData.questions = JSON.parse(JSON.stringify(updates.questions));
+      }
+      
+      const { error } = await supabase
+        .from('group_questionnaires')
+        .update(updateData)
+        .eq('id', questionnaireId);
+      
+      if (error) throw error;
+      return questionnaireId;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['group-questionnaires', variables.groupId] });
+      queryClient.invalidateQueries({ queryKey: ['questionnaire', variables.questionnaireId] });
+      toast.success('Questionnaire updated!');
     },
     onError: (error: Error) => {
       toast.error(error.message);

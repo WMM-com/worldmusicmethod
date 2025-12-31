@@ -1549,36 +1549,49 @@ export type Database = {
       }
       group_polls: {
         Row: {
+          channel_id: string | null
           created_at: string
           created_by: string
           ends_at: string | null
           group_id: string
           id: string
           is_multiple_choice: boolean | null
+          is_pinned: boolean | null
           options: Json
           question: string
         }
         Insert: {
+          channel_id?: string | null
           created_at?: string
           created_by: string
           ends_at?: string | null
           group_id: string
           id?: string
           is_multiple_choice?: boolean | null
+          is_pinned?: boolean | null
           options?: Json
           question: string
         }
         Update: {
+          channel_id?: string | null
           created_at?: string
           created_by?: string
           ends_at?: string | null
           group_id?: string
           id?: string
           is_multiple_choice?: boolean | null
+          is_pinned?: boolean | null
           options?: Json
           question?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "group_polls_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "group_channels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "group_polls_group_id_fkey"
             columns: ["group_id"]
@@ -1691,6 +1704,7 @@ export type Database = {
           group_id: string
           id: string
           is_active: boolean | null
+          is_pinned: boolean | null
           questions: Json
           title: string
           updated_at: string
@@ -1705,6 +1719,7 @@ export type Database = {
           group_id: string
           id?: string
           is_active?: boolean | null
+          is_pinned?: boolean | null
           questions?: Json
           title: string
           updated_at?: string
@@ -1719,6 +1734,7 @@ export type Database = {
           group_id?: string
           id?: string
           is_active?: boolean | null
+          is_pinned?: boolean | null
           questions?: Json
           title?: string
           updated_at?: string

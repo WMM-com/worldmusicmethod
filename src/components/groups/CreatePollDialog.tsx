@@ -36,6 +36,7 @@ export function CreatePollDialog({ groupId, channelId, trigger }: CreatePollDial
     
     await createPoll.mutateAsync({
       group_id: groupId,
+      channel_id: channelId,
       question,
       options: validOptions,
       is_multiple_choice: isMultipleChoice,

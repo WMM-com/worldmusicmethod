@@ -127,11 +127,13 @@ export interface GroupEvent {
 export interface GroupPoll {
   id: string;
   group_id: string;
+  channel_id: string | null;
   created_by: string;
   question: string;
   options: string[];
   ends_at: string | null;
   is_multiple_choice: boolean;
+  is_pinned: boolean;
   created_at: string;
   votes?: { option_index: number; count: number }[];
   user_votes?: number[];
