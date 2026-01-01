@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
-import { Invoice, InvoiceItem, Profile } from '@/types/database';
-
+import { Invoice, InvoiceItem, Profile, InvoiceMessageTemplate } from '@/types/database';
 const CURRENCIES: Record<string, string> = {
   GBP: '£',
   EUR: '€',
@@ -238,6 +237,21 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
       doc.text(line, margin, y);
       y += 5;
     });
+  }
+
+  // Thank you message (below bank details, from user settings)
+  if (profile?.auto_add_thank_you_message && profile?.default_thank_you_message_id) {
+    const thankYouMessages = (profile.invoice_thank_you_messages as InvoiceMessageTemplate[] | null) || [];
+    const defaultMessage = thankYouMessages.find(m => m.id === profile.default_thank_you_message_id);
+    
+    if (defaultMessage?.text) {
+      y += 15;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 100, 100);
+      const thankYouLines = doc.splitTextToSize(defaultMessage.text, contentWidth);
+      doc.text(thankYouLines, pageWidth / 2, y, { align: 'center' });
+    }
   }
 
   return doc;
