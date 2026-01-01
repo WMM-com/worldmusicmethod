@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Users, Lock, EyeOff, Music, Guitar, Mic2, MapPin } from 'lucide-react';
 import { useJoinGroup, useLeaveGroup, useRequestToJoin } from '@/hooks/useGroups';
+import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORY_LABELS, type Group, type GroupCategory } from '@/types/groups';
 
 interface GroupCardProps {
@@ -19,6 +20,8 @@ const CATEGORY_ICONS: Partial<Record<GroupCategory, React.ReactNode>> = {
 };
 
 export function GroupCard({ group }: GroupCardProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
   const requestToJoin = useRequestToJoin();
@@ -26,6 +29,11 @@ export function GroupCard({ group }: GroupCardProps) {
   const handleJoin = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
     
     if (group.privacy === 'public') {
       joinGroup.mutate(group.id);
@@ -39,9 +47,16 @@ export function GroupCard({ group }: GroupCardProps) {
     e.stopPropagation();
     leaveGroup.mutate(group.id);
   };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      navigate('/auth');
+    }
+  };
   
   return (
-    <Link to={`/community/groups/${group.id}`}>
+    <Link to={`/community/groups/${group.id}`} onClick={handleCardClick}>
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer overflow-hidden">
         {group.cover_image_url && (
           <div className="h-24 bg-gradient-to-r from-primary/20 to-primary/10 relative">

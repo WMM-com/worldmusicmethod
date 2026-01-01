@@ -454,157 +454,151 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
           )}
           
           {/* Actions */}
-          {!user ? (
-            <div className="w-full">
-              <Button asChild className="w-full">
-                <Link to="/auth">Sign in to comment or appreciate</Link>
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="w-full flex gap-2">
+          <div className="w-full flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={user ? handleAppreciate : () => window.location.href = '/auth'}
+              disabled={user ? appreciateMutation.isPending : false}
+              className={cn(
+                'flex-1',
+                post.user_appreciated && 'text-primary'
+              )}
+            >
+              <Heart className={cn('h-4 w-4 mr-2', post.user_appreciated && 'fill-current')} />
+              Appreciate
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowComments(!showComments)}
+              className="flex-1"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Comment
+            </Button>
+          </div>
+
+          {/* Comments Section */}
+          {showComments && (
+            <div className="w-full space-y-3 pt-2 border-t">
+              {visibleComments.map((comment) => (
+                <CommentThread 
+                  key={comment.id} 
+                  comment={comment} 
+                  replies={repliesMap.get(comment.id) || []}
+                  onReply={user ? (commentId) => setReplyingTo(commentId) : () => window.location.href = '/auth'}
+                />
+              ))}
+              
+              {topLevelComments.length > INITIAL_COMMENTS_SHOWN && !showAllComments && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleAppreciate}
-                  disabled={appreciateMutation.isPending}
-                  className={cn(
-                    'flex-1',
-                    post.user_appreciated && 'text-primary'
-                  )}
+                  onClick={() => setShowAllComments(true)}
+                  className="w-full"
                 >
-                  <Heart className={cn('h-4 w-4 mr-2', post.user_appreciated && 'fill-current')} />
-                  Appreciate
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                  View {topLevelComments.length - INITIAL_COMMENTS_SHOWN} more comments
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowComments(!showComments)}
-                  className="flex-1"
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Comment
-                </Button>
-              </div>
-
-              {/* Comments Section */}
-              {showComments && (
-                <div className="w-full space-y-3 pt-2 border-t">
-                  {visibleComments.map((comment) => (
-                    <CommentThread 
-                      key={comment.id} 
-                      comment={comment} 
-                      replies={repliesMap.get(comment.id) || []}
-                      onReply={(commentId) => setReplyingTo(commentId)}
-                    />
-                  ))}
-                  
-                  {topLevelComments.length > INITIAL_COMMENTS_SHOWN && !showAllComments && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowAllComments(true)}
-                      className="w-full"
-                    >
-                      <ChevronDown className="h-4 w-4 mr-2" />
-                      View {topLevelComments.length - INITIAL_COMMENTS_SHOWN} more comments
-                    </Button>
-                  )}
-                  
-                  {/* Reply indicator */}
-                  {replyingTo && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
-                      <Reply className="h-4 w-4" />
-                      <span>Replying to a comment</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-auto h-6 px-2"
-                        onClick={() => setReplyingTo(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Attachment Preview */}
-                  {commentAttachment && (
-                    <div className="relative inline-block">
-                      {commentAttachment.type === 'image' ? (
-                        <img src={commentAttachment.url} alt="Preview" className="h-16 rounded object-cover" />
-                      ) : commentAttachment.type === 'video' ? (
-                        <video src={commentAttachment.url} className="h-16 rounded" />
-                      ) : (
-                        <div className="h-12 px-3 bg-muted rounded flex items-center gap-2 text-sm">
-                          <FileText className="h-4 w-4" />
-                          <span className="truncate max-w-[150px]">{commentAttachment.file.name}</span>
-                        </div>
-                      )}
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-1 -right-1 h-5 w-5"
-                        onClick={removeCommentAttachment}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      accept="image/*,video/*,.pdf,.doc,.docx"
-                      className="hidden"
-                    />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
-                          <Paperclip className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => {
-                          if (fileInputRef.current) {
-                            fileInputRef.current.accept = 'image/*';
-                            fileInputRef.current.click();
-                          }
-                        }}>
-                          <Image className="h-4 w-4 mr-2" />
-                          Image
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (fileInputRef.current) {
-                            fileInputRef.current.accept = 'video/*';
-                            fileInputRef.current.click();
-                          }
-                        }}>
-                          <Video className="h-4 w-4 mr-2" />
-                          Video
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Textarea
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      onKeyDown={handleCommentKeyDown}
-                      placeholder={replyingTo ? "Write a reply... (Enter to post)" : "Write a comment... (Enter to post)"}
-                      rows={1}
-                      className="min-h-[40px] resize-none flex-1"
-                    />
-                    <Button
-                      onClick={handleComment}
-                      disabled={(!commentText.trim() && !commentAttachment) || createCommentMutation.isPending || isUploading}
-                      size="sm"
-                    >
-                      Post
-                    </Button>
-                  </div>
+              )}
+              
+              {/* Reply indicator */}
+              {user && replyingTo && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+                  <Reply className="h-4 w-4" />
+                  <span>Replying to a comment</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto h-6 px-2"
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               )}
-            </>
+
+              {/* Attachment Preview */}
+              {user && commentAttachment && (
+                <div className="relative inline-block">
+                  {commentAttachment.type === 'image' ? (
+                    <img src={commentAttachment.url} alt="Preview" className="h-16 rounded object-cover" />
+                  ) : commentAttachment.type === 'video' ? (
+                    <video src={commentAttachment.url} className="h-16 rounded" />
+                  ) : (
+                    <div className="h-12 px-3 bg-muted rounded flex items-center gap-2 text-sm">
+                      <FileText className="h-4 w-4" />
+                      <span className="truncate max-w-[150px]">{commentAttachment.file.name}</span>
+                    </div>
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-1 -right-1 h-5 w-5"
+                    onClick={removeCommentAttachment}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              
+              {/* Comment input - only for logged in users */}
+              {user && (
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/*,video/*,.pdf,.doc,.docx"
+                    className="hidden"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                        <Paperclip className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.accept = 'image/*';
+                          fileInputRef.current.click();
+                        }
+                      }}>
+                        <Image className="h-4 w-4 mr-2" />
+                        Image
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.accept = 'video/*';
+                          fileInputRef.current.click();
+                        }
+                      }}>
+                        <Video className="h-4 w-4 mr-2" />
+                        Video
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={handleCommentKeyDown}
+                    placeholder={replyingTo ? "Write a reply... (Enter to post)" : "Write a comment... (Enter to post)"}
+                    rows={1}
+                    className="min-h-[40px] resize-none flex-1"
+                  />
+                  <Button
+                    onClick={handleComment}
+                    disabled={(!commentText.trim() && !commentAttachment) || createCommentMutation.isPending || isUploading}
+                    size="sm"
+                    className={typeConfig.buttonColor}
+                  >
+                    Post
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </CardFooter>
       </Card>
