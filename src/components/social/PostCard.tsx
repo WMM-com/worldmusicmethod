@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post, Comment, useAppreciate, useDeletePost, useUpdatePost, useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useSocial';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
@@ -453,51 +454,68 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
           )}
           
           {/* Actions */}
-          <div className="w-full flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleAppreciate}
-              disabled={appreciateMutation.isPending}
-              className={cn(
-                'flex-1',
-                post.user_appreciated && 'text-primary'
-              )}
-            >
-              <Heart className={cn('h-4 w-4 mr-2', post.user_appreciated && 'fill-current')} />
-              Appreciate
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowComments(!showComments)}
-              className="flex-1"
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Comment
-            </Button>
-          </div>
-          
-          {/* Comments Section */}
-          {showComments && (
-            <div className="w-full space-y-3 pt-2 border-t">
-              {visibleComments.map((comment) => (
-                <CommentThread 
-                  key={comment.id} 
-                  comment={comment} 
-                  replies={repliesMap.get(comment.id) || []}
-                  onReply={(commentId) => setReplyingTo(commentId)}
-                />
-              ))}
-              
-              {topLevelComments.length > INITIAL_COMMENTS_SHOWN && !showAllComments && (
+          {!user ? (
+            <div className="w-full">
+              <Button asChild className="w-full">
+                <Link to="/auth">Sign in to comment or appreciate</Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="w-full flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowAllComments(true)}
-                  className="w-full"
+                  onClick={handleAppreciate}
+                  disabled={appreciateMutation.isPending}
+                  className={cn(
+                    'flex-1',
+                    post.user_appreciated && 'text-primary'
+                  )}
                 >
-                  <ChevronDown className="h-4 w-4 mr-2" />
+                  <Heart className={cn('h-4 w-4 mr-2', post.user_appreciated && 'fill-current')} />
+                  Appreciate
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowComments(!showComments)}
+                  className="flex-1"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Comment
+                </Button>
+              </div>
+
+              {/* Comments Section */}
+              {showComments && (
+                <div className="w-full space-y-3 pt-2 border-t">
+                  {visibleComments.map((comment) => (
+                    <CommentThread 
+                      key={comment.id} 
+                      comment={comment} 
+                      replies={repliesMap.get(comment.id) || []}
+                      onReply={(commentId) => setReplyingTo(commentId)}
+                    />
+                  ))}
+                  
+                  {topLevelComments.length > INITIAL_COMMENTS_SHOWN && !showAllComments && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAllComments(true)}
+                      className="w-full"
+                    >
+                      <ChevronDown className="h-4 w-4 mr-2" />
+                      View all comments
+                    </Button>
+                  )}
+
+                  {/* ... keep existing code (comment composer + dialogs) */}
+                </div>
+              )}
+            </>
+          )}
                   View {topLevelComments.length - INITIAL_COMMENTS_SHOWN} more comments
                 </Button>
               )}

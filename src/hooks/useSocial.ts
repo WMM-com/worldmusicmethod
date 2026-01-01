@@ -54,16 +54,40 @@ export function useFeed() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['feed', user?.id],
+    queryKey: ['feed', user?.id ?? 'public'],
     queryFn: async () => {
-      if (!user) return [];
-      
+      // Public (logged-out) feed: only public posts, read-only.
+      if (!user) {
+        const { data: posts, error } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('visibility', 'public')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        const userIds = [...new Set((posts || []).map(p => p.user_id))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url')
+          .in('id', userIds);
+
+        const profilesMap = new Map((profiles || []).map(p => [p.id, p]));
+
+        return (posts || []).map(post => ({
+          ...post,
+          profiles: profilesMap.get(post.user_id),
+        })) as Post[];
+      }
+
+      // Authenticated feed (existing behavior)
       const { data: posts, error } = await supabase
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-      
+
       if (error) throw error;
 
       // Get profiles, appreciation counts, and comment counts
@@ -97,7 +121,7 @@ export function useFeed() {
         user_appreciated: userAppreciated.has(post.id),
       })) as Post[];
     },
-    enabled: !!user,
+    enabled: true,
   });
 }
 
