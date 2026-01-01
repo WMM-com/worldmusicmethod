@@ -108,12 +108,18 @@ function AppContent() {
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/community" element={<ProtectedRoute><Social /></ProtectedRoute>} />
-        <Route path="/community/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
+
+        {/* Community is publicly viewable */}
+        <Route path="/community" element={<Social />} />
+        <Route path="/community/groups/:groupId" element={<GroupDetail />} />
         <Route path="/friends" element={<Navigate to="/community?tab=friends" replace />} />
+
+        {/* Profiles: public profiles at /profile/:userId, own profile at /profile (requires login) */}
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/profile/:userId" element={<Profile />} />
+
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-        <Route path="/profile/:userId?" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
         <Route path="/media" element={<Media />} />
         <Route path="/media/playlist/:playlistId" element={<MediaPlaylist />} />

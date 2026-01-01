@@ -122,66 +122,66 @@ export default function Social() {
             </div>
             
             <TabsContent value="feed">
-              {!user ? (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <LogIn className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="font-semibold mb-2">Sign in to view the feed</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Join the community to see posts from friends and share your own.
-                    </p>
-                    <Button asChild>
-                      <Link to="/auth">Sign In</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
-                  {/* Left Sidebar - Posting Options */}
-                  <div className="hidden lg:block">
-                    <div className="sticky top-24">
-                      <CommunitySidebar />
-                    </div>
-                  </div>
-
-                  {/* Center Feed */}
-                  <div className="max-w-2xl mx-auto w-full space-y-4">
-                    <CreatePost />
-                    
-                    {isLoading ? (
-                      <>
-                        <Skeleton className="h-48" />
-                        <Skeleton className="h-48" />
-                      </>
-                    ) : posts?.length === 0 ? (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <h3 className="font-semibold mb-2">No posts yet</h3>
-                          <p className="text-muted-foreground">
-                            Be the first to share something, or add friends to see their posts.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      posts?.map((post) => (
-                        <PostCard 
-                          key={post.id} 
-                          post={post} 
-                          defaultShowComments={post.id === postId && openComments}
-                        />
-                      ))
-                    )}
-                  </div>
-
-                  {/* Right Sidebar - Playlist Player */}
-                  <div className="hidden lg:block">
-                    <div className="sticky top-24">
-                      <CommunityPlaylistPlayer playlistName="Artists I played with in 2025" />
-                    </div>
+              <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
+                {/* Left Sidebar - Posting Options (only when signed in) */}
+                <div className="hidden lg:block">
+                  <div className="sticky top-24">
+                    {user ? <CommunitySidebar /> : null}
                   </div>
                 </div>
-              )}
+
+                {/* Center Feed */}
+                <div className="max-w-2xl mx-auto w-full space-y-4">
+                  {user ? <CreatePost /> : null}
+
+                  {!user && (
+                    <Card>
+                      <CardContent className="py-6 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          You’re viewing the public community feed. Sign in to post, appreciate, and comment.
+                        </p>
+                        <div className="mt-4">
+                          <Button asChild>
+                            <Link to="/auth">Sign In</Link>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-48" />
+                      <Skeleton className="h-48" />
+                    </>
+                  ) : posts?.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold mb-2">No posts yet</h3>
+                        <p className="text-muted-foreground">
+                          Be the first to share something.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    posts?.map((post) => (
+                      <PostCard 
+                        key={post.id} 
+                        post={post} 
+                        defaultShowComments={user && post.id === postId && openComments}
+                      />
+                    ))
+                  )}
+                </div>
+
+                {/* Right Sidebar - Playlist Player */}
+                <div className="hidden lg:block">
+                  <div className="sticky top-24">
+                    <CommunityPlaylistPlayer playlistName="Artists I played with in 2025" />
+                  </div>
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="friends">
