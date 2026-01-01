@@ -123,10 +123,10 @@ export default function Social() {
             
             <TabsContent value="feed">
               <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
-                {/* Left Sidebar - Posting Options (only when signed in) */}
+                {/* Left Sidebar - Posting Options */}
                 <div className="hidden lg:block">
                   <div className="sticky top-24">
-                    {user ? <CommunitySidebar /> : null}
+                    <CommunitySidebar />
                   </div>
                 </div>
 
