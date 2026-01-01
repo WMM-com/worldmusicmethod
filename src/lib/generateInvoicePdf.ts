@@ -240,13 +240,6 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     });
   }
 
-  // Thank you message at the bottom (after bank details)
-  y += 15;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
-  doc.text('Thank you for your business.', pageWidth / 2, y, { align: 'center' });
-
   return doc;
 }
 
