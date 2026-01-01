@@ -30,7 +30,25 @@ serve(async (req) => {
 
     console.log("[COMPLETE-STRIPE-PAYMENT] Payment verified", { status: paymentIntent.status });
 
-    const { email, full_name, product_id, product_type, course_id } = paymentIntent.metadata;
+    const { 
+      email, 
+      full_name, 
+      product_ids, 
+      product_details,
+      currency,
+      original_amount,
+    } = paymentIntent.metadata;
+
+    // Parse multi-product data
+    let productIds: string[] = [];
+    let productDetailsList: { id: string; name: string; course_id: string | null; amount: number }[] = [];
+    
+    try {
+      productIds = product_ids ? JSON.parse(product_ids) : [];
+      productDetailsList = product_details ? JSON.parse(product_details) : [];
+    } catch (e) {
+      console.log("[COMPLETE-STRIPE-PAYMENT] Legacy single product format detected");
+    }
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -42,6 +60,8 @@ serve(async (req) => {
     const user = existingUser?.users?.find(u => u.email === email);
 
     let userId: string;
+    let isNewUser = false;
+    let sessionToken: string | null = null;
 
     if (user) {
       userId = user.id;
@@ -60,26 +80,76 @@ serve(async (req) => {
       }
 
       userId = newUser.user.id;
+      isNewUser = true;
       console.log("[COMPLETE-STRIPE-PAYMENT] New user created", { userId });
+
+      // Generate a session token for the new user so they stay logged in
+      try {
+        const { data: sessionData, error: sessionError } = await supabaseClient.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+        });
+        
+        if (sessionData?.properties?.hashed_token) {
+          sessionToken = sessionData.properties.hashed_token;
+          console.log("[COMPLETE-STRIPE-PAYMENT] Session token generated for new user");
+        }
+      } catch (sessionErr) {
+        console.log("[COMPLETE-STRIPE-PAYMENT] Could not generate session token (non-fatal):", sessionErr);
+      }
     }
 
-    // Create course enrollment if it's a course product
-    if (product_type === "course" && course_id) {
-      const { error: enrollError } = await supabaseClient
-        .from("course_enrollments")
-        .upsert({
-          user_id: userId,
-          course_id,
-          enrollment_type: "purchase",
-          is_active: true,
-        }, {
-          onConflict: "user_id,course_id",
-        });
+    // Create course enrollments for ALL products that are courses
+    const courseIds: string[] = [];
+    for (const detail of productDetailsList) {
+      if (detail.course_id) {
+        const { error: enrollError } = await supabaseClient
+          .from("course_enrollments")
+          .upsert({
+            user_id: userId,
+            course_id: detail.course_id,
+            enrollment_type: "purchase",
+            is_active: true,
+          }, {
+            onConflict: "user_id,course_id",
+          });
 
-      if (enrollError) {
-        console.error("[COMPLETE-STRIPE-PAYMENT] Enrollment error:", enrollError);
-      } else {
-        console.log("[COMPLETE-STRIPE-PAYMENT] Course enrollment created");
+        if (enrollError) {
+          console.error("[COMPLETE-STRIPE-PAYMENT] Enrollment error for course:", detail.course_id, enrollError);
+        } else {
+          courseIds.push(detail.course_id);
+          console.log("[COMPLETE-STRIPE-PAYMENT] Course enrollment created", { courseId: detail.course_id });
+        }
+      }
+    }
+
+    // Create order records for EACH product
+    const paymentAmount = paymentIntent.amount / 100; // Convert from cents
+    const paymentCurrency = (currency || paymentIntent.currency || 'USD').toUpperCase();
+    
+    for (const detail of productDetailsList) {
+      try {
+        const { error: orderError } = await supabaseClient
+          .from("orders")
+          .insert({
+            user_id: userId,
+            email: email.toLowerCase(),
+            product_id: detail.id,
+            amount: detail.amount,
+            currency: paymentCurrency,
+            payment_provider: "stripe",
+            provider_payment_id: paymentIntentId,
+            status: "completed",
+            customer_name: full_name,
+          });
+
+        if (orderError) {
+          console.error("[COMPLETE-STRIPE-PAYMENT] Order creation error:", orderError);
+        } else {
+          console.log("[COMPLETE-STRIPE-PAYMENT] Order created for product:", detail.id);
+        }
+      } catch (orderErr) {
+        console.error("[COMPLETE-STRIPE-PAYMENT] Order insert failed:", orderErr);
       }
     }
 
@@ -90,19 +160,11 @@ serve(async (req) => {
       .or(`user_id.eq.${userId},email.eq.${email}`)
       .is("recovered_at", null);
 
-    // Assign purchase tag
-    try {
-      // Get product name for tag
-      const { data: product } = await supabaseClient
-        .from("products")
-        .select("name")
-        .eq("id", product_id)
-        .single();
-
-      if (product) {
-        // Find or create a purchase tag
-        const tagName = `Purchased: ${product.name}`;
-        let tagId: string;
+    // Assign purchase tags for each product
+    for (const detail of productDetailsList) {
+      try {
+        const tagName = `Purchased: ${detail.name}`;
+        let tagId: string | undefined;
 
         const { data: existingTag } = await supabaseClient
           .from("email_tags")
@@ -117,8 +179,7 @@ serve(async (req) => {
             .from("email_tags")
             .insert({
               name: tagName,
-              description: `Auto-created for ${product.name} purchases`,
-              color: "#10B981",
+              description: `Auto-created for ${detail.name} purchases`,
             })
             .select("id")
             .single();
@@ -133,67 +194,78 @@ serve(async (req) => {
               email: email?.toLowerCase(),
               tag_id: tagId,
               source: "purchase",
-              source_id: product_id,
+              source_id: detail.id,
             }, {
               onConflict: "user_id,tag_id",
               ignoreDuplicates: true,
             });
-          console.log("[COMPLETE-STRIPE-PAYMENT] Purchase tag assigned", { tagId });
+          console.log("[COMPLETE-STRIPE-PAYMENT] Purchase tag assigned", { tagId, product: detail.name });
         }
+      } catch (tagError) {
+        console.error("[COMPLETE-STRIPE-PAYMENT] Tag error (non-fatal):", tagError);
+      }
+    }
 
-        // Trigger purchase sequences
-        const { data: purchaseSequences } = await supabaseClient
-          .from("email_sequences")
+    // Trigger purchase sequences (once, not per product)
+    try {
+      const { data: purchaseSequences } = await supabaseClient
+        .from("email_sequences")
+        .select("id")
+        .eq("trigger_type", "purchase")
+        .eq("is_active", true);
+
+      if (purchaseSequences && purchaseSequences.length > 0) {
+        let contactId: string | null = null;
+        const { data: contact } = await supabaseClient
+          .from("email_contacts")
           .select("id")
-          .eq("trigger_type", "purchase")
-          .eq("is_active", true);
+          .eq("email", email.toLowerCase())
+          .maybeSingle();
+        contactId = contact?.id || null;
 
-        if (purchaseSequences && purchaseSequences.length > 0) {
-          // Get or create contact
-          let contactId: string | null = null;
-          const { data: contact } = await supabaseClient
-            .from("email_contacts")
-            .select("id")
-            .eq("email", email.toLowerCase())
-            .maybeSingle();
-          contactId = contact?.id || null;
+        for (const seq of purchaseSequences) {
+          const { data: firstStep } = await supabaseClient
+            .from("email_sequence_steps")
+            .select("delay_minutes")
+            .eq("sequence_id", seq.id)
+            .order("step_order")
+            .limit(1)
+            .single();
 
-          for (const seq of purchaseSequences) {
-            const { data: firstStep } = await supabaseClient
-              .from("email_sequence_steps")
-              .select("delay_minutes")
-              .eq("sequence_id", seq.id)
-              .order("step_order")
-              .limit(1)
-              .single();
+          const nextEmailAt = new Date(Date.now() + (firstStep?.delay_minutes || 0) * 60 * 1000).toISOString();
 
-            const nextEmailAt = new Date(Date.now() + (firstStep?.delay_minutes || 0) * 60 * 1000).toISOString();
-
-            await supabaseClient
-              .from("email_sequence_enrollments")
-              .insert({
-                sequence_id: seq.id,
-                contact_id: contactId,
-                user_id: userId,
-                email: email.toLowerCase(),
-                status: "active",
-                current_step: 0,
-                next_email_at: nextEmailAt,
-                metadata: { source: "purchase", product_id, course_id, product_name: product.name },
-              });
-            console.log("[COMPLETE-STRIPE-PAYMENT] Enrolled in purchase sequence", { sequenceId: seq.id });
-          }
+          await supabaseClient
+            .from("email_sequence_enrollments")
+            .insert({
+              sequence_id: seq.id,
+              contact_id: contactId,
+              user_id: userId,
+              email: email.toLowerCase(),
+              status: "active",
+              current_step: 0,
+              next_email_at: nextEmailAt,
+              metadata: { 
+                source: "purchase", 
+                product_ids: productIds,
+                course_ids: courseIds,
+                product_names: productDetailsList.map(p => p.name),
+              },
+            });
+          console.log("[COMPLETE-STRIPE-PAYMENT] Enrolled in purchase sequence", { sequenceId: seq.id });
         }
       }
-    } catch (tagError) {
-      console.error("[COMPLETE-STRIPE-PAYMENT] Tag/sequence error (non-fatal):", tagError);
+    } catch (seqError) {
+      console.error("[COMPLETE-STRIPE-PAYMENT] Sequence error (non-fatal):", seqError);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         userId,
-        courseId: course_id,
+        courseIds,
+        isNewUser,
+        email,
+        password: isNewUser ? password : undefined, // Return password only for new users to allow auto-login
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

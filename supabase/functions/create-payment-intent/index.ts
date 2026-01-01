@@ -13,40 +13,69 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, email, fullName, couponCode } = await req.json();
+    const { productIds, email, fullName, couponCode, currency, amounts } = await req.json();
     
-    console.log("[CREATE-PAYMENT-INTENT] Starting", { productId, email, fullName, couponCode });
+    // Support both single productId (legacy) and multiple productIds
+    const productIdList = productIds || [];
+    const amountList = amounts || [];
+    
+    console.log("[CREATE-PAYMENT-INTENT] Starting", { productIds: productIdList, email, fullName, couponCode, currency });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get product details
-    const { data: product, error: productError } = await supabaseClient
+    if (productIdList.length === 0) {
+      throw new Error("No products provided");
+    }
+
+    // Get all product details
+    const { data: products, error: productsError } = await supabaseClient
       .from("products")
       .select("*")
-      .eq("id", productId)
-      .single();
+      .in("id", productIdList);
 
-    if (productError || !product) {
-      throw new Error("Product not found");
+    if (productsError || !products || products.length === 0) {
+      throw new Error("Products not found");
     }
 
-    console.log("[CREATE-PAYMENT-INTENT] Product found", { name: product.name, price: product.base_price_usd });
+    console.log("[CREATE-PAYMENT-INTENT] Products found", { count: products.length });
 
-    // Calculate price - use sale price if available and valid
-    let basePrice = product.base_price_usd;
-    if (product.sale_price_usd && (!product.sale_ends_at || new Date(product.sale_ends_at) > new Date())) {
-      basePrice = product.sale_price_usd;
+    // Use the currency passed from frontend (geo-priced) or default to USD
+    const paymentCurrency = (currency || 'USD').toLowerCase();
+    
+    // Calculate total amount from the amounts passed by frontend (already geo-priced)
+    let totalAmount = 0;
+    const productDetails: { id: string; name: string; course_id: string | null; amount: number }[] = [];
+    
+    for (let i = 0; i < productIdList.length; i++) {
+      const product = products.find(p => p.id === productIdList[i]);
+      if (product) {
+        // Use the pre-calculated geo-priced amount from frontend
+        const productAmount = amountList[i] || product.base_price_usd;
+        totalAmount += productAmount;
+        productDetails.push({
+          id: product.id,
+          name: product.name,
+          course_id: product.course_id,
+          amount: productAmount,
+        });
+      }
     }
 
-    // Apply 1% discount for card payments (Stripe incentive)
-    const stripeDiscount = basePrice * 0.01;
-    const finalPrice = basePrice - stripeDiscount;
+    // Apply 2% discount for card payments (Stripe incentive)
+    const stripeDiscount = totalAmount * 0.02;
+    const finalPrice = totalAmount - stripeDiscount;
     const amountInCents = Math.round(finalPrice * 100);
 
-    console.log("[CREATE-PAYMENT-INTENT] Price calculated", { basePrice, stripeDiscount, finalPrice, amountInCents });
+    console.log("[CREATE-PAYMENT-INTENT] Price calculated", { 
+      totalAmount, 
+      stripeDiscount, 
+      finalPrice, 
+      amountInCents, 
+      currency: paymentCurrency 
+    });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -68,26 +97,28 @@ serve(async (req) => {
       console.log("[CREATE-PAYMENT-INTENT] New customer created", { customerId });
     }
 
-    // Create card-only payment intent (no Link / express checkout)
+    // Create payment intent with the correct currency
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
-      currency: "usd",
+      currency: paymentCurrency,
       customer: customerId,
       payment_method_types: ["card"],
       metadata: {
-        product_id: productId,
-        product_name: product.name,
-        product_type: product.product_type,
-        course_id: product.course_id || "",
+        // Store all product IDs as JSON array for multi-product support
+        product_ids: JSON.stringify(productIdList),
+        product_details: JSON.stringify(productDetails),
         email,
         full_name: fullName,
         coupon_code: couponCode || "",
         stripe_discount: stripeDiscount.toFixed(2),
+        currency: paymentCurrency.toUpperCase(),
+        original_amount: totalAmount.toFixed(2),
       },
     });
 
     console.log("[CREATE-PAYMENT-INTENT] Payment intent created", { 
       paymentIntentId: paymentIntent.id,
+      currency: paymentCurrency,
       clientSecret: paymentIntent.client_secret ? "present" : "missing" 
     });
 
@@ -96,8 +127,9 @@ serve(async (req) => {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
         amount: finalPrice,
-        originalAmount: basePrice,
+        originalAmount: totalAmount,
         discount: stripeDiscount,
+        currency: paymentCurrency.toUpperCase(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
