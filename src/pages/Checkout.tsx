@@ -645,12 +645,13 @@ function CheckoutContent() {
                 <div className="py-6">
                   {paymentMethod === 'card' ? (
                     <StripeCardFields
-                      productId={productId || cartItems[0]?.productId || ''}
+                      productIds={isCartMode ? cartItems.map(item => item.productId) : [productId || '']}
+                      amounts={isCartMode ? cartItems.map(item => item.price) : [productPriceInfo?.price || 0]}
                       email={user?.email || email}
                       fullName={fullName || user?.email || email}
                       password={password}
                       couponCode={appliedCoupon?.code}
-                      amount={cardPrice}
+                      totalAmount={cardPrice}
                       currency={currency}
                       onSuccess={handleSuccess}
                       debugEnabled={debugEnabled}

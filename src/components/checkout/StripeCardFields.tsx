@@ -11,6 +11,7 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
+import { formatPrice } from '@/hooks/useGeoPricing';
 
 // Simple, hardcoded styles that Stripe Elements definitely accepts
 const CARD_ELEMENT_STYLE = {
@@ -28,32 +29,27 @@ const CARD_ELEMENT_STYLE = {
 };
 
 interface StripeCardFieldsProps {
-  productId: string;
+  productIds: string[];
+  amounts: number[];
   email: string;
   fullName: string;
   password: string;
   couponCode?: string;
-  amount: number;
+  totalAmount: number;
   currency?: string;
   onSuccess: () => void;
   debugEnabled?: boolean;
   isLoggedIn?: boolean;
 }
 
-// Currency symbols
-const currencySymbols: Record<string, string> = {
-  USD: '$',
-  GBP: '£',
-  EUR: '€',
-};
-
 export function StripeCardFields({
-  productId,
+  productIds,
+  amounts,
   email,
   fullName,
   password,
   couponCode,
-  amount,
+  totalAmount,
   currency = 'USD',
   onSuccess,
   debugEnabled = false,
@@ -96,14 +92,16 @@ export function StripeCardFields({
         throw new Error('Card input not found. Please refresh and try again.');
       }
 
-      // Create payment intent only when user submits (with validated email)
-      console.log('[StripeCardFields] Creating payment intent...');
+      // Create payment intent with geo-priced currency and amounts
+      console.log('[StripeCardFields] Creating payment intent...', { productIds, amounts, currency });
       const { data: intentData, error: intentError } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          productId,
+          productIds,
+          amounts,
           email,
           fullName: fullName || email.split('@')[0],
           couponCode,
+          currency,
         },
       });
 
@@ -112,7 +110,11 @@ export function StripeCardFields({
         throw new Error('Failed to initialize payment');
       }
 
-      console.log('[StripeCardFields] Got client secret, confirming payment...');
+      console.log('[StripeCardFields] Got client secret, confirming payment...', { 
+        intentCurrency: intentData.currency,
+        amount: intentData.amount 
+      });
+      
       const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
         payment_method: {
           card: cardNumberElement,
@@ -129,11 +131,31 @@ export function StripeCardFields({
 
       if (paymentIntent?.status === 'succeeded') {
         console.log('[StripeCardFields] Payment succeeded, completing...');
-        const { error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
+        const { data: completeData, error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
           body: { paymentIntentId: paymentIntent.id, password },
         });
 
         if (completeError) throw completeError;
+
+        // If new user was created, sign them in automatically
+        if (completeData?.isNewUser && completeData?.email && password) {
+          console.log('[StripeCardFields] New user created, signing in automatically...');
+          try {
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: completeData.email,
+              password,
+            });
+            
+            if (signInError) {
+              console.error('[StripeCardFields] Auto sign-in failed:', signInError);
+              // Don't fail the whole flow, just log the error
+            } else {
+              console.log('[StripeCardFields] Auto sign-in successful');
+            }
+          } catch (signInErr) {
+            console.error('[StripeCardFields] Auto sign-in error:', signInErr);
+          }
+        }
 
         toast.success('Payment successful!');
         onSuccess();
@@ -147,11 +169,6 @@ export function StripeCardFields({
     }
   };
 
-  const formatAmount = (amt: number) => {
-    const symbol = currencySymbols[currency] || currency;
-    return `${symbol}${amt.toFixed(2)}`;
-  };
-
   const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8));
 
   return (
@@ -163,6 +180,9 @@ export function StripeCardFields({
             <div>stripe: {stripe ? '✓ ready' : '✗ not ready'}</div>
             <div>elements: {elements ? '✓ ready' : '✗ not ready'}</div>
             <div>email: {email ? '✓ set' : '✗ not set'}</div>
+            <div>currency: {currency}</div>
+            <div>productIds: {productIds.join(', ')}</div>
+            <div>amounts: {amounts.join(', ')}</div>
             <div>number mounted: {mounted.number ? '✓' : '✗'}</div>
             <div>expiry mounted: {mounted.expiry ? '✓' : '✗'}</div>
             <div>cvc mounted: {mounted.cvc ? '✓' : '✗'}</div>
@@ -232,7 +252,7 @@ export function StripeCardFields({
         ) : (
           <>
             <CreditCard className="mr-2 h-4 w-4" />
-            Pay {formatAmount(amount)}
+            Pay {formatPrice(totalAmount, currency)}
           </>
         )}
       </Button>
