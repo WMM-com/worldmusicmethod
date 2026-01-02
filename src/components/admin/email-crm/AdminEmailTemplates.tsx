@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, FileText, Eye } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface EmailTemplate {
   id: string;
@@ -270,7 +271,7 @@ export function AdminEmailTemplates() {
           <div className="border rounded-lg p-4 bg-white">
             <div 
               className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: previewTemplate?.body_html || '' }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewTemplate?.body_html || '') }}
             />
           </div>
         </DialogContent>
