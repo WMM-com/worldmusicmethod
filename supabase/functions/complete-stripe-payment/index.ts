@@ -135,18 +135,25 @@ serve(async (req) => {
     }
 
     // Create order records for EACH product
-    const paymentAmount = paymentIntent.amount / 100; // Convert from cents
+    const paymentAmount = paymentIntent.amount / 100; // Convert from cents (this is the DISCOUNTED total)
     const paymentCurrency = (currency || paymentIntent.currency || 'USD').toUpperCase();
+    
+    // Calculate the total original amount to determine discount ratio
+    const totalOriginalAmount = productDetailsList.reduce((sum, d) => sum + d.amount, 0);
+    const discountRatio = totalOriginalAmount > 0 ? paymentAmount / totalOriginalAmount : 1;
     
     for (const detail of productDetailsList) {
       try {
+        // Apply the proportional discount to each product's amount
+        const discountedAmount = detail.amount * discountRatio;
+        
         const { error: orderError } = await supabaseClient
           .from("orders")
           .insert({
             user_id: userId,
             email: email.toLowerCase(),
             product_id: detail.id,
-            amount: detail.amount,
+            amount: discountedAmount, // Store the actual charged amount (after discount)
             currency: paymentCurrency,
             payment_provider: "stripe",
             provider_payment_id: paymentIntentId,
@@ -157,7 +164,7 @@ serve(async (req) => {
         if (orderError) {
           console.error("[COMPLETE-STRIPE-PAYMENT] Order creation error:", orderError);
         } else {
-          console.log("[COMPLETE-STRIPE-PAYMENT] Order created for product:", detail.id);
+          console.log("[COMPLETE-STRIPE-PAYMENT] Order created for product:", detail.id, "amount:", discountedAmount);
         }
       } catch (orderErr) {
         console.error("[COMPLETE-STRIPE-PAYMENT] Order insert failed:", orderErr);

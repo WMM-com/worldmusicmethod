@@ -68,9 +68,19 @@ export default function Settings() {
   // Sync form with profile when profile loads
   useEffect(() => {
     if (profile) {
+      // Parse first/last from full_name if not set individually
+      let firstName = profile.first_name || '';
+      let lastName = profile.last_name || '';
+      
+      if (!firstName && !lastName && profile.full_name) {
+        const nameParts = profile.full_name.trim().split(' ');
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+      
       setForm({
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
+        first_name: firstName,
+        last_name: lastName,
         email: profile.email || '',
       });
       setMessagePrivacy(profile.message_privacy || 'community');
