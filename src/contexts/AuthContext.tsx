@@ -141,19 +141,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const userId = data?.user?.id;
 
-    // Send verification email via our custom function, then FORCE local sign-out.
+    // Fire-and-forget verification email (don't block UI) then sign out immediately
     if (userId) {
-      try {
-        const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
-          body: { user_id: userId },
-        });
-
-        if (emailError) {
-          console.error('Failed to send verification email:', emailError);
-        }
-      } catch (err) {
-        console.error('Error sending verification email:', err);
-      }
+      // Send email in background - don't await
+      supabase.functions.invoke('send-verification-email', {
+        body: { user_id: userId },
+      }).catch(err => console.error('Error sending verification email:', err));
 
       // Sign out immediately to prevent auto-login - user must verify email first
       const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
