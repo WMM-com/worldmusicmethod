@@ -177,15 +177,12 @@ function getVerificationEmailHtml(verifyLink: string, firstName: string): string
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://bfwvjhrokucqjcbeufwk.supabase.co/storage/v1/object/public/media/world-music-method-logo.png" alt="World Music Method" style="height: 60px; margin-bottom: 16px;" />
-        </div>
         <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Welcome to World Music Method${firstName ? `, ${firstName}` : ''}!</h1>
         <p style="color: #333; font-size: 16px; line-height: 1.6; text-align: center;">
           Thank you for joining our community of world music enthusiasts. Please verify your email address by clicking the button below:
         </p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${verifyLink}" style="display: inline-block; background-color: #f97316; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="${verifyLink}" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Verify Email Address
           </a>
         </div>
@@ -200,7 +197,7 @@ function getVerificationEmailHtml(verifyLink: string, firstName: string): string
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
             This is an automated message, please do not reply.<br>
-            <a href="https://worldmusicmethod.com" style="color: #f97316; text-decoration: none;">worldmusicmethod.com</a>
+            <a href="https://worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">worldmusicmethod.com</a>
           </p>
         </div>
       </div>
