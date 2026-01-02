@@ -295,36 +295,36 @@ export function AdminSales() {
         </div>
       </div>
 
+      {/* Currency breakdown */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Revenue by Currency</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {['GBP', 'USD', 'EUR'].map((curr) => {
+              const revenue = stats?.revenueByCurrency?.[curr] || 0;
+              const net = stats?.netByCurrency?.[curr] || 0;
+              if (revenue === 0 && net === 0) return null;
+              return (
+                <div key={curr} className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{curr}</p>
+                  <p className="text-lg font-bold">{formatPrice(revenue, curr)}</p>
+                  <p className="text-xs text-green-600">Net: {formatPrice(net, curr)}</p>
+                </div>
+              );
+            })}
+            <div className="space-y-1 border-l pl-4">
+              <p className="text-xs text-muted-foreground">Combined (USD)</p>
+              <p className="text-lg font-bold">{formatPrice(stats?.combinedRevenueUSD || 0, 'USD')}</p>
+              <p className="text-xs text-green-600">Net: {formatPrice(stats?.combinedNetUSD || 0, 'USD')}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{formatPrice(stats?.totalRevenue || 0)}</p>
-                <p className="text-xs text-muted-foreground">Gross Revenue</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-xl font-bold">{formatPrice(stats?.totalNetRevenue || 0)}</p>
-                <p className="text-xs text-muted-foreground">Net Revenue</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -332,8 +332,8 @@ export function AdminSales() {
                 <TrendingDown className="h-5 w-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-xl font-bold">{formatPrice(stats?.totalFees || 0)}</p>
-                <p className="text-xs text-muted-foreground">Total Fees</p>
+                <p className="text-xl font-bold">{formatPrice(stats?.combinedFeesUSD || 0, 'USD')}</p>
+                <p className="text-xs text-muted-foreground">Total Fees (USD)</p>
               </div>
             </div>
           </CardContent>
@@ -374,8 +374,22 @@ export function AdminSales() {
                 <DollarSign className="h-5 w-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-xl font-bold">{formatPrice(stats?.monthlyRecurringRevenue || 0)}</p>
+                <p className="text-xl font-bold">{formatPrice(stats?.monthlyRecurringRevenue || 0, 'USD')}</p>
                 <p className="text-xs text-muted-foreground">MRR</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                <Undo2 className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{stats?.refundedOrdersCount || 0}</p>
+                <p className="text-xs text-muted-foreground">Refunds</p>
               </div>
             </div>
           </CardContent>
@@ -388,8 +402,8 @@ export function AdminSales() {
           <CardContent className="py-4">
             <div className="flex items-center gap-6 text-sm">
               <span className="text-muted-foreground">Fee breakdown:</span>
-              <span>Stripe: <strong>{formatPrice(stats?.totalStripeFees || 0)}</strong></span>
-              <span>PayPal: <strong>{formatPrice(stats?.totalPaypalFees || 0)}</strong></span>
+              <span>Stripe: <strong>{formatPrice(stats?.totalStripeFees || 0, 'USD')}</strong></span>
+              <span>PayPal: <strong>{formatPrice(stats?.totalPaypalFees || 0, 'USD')}</strong></span>
             </div>
           </CardContent>
         </Card>

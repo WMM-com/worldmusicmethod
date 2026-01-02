@@ -182,14 +182,14 @@ serve(async (req) => {
       );
 
     } else if (type === 'stats') {
-      // Get aggregated stats
+      // Get aggregated stats with currency breakdown
       let ordersQuery = supabaseClient
         .from('orders')
-        .select('amount, status, stripe_fee, paypal_fee, net_amount');
+        .select('amount, status, stripe_fee, paypal_fee, net_amount, currency');
 
       let subscriptionsQuery = supabaseClient
         .from('subscriptions')
-        .select('status, amount');
+        .select('status, amount, currency');
 
       if (dateFrom) {
         ordersQuery = ordersQuery.gte('created_at', dateFrom);
@@ -210,20 +210,68 @@ serve(async (req) => {
       const subscriptions = subscriptionsResult.data || [];
 
       const completedOrders = orders.filter(o => o.status === 'completed');
-      const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.amount || 0), 0);
+      
+      // Currency-specific revenue breakdown
+      const revenueByCurrency: Record<string, number> = {};
+      const feesByCurrency: Record<string, number> = {};
+      const netByCurrency: Record<string, number> = {};
+      
+      completedOrders.forEach(o => {
+        const curr = (o.currency || 'USD').toUpperCase();
+        revenueByCurrency[curr] = (revenueByCurrency[curr] || 0) + (o.amount || 0);
+        const fee = (o.stripe_fee || 0) + (o.paypal_fee || 0);
+        feesByCurrency[curr] = (feesByCurrency[curr] || 0) + fee;
+        netByCurrency[curr] = (netByCurrency[curr] || 0) + (o.net_amount || o.amount || 0);
+      });
+      
+      // Exchange rates to USD (approximate)
+      const exchangeRates: Record<string, number> = {
+        USD: 1,
+        GBP: 1.27,
+        EUR: 1.08,
+      };
+      
+      // Calculate combined USD total
+      let combinedRevenueUSD = 0;
+      let combinedNetUSD = 0;
+      let combinedFeesUSD = 0;
+      
+      Object.entries(revenueByCurrency).forEach(([curr, amount]) => {
+        const rate = exchangeRates[curr] || 1;
+        combinedRevenueUSD += amount * rate;
+      });
+      
+      Object.entries(netByCurrency).forEach(([curr, amount]) => {
+        const rate = exchangeRates[curr] || 1;
+        combinedNetUSD += amount * rate;
+      });
+      
+      Object.entries(feesByCurrency).forEach(([curr, amount]) => {
+        const rate = exchangeRates[curr] || 1;
+        combinedFeesUSD += amount * rate;
+      });
+
       const totalStripeFees = completedOrders.reduce((sum, o) => sum + (o.stripe_fee || 0), 0);
       const totalPaypalFees = completedOrders.reduce((sum, o) => sum + (o.paypal_fee || 0), 0);
-      const totalNetRevenue = completedOrders.reduce((sum, o) => sum + (o.net_amount || o.amount || 0), 0);
       
       const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
       const monthlyRecurring = activeSubscriptions.reduce((sum, s) => sum + (s.amount || 0), 0);
 
       const stats = {
-        totalRevenue,
-        totalNetRevenue,
-        totalFees: totalStripeFees + totalPaypalFees,
+        // Legacy totals (sum of all currencies without conversion - for backward compat)
+        totalRevenue: combinedRevenueUSD,
+        totalNetRevenue: combinedNetUSD,
+        totalFees: combinedFeesUSD,
         totalStripeFees,
         totalPaypalFees,
+        // Currency breakdowns
+        revenueByCurrency,
+        netByCurrency,
+        feesByCurrency,
+        combinedRevenueUSD,
+        combinedNetUSD,
+        combinedFeesUSD,
+        // Counts
         completedOrdersCount: completedOrders.length,
         refundedOrdersCount: orders.filter(o => o.status === 'refunded').length,
         activeSubscriptionsCount: activeSubscriptions.length,
