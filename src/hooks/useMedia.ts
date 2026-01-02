@@ -209,12 +209,15 @@ export function useCreatePlaylist() {
 
   return useMutation({
     mutationFn: async ({ name, description }: { name: string; description?: string }) => {
+      if (!user) throw new Error('Must be logged in to create playlists');
+      
       const { data, error } = await supabase
         .from('media_playlists')
         .insert({
-          user_id: user?.id || null,
+          user_id: user.id,
           name,
           description,
+          is_public: true, // Default to public as per requirements
         })
         .select()
         .single();
