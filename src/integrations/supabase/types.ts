@@ -3763,50 +3763,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_course_stats: {
-        Row: {
-          badges: Json | null
-          course_id: string
-          created_at: string
-          id: string
-          last_activity_date: string | null
-          streak_days: number | null
-          updated_at: string
-          user_id: string
-          xp: number | null
-        }
-        Insert: {
-          badges?: Json | null
-          course_id: string
-          created_at?: string
-          id?: string
-          last_activity_date?: string | null
-          streak_days?: number | null
-          updated_at?: string
-          user_id: string
-          xp?: number | null
-        }
-        Update: {
-          badges?: Json | null
-          course_id?: string
-          created_at?: string
-          id?: string
-          last_activity_date?: string | null
-          streak_days?: number | null
-          updated_at?: string
-          user_id?: string
-          xp?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_course_stats_course_id_fkey"
-            columns: ["course_id"]
-            isOneToOne: false
-            referencedRelation: "courses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_lesson_progress: {
         Row: {
           completed: boolean | null

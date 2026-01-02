@@ -73,25 +73,6 @@ export interface UserPracticeScore {
   created_at: string;
 }
 
-export interface UserCourseStats {
-  id: string;
-  user_id: string;
-  course_id: string;
-  xp: number;
-  streak_days: number;
-  last_activity_date: string | null;
-  badges: Badge[];
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  earned_at: string;
-}
 
 export interface CourseWithModules extends Course {
   modules: CourseModule[];

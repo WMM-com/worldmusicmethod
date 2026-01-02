@@ -362,12 +362,14 @@ export function ModuleOverview({
                   onClick={() => onLessonSelect(lesson.id)}
                   className={cn(
                     "w-full flex items-center gap-4 p-4 rounded-lg border",
-                    "transition-colors hover:bg-gray-50 text-left",
-                    isCompleted ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
+                    "transition-colors text-left",
+                    isCompleted 
+                      ? "bg-green-900/30 border-green-700 hover:bg-green-900/40" 
+                      : "bg-gray-900 border-gray-700 hover:bg-gray-800"
                   )}>
                   <div className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center",
-                    isCompleted ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"
+                    isCompleted ? "bg-green-500/20 text-green-400" : "bg-primary/20 text-primary"
                   )}>
                     {isCompleted ? (
                       <CheckCircle2 className="w-5 h-5" />
@@ -379,7 +381,7 @@ export function ModuleOverview({
                   <div className="flex-1 min-w-0">
                     <p className={cn(
                       "font-medium",
-                      isCompleted ? "text-gray-500" : "text-gray-900"
+                      isCompleted ? "text-gray-400" : "text-white"
                     )}>
                       {lesson.title}
                     </p>
@@ -389,7 +391,7 @@ export function ModuleOverview({
                     </p>
                   </div>
 
-                  <Play className="w-4 h-4 text-gray-400" />
+                  <Play className="w-4 h-4 text-gray-500" />
                 </button>
               );
             })}

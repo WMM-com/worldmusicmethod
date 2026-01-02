@@ -6,8 +6,7 @@ import {
   Headphones, 
   ExternalLink,
   ChevronLeft,
-  ChevronRight,
-  Award
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -92,20 +91,16 @@ export function LessonView({
   hasPrev,
   hasNext
 }: LessonViewProps) {
-  const [showXpGain, setShowXpGain] = useState(false);
   const markComplete = useMarkLessonComplete();
 
   const handleMarkComplete = async () => {
     try {
-      const result = await markComplete.mutateAsync({ 
+      await markComplete.mutateAsync({ 
         lessonId: lesson.id, 
         courseId 
       });
       
-      setShowXpGain(true);
-      setTimeout(() => setShowXpGain(false), 2000);
-      
-      toast.success(`Lesson completed! +${result.xpGain} XP`);
+      toast.success('Lesson completed!');
     } catch (error) {
       toast.error('Failed to save progress');
     }
@@ -342,18 +337,6 @@ export function LessonView({
               </Button>
             )}
             
-            {/* XP gain animation */}
-            {showXpGain && (
-              <motion.div
-                initial={{ opacity: 0, y: 0 }}
-                animate={{ opacity: [0, 1, 1, 0], y: -40 }}
-                transition={{ duration: 2 }}
-                className="absolute -top-2 left-1/2 -translate-x-1/2 flex items-center gap-1 text-primary font-bold"
-              >
-                <Award className="w-4 h-4" />
-                +25 XP
-              </motion.div>
-            )}
           </div>
 
           <Button
