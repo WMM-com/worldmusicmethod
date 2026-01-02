@@ -86,3 +86,9 @@ verify_jwt = true
 
 [functions.process-wordpress-xml]
 verify_jwt = true
+
+[functions.send-verification-email]
+verify_jwt = false
+
+[functions.verify-email]
+verify_jwt = false

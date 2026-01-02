@@ -1143,6 +1143,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_verification_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           arrival_time: string | null
@@ -3152,6 +3182,8 @@ export type Database = {
           default_late_payment_message_id: string | null
           default_thank_you_message_id: string | null
           email: string
+          email_verified: boolean | null
+          email_verified_at: string | null
           first_name: string | null
           full_name: string | null
           id: string
@@ -3197,6 +3229,8 @@ export type Database = {
           default_late_payment_message_id?: string | null
           default_thank_you_message_id?: string | null
           email: string
+          email_verified?: boolean | null
+          email_verified_at?: string | null
           first_name?: string | null
           full_name?: string | null
           id: string
@@ -3242,6 +3276,8 @@ export type Database = {
           default_late_payment_message_id?: string | null
           default_thank_you_message_id?: string | null
           email?: string
+          email_verified?: boolean | null
+          email_verified_at?: string | null
           first_name?: string | null
           full_name?: string | null
           id?: string
@@ -3959,6 +3995,15 @@ export type Database = {
       user_owns_course: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
+      }
+      verify_email_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          message: string
+          success: boolean
+          user_id: string
+        }[]
       }
     }
     Enums: {
