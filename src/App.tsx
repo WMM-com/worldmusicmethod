@@ -70,9 +70,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, profile, emailVerified, loading } = useAuth();
+  const { user, emailVerified, loading } = useAuth();
 
-  if (loading || (user && !profile)) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

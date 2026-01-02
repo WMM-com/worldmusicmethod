@@ -24,7 +24,7 @@ export default function Auth() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [signupNotice, setSignupNotice] = useState<{ email: string } | null>(null);
   const { signIn, signUp } = useAuth();
 
   useEffect(() => {
@@ -73,17 +73,25 @@ export default function Auth() {
           setLoading(false);
           return;
         }
+
+        if (password.length < 8) {
+          toast.error('Password must be at least 8 characters.');
+          setLoading(false);
+          return;
+        }
+
         const fullName = `${firstName.trim()} ${lastName.trim()}`;
         const { error } = await signUp(email, password, fullName, firstName.trim(), lastName.trim());
         if (error) {
-          if (error.message.includes('already registered')) {
+          if (error.message.includes('already registered') || error.message.includes('already exists')) {
             toast.error('This email is already registered. Please sign in instead.');
           } else {
             toast.error(error.message);
           }
         } else {
           // Show email verification notice instead of redirecting
-          setEmailSent(true);
+          setSignupNotice({ email: email.trim().toLowerCase() });
+          setPassword('');
         }
       }
     } finally {
@@ -113,12 +121,12 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {emailSent ? (
+          {signupNotice ? (
             <div className="space-y-6">
               <Alert className="border-green-200 bg-green-50">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <AlertDescription className="text-green-800 ml-2">
-                  <strong>Check your email!</strong>
+                  <strong>Verify your email</strong>
                 </AlertDescription>
               </Alert>
               <div className="text-center space-y-4">
@@ -126,25 +134,32 @@ export default function Auth() {
                   <Mail className="h-8 w-8 text-secondary" />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-foreground font-medium">Verification email sent to:</p>
-                  <p className="text-secondary font-semibold">{email}</p>
+                  <p className="text-foreground font-medium">We sent a verification email to:</p>
+                  <p className="text-secondary font-semibold">{signupNotice.email}</p>
                 </div>
                 <p className="text-muted-foreground text-sm">
-                  Please click the verification link in the email to activate your account. After verifying, come back here and sign in.
+                  Click the link in that email to verify your account. After verifying, come back here and sign in.
                 </p>
                 <div className="pt-4 space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Didn't receive the email? Check your spam folder or
-                  </p>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => {
-                      setEmailSent(false);
+                      setSignupNotice(null);
                       setPassword('');
                     }}
                     className="w-full"
                   >
-                    Try again with a different email
+                    Use a different email
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setSignupNotice(null);
+                      setMode('login');
+                      setPassword('');
+                    }}
+                    className="w-full gradient-primary"
+                  >
+                    Back to login
                   </Button>
                 </div>
               </div>
