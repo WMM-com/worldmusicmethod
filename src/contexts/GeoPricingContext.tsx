@@ -239,8 +239,9 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
     const pricing = regionPricing[region];
     const discountedPrice = basePriceUsd * (1 - pricing.discount / 100);
     
+    // Round product price to nearest whole number for clean display
     return {
-      price: Math.round(discountedPrice * 100) / 100,
+      price: Math.round(discountedPrice),
       currency: pricing.currency,
       discount_percentage: pricing.discount,
     };
