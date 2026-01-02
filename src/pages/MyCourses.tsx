@@ -119,24 +119,25 @@ export default function MyCourses() {
                       className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
                       onClick={() => navigate(`/courses/${course.id}/learn`)}
                     >
-                      {/* Cover image */}
+                      {/* Cover image - matches /courses page */}
                       <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
-                        <img
-                          src={course.cover_image_url || 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800&q=80'}
-                          alt={course.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
+                        {course.cover_image_url ? (
+                          <img
+                            src={course.cover_image_url}
+                            alt={course.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <BookOpen className="w-12 h-12 text-primary/30" />
+                          </div>
+                        )}
                         
                         {/* Play button overlay */}
                         <div className="absolute inset-0 flex items-center justify-center bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center">
                             <Play className="h-8 w-8 text-primary-foreground ml-1" />
                           </div>
-                        </div>
-
-                        {/* Country badge */}
-                        <div className="absolute top-3 left-3 px-3 py-1 bg-background/90 backdrop-blur rounded-full text-sm font-medium">
-                          {course.country}
                         </div>
                       </div>
 
