@@ -1,21 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { Mail, CheckCircle } from 'lucide-react';
 import wmmLogo from '@/assets/world-music-method-logo.png';
 
 export default function Auth() {
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get('mode') as 'login' | 'signup' | 'forgot' | null;
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode === 'signup' ? 'signup' : initialMode === 'forgot' ? 'forgot' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const { signIn, signUp } = useAuth();
+
+  // Update mode when URL params change
+  useEffect(() => {
+    if (initialMode === 'signup') {
+      setMode('signup');
+    } else if (initialMode === 'forgot') {
+      setMode('forgot');
+    } else if (initialMode === 'login') {
+      setMode('login');
+    }
+  }, [initialMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +69,8 @@ export default function Auth() {
             toast.error(error.message);
           }
         } else {
-          toast.success('Account created! You can now sign in.');
-          setMode('login');
+          // Show email verification notice instead of redirecting
+          setEmailSent(true);
         }
       }
     } finally {
@@ -83,87 +100,128 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    type="text"
-                    placeholder="First name"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    required
-                  />
+          {emailSent ? (
+            <div className="space-y-6">
+              <Alert className="border-green-200 bg-green-50">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <AlertDescription className="text-green-800 ml-2">
+                  <strong>Check your email!</strong>
+                </AlertDescription>
+              </Alert>
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center">
+                  <Mail className="h-8 w-8 text-secondary" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    type="text"
-                    placeholder="Last name"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    required
-                  />
+                  <p className="text-foreground font-medium">Verification email sent to:</p>
+                  <p className="text-secondary font-semibold">{email}</p>
                 </div>
-              </>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            {mode !== 'forgot' && (
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
+                <p className="text-muted-foreground text-sm">
+                  Please click the verification link in the email to activate your account. 
+                  Once verified, you'll be automatically logged in.
+                </p>
+                <div className="pt-4 space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Didn't receive the email? Check your spam folder or
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setEmailSent(false);
+                      setPassword('');
+                    }}
+                    className="w-full"
+                  >
+                    Try again with a different email
+                  </Button>
+                </div>
               </div>
-            )}
-            <Button type="submit" className="w-full gradient-primary" disabled={loading}>
-              {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Email'}
-            </Button>
-          </form>
-          
-          {mode === 'login' && (
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => setMode('forgot')}
-                className="text-sm text-muted-foreground hover:text-secondary"
-              >
-                Forgot your password?
-              </button>
             </div>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {mode === 'signup' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        type="text"
+                        placeholder="First name"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        type="text"
+                        placeholder="Last name"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                {mode !== 'forgot' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                )}
+                <Button type="submit" className="w-full gradient-primary" disabled={loading}>
+                  {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Email'}
+                </Button>
+              </form>
+              
+              {mode === 'login' && (
+                <div className="mt-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setMode('forgot')}
+                    className="text-sm text-muted-foreground hover:text-secondary"
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
+              )}
+              
+              <div className="mt-6 text-center text-sm">
+                <span className="text-muted-foreground">
+                  {mode === 'login' ? "Don't have an account? " : mode === 'signup' ? 'Already have an account? ' : 'Remember your password? '}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMode(mode === 'signup' ? 'login' : mode === 'forgot' ? 'login' : 'signup')}
+                  className="font-medium text-secondary hover:underline"
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </div>
+            </>
           )}
-          
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">
-              {mode === 'login' ? "Don't have an account? " : mode === 'signup' ? 'Already have an account? ' : 'Remember your password? '}
-            </span>
-            <button
-              type="button"
-              onClick={() => setMode(mode === 'signup' ? 'login' : mode === 'forgot' ? 'login' : 'signup')}
-              className="font-medium text-secondary hover:underline"
-            >
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -188,10 +188,10 @@ export function SiteHeader() {
                     </span>
                   )}
                 </Button>
-                <Button variant="ghost" onClick={() => navigate('/auth')}>
+                <Button variant="ghost" onClick={() => navigate('/auth?mode=login')}>
                   Login
                 </Button>
-                <Button onClick={() => navigate('/auth')} className="gradient-primary">
+                <Button onClick={() => navigate('/auth?mode=signup')} className="gradient-primary">
                   Sign Up
                 </Button>
               </>
@@ -266,10 +266,10 @@ export function SiteHeader() {
                 </>
               ) : (
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" className="flex-1" onClick={() => navigate('/auth')}>
+                  <Button variant="outline" className="flex-1" onClick={() => navigate('/auth?mode=login')}>
                     Login
                   </Button>
-                  <Button className="flex-1 gradient-primary" onClick={() => navigate('/auth')}>
+                  <Button className="flex-1 gradient-primary" onClick={() => navigate('/auth?mode=signup')}>
                     Sign Up
                   </Button>
                 </div>
