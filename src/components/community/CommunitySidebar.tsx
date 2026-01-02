@@ -1,6 +1,8 @@
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Megaphone, RefreshCw, Star, Music2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CommunitySidebarProps {
   onPostTypeSelect?: (type: string) => void;
@@ -38,6 +40,17 @@ const POST_TYPES = [
 ];
 
 export function CommunitySidebar({ onPostTypeSelect }: CommunitySidebarProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handlePostTypeClick = (type: string) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    onPostTypeSelect?.(type);
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -52,7 +65,7 @@ export function CommunitySidebar({ onPostTypeSelect }: CommunitySidebarProps) {
                 key={postType.type}
                 variant="ghost"
                 className="w-full justify-start gap-3 h-auto py-2"
-                onClick={() => onPostTypeSelect?.(postType.type)}
+                onClick={() => handlePostTypeClick(postType.type)}
               >
                 <Icon className={`h-4 w-4 ${postType.color}`} />
                 <div className="text-left">

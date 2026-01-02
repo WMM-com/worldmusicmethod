@@ -413,7 +413,7 @@ export function useLikedTracks() {
   });
 }
 
-// Fetch playlist by name
+// Fetch playlist by name - fetches public playlists by name
 export function usePlaylistByName(name: string) {
   return useQuery({
     queryKey: ['media-playlist-by-name', name],
@@ -422,6 +422,7 @@ export function usePlaylistByName(name: string) {
         .from('media_playlists')
         .select('*')
         .eq('name', name)
+        .eq('is_public', true)
         .maybeSingle();
 
       if (playlistError) throw playlistError;
@@ -448,5 +449,22 @@ export function usePlaylistByName(name: string) {
       } as MediaPlaylist;
     },
     enabled: !!name,
+  });
+}
+
+// Fetch all public playlists (for streaming section)
+export function usePublicPlaylists() {
+  return useQuery({
+    queryKey: ['media-public-playlists'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('media_playlists')
+        .select('*')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as MediaPlaylist[];
+    },
   });
 }

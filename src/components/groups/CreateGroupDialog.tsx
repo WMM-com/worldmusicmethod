@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Lock, Eye, EyeOff } from 'lucide-react';
 import { useCreateGroup } from '@/hooks/useGroups';
+import { useAuth } from '@/contexts/AuthContext';
 import { CATEGORY_LABELS, SUBCATEGORIES, type GroupCategory, type GroupPrivacy } from '@/types/groups';
 
 interface CreateGroupDialogProps {
@@ -22,7 +24,17 @@ export function CreateGroupDialog({ trigger }: CreateGroupDialogProps) {
   const [privacy, setPrivacy] = useState<GroupPrivacy>('public');
   const [location, setLocation] = useState('');
   
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const createGroup = useCreateGroup();
+  
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      navigate('/auth');
+      return;
+    }
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +65,7 @@ export function CreateGroupDialog({ trigger }: CreateGroupDialogProps) {
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger asChild onClick={handleTriggerClick}>
         {trigger || (
           <Button>
             <Plus className="h-4 w-4 mr-2" />
