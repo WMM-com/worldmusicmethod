@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { sanitizeEmail, sanitizeIdentifier } from '@/lib/sanitize';
 
 interface SharedEvent {
   id: string;
@@ -84,6 +85,9 @@ export function useSharedEvents() {
         .eq('id', user.id)
         .single();
 
+      const safeUserId = sanitizeIdentifier(user.id);
+      const safeEmail = sanitizeEmail(profile?.email || '');
+      
       const { data, error } = await supabase
         .from('shared_events')
         .select(`
@@ -97,7 +101,7 @@ export function useSharedEvents() {
           acknowledged_at,
           created_at
         `)
-        .or(`shared_with.eq.${user.id},shared_with_email.eq.${profile?.email || ''}`);
+        .or(`shared_with.eq.${safeUserId},shared_with_email.eq.${safeEmail}`);
 
       if (error) throw error;
       

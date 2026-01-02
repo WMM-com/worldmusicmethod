@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeSearchQuery } from '@/lib/sanitize';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +75,8 @@ export function AdminUsers() {
         .order('created_at', { ascending: false });
 
       if (searchQuery) {
-        query = query.or(`email.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%`);
+        const safeQuery = sanitizeSearchQuery(searchQuery);
+        query = query.or(`email.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`);
       }
 
       const { data, error } = await query.limit(50);

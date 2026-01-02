@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,33 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.log("[MAPBOX-GEOCODE] No authorization header");
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', features: [] }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.log("[MAPBOX-GEOCODE] Invalid user:", userError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', features: [] }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[MAPBOX-GEOCODE] Authenticated user:", user.id);
+
     const { query } = await req.json();
 
     if (!query || query.length < 3) {
@@ -41,7 +69,7 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Mapbox geocode error:", message);
+    console.error("[MAPBOX-GEOCODE] Error:", message);
     return new Response(
       JSON.stringify({ error: message, features: [] }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

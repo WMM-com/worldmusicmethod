@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { sanitizeSearchQuery } from '@/lib/sanitize';
 
 interface SearchUser {
   id: string;
@@ -32,10 +33,11 @@ export function useSearchUsers(query: string, groupId: string) {
       if (query.length < 2) return [];
       
       // Search users
+      const safeQuery = sanitizeSearchQuery(query);
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, email')
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .or(`full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`)
         .limit(20);
       
       if (error) throw error;

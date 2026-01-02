@@ -7,6 +7,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sanitize search queries to prevent filter injection
+function sanitizeSearchQuery(query: string): string {
+  if (!query || typeof query !== 'string') return '';
+  return query
+    .replace(/[%_,()]/g, '\\$&')
+    .replace(/^[\s]+|[\s]+$/g, '')
+    .slice(0, 100);
+}
+
 const logStep = (step: string, details?: any) => {
   console.log(`[GET-SALES-DATA] ${step}`, details ? JSON.stringify(details) : '');
 };
@@ -41,7 +50,8 @@ serve(async (req) => {
         .order('created_at', { ascending: false });
 
       if (search) {
-        query = query.or(`email.ilike.%${search}%,customer_name.ilike.%${search}%`);
+        const safeSearch = sanitizeSearchQuery(search);
+        query = query.or(`email.ilike.%${safeSearch}%,customer_name.ilike.%${safeSearch}%`);
       }
 
       if (dateFrom) {
@@ -140,7 +150,8 @@ serve(async (req) => {
         .order('created_at', { ascending: false });
 
       if (search) {
-        query = query.or(`customer_email.ilike.%${search}%,customer_name.ilike.%${search}%`);
+        const safeSearch = sanitizeSearchQuery(search);
+        query = query.or(`customer_email.ilike.%${safeSearch}%,customer_name.ilike.%${safeSearch}%`);
       }
 
       if (dateFrom) {

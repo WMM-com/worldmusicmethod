@@ -7,6 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sanitize identifiers to prevent filter injection
+function sanitizeIdentifier(id: string): string {
+  if (!id || typeof id !== 'string') return '';
+  return id.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
+}
+
+function sanitizeEmail(email: string): string {
+  if (!email || typeof email !== 'string') return '';
+  return email.replace(/[,()]/g, '').toLowerCase().slice(0, 255);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -154,11 +165,21 @@ serve(async (req) => {
     }
 
     // Mark any cart abandonment as recovered
-    await supabaseClient
-      .from("cart_abandonment")
-      .update({ recovered_at: new Date().toISOString() })
-      .or(`user_id.eq.${userId},email.eq.${email}`)
-      .is("recovered_at", null);
+    const safeUserId = userId ? sanitizeIdentifier(userId) : '';
+    const safeEmail = email ? sanitizeEmail(email) : '';
+    
+    // Build filter parts safely
+    const filterParts = [];
+    if (safeUserId) filterParts.push(`user_id.eq.${safeUserId}`);
+    if (safeEmail) filterParts.push(`email.eq.${safeEmail}`);
+    
+    if (filterParts.length > 0) {
+      await supabaseClient
+        .from("cart_abandonment")
+        .update({ recovered_at: new Date().toISOString() })
+        .or(filterParts.join(','))
+        .is("recovered_at", null);
+    }
 
     // Assign purchase tags for each product
     for (const detail of productDetailsList) {

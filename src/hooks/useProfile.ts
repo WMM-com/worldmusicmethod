@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { toast } from 'sonner';
+import { sanitizeIdentifier } from '@/lib/sanitize';
 
 export interface UserProfile {
   id: string;
@@ -150,6 +151,8 @@ export function useUserStats(userId: string) {
   return useQuery({
     queryKey: ['user-stats', userId],
     queryFn: async () => {
+      const safeUserId = sanitizeIdentifier(userId);
+      
       const [postsRes, friendsRes] = await Promise.all([
         supabase
           .from('posts')
@@ -158,7 +161,7 @@ export function useUserStats(userId: string) {
         supabase
           .from('friendships')
           .select('id', { count: 'exact', head: true })
-          .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+          .or(`user_id.eq.${safeUserId},friend_id.eq.${safeUserId}`)
           .eq('status', 'accepted'),
       ]);
 
