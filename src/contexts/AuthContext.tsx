@@ -91,6 +91,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     const normalizedEmail = email.toLowerCase().trim();
 
+    if (password.length < 8) {
+      return { error: new Error('Password must be at least 8 characters') };
+    }
+
     // Check if email already exists in profiles
     const { data: existingProfile } = await supabase
       .from('profiles')
@@ -120,7 +124,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (error) {
-      return { error: error as Error };
+      const msg = error.message || 'Signup failed';
+
+      // This error is coming from the authentication system password policy.
+      // We only want to enforce a simple 8+ character minimum in the app.
+      if (/weak|strength/i.test(msg)) {
+        return {
+          error: new Error(
+            'Password rejected by the current password policy. Please use any 8+ character password, or disable password strength checks in your backend authentication settings.'
+          ),
+        };
+      }
+
+      return { error: new Error(msg) };
     }
 
     const userId = data?.user?.id;
