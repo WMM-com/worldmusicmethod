@@ -185,13 +185,10 @@ function getVerificationEmailHtml(verifyLink: string, firstName: string): string
           Thank you for joining our community of world music enthusiasts. Please verify your email address by clicking the button below:
         </p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${verifyLink}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="${verifyLink}" style="display: inline-block; background-color: #f97316; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Verify Email Address
           </a>
         </div>
-        <p style="color: #666; font-size: 14px; line-height: 1.6; text-align: center;">
-          Once verified, you'll have full access to courses, community features, and exclusive content.
-        </p>
         <p style="color: #666; font-size: 14px; line-height: 1.6; text-align: center;">
           This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
         </p>

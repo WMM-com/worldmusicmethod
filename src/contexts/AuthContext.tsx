@@ -111,11 +111,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: error as Error };
     }
 
+    const userId = data?.user?.id;
+
     // Send verification email via our custom edge function
-    if (data?.user?.id) {
+    if (userId) {
       try {
         const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
-          body: { user_id: data.user.id }
+          body: { user_id: userId }
         });
         
         if (emailError) {
@@ -124,9 +126,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.error('Error sending verification email:', err);
       }
+
+      // Sign out immediately to prevent auto-login - user must verify email first
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
     }
 
-    return { error: null, userId: data?.user?.id };
+    return { error: null, userId };
   };
 
   const resendVerificationEmail = async () => {
