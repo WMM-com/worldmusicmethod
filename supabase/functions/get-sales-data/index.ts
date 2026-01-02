@@ -40,12 +40,13 @@ serve(async (req) => {
     });
 
     if (type === 'orders') {
-      // Build query
+      // Build query - join with profiles to get first_name and last_name
       let query = supabaseClient
         .from('orders')
         .select(`
           *,
-          products:product_id (name, product_type)
+          products:product_id (name, product_type),
+          profiles:user_id (first_name, last_name)
         `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
@@ -69,9 +70,20 @@ serve(async (req) => {
 
       if (error) throw error;
 
-      // Enrich with Stripe fee data for completed Stripe orders
+      // Enrich with Stripe fee data and customer names from profile
       const enrichedOrders = await Promise.all(
         (orders || []).map(async (order) => {
+          // Build customer name from profile if available
+          let customerName = order.customer_name;
+          if (order.profiles) {
+            const firstName = order.profiles.first_name || '';
+            const lastName = order.profiles.last_name || '';
+            const fullName = `${firstName} ${lastName}`.trim();
+            if (fullName) {
+              customerName = fullName;
+            }
+          }
+          order.customer_name = customerName;
           if (order.payment_provider === 'stripe' && order.provider_payment_id && order.status === 'completed') {
             try {
               // Get payment intent to get the charge
