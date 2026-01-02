@@ -77,6 +77,13 @@ serve(async (req) => {
     if (user) {
       userId = user.id;
       console.log("[COMPLETE-STRIPE-PAYMENT] Existing user found", { userId });
+      
+      // Ensure existing user has email_verified set to true (they paid, so verify them)
+      await supabaseClient
+        .from("profiles")
+        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+        .eq("id", userId);
+      console.log("[COMPLETE-STRIPE-PAYMENT] Marked existing user as email verified");
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -93,6 +100,16 @@ serve(async (req) => {
       userId = newUser.user.id;
       isNewUser = true;
       console.log("[COMPLETE-STRIPE-PAYMENT] New user created", { userId });
+
+      // Mark the user's profile as email verified (purchasing = verified)
+      // Wait a moment for the profile trigger to create the profile row
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      await supabaseClient
+        .from("profiles")
+        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+        .eq("id", userId);
+      console.log("[COMPLETE-STRIPE-PAYMENT] Marked new user as email verified");
 
       // Generate a session token for the new user so they stay logged in
       try {

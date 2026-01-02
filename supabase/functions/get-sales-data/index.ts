@@ -85,7 +85,49 @@ serve(async (req) => {
         });
       }
 
-      // Enrich with Stripe fee data and customer names from profile
+      // Group orders by payment intent to calculate proportional fees
+      const ordersByPaymentId: Record<string, typeof orders> = {};
+      (orders || []).forEach(order => {
+        if (order.provider_payment_id) {
+          if (!ordersByPaymentId[order.provider_payment_id]) {
+            ordersByPaymentId[order.provider_payment_id] = [];
+          }
+          ordersByPaymentId[order.provider_payment_id].push(order);
+        }
+      });
+
+      // Fetch Stripe fees once per payment intent and cache the result
+      const feeCache: Record<string, { totalFee: number; totalAmount: number }> = {};
+      
+      for (const paymentId of Object.keys(ordersByPaymentId)) {
+        const ordersForPayment = ordersByPaymentId[paymentId];
+        const firstOrder = ordersForPayment[0];
+        
+        if (firstOrder.payment_provider === 'stripe' && firstOrder.status === 'completed') {
+          try {
+            const paymentIntent = await stripe.paymentIntents.retrieve(paymentId);
+            if (paymentIntent.latest_charge) {
+              const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+              let totalFee = 0;
+              
+              if (charge.balance_transaction) {
+                const bt = typeof charge.balance_transaction === 'string' 
+                  ? await stripe.balanceTransactions.retrieve(charge.balance_transaction)
+                  : charge.balance_transaction;
+                totalFee = bt.fee / 100;
+              }
+              
+              // Total amount for this payment (sum of all order amounts with same payment id)
+              const totalAmount = ordersForPayment.reduce((sum, o) => sum + (o.amount || 0), 0);
+              feeCache[paymentId] = { totalFee, totalAmount };
+            }
+          } catch (e) {
+            logStep("Error fetching Stripe fee", { paymentId, error: e });
+          }
+        }
+      }
+
+      // Enrich with proportional fee data and customer names from profile
       const enrichedOrders = await Promise.all(
         (orders || []).map(async (order) => {
           // Build customer name from profile if available
@@ -100,49 +142,35 @@ serve(async (req) => {
             }
           }
           order.customer_name = customerName;
+          
+          // Calculate proportional Stripe fee
           if (order.payment_provider === 'stripe' && order.provider_payment_id && order.status === 'completed') {
-            try {
-              // Get payment intent to get the charge
-              const paymentIntent = await stripe.paymentIntents.retrieve(order.provider_payment_id);
+            const cached = feeCache[order.provider_payment_id];
+            if (cached && cached.totalAmount > 0) {
+              // Proportional fee based on this order's share of the total payment
+              const proportion = (order.amount || 0) / cached.totalAmount;
+              const stripeFee = cached.totalFee * proportion;
+              const netAmount = (order.amount || 0) - stripeFee;
               
-              if (paymentIntent.latest_charge) {
-                const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
-                const balanceTransaction = charge.balance_transaction;
-                
-                if (balanceTransaction && typeof balanceTransaction !== 'string') {
-                  const stripeFee = (balanceTransaction as any).fee / 100;
-                  const netAmount = (balanceTransaction as any).net / 100;
-                  
-                  // Update in database for caching
-                  await supabaseClient
-                    .from('orders')
-                    .update({ stripe_fee: stripeFee, net_amount: netAmount })
-                    .eq('id', order.id);
-                  
-                  return { ...order, stripe_fee: stripeFee, net_amount: netAmount };
-                } else if (typeof balanceTransaction === 'string') {
-                  // Fetch the balance transaction
-                  const bt = await stripe.balanceTransactions.retrieve(balanceTransaction);
-                  const stripeFee = bt.fee / 100;
-                  const netAmount = bt.net / 100;
-                  
-                  await supabaseClient
-                    .from('orders')
-                    .update({ stripe_fee: stripeFee, net_amount: netAmount })
-                    .eq('id', order.id);
-                  
-                  return { ...order, stripe_fee: stripeFee, net_amount: netAmount };
-                }
-              }
-            } catch (e) {
-              logStep("Error fetching Stripe fee", { orderId: order.id, error: e });
+              // Update in database for caching
+              await supabaseClient
+                .from('orders')
+                .update({ stripe_fee: stripeFee, net_amount: netAmount })
+                .eq('id', order.id);
+              
+              return { ...order, stripe_fee: stripeFee, net_amount: netAmount };
             }
           }
           
-          // Estimate PayPal fee (2.9% + $0.30)
-          if (order.payment_provider === 'paypal' && order.status === 'completed' && !order.paypal_fee) {
-            const paypalFee = (order.amount * 0.029) + 0.30;
-            const netAmount = order.amount - paypalFee;
+          // Estimate proportional PayPal fee (2.9% + proportional share of $0.30)
+          if (order.payment_provider === 'paypal' && order.provider_payment_id && order.status === 'completed' && !order.paypal_fee) {
+            const ordersForPayment = ordersByPaymentId[order.provider_payment_id] || [order];
+            const totalAmount = ordersForPayment.reduce((sum, o) => sum + (o.amount || 0), 0);
+            const proportion = totalAmount > 0 ? (order.amount || 0) / totalAmount : 1;
+            
+            // PayPal fee: 2.9% per order amount + proportional share of $0.30 fixed fee
+            const paypalFee = ((order.amount || 0) * 0.029) + (0.30 * proportion);
+            const netAmount = (order.amount || 0) - paypalFee;
             
             await supabaseClient
               .from('orders')
