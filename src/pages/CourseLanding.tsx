@@ -1376,7 +1376,7 @@ export default function CourseLanding() {
         </DialogContent>
       </Dialog>
 
-      {/* Sticky CTA - appears when scrolled past hero */}
+      {/* Sticky CTA - appears when scrolled past hero, positioned above audio player */}
       <AnimatePresence>
         {showStickyCTA && !isEnrolled && (
           <motion.div
@@ -1384,7 +1384,7 @@ export default function CourseLanding() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t border-border shadow-lg"
+            className="fixed bottom-20 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-b border-border shadow-lg"
           >
             <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">

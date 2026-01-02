@@ -2922,6 +2922,45 @@ export type Database = {
           },
         ]
       }
+      product_purchase_tags: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          remove_on_refund: boolean | null
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          remove_on_refund?: boolean | null
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          remove_on_refund?: boolean | null
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_purchase_tags_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_purchase_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "email_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_regional_pricing: {
         Row: {
           created_at: string
