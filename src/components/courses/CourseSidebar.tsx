@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, CheckCircle2, Circle, Play, BookOpen, Headphones, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, Circle, Play, BookOpen, Headphones, FileText, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,7 @@ interface CourseSidebarProps {
   onModuleSelect: (moduleId: string) => void;
   onLessonSelect: (moduleId: string, lessonId: string) => void;
   courseTitle: string;
+  onClose?: () => void;
 }
 
 const LESSON_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -28,7 +29,8 @@ export function CourseSidebar({
   currentLessonId,
   onModuleSelect,
   onLessonSelect,
-  courseTitle
+  courseTitle,
+  onClose,
 }: CourseSidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(currentModuleId ? [currentModuleId] : [modules[0]?.id])
@@ -62,10 +64,21 @@ export function CourseSidebar({
   };
 
   return (
-    <div className="h-full flex flex-col bg-background border-r border-border">
+    <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <h2 className="font-bold text-lg truncate text-foreground">{courseTitle}</h2>
+      <div className="p-4 border-b border-sidebar-border flex items-center justify-between gap-3">
+        <h2 className="font-bold text-lg truncate">{courseTitle}</h2>
+
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+            aria-label="Hide curriculum"
+            title="Hide curriculum"
+          >
+            <X className="w-4 h-4 text-primary-foreground" />
+          </button>
+        )}
       </div>
 
       {/* Modules list */}
@@ -186,3 +199,4 @@ export function CourseSidebar({
     </div>
   );
 }
+

@@ -17,7 +17,7 @@ export default function MyCourses() {
     queryKey: ['my-enrollments', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      
+
       const { data, error } = await supabase
         .from('course_enrollments')
         .select(`
@@ -32,9 +32,35 @@ export default function MyCourses() {
         `)
         .eq('user_id', user.id)
         .eq('is_active', true);
-      
+
       if (error) throw error;
-      return data;
+
+      const courseIds = (data || [])
+        .map((row: any) => row.courses?.id)
+        .filter(Boolean);
+
+      if (!courseIds.length) return data || [];
+
+      // "Course Image" lives in the landing page builder
+      const { data: landingPages, error: lpError } = await supabase
+        .from('course_landing_pages')
+        .select('course_id, course_image_url')
+        .in('course_id', courseIds);
+
+      if (lpError) throw lpError;
+
+      return (data || []).map((enrollment: any) => {
+        const course = enrollment.courses;
+        const landingPage = landingPages?.find(lp => lp.course_id === course?.id);
+
+        return {
+          ...enrollment,
+          courses: {
+            ...course,
+            cover_image_url: landingPage?.course_image_url || course?.cover_image_url,
+          },
+        };
+      });
     },
     enabled: !!user,
   });
@@ -44,15 +70,15 @@ export default function MyCourses() {
     queryKey: ['my-course-progress', user?.id],
     queryFn: async () => {
       if (!user) return {};
-      
+
       const { data, error } = await supabase
         .from('user_lesson_progress')
         .select('lesson_id, completed, module_lessons!inner(module_id, course_modules!inner(course_id))')
         .eq('user_id', user.id)
         .eq('completed', true);
-      
+
       if (error) throw error;
-      
+
       // Group by course
       const progress: Record<string, number> = {};
       data?.forEach((item: any) => {
@@ -61,7 +87,7 @@ export default function MyCourses() {
           progress[courseId] = (progress[courseId] || 0) + 1;
         }
       });
-      
+
       return progress;
     },
     enabled: !!user,
@@ -107,7 +133,7 @@ export default function MyCourses() {
                 const course = enrollment.courses;
                 const completedLessons = progressData?.[course.id] || 0;
                 const progressPercent = Math.min(completedLessons * 10, 100); // Rough estimate
-                
+
                 return (
                   <motion.div
                     key={enrollment.id}
@@ -119,20 +145,17 @@ export default function MyCourses() {
                       className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
                       onClick={() => navigate(`/courses/${course.id}/learn`)}
                     >
-                      {/* Cover image - matches /courses page */}
+                      {/* Course Image */}
                       <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
-                        {course.cover_image_url ? (
+                        {course.cover_image_url && (
                           <img
                             src={course.cover_image_url}
-                            alt={course.title}
+                            alt={`${course.title} course cover`}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            loading="lazy"
                           />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <BookOpen className="w-12 h-12 text-primary/30" />
-                          </div>
                         )}
-                        
+
                         {/* Play button overlay */}
                         <div className="absolute inset-0 flex items-center justify-center bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity">
                           <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center">
@@ -146,7 +169,7 @@ export default function MyCourses() {
                         <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
                           {course.title}
                         </h3>
-                        
+
                         {/* Progress */}
                         <div className="mb-4">
                           <div className="flex items-center justify-between text-sm mb-2">
@@ -167,7 +190,7 @@ export default function MyCourses() {
                               <span>Continue learning</span>
                             )}
                           </div>
-                          
+
                           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                         </div>
                       </div>
@@ -198,3 +221,4 @@ export default function MyCourses() {
     </>
   );
 }
+
