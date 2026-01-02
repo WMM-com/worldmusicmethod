@@ -146,7 +146,7 @@ export function LessonView({
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
             <span className="capitalize">{lesson.lesson_type}</span>
             {lesson.duration_seconds && (
               <>
@@ -156,7 +156,7 @@ export function LessonView({
             )}
           </div>
           
-          <h1 className="text-3xl font-bold text-foreground mb-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
             {lesson.title}
           </h1>
 
@@ -244,12 +244,12 @@ export function LessonView({
             transition={{ delay: 0.2 }}
             className="mb-8"
           >
-            <Card className="p-6">
+            <Card className="p-6 bg-gray-50 border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <BookOpen className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold">Lesson Notes</h2>
+                <h2 className="font-semibold text-gray-900">Lesson Notes</h2>
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/90">
+              <div className="prose prose-sm max-w-none text-gray-700">
                 {lesson.content
                   .split('\n')
                   .filter((p) =>
@@ -285,20 +285,20 @@ export function LessonView({
             transition={{ delay: 0.3 }}
             className="mb-8"
           >
-            <Card className="p-6">
+            <Card className="p-6 bg-gray-50 border-gray-200">
               <div className="flex items-center gap-2 mb-4">
                 <Headphones className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold">Suggested Listening</h2>
+                <h2 className="font-semibold text-gray-900">Suggested Listening</h2>
               </div>
               <div className="space-y-3">
                 {listeningRefs.map((ref, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
                   >
                     <div>
-                      <p className="font-medium text-sm">{ref.title}</p>
-                      <p className="text-xs text-muted-foreground">{ref.artist}</p>
+                      <p className="font-medium text-sm text-gray-900">{ref.title}</p>
+                      <p className="text-xs text-gray-500">{ref.artist}</p>
                     </div>
                     {ref.url && (
                       <Button variant="ghost" size="sm" asChild>
@@ -319,7 +319,7 @@ export function LessonView({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="flex items-center justify-between gap-4 pt-4 border-t border-border"
+          className="flex items-center justify-between gap-4 pt-4 border-t border-gray-200"
         >
           <Button
             variant="outline"
