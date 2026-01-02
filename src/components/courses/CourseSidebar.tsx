@@ -1,8 +1,8 @@
-import { ChevronDown, ChevronRight, CheckCircle2, Circle, Lock, Play, BookOpen, Headphones, FileText, Trophy } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, Circle, Play, BookOpen, Headphones, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { CourseModule, ModuleLesson } from '@/types/course';
+import type { CourseModule } from '@/types/course';
 
 interface CourseSidebarProps {
   modules: CourseModule[];
@@ -67,22 +67,10 @@ export function CourseSidebar({
   };
 
   return (
-    <div className="h-full flex flex-col bg-card border-r border-border">
+    <div className="h-full flex flex-col bg-background border-r border-border">
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <h2 className="font-bold text-lg truncate">{courseTitle}</h2>
-        {stats && (
-          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Trophy className="w-4 h-4 text-amber-500" />
-              <span>{stats.xp} XP</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span>🔥</span>
-              <span>{stats.streak_days} day streak</span>
-            </div>
-          </div>
-        )}
+        <h2 className="font-bold text-lg truncate text-foreground">{courseTitle}</h2>
       </div>
 
       {/* Modules list */}
@@ -110,8 +98,8 @@ export function CourseSidebar({
                 <div className={cn(
                   "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold",
                   moduleComplete 
-                    ? "bg-green-500/20 text-green-500" 
-                    : "bg-muted text-muted-foreground"
+                    ? "bg-success/20 text-success" 
+                    : "bg-primary/20 text-primary"
                 )}>
                   {moduleComplete ? <CheckCircle2 className="w-4 h-4" /> : moduleIndex + 1}
                 </div>
@@ -163,9 +151,9 @@ export function CourseSidebar({
                           >
                             <div className={cn(
                               "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center",
-                              isCompleted && "bg-green-500/20 text-green-500",
+                              isCompleted && "bg-success/20 text-success",
                               isCurrent && !isCompleted && "bg-primary/20 text-primary",
-                              !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
+                              !isCompleted && !isCurrent && "bg-secondary/20 text-secondary"
                             )}>
                               {isCompleted ? (
                                 <CheckCircle2 className="w-3.5 h-3.5" />

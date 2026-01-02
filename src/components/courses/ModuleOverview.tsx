@@ -223,7 +223,7 @@ export function ModuleOverview({
       >
         {/* Header */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
             <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
               Module {moduleIndex + 1}
             </span>
@@ -235,9 +235,9 @@ export function ModuleOverview({
             )}
           </div>
           
-          <h1 className="text-3xl md:text-4xl font-bold">{module.title}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{module.title}</h1>
           
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-1.5">
               <BookOpen className="w-4 h-4" />
               <span>{lessons.length} lessons</span>
@@ -257,8 +257,8 @@ export function ModuleOverview({
           {/* Progress bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{completedCount}/{lessons.length}</span>
+              <span className="text-gray-500">Progress</span>
+              <span className="font-medium text-gray-900">{completedCount}/{lessons.length}</span>
             </div>
             <Progress value={progressPercent} className="h-2" />
           </div>
@@ -278,8 +278,8 @@ export function ModuleOverview({
 
         {/* Intro Description */}
         {intro && (
-          <div className="prose prose-neutral dark:prose-invert max-w-none">
-            <p className="text-lg leading-relaxed text-foreground/80">
+          <div className="prose prose-neutral max-w-none">
+            <p className="text-lg leading-relaxed text-gray-700">
               {intro}
             </p>
           </div>
@@ -293,7 +293,7 @@ export function ModuleOverview({
           
           return (
             <div key={idx} className="space-y-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                 <span className={cn(
                   "w-1 h-6 rounded-full",
                   idx % 2 === 0 ? "bg-primary" : "bg-amber-500"
@@ -313,13 +313,13 @@ export function ModuleOverview({
                       return (
                         <div key={i} className="flex items-start gap-3">
                           <div className="w-2 h-2 rounded-full bg-primary/60 flex-shrink-0 mt-2" />
-                          <span className="text-foreground/80">{parseTextWithBold(cleanItem)}</span>
+                          <span className="text-gray-700">{parseTextWithBold(cleanItem)}</span>
                         </div>
                       );
                     }
                     
                     return (
-                      <p key={i} className="text-foreground/80 leading-relaxed">
+                      <p key={i} className="text-gray-700 leading-relaxed">
                         {parseTextWithBold(item)}
                       </p>
                     );
@@ -350,7 +350,7 @@ export function ModuleOverview({
 
         {/* Lessons list */}
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Lessons in this module</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Lessons in this module</h2>
           <div className="space-y-2">
             {lessons.map((lesson, i) => {
               const isCompleted = completedLessons.has(lesson.id);
@@ -361,14 +361,13 @@ export function ModuleOverview({
                   key={lesson.id}
                   onClick={() => onLessonSelect(lesson.id)}
                   className={cn(
-                    "w-full flex items-center gap-4 p-4 rounded-lg border border-border",
-                    "transition-colors hover:bg-muted/50 text-left",
-                    isCompleted && "bg-green-500/5 border-green-500/20"
-                  )}
-                >
+                    "w-full flex items-center gap-4 p-4 rounded-lg border",
+                    "transition-colors hover:bg-gray-50 text-left",
+                    isCompleted ? "bg-green-50 border-green-200" : "bg-white border-gray-200"
+                  )}>
                   <div className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center",
-                    isCompleted ? "bg-green-500/20 text-green-500" : "bg-muted text-muted-foreground"
+                    isCompleted ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"
                   )}>
                     {isCompleted ? (
                       <CheckCircle2 className="w-5 h-5" />
@@ -380,17 +379,17 @@ export function ModuleOverview({
                   <div className="flex-1 min-w-0">
                     <p className={cn(
                       "font-medium",
-                      isCompleted && "text-muted-foreground"
+                      isCompleted ? "text-gray-500" : "text-gray-900"
                     )}>
                       {lesson.title}
                     </p>
-                    <p className="text-sm text-muted-foreground capitalize">
+                    <p className="text-sm text-gray-500 capitalize">
                       {lesson.lesson_type}
                       {lesson.duration_seconds && ` • ${Math.floor(lesson.duration_seconds / 60)} min`}
                     </p>
                   </div>
 
-                  <Play className="w-4 h-4 text-muted-foreground" />
+                  <Play className="w-4 h-4 text-gray-400" />
                 </button>
               );
             })}

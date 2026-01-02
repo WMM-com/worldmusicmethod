@@ -5,7 +5,8 @@ import { ArrowLeft, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { SiteHeader } from '@/components/layout/SiteHeader';
 import { CourseSidebar } from '@/components/courses/CourseSidebar';
 import { CourseDashboard } from '@/components/courses/CourseDashboard';
 import { ModuleOverview } from '@/components/courses/ModuleOverview';
@@ -157,49 +158,50 @@ export default function Course() {
   );
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Desktop sidebar */}
-      {!isMobile && (
-        <aside className="w-80 flex-shrink-0 border-r border-border h-screen sticky top-0 overflow-hidden">
-          {sidebarContent}
-        </aside>
-      )}
-
-      {/* Mobile sidebar */}
-      {isMobile && (
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left" className="p-0 w-80">
+    <div className="min-h-screen flex flex-col">
+      {/* Site header */}
+      <SiteHeader />
+      
+      <div className="flex-1 flex">
+        {/* Desktop sidebar */}
+        {!isMobile && (
+          <aside className="w-80 flex-shrink-0 border-r border-border h-[calc(100vh-4rem)] sticky top-16 overflow-hidden">
             {sidebarContent}
-          </SheetContent>
-        </Sheet>
-      )}
+          </aside>
+        )}
 
-      {/* Main content */}
-      <main className="flex-1 min-h-screen">
-        {/* Mobile header */}
+        {/* Mobile sidebar */}
         {isMobile && (
-          <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur px-4 py-3 flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
-              <Menu className="w-5 h-5" />
-            </Button>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{course.title}</p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => navigate('/courses')}>
-              <X className="w-5 h-5" />
-            </Button>
-          </header>
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" className="p-0 w-80">
+              {sidebarContent}
+            </SheetContent>
+          </Sheet>
         )}
 
-        {/* Desktop back button */}
-        {!isMobile && viewState !== 'dashboard' && (
-          <div className="p-4 border-b border-border">
-            <Button variant="ghost" size="sm" onClick={handleBackToDashboard}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Course Dashboard
-            </Button>
-          </div>
-        )}
+        {/* Main content */}
+        <main className="flex-1 min-h-[calc(100vh-4rem)] bg-white dark:bg-white text-gray-900 dark:text-gray-900">
+          {/* Mobile sidebar toggle */}
+          {isMobile && (
+            <div className="sticky top-0 z-40 border-b border-border bg-white px-4 py-3 flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
+                <Menu className="w-5 h-5 text-gray-900" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate text-gray-900">{course.title}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop back button */}
+          {viewState !== 'dashboard' && (
+            <div className="p-4 border-b border-gray-200">
+              <Button variant="ghost" size="sm" onClick={handleBackToDashboard} className="text-gray-700 hover:text-gray-900 hover:bg-gray-100">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Course Dashboard
+              </Button>
+            </div>
+          )}
 
         <AnimatePresence mode="wait">
           {/* Dashboard view */}
@@ -282,6 +284,7 @@ export default function Course() {
           />
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
