@@ -28,30 +28,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-            checkAdminRole(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setIsAdmin(false);
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
-        fetchProfile(session.user.id);
-        checkAdminRole(session.user.id);
+        setTimeout(() => {
+          fetchProfile(session.user.id);
+          checkAdminRole(session.user.id);
+        }, 0);
+      } else {
+        setProfile(null);
+        setIsAdmin(false);
+        setEmailVerified(false);
       }
+    });
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        await Promise.all([fetchProfile(session.user.id), checkAdminRole(session.user.id)]);
+      } else {
+        setProfile(null);
+        setIsAdmin(false);
+        setEmailVerified(false);
+      }
+
       setLoading(false);
     });
 
@@ -76,9 +82,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAdmin(data === true);
   };
 
-  const signUp = async (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    firstName?: string,
+    lastName?: string
+  ) => {
     const normalizedEmail = email.toLowerCase().trim();
-    
+
     // Check if email already exists in profiles
     const { data: existingProfile } = await supabase
       .from('profiles')
@@ -113,13 +125,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const userId = data?.user?.id;
 
-    // Send verification email via our custom edge function
+    // Send verification email via our custom function, then FORCE local sign-out.
     if (userId) {
       try {
         const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
-          body: { user_id: userId }
+          body: { user_id: userId },
         });
-        
+
         if (emailError) {
           console.error('Failed to send verification email:', emailError);
         }
@@ -128,10 +140,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Sign out immediately to prevent auto-login - user must verify email first
-      await supabase.auth.signOut();
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+      if (signOutError) {
+        console.warn('Sign out after signup failed:', signOutError.message);
+      }
+
       setUser(null);
       setSession(null);
       setProfile(null);
+      setIsAdmin(false);
+      setEmailVerified(false);
     }
 
     return { error: null, userId };
@@ -144,13 +162,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { error } = await supabase.functions.invoke('send-verification-email', {
-        body: { user_id: user.id }
+        body: { user_id: user.id },
       });
-      
+
       if (error) {
         return { error: new Error(error.message || 'Failed to send verification email') };
       }
-      
+
       return { error: null };
     } catch (err) {
       return { error: err as Error };
@@ -158,16 +176,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
       password,
     });
 
-    return { error: error as Error | null };
+    if (error) {
+      return { error: error as Error };
+    }
+
+    const userId = data.user.id;
+
+    // Enforce custom email verification (profiles.email_verified)
+    const { data: profileRow, error: profileError } = await supabase
+      .from('profiles')
+      .select('email_verified')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profileError || profileRow?.email_verified !== true) {
+      await supabase.auth.signOut({ scope: 'local' });
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setIsAdmin(false);
+      setEmailVerified(false);
+
+      return {
+        error: new Error('Please verify your email before logging in. Check your inbox for the verification link.'),
+      };
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      console.warn('Sign out failed:', error.message);
+    }
+
     setUser(null);
     setSession(null);
     setProfile(null);

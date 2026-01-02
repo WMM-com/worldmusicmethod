@@ -15,7 +15,10 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') as 'login' | 'signup' | 'forgot' | null;
   const verified = searchParams.get('verified') === 'true';
-  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode === 'signup' ? 'signup' : initialMode === 'forgot' ? 'forgot' : 'login');
+  const unverified = searchParams.get('unverified') === 'true';
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(
+    initialMode === 'signup' ? 'signup' : initialMode === 'forgot' ? 'forgot' : 'login'
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -24,12 +27,14 @@ export default function Auth() {
   const [emailSent, setEmailSent] = useState(false);
   const { signIn, signUp } = useAuth();
 
-  // Show success toast if user just verified email
   useEffect(() => {
     if (verified) {
       toast.success('Email verified successfully! You can now log in.');
     }
-  }, [verified]);
+    if (unverified) {
+      toast.error('Please verify your email before logging in. Check your inbox for the verification link.');
+    }
+  }, [verified, unverified]);
 
   // Update mode when URL params change
   useEffect(() => {
@@ -125,8 +130,7 @@ export default function Auth() {
                   <p className="text-secondary font-semibold">{email}</p>
                 </div>
                 <p className="text-muted-foreground text-sm">
-                  Please click the verification link in the email to activate your account. 
-                  Once verified, you'll be automatically logged in.
+                  Please click the verification link in the email to activate your account. After verifying, come back here and sign in.
                 </p>
                 <div className="pt-4 space-y-3">
                   <p className="text-sm text-muted-foreground">

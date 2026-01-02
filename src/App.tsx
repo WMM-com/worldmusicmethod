@@ -48,38 +48,42 @@ import VerifyEmail from "./pages/VerifyEmail";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
+  const { user, profile, emailVerified, loading } = useAuth();
+
+  if (loading || (user && !profile)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
   }
-  
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-  
+
+  if (!emailVerified) {
+    return <Navigate to="/auth?mode=login&unverified=true" replace />;
+  }
+
   return <>{children}</>;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
+  const { user, profile, emailVerified, loading } = useAuth();
+
+  if (loading || (user && !profile)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
   }
-  
-  if (user) {
+
+  if (user && emailVerified) {
     return <Navigate to="/courses" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
