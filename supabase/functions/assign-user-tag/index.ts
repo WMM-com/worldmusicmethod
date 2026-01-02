@@ -6,6 +6,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Sanitize identifiers to prevent filter injection
+function sanitizeIdentifier(id: string): string {
+  if (!id || typeof id !== 'string') return '';
+  return id.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
+}
+
+function sanitizeEmail(email: string): string {
+  if (!email || typeof email !== 'string') return '';
+  return email.replace(/[,()]/g, '').toLowerCase().slice(0, 255);
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[ASSIGN-USER-TAG] ${step}${detailsStr}`);
@@ -101,12 +112,19 @@ serve(async (req) => {
       }
 
       for (const seq of sequences) {
-        // Check if already enrolled
+        const safeUserId = userId ? sanitizeIdentifier(userId) : '';
+        const safeEmail = email ? sanitizeEmail(email) : '';
+        
+        // Build filter parts safely
+        const filterParts = [];
+        if (safeUserId) filterParts.push(`user_id.eq.${safeUserId}`);
+        if (safeEmail) filterParts.push(`email.eq.${safeEmail}`);
+        
         const { data: existing } = await supabase
           .from("email_sequence_enrollments")
           .select("id, status")
           .eq("sequence_id", seq.id)
-          .or(`user_id.eq.${userId},email.eq.${email?.toLowerCase()}`)
+          .or(filterParts.join(','))
           .maybeSingle();
 
         if (!existing || existing.status === "completed") {

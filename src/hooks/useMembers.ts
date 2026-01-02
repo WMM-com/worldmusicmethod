@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { sanitizeSearchQuery, sanitizeIdentifier } from '@/lib/sanitize';
 
 export interface MemberProfile {
   id: string;
@@ -24,7 +25,8 @@ export function useMembers(searchQuery?: string) {
         .order('full_name', { ascending: true });
       
       if (searchQuery && searchQuery.length >= 2) {
-        query = query.or(`full_name.ilike.%${searchQuery}%,business_name.ilike.%${searchQuery}%`);
+        const safeQuery = sanitizeSearchQuery(searchQuery);
+        query = query.or(`full_name.ilike.%${safeQuery}%,business_name.ilike.%${safeQuery}%`);
       }
       
       const { data, error } = await query.limit(50);
@@ -64,10 +66,13 @@ export function useConnectionStatus(userId: string) {
     queryFn: async () => {
       if (!user) return { isFriend: false, pendingRequest: null };
       
+      const safeUserId = sanitizeIdentifier(user.id);
+      const safeTargetId = sanitizeIdentifier(userId);
+      
       const { data, error } = await supabase
         .from('friendships')
         .select('*')
-        .or(`and(user_id.eq.${user.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${user.id})`);
+        .or(`and(user_id.eq.${safeUserId},friend_id.eq.${safeTargetId}),and(user_id.eq.${safeTargetId},friend_id.eq.${safeUserId})`);
       
       if (error) throw error;
       

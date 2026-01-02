@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { createNotification } from '@/hooks/useNotifications';
+import { sanitizeIdentifier, sanitizeSearchQuery } from '@/lib/sanitize';
 export interface Post {
   id: string;
   user_id: string;
@@ -443,10 +444,12 @@ export function useFriendships() {
     queryFn: async () => {
       if (!user) return { friends: [], pending: [], requests: [] };
       
+      const safeUserId = sanitizeIdentifier(user.id);
+      
       const { data, error } = await supabase
         .from('friendships')
         .select('*')
-        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`);
+        .or(`user_id.eq.${safeUserId},friend_id.eq.${safeUserId}`);
       
       if (error) throw error;
 
@@ -598,11 +601,13 @@ export function useSearchUsers(query: string) {
     queryFn: async () => {
       if (!user || !query || query.length < 2) return [];
       
+      const safeQuery = sanitizeSearchQuery(query);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, avatar_url, email')
         .neq('id', user.id)
-        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .or(`full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`)
         .limit(10);
       
       if (error) throw error;

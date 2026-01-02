@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { sanitizeSearchQuery } from '@/lib/sanitize';
 
 export interface MediaArtist {
   id: string;
@@ -91,6 +92,7 @@ export function useSearchTracks(searchQuery: string) {
     queryFn: async () => {
       if (!searchQuery.trim()) return [];
       
+      const safeQuery = sanitizeSearchQuery(searchQuery);
       const { data, error } = await supabase
         .from('media_tracks')
         .select(`
@@ -99,7 +101,7 @@ export function useSearchTracks(searchQuery: string) {
           podcast:media_podcasts(*)
         `)
         .eq('is_published', true)
-        .or(`title.ilike.%${searchQuery}%,album_name.ilike.%${searchQuery}%,genre.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${safeQuery}%,album_name.ilike.%${safeQuery}%,genre.ilike.%${safeQuery}%`)
         .order('play_count', { ascending: false })
         .limit(50);
 

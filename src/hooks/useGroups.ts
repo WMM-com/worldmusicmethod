@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { sanitizeSearchQuery } from '@/lib/sanitize';
 import type { 
   Group, GroupMember, GroupPost, GroupPostComment, 
   GroupJoinRequest, GroupEvent, GroupPoll, GroupInvite,
@@ -21,7 +22,8 @@ export function useGroups(searchQuery?: string, category?: GroupCategory) {
         .order('created_at', { ascending: false });
       
       if (searchQuery) {
-        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,subcategory.ilike.%${searchQuery}%`);
+        const safeQuery = sanitizeSearchQuery(searchQuery);
+        query = query.or(`name.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%,subcategory.ilike.%${safeQuery}%`);
       }
       
       if (category) {

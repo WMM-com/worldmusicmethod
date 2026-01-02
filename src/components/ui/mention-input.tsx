@@ -3,6 +3,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { sanitizeSearchQuery } from '@/lib/sanitize';
 
 interface UserSuggestion {
   id: string;
@@ -35,10 +36,12 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
       return;
     }
 
+    const safeQuery = sanitizeSearchQuery(query);
+    
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name, username, avatar_url')
-      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+      .or(`full_name.ilike.%${safeQuery}%,username.ilike.%${safeQuery}%`)
       .limit(5);
 
     setSuggestions(data || []);
