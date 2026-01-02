@@ -86,16 +86,9 @@ function StickyCTAButton({ showStickyCTA, isEnrolled, priceInfo, product, handle
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             {priceInfo && (
-              <div>
-                <p className="text-lg font-bold text-yellow-500">
-                  {formatPrice(priceInfo.price, priceInfo.currency)}
-                </p>
-                {priceInfo.discount_percentage > 0 && (
-                  <p className="text-xs text-muted-foreground line-through">
-                    ${product?.base_price_usd?.toFixed(2)}
-                  </p>
-                )}
-              </div>
+              <p className="text-lg font-bold text-yellow-500">
+                {formatPrice(priceInfo.price, priceInfo.currency)}
+              </p>
             )}
             <div className="hidden sm:flex items-center gap-1.5 text-xs text-green-600">
               <Shield className="w-3.5 h-3.5 shrink-0" />
