@@ -167,6 +167,30 @@ async function sendEmailViaSES(
   }
 }
 
+function getEmailHeader(): string {
+  return `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <img src="https://bfwvjhrokucqjcbeufwk.supabase.co/storage/v1/object/public/media/world-music-method-logo.png" alt="World Music Method" style="height: 60px; margin-bottom: 16px;" />
+    </div>
+  `;
+}
+
+function getEmailFooter(): string {
+  return `
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    <div style="text-align: center;">
+      <p style="color: #999; font-size: 12px; margin: 0;">
+        <strong>World Music Method</strong><br>
+        Learn authentic world music from master musicians
+      </p>
+      <p style="color: #999; font-size: 11px; margin-top: 12px;">
+        This is an automated message, please do not reply.<br>
+        <a href="https://worldmusicmethod.com" style="color: #f97316; text-decoration: none;">worldmusicmethod.com</a>
+      </p>
+    </div>
+  `;
+}
+
 function getPasswordResetEmailHtml(resetLink: string): string {
   return `
     <!DOCTYPE html>
@@ -177,9 +201,8 @@ function getPasswordResetEmailHtml(resetLink: string): string {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #1a1a1a; margin: 0; font-size: 24px;">Reset Your Password</h1>
-        </div>
+        ${getEmailHeader()}
+        <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Reset Your Password</h1>
         <p style="color: #333; font-size: 16px; line-height: 1.6;">
           You requested to reset your password. Click the button below to create a new password:
         </p>
@@ -191,11 +214,7 @@ function getPasswordResetEmailHtml(resetLink: string): string {
         <p style="color: #666; font-size: 14px; line-height: 1.6;">
           This link will expire in 24 hours. If you didn't request this, you can safely ignore this email.
         </p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #999; font-size: 12px; text-align: center;">
-          World Music Method<br>
-          This is an automated message, please do not reply.
-        </p>
+        ${getEmailFooter()}
       </div>
     </body>
     </html>
@@ -212,25 +231,23 @@ function getEmailConfirmationHtml(confirmLink: string): string {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #1a1a1a; margin: 0; font-size: 24px;">Confirm Your Email</h1>
-        </div>
-        <p style="color: #333; font-size: 16px; line-height: 1.6;">
-          Welcome to World Music Method! Please confirm your email address by clicking the button below:
+        ${getEmailHeader()}
+        <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Welcome to World Music Method!</h1>
+        <p style="color: #333; font-size: 16px; line-height: 1.6; text-align: center;">
+          Thank you for joining our community of world music enthusiasts. Please confirm your email address by clicking the button below:
         </p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${confirmLink}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-            Confirm Email
+            Confirm Email Address
           </a>
         </div>
-        <p style="color: #666; font-size: 14px; line-height: 1.6;">
+        <p style="color: #666; font-size: 14px; line-height: 1.6; text-align: center;">
+          Once confirmed, you'll have full access to courses, community features, and exclusive content.
+        </p>
+        <p style="color: #666; font-size: 14px; line-height: 1.6; text-align: center;">
           If you didn't create an account, you can safely ignore this email.
         </p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #999; font-size: 12px; text-align: center;">
-          World Music Method<br>
-          This is an automated message, please do not reply.
-        </p>
+        ${getEmailFooter()}
       </div>
     </body>
     </html>
@@ -247,9 +264,8 @@ function getEmailChangeHtml(confirmLink: string): string {
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #1a1a1a; margin: 0; font-size: 24px;">Confirm Email Change</h1>
-        </div>
+        ${getEmailHeader()}
+        <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Confirm Email Change</h1>
         <p style="color: #333; font-size: 16px; line-height: 1.6;">
           You requested to change your email address. Click the button below to confirm:
         </p>
@@ -261,11 +277,7 @@ function getEmailChangeHtml(confirmLink: string): string {
         <p style="color: #666; font-size: 14px; line-height: 1.6;">
           If you didn't request this change, please contact support immediately.
         </p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        <p style="color: #999; font-size: 12px; text-align: center;">
-          World Music Method<br>
-          This is an automated message, please do not reply.
-        </p>
+        ${getEmailFooter()}
       </div>
     </body>
     </html>
