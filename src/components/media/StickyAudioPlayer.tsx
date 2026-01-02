@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, 
-  Shuffle, Repeat, Repeat1, Heart, ListMusic, ChevronUp, ChevronDown, Minimize2, Music
+  Shuffle, Repeat, Repeat1, Heart, ListMusic, ChevronUp, ChevronDown, Minimize2, Music, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -51,6 +51,7 @@ export function StickyAudioPlayer() {
     toggleShuffle,
     cycleRepeat,
     pause,
+    closePlayer,
   } = useMediaPlayer();
 
   // Hide player inside courses (learn pages)
@@ -237,6 +238,17 @@ export function StickyAudioPlayer() {
               <Minimize2 className="h-4 w-4" />
             </Button>
 
+            {/* Close button */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={closePlayer}
+              className="hidden sm:flex text-muted-foreground hover:text-destructive"
+              title="Close player"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+
             <Button 
               variant="ghost" 
               size="icon"
@@ -301,6 +313,15 @@ export function StickyAudioPlayer() {
                 title="Minimize player"
               >
                 <Minimize2 className="h-5 w-5" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={closePlayer}
+                className="text-muted-foreground hover:text-destructive"
+                title="Close player"
+              >
+                <X className="h-5 w-5" />
               </Button>
             </div>
           </div>

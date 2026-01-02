@@ -25,6 +25,7 @@ interface MediaPlayerContextType {
   cycleRepeat: () => void;
   addToQueue: (track: MediaTrack) => void;
   clearQueue: () => void;
+  closePlayer: () => void;
 }
 
 const MediaPlayerContext = createContext<MediaPlayerContextType | undefined>(undefined);
@@ -269,6 +270,20 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     setCurrentIndex(-1);
   }, []);
 
+  const closePlayer = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
+    }
+    setCurrentTrack(null);
+    setQueue([]);
+    setOriginalQueue([]);
+    setCurrentIndex(-1);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
+
   return (
     <MediaPlayerContext.Provider
       value={{
@@ -294,6 +309,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
         cycleRepeat,
         addToQueue,
         clearQueue,
+        closePlayer,
       }}
     >
       {children}

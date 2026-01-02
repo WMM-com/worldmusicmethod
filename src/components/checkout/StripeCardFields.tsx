@@ -151,6 +151,8 @@ export function StripeCardFields({
               // Don't fail the whole flow, just log the error
             } else {
               console.log('[StripeCardFields] Auto sign-in successful');
+              // Wait a moment to ensure session is established
+              await new Promise(resolve => setTimeout(resolve, 100));
             }
           } catch (signInErr) {
             console.error('[StripeCardFields] Auto sign-in error:', signInErr);
