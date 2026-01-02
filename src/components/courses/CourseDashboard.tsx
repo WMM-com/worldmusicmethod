@@ -3,11 +3,10 @@ import { Target, CheckCircle2, BookOpen, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { CourseWithModules, UserCourseStats } from '@/types/course';
+import type { CourseWithModules } from '@/types/course';
 
 interface CourseDashboardProps {
   course: CourseWithModules;
-  stats: UserCourseStats | null | undefined;
   completedLessons: Set<string>;
   onStartLearning: () => void;
   onModuleSelect: (moduleId: string) => void;
@@ -15,7 +14,6 @@ interface CourseDashboardProps {
 
 export function CourseDashboard({
   course,
-  stats,
   completedLessons,
   onStartLearning,
   onModuleSelect
@@ -122,34 +120,34 @@ export function CourseDashboard({
                 <button
                   key={module.id}
                   onClick={() => onModuleSelect(module.id)}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors text-left"
+                  className="flex items-center gap-4 p-4 rounded-xl border border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors text-left"
                 >
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
                     isComplete 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-gray-100 text-gray-600'
+                      ? 'bg-green-500/20 text-green-400' 
+                      : 'bg-primary/20 text-primary'
                   }`}>
                     {isComplete ? <CheckCircle2 className="w-6 h-6" /> : index + 1}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium truncate text-gray-900">{module.title}</h3>
+                      <h3 className="font-medium truncate text-white">{module.title}</h3>
                       {module.region_name && (
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        <span className="text-xs text-gray-300 bg-gray-700 px-2 py-0.5 rounded-full">
                           {module.region_name}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-4 mt-1">
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-400">
                         {completed}/{lessons.length} lessons
                       </span>
                       <Progress value={progress} className="h-1.5 flex-1 max-w-32" />
                     </div>
                   </div>
 
-                  <BookOpen className="w-5 h-5 text-gray-400" />
+                  <BookOpen className="w-5 h-5 text-gray-500" />
                 </button>
               );
             })}

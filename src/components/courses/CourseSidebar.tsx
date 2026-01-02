@@ -12,10 +12,6 @@ interface CourseSidebarProps {
   onModuleSelect: (moduleId: string) => void;
   onLessonSelect: (moduleId: string, lessonId: string) => void;
   courseTitle: string;
-  stats?: {
-    xp: number;
-    streak_days: number;
-  } | null;
 }
 
 const LESSON_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -32,8 +28,7 @@ export function CourseSidebar({
   currentLessonId,
   onModuleSelect,
   onLessonSelect,
-  courseTitle,
-  stats
+  courseTitle
 }: CourseSidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(currentModuleId ? [currentModuleId] : [modules[0]?.id])

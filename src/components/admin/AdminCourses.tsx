@@ -116,8 +116,6 @@ export function AdminCourses() {
       // Delete enrollments
       await supabase.from('course_enrollments').delete().eq('course_id', courseId);
 
-      // Delete course stats
-      await supabase.from('user_course_stats').delete().eq('course_id', courseId);
 
       // Delete course
       const { error } = await supabase.from('courses').delete().eq('id', courseId);

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Menu, X } from 'lucide-react';
+import { ArrowLeft, Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -15,8 +15,7 @@ import { RhythmTrainer } from '@/components/courses/practice/RhythmTrainer';
 import { EarTrainer } from '@/components/courses/practice/EarTrainer';
 import { 
   useCourse, 
-  useUserCourseProgress, 
-  useUserCourseStats 
+  useUserCourseProgress
 } from '@/hooks/useCourses';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -34,10 +33,10 @@ export default function Course() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [practiceType, setPracticeType] = useState<PracticeType>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const { data: course, isLoading: courseLoading } = useCourse(courseId);
   const { data: progress = [] } = useUserCourseProgress(courseId);
-  const { data: stats } = useUserCourseStats(courseId);
 
   const completedLessons = useMemo(() => {
     return new Set(progress.filter(p => p.completed).map(p => p.lesson_id));
@@ -153,7 +152,6 @@ export default function Course() {
       onModuleSelect={handleModuleSelect}
       onLessonSelect={handleLessonSelect}
       courseTitle={course.title}
-      stats={stats}
     />
   );
 
@@ -165,8 +163,11 @@ export default function Course() {
       <div className="flex-1 flex">
         {/* Desktop sidebar */}
         {!isMobile && (
-          <aside className="w-80 flex-shrink-0 border-r border-border h-[calc(100vh-4rem)] sticky top-16 overflow-hidden">
-            {sidebarContent}
+          <aside className={cn(
+            "flex-shrink-0 border-r border-border h-[calc(100vh-4rem)] sticky top-16 overflow-hidden transition-all duration-300",
+            sidebarCollapsed ? "w-0" : "w-80"
+          )}>
+            {!sidebarCollapsed && sidebarContent}
           </aside>
         )}
 
@@ -193,13 +194,27 @@ export default function Course() {
             </div>
           )}
 
-          {/* Desktop back button */}
-          {viewState !== 'dashboard' && (
-            <div className="p-4 border-b border-gray-200">
-              <Button variant="ghost" size="sm" onClick={handleBackToDashboard} className="text-gray-700 hover:text-gray-900 hover:bg-gray-100">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Course Dashboard
+          {/* Desktop sidebar toggle & back button */}
+          {!isMobile && (
+            <div className="p-4 border-b border-gray-200 flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                title={sidebarCollapsed ? "Show sidebar" : "Hide sidebar"}
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeft className="w-5 h-5 text-gray-700" />
+                ) : (
+                  <PanelLeftClose className="w-5 h-5 text-gray-700" />
+                )}
               </Button>
+              {viewState !== 'dashboard' && (
+                <Button variant="ghost" size="sm" onClick={handleBackToDashboard} className="text-gray-700 hover:text-gray-900 hover:bg-gray-100">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Course Dashboard
+                </Button>
+              )}
             </div>
           )}
 
@@ -214,7 +229,6 @@ export default function Course() {
             >
               <CourseDashboard
                 course={course}
-                stats={stats}
                 completedLessons={completedLessons}
                 onStartLearning={handleStartLearning}
                 onModuleSelect={handleModuleSelect}
