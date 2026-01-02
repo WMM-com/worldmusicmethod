@@ -26,6 +26,13 @@ export function StickyAudioPlayer() {
   const toggleLike = useToggleLike();
   const location = useLocation();
 
+  // Dispatch custom events when minimized/expanded state changes
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('audio-player-state', { 
+      detail: { isMinimized, isExpanded } 
+    }));
+  }, [isMinimized, isExpanded]);
+
   const {
     currentTrack,
     isPlaying,

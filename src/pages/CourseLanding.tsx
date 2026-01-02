@@ -29,11 +29,92 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCourse } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useMediaPlayer } from '@/contexts/MediaPlayerContext';
 import { useGeoPricing, formatPrice } from '@/hooks/useGeoPricing';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import DOMPurify from 'dompurify';
+
+// Sticky CTA Button component that adjusts position based on audio player state
+interface StickyCTAButtonProps {
+  showStickyCTA: boolean;
+  isEnrolled: boolean;
+  priceInfo: { price: number; currency: string; discount_percentage: number } | null;
+  product: { base_price_usd?: number } | null;
+  handleStartCourse: () => void;
+}
+
+function StickyCTAButton({ showStickyCTA, isEnrolled, priceInfo, product, handleStartCourse }: StickyCTAButtonProps) {
+  const { currentTrack } = useMediaPlayer();
+  const [isAudioPlayerMinimized, setIsAudioPlayerMinimized] = useState(false);
+  const [isAudioPlayerExpanded, setIsAudioPlayerExpanded] = useState(false);
+
+  // Listen for audio player state changes via custom events
+  useEffect(() => {
+    const handleAudioPlayerState = (e: CustomEvent<{ isMinimized: boolean; isExpanded: boolean }>) => {
+      setIsAudioPlayerMinimized(e.detail.isMinimized);
+      setIsAudioPlayerExpanded(e.detail.isExpanded);
+    };
+
+    window.addEventListener('audio-player-state', handleAudioPlayerState as EventListener);
+    return () => window.removeEventListener('audio-player-state', handleAudioPlayerState as EventListener);
+  }, []);
+
+  // Determine bottom position:
+  // - No audio player or minimized: bottom-0
+  // - Audio player visible but not expanded: bottom-20 (80px for player height)
+  // - Audio player expanded on mobile: bottom-[176px] (80px base + ~96px expanded content)
+  const hasVisibleAudioPlayer = currentTrack && !isAudioPlayerMinimized;
+  
+  let bottomClass = 'bottom-0';
+  if (hasVisibleAudioPlayer) {
+    bottomClass = isAudioPlayerExpanded ? 'bottom-[176px]' : 'bottom-20';
+  }
+
+  if (!showStickyCTA || isEnrolled) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 100, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className={`fixed ${bottomClass} left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border shadow-lg transition-all duration-300`}
+      >
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            {priceInfo && (
+              <div>
+                <p className="text-lg font-bold text-yellow-500">
+                  {formatPrice(priceInfo.price, priceInfo.currency)}
+                </p>
+                {priceInfo.discount_percentage > 0 && (
+                  <p className="text-xs text-muted-foreground line-through">
+                    ${product?.base_price_usd?.toFixed(2)}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-green-600">
+              <Shield className="w-3.5 h-3.5 shrink-0" />
+              <span className="whitespace-nowrap">30-day 110% money-back</span>
+            </div>
+          </div>
+          <Button 
+            size="default" 
+            onClick={handleStartCourse} 
+            className="gap-2 shrink-0"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span>Enroll Now</span>
+          </Button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 // Resource item type
 interface ResourceItem {
@@ -1377,46 +1458,13 @@ export default function CourseLanding() {
       </Dialog>
 
       {/* Sticky CTA - appears when scrolled past hero, positioned above audio player */}
-      <AnimatePresence>
-        {showStickyCTA && !isEnrolled && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-20 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-b border-border shadow-lg"
-          >
-            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 min-w-0">
-                {priceInfo && (
-                  <div>
-                    <p className="text-lg font-bold text-yellow-500">
-                      {formatPrice(priceInfo.price, priceInfo.currency)}
-                    </p>
-                    {priceInfo.discount_percentage > 0 && (
-                      <p className="text-xs text-muted-foreground line-through">
-                        ${product?.base_price_usd?.toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <div className="hidden sm:flex items-center gap-1.5 text-xs text-green-600">
-                  <Shield className="w-3.5 h-3.5 shrink-0" />
-                  <span className="whitespace-nowrap">30-day 110% money-back</span>
-                </div>
-              </div>
-              <Button 
-                size="default" 
-                onClick={handleStartCourse} 
-                className="gap-2 shrink-0"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Enroll Now</span>
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <StickyCTAButton
+        showStickyCTA={showStickyCTA}
+        isEnrolled={isEnrolled}
+        priceInfo={priceInfo}
+        product={product}
+        handleStartCourse={handleStartCourse}
+      />
     </>
   );
 }
