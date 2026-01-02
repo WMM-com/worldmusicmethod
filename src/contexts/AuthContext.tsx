@@ -9,10 +9,12 @@ interface AuthContextType {
   profile: Profile | null;
   isAdmin: boolean;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => Promise<{ error: Error | null }>;
+  emailVerified: boolean;
+  signUp: (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => Promise<{ error: Error | null; userId?: string }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  resendVerificationEmail: () => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -64,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!error && data) {
       setProfile(data as Profile);
+      setEmailVerified((data as any).email_verified === true);
     }
   };
 
@@ -86,13 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error('A user with this email address already exists') };
     }
 
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
           first_name: firstName,
@@ -106,7 +107,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error('A user with this email address already exists') };
     }
 
-    return { error: error as Error | null };
+    if (error) {
+      return { error: error as Error };
+    }
+
+    // Send verification email via our custom edge function
+    if (data?.user?.id) {
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-verification-email', {
+          body: { user_id: data.user.id }
+        });
+        
+        if (emailError) {
+          console.error('Failed to send verification email:', emailError);
+        }
+      } catch (err) {
+        console.error('Error sending verification email:', err);
+      }
+    }
+
+    return { error: null, userId: data?.user?.id };
+  };
+
+  const resendVerificationEmail = async () => {
+    if (!user?.id) {
+      return { error: new Error('Not authenticated') };
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('send-verification-email', {
+        body: { user_id: user.id }
+      });
+      
+      if (error) {
+        return { error: new Error(error.message || 'Failed to send verification email') };
+      }
+      
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -124,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setProfile(null);
     setIsAdmin(false);
+    setEmailVerified(false);
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -149,10 +190,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         isAdmin,
         loading,
+        emailVerified,
         signUp,
         signIn,
         signOut,
         updateProfile,
+        resendVerificationEmail,
       }}
     >
       {children}

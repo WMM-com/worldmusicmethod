@@ -14,6 +14,7 @@ import wmmLogo from '@/assets/world-music-method-logo.png';
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const initialMode = searchParams.get('mode') as 'login' | 'signup' | 'forgot' | null;
+  const verified = searchParams.get('verified') === 'true';
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>(initialMode === 'signup' ? 'signup' : initialMode === 'forgot' ? 'forgot' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,6 +23,13 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const { signIn, signUp } = useAuth();
+
+  // Show success toast if user just verified email
+  useEffect(() => {
+    if (verified) {
+      toast.success('Email verified successfully! You can now log in.');
+    }
+  }, [verified]);
 
   // Update mode when URL params change
   useEffect(() => {
