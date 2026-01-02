@@ -270,7 +270,11 @@ export function useGeoPricing(): GeoPricingContextType {
   return context;
 }
 
-export function formatPrice(amount: number, currency: string): string {
+export function formatPrice(amount: number, currency: string, showDecimals: boolean = true): string {
   const symbol = currencySymbols[currency] || currency;
+  if (showDecimals) {
+    return `${symbol}${amount.toFixed(2)}`;
+  }
+  // Only round for display when explicitly requested (e.g., catalog prices)
   return `${symbol}${Math.round(amount)}`;
 }
