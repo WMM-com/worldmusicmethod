@@ -40,13 +40,13 @@ serve(async (req) => {
     });
 
     if (type === 'orders') {
-      // Build query - join with profiles to get first_name and last_name
+      // Build query - fetch orders first, then get profile data separately
+      // This avoids inner join issues when profiles don't exist
       let query = supabaseClient
         .from('orders')
         .select(`
           *,
-          products:product_id (name, product_type),
-          profiles:user_id (first_name, last_name)
+          products:product_id (name, product_type)
         `, { count: 'exact' })
         .order('created_at', { ascending: false });
 
@@ -70,14 +70,30 @@ serve(async (req) => {
 
       if (error) throw error;
 
+      // Fetch profiles separately for user_ids that exist
+      const userIds = [...new Set((orders || []).map(o => o.user_id).filter(Boolean))];
+      let profilesMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', userIds);
+        
+        (profiles || []).forEach(p => {
+          profilesMap[p.id] = { first_name: p.first_name, last_name: p.last_name };
+        });
+      }
+
       // Enrich with Stripe fee data and customer names from profile
       const enrichedOrders = await Promise.all(
         (orders || []).map(async (order) => {
           // Build customer name from profile if available
           let customerName = order.customer_name;
-          if (order.profiles) {
-            const firstName = order.profiles.first_name || '';
-            const lastName = order.profiles.last_name || '';
+          const profile = order.user_id ? profilesMap[order.user_id] : null;
+          if (profile) {
+            const firstName = profile.first_name || '';
+            const lastName = profile.last_name || '';
             const fullName = `${firstName} ${lastName}`.trim();
             if (fullName) {
               customerName = fullName;
@@ -194,10 +210,10 @@ serve(async (req) => {
       );
 
     } else if (type === 'stats') {
-      // Get aggregated stats with currency breakdown
+      // Get aggregated stats with currency breakdown - include refund_amount for partial refunds
       let ordersQuery = supabaseClient
         .from('orders')
-        .select('amount, status, stripe_fee, paypal_fee, net_amount, currency');
+        .select('amount, status, stripe_fee, paypal_fee, net_amount, currency, refund_amount');
 
       let subscriptionsQuery = supabaseClient
         .from('subscriptions')
@@ -221,19 +237,32 @@ serve(async (req) => {
       const orders = ordersResult.data || [];
       const subscriptions = subscriptionsResult.data || [];
 
-      const completedOrders = orders.filter(o => o.status === 'completed');
+      // Include both completed and partial_refund orders in revenue calculations
+      const revenueOrders = orders.filter(o => o.status === 'completed' || o.status === 'partial_refund');
       
       // Currency-specific revenue breakdown
       const revenueByCurrency: Record<string, number> = {};
       const feesByCurrency: Record<string, number> = {};
       const netByCurrency: Record<string, number> = {};
+      const refundsByCurrency: Record<string, number> = {};
       
-      completedOrders.forEach(o => {
+      revenueOrders.forEach(o => {
         const curr = (o.currency || 'USD').toUpperCase();
-        revenueByCurrency[curr] = (revenueByCurrency[curr] || 0) + (o.amount || 0);
+        // For partial refunds, calculate the actual revenue (amount minus refund)
+        const refundAmount = o.refund_amount || 0;
+        const effectiveRevenue = (o.amount || 0) - refundAmount;
+        
+        revenueByCurrency[curr] = (revenueByCurrency[curr] || 0) + effectiveRevenue;
         const fee = (o.stripe_fee || 0) + (o.paypal_fee || 0);
         feesByCurrency[curr] = (feesByCurrency[curr] || 0) + fee;
-        netByCurrency[curr] = (netByCurrency[curr] || 0) + (o.net_amount || o.amount || 0);
+        // Net amount should also account for refunds
+        const effectiveNet = (o.net_amount || o.amount || 0) - refundAmount;
+        netByCurrency[curr] = (netByCurrency[curr] || 0) + effectiveNet;
+        
+        // Track refunds separately
+        if (refundAmount > 0) {
+          refundsByCurrency[curr] = (refundsByCurrency[curr] || 0) + refundAmount;
+        }
       });
       
       // Exchange rates to USD (approximate)
@@ -263,8 +292,16 @@ serve(async (req) => {
         combinedFeesUSD += amount * rate;
       });
 
-      const totalStripeFees = completedOrders.reduce((sum, o) => sum + (o.stripe_fee || 0), 0);
-      const totalPaypalFees = completedOrders.reduce((sum, o) => sum + (o.paypal_fee || 0), 0);
+      const totalStripeFees = revenueOrders.reduce((sum, o) => sum + (o.stripe_fee || 0), 0);
+      const totalPaypalFees = revenueOrders.reduce((sum, o) => sum + (o.paypal_fee || 0), 0);
+      const totalRefunds = revenueOrders.reduce((sum, o) => sum + (o.refund_amount || 0), 0);
+      
+      // Calculate refunds in USD
+      let combinedRefundsUSD = 0;
+      Object.entries(refundsByCurrency).forEach(([curr, amount]) => {
+        const rate = exchangeRates[curr] || 1;
+        combinedRefundsUSD += amount * rate;
+      });
       
       const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
       const monthlyRecurring = activeSubscriptions.reduce((sum, s) => sum + (s.amount || 0), 0);
@@ -276,16 +313,20 @@ serve(async (req) => {
         totalFees: combinedFeesUSD,
         totalStripeFees,
         totalPaypalFees,
+        totalRefunds: combinedRefundsUSD,
         // Currency breakdowns
         revenueByCurrency,
         netByCurrency,
         feesByCurrency,
+        refundsByCurrency,
         combinedRevenueUSD,
         combinedNetUSD,
         combinedFeesUSD,
-        // Counts
-        completedOrdersCount: completedOrders.length,
+        combinedRefundsUSD,
+        // Counts - include partial_refund in completed count since they still represent revenue
+        completedOrdersCount: revenueOrders.length,
         refundedOrdersCount: orders.filter(o => o.status === 'refunded').length,
+        partialRefundCount: orders.filter(o => o.status === 'partial_refund').length,
         activeSubscriptionsCount: activeSubscriptions.length,
         cancelledSubscriptionsCount: subscriptions.filter(s => s.status === 'cancelled').length,
         pausedSubscriptionsCount: subscriptions.filter(s => s.status === 'paused').length,
