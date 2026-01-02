@@ -91,6 +91,159 @@ const REGIONS = [
   { value: 'asia_higher', label: 'Asia (Higher Income)', defaultDiscount: 0 },
 ];
 
+// Automation Tags Editor Component
+interface ProductTag {
+  id: string;
+  tag_id: string;
+  remove_on_refund: boolean;
+  tag_name?: string;
+}
+
+function AutomationTagsEditor({ productId, tags }: { productId: string; tags: EmailTag[] }) {
+  const queryClient = useQueryClient();
+  const [selectedTagId, setSelectedTagId] = useState<string>('');
+
+  const { data: productTags = [], isLoading } = useQuery({
+    queryKey: ['product-purchase-tags', productId],
+    queryFn: async () => {
+      if (!productId) return [];
+      const { data, error } = await supabase
+        .from('product_purchase_tags')
+        .select('id, tag_id, remove_on_refund')
+        .eq('product_id', productId);
+      if (error) throw error;
+      return data.map(pt => ({
+        ...pt,
+        tag_name: tags.find(t => t.id === pt.tag_id)?.name || 'Unknown Tag'
+      })) as ProductTag[];
+    },
+    enabled: !!productId,
+  });
+
+  const addTagMutation = useMutation({
+    mutationFn: async (tagId: string) => {
+      const { error } = await supabase
+        .from('product_purchase_tags')
+        .insert({ product_id: productId, tag_id: tagId, remove_on_refund: true });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-purchase-tags', productId] });
+      setSelectedTagId('');
+      toast.success('Tag added');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateTagMutation = useMutation({
+    mutationFn: async ({ id, remove_on_refund }: { id: string; remove_on_refund: boolean }) => {
+      const { error } = await supabase
+        .from('product_purchase_tags')
+        .update({ remove_on_refund })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-purchase-tags', productId] });
+      toast.success('Updated');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const removeTagMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('product_purchase_tags')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['product-purchase-tags', productId] });
+      toast.success('Tag removed');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const availableTags = tags.filter(t => !productTags.some(pt => pt.tag_id === t.id));
+
+  if (!productId) {
+    return (
+      <div className="p-4 rounded-lg border bg-muted/50 text-center">
+        <p className="text-sm text-muted-foreground">Save the product first to configure automation.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 pt-4">
+      <p className="text-sm text-muted-foreground">
+        Assign tags when this product is purchased. Choose which tags should be removed on refund.
+      </p>
+
+      {/* Add tag */}
+      <div className="flex gap-2">
+        <Select value={selectedTagId} onValueChange={setSelectedTagId}>
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder="Select a tag to add" />
+          </SelectTrigger>
+          <SelectContent>
+            {availableTags.map(tag => (
+              <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          onClick={() => selectedTagId && addTagMutation.mutate(selectedTagId)}
+          disabled={!selectedTagId || addTagMutation.isPending}
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          Add
+        </Button>
+      </div>
+
+      {/* Tag list */}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      ) : productTags.length === 0 ? (
+        <div className="p-4 rounded-lg border bg-muted/50 text-center">
+          <p className="text-sm text-muted-foreground">No tags assigned</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {productTags.map(pt => (
+            <div key={pt.id} className="flex items-center justify-between p-3 rounded-lg border">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{pt.tag_name}</Badge>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`refund-${pt.id}`}
+                    checked={pt.remove_on_refund}
+                    onCheckedChange={(checked) => updateTagMutation.mutate({ id: pt.id, remove_on_refund: checked })}
+                  />
+                  <Label htmlFor={`refund-${pt.id}`} className="text-xs text-muted-foreground cursor-pointer">
+                    Remove on refund
+                  </Label>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeTagMutation.mutate(pt.id)}
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Inline Subscription Editor Component
 interface SubscriptionItem {
   id: string;
@@ -944,37 +1097,7 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
           </TabsContent>
 
           <TabsContent value="automation">
-            <div className="space-y-4 pt-4">
-              <p className="text-sm text-muted-foreground">Automatically assign or remove tags when this product is purchased or refunded.</p>
-              
-              <div className="space-y-2">
-                <Label>Tag to assign on purchase</Label>
-                <Select value={purchaseTagId || 'none'} onValueChange={(val) => setPurchaseTagId(val === 'none' ? '' : val)}>
-                  <SelectTrigger><SelectValue placeholder="Select a tag (optional)" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No tag</SelectItem>
-                    {tags?.map((tag) => (
-                      <SelectItem key={tag.id} value={tag.id}>{tag.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">This tag will be added to the customer when they purchase this product</p>
-              </div>
-
-              {purchaseTagId && (
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-accent/5">
-                  <div>
-                    <Label htmlFor="refundRemove" className="font-medium">Remove tag on refund</Label>
-                    <p className="text-xs text-muted-foreground mt-1">Automatically remove the tag if the purchase is refunded</p>
-                  </div>
-                  <Switch id="refundRemove" checked={refundRemoveTag} onCheckedChange={setRefundRemoveTag} />
-                </div>
-              )}
-
-              <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending} className="w-full">
-                {updateMutation.isPending ? 'Saving...' : 'Save Automation Settings'}
-              </Button>
-            </div>
+            <AutomationTagsEditor productId={product?.id || ''} tags={tags || []} />
           </TabsContent>
         </Tabs>
       </DialogContent>

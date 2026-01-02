@@ -122,21 +122,37 @@ export function SiteHeader() {
               <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                      <span className="text-sm font-medium text-secondary">
-                        {profile?.full_name?.charAt(0) || profile?.email?.charAt(0) || 'U'}
-                      </span>
-                    </div>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 overflow-hidden">
+                    {profile?.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt={profile.full_name || 'User'} 
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                        <span className="text-sm font-medium text-secondary">
+                          {profile?.full_name?.charAt(0) || profile?.email?.charAt(0) || 'U'}
+                        </span>
+                      </div>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end">
                   <div className="flex items-center gap-2 p-2">
-                    <div className="h-8 w-8 rounded-full bg-secondary/20 flex items-center justify-center">
-                      <span className="text-xs font-medium text-secondary">
-                        {profile?.full_name?.charAt(0) || 'U'}
-                      </span>
-                    </div>
+                    {profile?.avatar_url ? (
+                      <img 
+                        src={profile.avatar_url} 
+                        alt={profile.full_name || 'User'} 
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-secondary/20 flex items-center justify-center">
+                        <span className="text-xs font-medium text-secondary">
+                          {profile?.full_name?.charAt(0) || 'U'}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex flex-col">
                       <p className="text-sm font-medium">{profile?.full_name || 'User'}</p>
                       <p className="text-xs text-muted-foreground">{profile?.email}</p>
