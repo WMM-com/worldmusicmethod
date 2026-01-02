@@ -18,6 +18,10 @@ function sanitizeEmail(email: string): string {
   return email.replace(/[,()]/g, '').toLowerCase().slice(0, 255);
 }
 
+const logStep = (step: string, details?: any) => {
+  console.log(`[COMPLETE-STRIPE-PAYMENT] ${step}`, details ? JSON.stringify(details) : '');
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,7 +30,7 @@ serve(async (req) => {
   try {
     const { paymentIntentId, password } = await req.json();
     
-    console.log("[COMPLETE-STRIPE-PAYMENT] Starting", { paymentIntentId });
+    logStep("Starting", { paymentIntentId });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -39,7 +43,7 @@ serve(async (req) => {
       throw new Error(`Payment not completed. Status: ${paymentIntent.status}`);
     }
 
-    console.log("[COMPLETE-STRIPE-PAYMENT] Payment verified", { status: paymentIntent.status });
+    logStep("Payment verified", { status: paymentIntent.status });
 
     const { 
       email, 
@@ -52,19 +56,27 @@ serve(async (req) => {
 
     // Parse multi-product data
     let productIds: string[] = [];
-    let productDetailsList: { id: string; name: string; course_id: string | null; amount: number }[] = [];
+    let productDetailsList: { id: string; name: string; course_id: string | null; amount: number; product_type?: string }[] = [];
     
     try {
       productIds = product_ids ? JSON.parse(product_ids) : [];
       productDetailsList = product_details ? JSON.parse(product_details) : [];
     } catch (e) {
-      console.log("[COMPLETE-STRIPE-PAYMENT] Legacy single product format detected");
+      logStep("Legacy single product format detected");
     }
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Fetch product details to check for subscription/membership types
+    const { data: productsData } = await supabaseClient
+      .from('products')
+      .select('id, name, product_type, billing_interval, trial_enabled, trial_length_days, trial_price_usd, base_price_usd')
+      .in('id', productIds);
+
+    const productsMap = new Map(productsData?.map(p => [p.id, p]) || []);
 
     // Check if user exists
     const { data: existingUser } = await supabaseClient.auth.admin.listUsers();
@@ -76,14 +88,14 @@ serve(async (req) => {
 
     if (user) {
       userId = user.id;
-      console.log("[COMPLETE-STRIPE-PAYMENT] Existing user found", { userId });
+      logStep("Existing user found", { userId });
       
       // Ensure existing user has email_verified set to true (they paid, so verify them)
       await supabaseClient
         .from("profiles")
         .update({ email_verified: true, email_verified_at: new Date().toISOString() })
         .eq("id", userId);
-      console.log("[COMPLETE-STRIPE-PAYMENT] Marked existing user as email verified");
+      logStep("Marked existing user as email verified");
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -99,7 +111,7 @@ serve(async (req) => {
 
       userId = newUser.user.id;
       isNewUser = true;
-      console.log("[COMPLETE-STRIPE-PAYMENT] New user created", { userId });
+      logStep("New user created", { userId });
 
       // Mark the user's profile as email verified (purchasing = verified)
       // Wait a moment for the profile trigger to create the profile row
@@ -109,7 +121,7 @@ serve(async (req) => {
         .from("profiles")
         .update({ email_verified: true, email_verified_at: new Date().toISOString() })
         .eq("id", userId);
-      console.log("[COMPLETE-STRIPE-PAYMENT] Marked new user as email verified");
+      logStep("Marked new user as email verified");
 
       // Generate a session token for the new user so they stay logged in
       try {
@@ -120,10 +132,10 @@ serve(async (req) => {
         
         if (sessionData?.properties?.hashed_token) {
           sessionToken = sessionData.properties.hashed_token;
-          console.log("[COMPLETE-STRIPE-PAYMENT] Session token generated for new user");
+          logStep("Session token generated for new user");
         }
       } catch (sessionErr) {
-        console.log("[COMPLETE-STRIPE-PAYMENT] Could not generate session token (non-fatal):", sessionErr);
+        logStep("Could not generate session token (non-fatal):", sessionErr);
       }
     }
 
@@ -143,10 +155,10 @@ serve(async (req) => {
           });
 
         if (enrollError) {
-          console.error("[COMPLETE-STRIPE-PAYMENT] Enrollment error for course:", detail.course_id, enrollError);
+          logStep("Enrollment error for course:", { courseId: detail.course_id, error: enrollError });
         } else {
           courseIds.push(detail.course_id);
-          console.log("[COMPLETE-STRIPE-PAYMENT] Course enrollment created", { courseId: detail.course_id });
+          logStep("Course enrollment created", { courseId: detail.course_id });
         }
       }
     }
@@ -158,11 +170,180 @@ serve(async (req) => {
     // Calculate the total original amount to determine discount ratio
     const totalOriginalAmount = productDetailsList.reduce((sum, d) => sum + d.amount, 0);
     const discountRatio = totalOriginalAmount > 0 ? paymentAmount / totalOriginalAmount : 1;
+
+    // Track created subscriptions to link to orders
+    const subscriptionIdsByProduct = new Map<string, string>();
     
+    // First, handle subscription/membership products - create subscription records
+    for (const detail of productDetailsList) {
+      const productInfo = productsMap.get(detail.id);
+      
+      if (productInfo && (productInfo.product_type === 'subscription' || productInfo.product_type === 'membership')) {
+        logStep("Processing subscription product", { productId: detail.id, productType: productInfo.product_type });
+        
+        // Calculate subscription amount
+        const subscriptionAmount = detail.amount * discountRatio;
+        
+        // Calculate billing period
+        const now = new Date();
+        let periodEnd = new Date(now);
+        
+        switch (productInfo.billing_interval) {
+          case 'daily':
+            periodEnd.setDate(periodEnd.getDate() + 1);
+            break;
+          case 'weekly':
+            periodEnd.setDate(periodEnd.getDate() + 7);
+            break;
+          case 'monthly':
+            periodEnd.setMonth(periodEnd.getMonth() + 1);
+            break;
+          case 'yearly':
+            periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+            break;
+          default:
+            periodEnd.setMonth(periodEnd.getMonth() + 1);
+        }
+        
+        // Check if this is a trial (amount = 0 or very low for trial price)
+        const isTrial = productInfo.trial_enabled && paymentAmount <= (productInfo.trial_price_usd || 0) * 1.1;
+        let trialEnd = null;
+        
+        if (isTrial && productInfo.trial_length_days) {
+          trialEnd = new Date(now);
+          trialEnd.setDate(trialEnd.getDate() + productInfo.trial_length_days);
+          // For trial, period end is after trial
+          periodEnd = new Date(trialEnd);
+          switch (productInfo.billing_interval) {
+            case 'daily':
+              periodEnd.setDate(periodEnd.getDate() + 1);
+              break;
+            case 'weekly':
+              periodEnd.setDate(periodEnd.getDate() + 7);
+              break;
+            case 'monthly':
+              periodEnd.setMonth(periodEnd.getMonth() + 1);
+              break;
+            case 'yearly':
+              periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+              break;
+          }
+        }
+
+        // Create the subscription record
+        const { data: subscription, error: subError } = await supabaseClient
+          .from('subscriptions')
+          .insert({
+            user_id: userId,
+            product_id: detail.id,
+            product_name: detail.name,
+            customer_email: email.toLowerCase(),
+            customer_name: full_name,
+            status: isTrial ? 'trialing' : 'active',
+            payment_provider: 'stripe',
+            provider_subscription_id: paymentIntentId, // We'll use payment intent as reference
+            amount: isTrial ? productInfo.base_price_usd : subscriptionAmount,
+            currency: paymentCurrency,
+            interval: productInfo.billing_interval || 'monthly',
+            current_period_start: now.toISOString(),
+            current_period_end: periodEnd.toISOString(),
+            trial_end: trialEnd?.toISOString() || null,
+            trial_ends_at: trialEnd?.toISOString() || null,
+          })
+          .select('id')
+          .single();
+
+        if (subError) {
+          logStep("Subscription creation error", { error: subError });
+        } else {
+          subscriptionIdsByProduct.set(detail.id, subscription.id);
+          logStep("Subscription created", { subscriptionId: subscription.id, status: isTrial ? 'trialing' : 'active' });
+        }
+
+        // Grant access to courses from subscription_items
+        const { data: subItems } = await supabaseClient
+          .from('subscription_items')
+          .select('item_id, item_type')
+          .eq('subscription_product_id', detail.id);
+
+        if (subItems && subItems.length > 0) {
+          logStep("Processing subscription items", { count: subItems.length });
+          
+          for (const item of subItems) {
+            if (item.item_type === 'course') {
+              // Direct course access
+              const { error: enrollError } = await supabaseClient
+                .from('course_enrollments')
+                .upsert({
+                  user_id: userId,
+                  course_id: item.item_id,
+                  enrollment_type: 'subscription',
+                  is_active: true,
+                }, { onConflict: 'user_id,course_id' });
+
+              if (!enrollError) {
+                courseIds.push(item.item_id);
+                logStep("Enrolled in course from subscription", { courseId: item.item_id });
+              }
+            } else if (item.item_type === 'course_group') {
+              // Get all courses in the group
+              const { data: groupCourses } = await supabaseClient
+                .from('course_group_courses')
+                .select('course_id')
+                .eq('group_id', item.item_id);
+
+              if (groupCourses) {
+                for (const gc of groupCourses) {
+                  const { error: enrollError } = await supabaseClient
+                    .from('course_enrollments')
+                    .upsert({
+                      user_id: userId,
+                      course_id: gc.course_id,
+                      enrollment_type: 'subscription',
+                      is_active: true,
+                    }, { onConflict: 'user_id,course_id' });
+
+                  if (!enrollError) {
+                    courseIds.push(gc.course_id);
+                  }
+                }
+                logStep("Enrolled in courses from course group", { groupId: item.item_id, courseCount: groupCourses.length });
+              }
+            } else if (item.item_type === 'product') {
+              // Get the product to check if it has a course_id
+              const { data: linkedProduct } = await supabaseClient
+                .from('products')
+                .select('course_id')
+                .eq('id', item.item_id)
+                .single();
+
+              if (linkedProduct?.course_id) {
+                const { error: enrollError } = await supabaseClient
+                  .from('course_enrollments')
+                  .upsert({
+                    user_id: userId,
+                    course_id: linkedProduct.course_id,
+                    enrollment_type: 'subscription',
+                    is_active: true,
+                  }, { onConflict: 'user_id,course_id' });
+
+                if (!enrollError) {
+                  courseIds.push(linkedProduct.course_id);
+                  logStep("Enrolled in course from linked product", { productId: item.item_id, courseId: linkedProduct.course_id });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Create order records for EACH product
     for (const detail of productDetailsList) {
       try {
         // Apply the proportional discount to each product's amount
         const discountedAmount = detail.amount * discountRatio;
+        const subscriptionId = subscriptionIdsByProduct.get(detail.id) || null;
         
         const { error: orderError } = await supabaseClient
           .from("orders")
@@ -176,15 +357,16 @@ serve(async (req) => {
             provider_payment_id: paymentIntentId,
             status: "completed",
             customer_name: full_name,
+            subscription_id: subscriptionId,
           });
 
         if (orderError) {
-          console.error("[COMPLETE-STRIPE-PAYMENT] Order creation error:", orderError);
+          logStep("Order creation error", { error: orderError });
         } else {
-          console.log("[COMPLETE-STRIPE-PAYMENT] Order created for product:", detail.id, "amount:", discountedAmount);
+          logStep("Order created for product", { productId: detail.id, amount: discountedAmount, subscriptionId });
         }
       } catch (orderErr) {
-        console.error("[COMPLETE-STRIPE-PAYMENT] Order insert failed:", orderErr);
+        logStep("Order insert failed", { error: orderErr });
       }
     }
 
@@ -244,10 +426,10 @@ serve(async (req) => {
               onConflict: "user_id,tag_id",
               ignoreDuplicates: true,
             });
-          console.log("[COMPLETE-STRIPE-PAYMENT] Purchase tag assigned", { tagId, product: detail.name });
+          logStep("Purchase tag assigned", { tagId, product: detail.name });
         }
       } catch (tagError) {
-        console.error("[COMPLETE-STRIPE-PAYMENT] Tag error (non-fatal):", tagError);
+        logStep("Tag error (non-fatal)", { error: tagError });
       }
     }
 
@@ -296,18 +478,18 @@ serve(async (req) => {
                 product_names: productDetailsList.map(p => p.name),
               },
             });
-          console.log("[COMPLETE-STRIPE-PAYMENT] Enrolled in purchase sequence", { sequenceId: seq.id });
+          logStep("Enrolled in purchase sequence", { sequenceId: seq.id });
         }
       }
     } catch (seqError) {
-      console.error("[COMPLETE-STRIPE-PAYMENT] Sequence error (non-fatal):", seqError);
+      logStep("Sequence error (non-fatal)", { error: seqError });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         userId,
-        courseIds,
+        courseIds: [...new Set(courseIds)], // Dedupe course IDs
         isNewUser,
         email,
         password: isNewUser ? password : undefined, // Return password only for new users to allow auto-login
@@ -316,7 +498,7 @@ serve(async (req) => {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[COMPLETE-STRIPE-PAYMENT] Error:", errorMessage);
+    logStep("ERROR", { message: errorMessage });
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
