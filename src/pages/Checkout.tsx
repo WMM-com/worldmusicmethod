@@ -266,8 +266,12 @@ function CheckoutContent() {
       }
 
       // Check if coupon applies to this product type
-      const isSubscriptionProduct = product?.product_type === 'subscription';
-      const isOneTimeProduct = !isSubscriptionProduct;
+      const isSubscriptionProduct = isCartMode
+        ? cartItems.some(item => item.productType === 'subscription' || item.productType === 'membership')
+        : (product?.product_type === 'subscription' || product?.product_type === 'membership');
+      const isOneTimeProduct = isCartMode
+        ? cartItems.some(item => item.productType !== 'subscription' && item.productType !== 'membership')
+        : (product?.product_type !== 'subscription' && product?.product_type !== 'membership');
 
       if (isOneTimeProduct && !coupon.applies_to_one_time) {
         toast.error('This coupon only applies to subscriptions');
