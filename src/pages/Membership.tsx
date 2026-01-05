@@ -7,6 +7,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useRef } from 'react';
+import { useCart } from '@/contexts/CartContext';
+import { toast } from 'sonner';
 
 const MEMBERSHIP_PRODUCT_ID = 'bd5f4ade-1a22-41f0-a68d-b9be1a79ae3b';
 const MEMBERSHIP_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/11/Membership-Video.mp4';
@@ -20,6 +22,7 @@ const benefits = [
 
 export default function Membership() {
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -42,7 +45,22 @@ export default function Membership() {
   const isLoading = productLoading || geoLoading;
 
   const handleStartTrial = () => {
-    navigate(`/checkout/${MEMBERSHIP_PRODUCT_ID}`);
+    if (product && priceInfo) {
+      const added = addToCart({
+        productId: product.id,
+        name: product.name,
+        price: priceInfo.price,
+        currency: priceInfo.currency,
+        productType: product.product_type,
+      });
+      if (!added) {
+        toast.error('Cannot mix subscriptions and one-time purchases in the same cart. Please clear your cart first.');
+        return;
+      }
+      navigate('/checkout');
+    } else {
+      navigate('/checkout');
+    }
   };
 
   const handlePlayVideo = () => {
