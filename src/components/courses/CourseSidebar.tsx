@@ -114,7 +114,7 @@ export function CourseSidebar({
 
                 <div className="flex-1 min-w-0">
                   <h3 className={cn(
-                    "font-medium truncate",
+                    "font-medium break-words whitespace-normal",
                     isCurrentModule && "text-primary"
                   )}>
                     {module.title}
@@ -172,7 +172,7 @@ export function CourseSidebar({
 
                             <div className="flex-1 min-w-0">
                               <p className={cn(
-                                "text-sm truncate",
+                                "text-sm break-words whitespace-normal",
                                 isCurrent && "font-medium text-primary",
                                 isCompleted && "text-muted-foreground"
                               )}>
