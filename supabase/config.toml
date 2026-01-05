@@ -98,3 +98,9 @@ verify_jwt = false
 
 [functions.send-order-confirmation]
 verify_jwt = false
+
+[functions.r2-delete-folder]
+verify_jwt = true
+
+[functions.admin-delete-user]
+verify_jwt = true
