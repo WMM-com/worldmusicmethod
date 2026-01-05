@@ -95,17 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error('Password must be at least 8 characters') };
     }
 
-    // Check if email already exists in profiles
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', normalizedEmail)
-      .maybeSingle();
-
-    if (existingProfile) {
-      return { error: new Error('A user with this email address already exists') };
-    }
-
+    // Sign up with Supabase Auth - don't pre-check for duplicates (Auth handles it)
     const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
@@ -127,7 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const msg = error.message || 'Signup failed';
 
       // This error is coming from the authentication system password policy.
-      // We only want to enforce a simple 8+ character minimum in the app.
       if (/weak|strength/i.test(msg)) {
         return {
           error: new Error(
@@ -141,24 +130,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const userId = data?.user?.id;
 
-    // Fire-and-forget verification email (don't block UI) then sign out immediately
     if (userId) {
-      // Send email in background - don't await
-      supabase.functions.invoke('send-verification-email', {
-        body: { user_id: userId },
-      }).catch(err => console.error('Error sending verification email:', err));
-
-      // Sign out immediately to prevent auto-login - user must verify email first
-      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
-      if (signOutError) {
-        console.warn('Sign out after signup failed:', signOutError.message);
-      }
-
+      // Clear state immediately - don't wait for signOut
       setUser(null);
       setSession(null);
       setProfile(null);
       setIsAdmin(false);
       setEmailVerified(false);
+
+      // Fire-and-forget: send email and sign out in background
+      supabase.functions.invoke('send-verification-email', {
+        body: { user_id: userId },
+      }).catch(err => console.error('Error sending verification email:', err));
+
+      supabase.auth.signOut({ scope: 'local' })
+        .catch(err => console.warn('Sign out after signup failed:', err));
     }
 
     return { error: null, userId };

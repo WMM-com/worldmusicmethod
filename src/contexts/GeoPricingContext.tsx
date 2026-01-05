@@ -142,91 +142,88 @@ function setCachedGeoData(data: Omit<CachedGeoData, 'timestamp'>): void {
 }
 
 export function GeoPricingProvider({ children }: { children: React.ReactNode }) {
-  const [region, setRegion] = useState<PricingRegion>('default');
-  const [countryCode, setCountryCode] = useState<string>('');
-  const [countryName, setCountryName] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize from cache synchronously to avoid loading state on cached visits
+  const cachedData = getCachedGeoData();
+  const [region, setRegion] = useState<PricingRegion>(cachedData?.region ?? 'default');
+  const [countryCode, setCountryCode] = useState<string>(cachedData?.countryCode ?? '');
+  const [countryName, setCountryName] = useState<string>(cachedData?.countryName ?? '');
+  const [isLoading, setIsLoading] = useState(!cachedData); // Only loading if no cache
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const detectRegion = async () => {
-      // Check cache first
-      const cached = getCachedGeoData();
-      if (cached) {
-        console.log('[GeoPricing] Using cached data:', cached.countryCode, cached.region);
-        setRegion(cached.region);
-        setCountryCode(cached.countryCode);
-        setCountryName(cached.countryName);
-        setIsLoading(false);
-        return;
-      }
+    // If we already have cached data, skip the API call entirely
+    if (cachedData) {
+      console.log('[GeoPricing] Using cached data:', cachedData.countryCode, cachedData.region);
+      return;
+    }
 
+    const detectRegion = async () => {
+      const locale = navigator.language || 'en-US';
+      
+      // Try to detect country from IP using a free geo API
       try {
-        const locale = navigator.language || 'en-US';
-        
-        // Try to detect country from IP using a free geo API
-        try {
-          const response = await fetch('https://ipapi.co/json/', { 
-            signal: AbortSignal.timeout(3000) 
+        const response = await fetch('https://ipapi.co/json/', { 
+          signal: AbortSignal.timeout(2000) // Reduced timeout
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const code = data.country_code;
+          const name = data.country_name || code;
+          console.log('[GeoPricing] Detected country:', code, name);
+          
+          // Use local fallback first (instant), then update from DB if different
+          let detectedRegion: PricingRegion = countryToRegion[code] || 'default';
+          
+          setCountryCode(code);
+          setCountryName(name);
+          setRegion(detectedRegion);
+          setIsLoading(false);
+          
+          // Cache immediately with local mapping
+          setCachedGeoData({
+            region: detectedRegion,
+            countryCode: code,
+            countryName: name,
           });
-          if (response.ok) {
-            const data = await response.json();
-            const code = data.country_code;
-            const name = data.country_name || code;
-            console.log('[GeoPricing] Detected country:', code, name);
-            setCountryCode(code);
-            setCountryName(name);
-            
-            // Check database mapping first
-            const { data: mapping } = await supabase
-              .from('country_region_mapping')
-              .select('region')
-              .eq('country_code', code)
-              .maybeSingle();
-            
-            let detectedRegion: PricingRegion = 'default';
-            
-            if (mapping?.region) {
-              console.log('[GeoPricing] Using DB mapping:', mapping.region);
-              detectedRegion = mapping.region as PricingRegion;
-            } else if (countryToRegion[code]) {
-              console.log('[GeoPricing] Using fallback mapping:', countryToRegion[code]);
-              detectedRegion = countryToRegion[code];
-            } else {
-              console.log('[GeoPricing] No mapping found, using default');
-            }
-            
-            setRegion(detectedRegion);
-            
-            // Cache the result
-            setCachedGeoData({
-              region: detectedRegion,
-              countryCode: code,
-              countryName: name,
+          
+          // Check database mapping in background (non-blocking)
+          supabase
+            .from('country_region_mapping')
+            .select('region')
+            .eq('country_code', code)
+            .maybeSingle()
+            .then(({ data: mapping }) => {
+              if (mapping?.region && mapping.region !== detectedRegion) {
+                console.log('[GeoPricing] Updating from DB mapping:', mapping.region);
+                const dbRegion = mapping.region as PricingRegion;
+                setRegion(dbRegion);
+                setCachedGeoData({
+                  region: dbRegion,
+                  countryCode: code,
+                  countryName: name,
+                });
+              }
             });
-          }
-        } catch (err) {
-          console.warn('[GeoPricing] IP detection failed, using locale fallback:', err);
-          // Fallback to locale-based detection
-          const localeCountry = locale.split('-')[1]?.toUpperCase();
-          if (localeCountry && countryToRegion[localeCountry]) {
-            console.log('[GeoPricing] Using locale fallback:', localeCountry);
-            setCountryCode(localeCountry);
-            setRegion(countryToRegion[localeCountry]);
-            
-            // Cache the fallback result too
-            setCachedGeoData({
-              region: countryToRegion[localeCountry],
-              countryCode: localeCountry,
-              countryName: localeCountry,
-            });
-          }
+          return;
         }
       } catch (err) {
-        setError('Could not detect region');
-      } finally {
-        setIsLoading(false);
+        console.warn('[GeoPricing] IP detection failed, using locale fallback:', err);
       }
+      
+      // Fallback to locale-based detection
+      const localeCountry = locale.split('-')[1]?.toUpperCase();
+      if (localeCountry && countryToRegion[localeCountry]) {
+        console.log('[GeoPricing] Using locale fallback:', localeCountry);
+        setCountryCode(localeCountry);
+        setRegion(countryToRegion[localeCountry]);
+        setCachedGeoData({
+          region: countryToRegion[localeCountry],
+          countryCode: localeCountry,
+          countryName: localeCountry,
+        });
+      }
+      
+      setIsLoading(false);
     };
 
     detectRegion();
