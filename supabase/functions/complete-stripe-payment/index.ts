@@ -184,53 +184,130 @@ serve(async (req) => {
         // Calculate subscription amount
         const subscriptionAmount = detail.amount * discountRatio;
         
-        // Calculate billing period
-        const now = new Date();
-        let periodEnd = new Date(now);
+        // Map billing interval to Stripe interval
+        const intervalMap: Record<string, Stripe.PriceCreateParams.Recurring.Interval> = {
+          'daily': 'day',
+          'weekly': 'week',
+          'monthly': 'month',
+          'yearly': 'year',
+          'annual': 'year',
+        };
+        const stripeInterval = intervalMap[productInfo.billing_interval || 'monthly'] || 'month';
         
-        switch (productInfo.billing_interval) {
-          case 'daily':
-            periodEnd.setDate(periodEnd.getDate() + 1);
-            break;
-          case 'weekly':
-            periodEnd.setDate(periodEnd.getDate() + 7);
-            break;
-          case 'monthly':
-            periodEnd.setMonth(periodEnd.getMonth() + 1);
-            break;
-          case 'yearly':
-            periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-            break;
-          default:
-            periodEnd.setMonth(periodEnd.getMonth() + 1);
+        // Create or get Stripe customer
+        const customers = await stripe.customers.list({ email, limit: 1 });
+        let customerId: string;
+        
+        if (customers.data.length > 0) {
+          customerId = customers.data[0].id;
+          logStep("Existing Stripe customer found", { customerId });
+        } else {
+          const customer = await stripe.customers.create({
+            email,
+            name: full_name,
+            metadata: { user_id: userId },
+          });
+          customerId = customer.id;
+          logStep("New Stripe customer created", { customerId });
         }
         
-        // Check if this is a trial (amount = 0 or very low for trial price)
-        const isTrial = productInfo.trial_enabled && paymentAmount <= (productInfo.trial_price_usd || 0) * 1.1;
-        let trialEnd = null;
-        
-        if (isTrial && productInfo.trial_length_days) {
-          trialEnd = new Date(now);
-          trialEnd.setDate(trialEnd.getDate() + productInfo.trial_length_days);
-          // For trial, period end is after trial
-          periodEnd = new Date(trialEnd);
-          switch (productInfo.billing_interval) {
-            case 'daily':
-              periodEnd.setDate(periodEnd.getDate() + 1);
-              break;
-            case 'weekly':
-              periodEnd.setDate(periodEnd.getDate() + 7);
-              break;
-            case 'monthly':
-              periodEnd.setMonth(periodEnd.getMonth() + 1);
-              break;
-            case 'yearly':
-              periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-              break;
+        // Link payment method from payment intent to customer
+        if (paymentIntent.payment_method) {
+          const pmId = typeof paymentIntent.payment_method === 'string' 
+            ? paymentIntent.payment_method 
+            : paymentIntent.payment_method.id;
+          
+          try {
+            await stripe.paymentMethods.attach(pmId, { customer: customerId });
+            await stripe.customers.update(customerId, {
+              invoice_settings: { default_payment_method: pmId },
+            });
+            logStep("Payment method attached to customer", { pmId });
+          } catch (attachErr: any) {
+            // Payment method might already be attached
+            if (!attachErr.message?.includes('already been attached')) {
+              logStep("Payment method attach warning", { error: attachErr.message });
+            }
           }
         }
+        
+        // Create or get price in Stripe
+        const priceAmount = Math.round((productInfo.base_price_usd || 0) * 100);
+        const lookupKey = `subscription_${detail.id}_${stripeInterval}`;
+        
+        const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
+        let priceId: string;
+        
+        if (prices.data.length > 0) {
+          priceId = prices.data[0].id;
+          logStep("Existing Stripe price found", { priceId });
+        } else {
+          // Create or find product in Stripe
+          const stripeProducts = await stripe.products.list({ limit: 100 });
+          const existingProduct = stripeProducts.data.find((p: any) => 
+            p.metadata?.supabase_product_id === detail.id
+          );
+          
+          let stripeProductId: string;
+          if (existingProduct) {
+            stripeProductId = existingProduct.id;
+          } else {
+            const newProduct = await stripe.products.create({
+              name: detail.name,
+              metadata: { supabase_product_id: detail.id },
+            });
+            stripeProductId = newProduct.id;
+            logStep("Created Stripe product", { stripeProductId });
+          }
+          
+          const newPrice = await stripe.prices.create({
+            product: stripeProductId,
+            unit_amount: priceAmount,
+            currency: 'usd',
+            recurring: { interval: stripeInterval },
+            lookup_key: lookupKey,
+          });
+          priceId = newPrice.id;
+          logStep("Created Stripe price", { priceId });
+        }
+        
+        // Create actual Stripe subscription
+        const subscriptionParams: Stripe.SubscriptionCreateParams = {
+          customer: customerId,
+          items: [{ price: priceId }],
+          payment_behavior: 'error_if_incomplete',
+          default_payment_method: paymentIntent.payment_method 
+            ? (typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method.id)
+            : undefined,
+          metadata: {
+            supabase_product_id: detail.id,
+            product_name: detail.name,
+            user_id: userId,
+          },
+        };
+        
+        // Check if this is a trial
+        const isTrial = productInfo.trial_enabled && paymentAmount <= (productInfo.trial_price_usd || 0) * 1.1;
+        
+        if (isTrial && productInfo.trial_length_days) {
+          subscriptionParams.trial_period_days = productInfo.trial_length_days;
+          logStep("Trial period added", { days: productInfo.trial_length_days });
+        }
+        
+        const stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
+        logStep("Stripe subscription created", { 
+          subscriptionId: stripeSubscription.id, 
+          status: stripeSubscription.status 
+        });
+        
+        // Calculate local dates for DB
+        const now = new Date();
+        const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+        const trialEnd = stripeSubscription.trial_end 
+          ? new Date(stripeSubscription.trial_end * 1000) 
+          : null;
 
-        // Create the subscription record
+        // Create the subscription record with proper Stripe subscription ID
         const { data: subscription, error: subError } = await supabaseClient
           .from('subscriptions')
           .insert({
@@ -239,10 +316,10 @@ serve(async (req) => {
             product_name: detail.name,
             customer_email: email.toLowerCase(),
             customer_name: full_name,
-            status: isTrial ? 'trialing' : 'active',
+            status: stripeSubscription.status === 'active' ? 'active' : (stripeSubscription.status === 'trialing' ? 'trialing' : 'active'),
             payment_provider: 'stripe',
-            provider_subscription_id: paymentIntentId, // We'll use payment intent as reference
-            amount: isTrial ? productInfo.base_price_usd : subscriptionAmount,
+            provider_subscription_id: stripeSubscription.id, // Store actual Stripe subscription ID (sub_xxx)
+            amount: productInfo.base_price_usd,
             currency: paymentCurrency,
             interval: productInfo.billing_interval || 'monthly',
             current_period_start: now.toISOString(),
@@ -257,7 +334,7 @@ serve(async (req) => {
           logStep("Subscription creation error", { error: subError });
         } else {
           subscriptionIdsByProduct.set(detail.id, subscription.id);
-          logStep("Subscription created", { subscriptionId: subscription.id, status: isTrial ? 'trialing' : 'active' });
+          logStep("DB Subscription created", { dbSubscriptionId: subscription.id, stripeSubId: stripeSubscription.id });
         }
 
         // Grant access to courses from subscription_items
