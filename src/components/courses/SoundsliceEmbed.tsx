@@ -106,19 +106,24 @@ export function SoundsliceEmbed({
     // Determine if we have a full URL or just a slice ID
     let baseUrl: string;
     
-    if (sliceIdOrUrl.includes('soundslice.com')) {
+    // Clean up the input - remove quotes, trailing slashes, whitespace
+    const cleanedInput = sliceIdOrUrl.trim().replace(/^['"`]+|['"`]+$/g, '').replace(/\/+$/, '');
+    
+    if (cleanedInput.includes('soundslice.com')) {
       // Full URL provided - extract the slice path and build embed URL
-      // Handle formats like: https://www.soundslice.com/slices/krXCc/
-      const sliceMatch = sliceIdOrUrl.match(/soundslice\.com\/slices\/([a-zA-Z0-9]+)/);
+      // Handle formats like: https://www.soundslice.com/slices/krXCc/ or with dash like Y-m2c
+      const sliceMatch = cleanedInput.match(/soundslice\.com\/slices\/([a-zA-Z0-9_-]+)/);
       if (sliceMatch) {
         baseUrl = `https://www.soundslice.com/slices/${sliceMatch[1]}/embed`;
       } else {
         // Fallback - try to use as-is with /embed
-        baseUrl = sliceIdOrUrl.replace(/\/?$/, '').replace(/\/embed\/?$/, '') + '/embed';
+        baseUrl = cleanedInput.replace(/\/?$/, '').replace(/\/embed\/?$/, '') + '/embed';
       }
     } else {
-      // Just the slice ID provided
-      baseUrl = `https://www.soundslice.com/slices/${sliceIdOrUrl}/embed`;
+      // Just the slice ID provided (like "Y-m2c" or "krXCc")
+      // Remove any trailing slash that might be there
+      const sliceId = cleanedInput.replace(/\/+$/, '');
+      baseUrl = `https://www.soundslice.com/slices/${sliceId}/embed`;
     }
 
     // Build URL parameters - start with preset, then override with custom params
