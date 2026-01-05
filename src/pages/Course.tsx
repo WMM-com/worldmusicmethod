@@ -168,24 +168,20 @@ export default function Course() {
     <div className="min-h-screen flex flex-col">
       {/* Course-only collapsible header */}
       {!headerCollapsed ? (
-        <div className="relative">
-          <SiteHeader />
-          {/* Hide menu button - positioned at the right of the header */}
-          <Button
-            size="sm"
-            onClick={() => setHeaderCollapsed(true)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <ChevronUp className="h-4 w-4" />
-            Hide menu
-          </Button>
-        </div>
+        <SiteHeader
+          rightAddon={
+            <Button size="sm" onClick={() => setHeaderCollapsed(true)} className="gap-2">
+              <ChevronUp className="h-4 w-4" />
+              Hide menu
+            </Button>
+          }
+        />
       ) : (
         /* Show menu button - fixed at top right when header is hidden */
         <Button
           size="sm"
           onClick={() => setHeaderCollapsed(false)}
-          className="fixed top-4 right-4 z-50 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+          className="fixed top-4 right-4 z-[60] gap-2 shadow-lg"
         >
           <ChevronDown className="h-4 w-4" />
           Show menu
