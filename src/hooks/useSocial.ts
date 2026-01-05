@@ -199,6 +199,41 @@ export function useDeletePost() {
 
   return useMutation({
     mutationFn: async (postId: string) => {
+      // First, fetch the post to get media URL for R2 cleanup
+      const { data: post, error: fetchError } = await supabase
+        .from('posts')
+        .select('image_url, user_id')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Failed to fetch post for deletion:', fetchError);
+      }
+
+      // Delete from R2 if there's media
+      if (post?.image_url) {
+        try {
+          // Extract object key from URL - format: https://pub-xxx.r2.dev/userId/posts/type/filename
+          const url = new URL(post.image_url);
+          const objectKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          
+          if (objectKey) {
+            const { error: r2Error } = await supabase.functions.invoke('r2-delete', {
+              body: { objectKey, bucket: 'user' }
+            });
+            
+            if (r2Error) {
+              console.error('Failed to delete media from R2:', r2Error);
+              // Continue with database deletion even if R2 fails
+            } else {
+              console.log('R2 media deleted:', objectKey);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing media URL for R2 deletion:', err);
+        }
+      }
+
       // Admin can delete any post via RLS policy, owner can delete their own
       const { error } = await supabase.from('posts').delete().eq('id', postId);
       if (error) throw error;
@@ -341,6 +376,39 @@ export function useDeleteComment() {
 
   return useMutation({
     mutationFn: async (commentId: string) => {
+      // First, fetch the comment to get media URL for R2 cleanup
+      const { data: comment, error: fetchError } = await supabase
+        .from('comments')
+        .select('media_url')
+        .eq('id', commentId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Failed to fetch comment for deletion:', fetchError);
+      }
+
+      // Delete from R2 if there's media
+      if (comment?.media_url) {
+        try {
+          const url = new URL(comment.media_url);
+          const objectKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          
+          if (objectKey) {
+            const { error: r2Error } = await supabase.functions.invoke('r2-delete', {
+              body: { objectKey, bucket: 'user' }
+            });
+            
+            if (r2Error) {
+              console.error('Failed to delete comment media from R2:', r2Error);
+            } else {
+              console.log('R2 comment media deleted:', objectKey);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing comment media URL for R2 deletion:', err);
+        }
+      }
+
       // Admin can delete any comment via RLS policy, owner can delete their own
       const { error } = await supabase.from('comments')
         .delete()
