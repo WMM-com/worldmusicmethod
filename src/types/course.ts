@@ -34,6 +34,7 @@ export interface ModuleLesson {
   title: string;
   lesson_type: 'video' | 'reading' | 'listening' | 'assignment';
   video_url: string | null;
+  soundslice_preset?: string | null;
   duration_seconds: number | null;
   content: string | null;
   listening_references: ListeningReference[];

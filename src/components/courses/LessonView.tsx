@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useMarkLessonComplete } from '@/hooks/useCourses';
 import { toast } from 'sonner';
-import { SoundsliceEmbed } from './SoundsliceEmbed';
+import { SoundsliceEmbed, SoundslicePreset } from './SoundsliceEmbed';
 import type { ModuleLesson } from '@/types/course';
 
 interface LessonViewProps {
@@ -189,7 +189,7 @@ export function LessonView({
           >
             <SoundsliceEmbed 
               sliceIdOrUrl={lesson.video_url}
-              preset="guitar"
+              preset={(lesson.soundslice_preset as SoundslicePreset) || 'guitar'}
               height={600}
             />
           </motion.div>
