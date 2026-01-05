@@ -694,6 +694,11 @@ export default function CourseLanding() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNavWheel, setShowNavWheel] = useState(false);
 
+  // Scroll to top on page load
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [courseId]);
+
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 

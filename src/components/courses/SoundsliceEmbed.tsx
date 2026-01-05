@@ -150,7 +150,7 @@ export function SoundsliceEmbed({
   }, [sliceIdOrUrl, preset, user?.id, params]);
 
   return (
-    <div className={`rounded-2xl overflow-hidden shadow-2xl bg-card ${className}`}>
+    <div className={`rounded-2xl overflow-hidden shadow-2xl bg-card border border-border ${className}`}>
       <iframe
         src={embedUrl}
         width="100%"
