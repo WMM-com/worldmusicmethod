@@ -10,6 +10,7 @@ import { MediaPlayerProvider } from "@/contexts/MediaPlayerContext";
 import { GeoPricingProvider } from "@/contexts/GeoPricingContext";
 import { ChatPopup } from "@/components/messaging/ChatPopup";
 import { StickyAudioPlayer } from "@/components/media/StickyAudioPlayer";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
@@ -90,7 +91,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 // Wrapper to add bottom padding when player is visible
 function AppContent() {
   return (
-    <div className="pb-24">
+    <>
+      <ScrollToTop />
+      <div className="pb-24">
       <Routes>
         <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -136,7 +139,8 @@ function AppContent() {
       </Routes>
       <ChatPopup />
       <StickyAudioPlayer />
-    </div>
+      </div>
+    </>
   );
 }
 
