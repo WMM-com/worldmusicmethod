@@ -140,12 +140,23 @@ serve(async (req) => {
     const enrolledCourseIds: string[] = [];
     const orderIds: string[] = [];
 
+    // Calculate each product's share of the final (discounted) amount
+    // The captureAmount is the actual amount charged (after coupon discount)
+    const totalOriginalAmount = productDetails.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+    
     // Create order record for each product
     for (let i = 0; i < productIds.length; i++) {
       const productId = productIds[i];
       const product = products?.find(p => p.id === productId);
       const detail = productDetails.find((d: any) => d.product_id === productId);
-      const productAmount = detail?.amount || (captureAmount / productIds.length);
+      const originalProductAmount = detail?.amount || 0;
+      
+      // Calculate this product's proportion of the total
+      const proportion = totalOriginalAmount > 0 ? originalProductAmount / totalOriginalAmount : 1 / productIds.length;
+      
+      // Apply the same proportion to the captured (discounted) amount
+      const productAmount = captureAmount * proportion;
+      const productCouponDiscount = coupon_discount * proportion;
 
       const { data: orderData, error: orderError } = await supabaseClient
         .from("orders")
@@ -160,7 +171,7 @@ serve(async (req) => {
           customer_name: full_name,
           email: email,
           coupon_code: coupon_code || null,
-          coupon_discount: coupon_discount / productIds.length, // Distribute discount evenly
+          coupon_discount: productCouponDiscount,
         })
         .select()
         .single();

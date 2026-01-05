@@ -445,6 +445,7 @@ export function AdminSales() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Coupon</TableHead>
                     <TableHead className="text-right">Fee</TableHead>
                     <TableHead className="text-right">Net</TableHead>
                     <TableHead>Provider</TableHead>
@@ -455,13 +456,13 @@ export function AdminSales() {
                 <TableBody>
                   {ordersLoading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8">
+                      <TableCell colSpan={10} className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : ordersData?.data?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         No orders found
                       </TableCell>
                     </TableRow>
@@ -491,6 +492,22 @@ export function AdminSales() {
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {formatPrice(order.amount, order.currency)}
+                          </TableCell>
+                          <TableCell>
+                            {order.coupon_code ? (
+                              <div>
+                                <Badge variant="outline" className="text-xs">
+                                  {order.coupon_code}
+                                </Badge>
+                                {order.coupon_discount > 0 && (
+                                  <p className="text-xs text-green-600 mt-0.5">
+                                    -{formatPrice(order.coupon_discount, order.currency)}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">-</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right text-sm text-destructive">
                             -{formatPrice(fee, order.currency)}
