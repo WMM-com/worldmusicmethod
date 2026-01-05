@@ -56,6 +56,8 @@ const PayPalButton = ({
           email,
           fullName,
           couponCode,
+          currency,
+          amount, // Pass the discounted amount from frontend
           returnUrl: `${window.location.origin}/payment-success?method=paypal`,
           cancelUrl: `${window.location.origin}/checkout/${productId}`,
         },
@@ -734,7 +736,16 @@ function CheckoutContent() {
                   {paymentMethod === 'card' ? (
                     <StripeCardFields
                       productIds={isCartMode ? cartItems.map(item => item.productId) : [productId || '']}
-                      amounts={isCartMode ? cartItems.map(item => item.price) : [productPriceInfo?.price || 0]}
+                      amounts={
+                        // Pass coupon-discounted amounts to the backend
+                        isCartMode 
+                          ? cartItems.map(item => {
+                              // Apply proportional coupon discount to each item
+                              const itemRatio = item.price / basePrice;
+                              return item.price - (couponDiscount * itemRatio);
+                            }) 
+                          : [priceAfterCoupon]
+                      }
                       email={user?.email || email}
                       fullName={fullName || user?.email || email}
                       password={password}

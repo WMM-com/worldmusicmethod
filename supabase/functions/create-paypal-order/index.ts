@@ -37,13 +37,13 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, productIds, email, fullName, couponCode, returnUrl, cancelUrl, currency, amounts } = await req.json();
+    const { productId, productIds, email, fullName, couponCode, returnUrl, cancelUrl, currency, amounts, amount } = await req.json();
     
     // Support both single productId (legacy) and multiple productIds
     const productIdList = productIds || (productId ? [productId] : []);
     const amountList = amounts || [];
     
-    console.log("[CREATE-PAYPAL-ORDER] Starting", { productIds: productIdList, email, fullName, currency });
+    console.log("[CREATE-PAYPAL-ORDER] Starting", { productIds: productIdList, email, fullName, currency, couponCode, amount });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -69,8 +69,10 @@ serve(async (req) => {
     // Use geo-priced currency or default to USD
     const paymentCurrency = (currency || 'USD').toUpperCase();
     
-    // Calculate total from geo-priced amounts or product prices
+    // If amount is passed directly from frontend (already includes coupon discount), use it
+    // Otherwise calculate from amountList or product prices
     let totalAmount = 0;
+    let originalAmount = 0;
     const itemDetails: { product_id: string; name: string; course_id: string | null; amount: number }[] = [];
     
     for (let i = 0; i < productIdList.length; i++) {
@@ -85,7 +87,7 @@ serve(async (req) => {
             productAmount = product.sale_price_usd;
           }
         }
-        totalAmount += productAmount;
+        originalAmount += productAmount;
         itemDetails.push({
           product_id: product.id,
           name: product.name,
@@ -95,9 +97,19 @@ serve(async (req) => {
       }
     }
 
+    // Use the discounted amount from frontend if provided, otherwise use calculated total
+    totalAmount = (typeof amount === 'number' && amount > 0) ? amount : originalAmount;
+    const couponDiscount = originalAmount - totalAmount;
+
     const formattedPrice = totalAmount.toFixed(2);
 
-    console.log("[CREATE-PAYPAL-ORDER] Price calculated", { totalAmount: formattedPrice, currency: paymentCurrency });
+    console.log("[CREATE-PAYPAL-ORDER] Price calculated", { 
+      totalAmount: formattedPrice, 
+      originalAmount, 
+      couponDiscount, 
+      currency: paymentCurrency,
+      couponCode 
+    });
 
     // Store order metadata in pending orders table (PayPal custom_id has 127 char limit)
     const { data: pendingOrder, error: pendingError } = await supabaseClient
@@ -110,6 +122,8 @@ serve(async (req) => {
         coupon_code: couponCode || null,
         currency: paymentCurrency,
         total_amount: totalAmount,
+        original_amount: originalAmount,
+        coupon_discount: couponDiscount,
       })
       .select()
       .single();
