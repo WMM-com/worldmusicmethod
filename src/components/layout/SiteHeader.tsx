@@ -10,13 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { BookOpen, LogOut, User, Settings, Menu, X, Shield, ShoppingCart, ChevronDown } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { MessagesDropdown } from '@/components/messaging/MessagesDropdown';
 import siteLogo from '@/assets/world-music-method-logo.png';
 
-export function SiteHeader() {
+export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { getItemCount } = useCart();
@@ -213,6 +213,7 @@ export function SiteHeader() {
                 </Button>
               </>
             )}
+            {rightAddon ? <div className="ml-2 flex items-center">{rightAddon}</div> : null}
           </div>
 
           {/* Mobile menu button */}

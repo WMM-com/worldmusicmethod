@@ -47,6 +47,18 @@ serve(async (req) => {
         apiVersion: "2025-08-27.basil",
       });
 
+      // Some legacy flows store a PaymentIntent id (pi_) instead of a Subscription id (sub_).
+      // In that case, Stripe subscription management actions cannot work.
+      if (typeof subscription.provider_subscription_id === 'string' && subscription.provider_subscription_id.startsWith('pi_')) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "This record isn't linked to a Stripe subscription (missing sub_ id). It was created via one-time payment, so pause/cancel/price changes aren't supported. Please re-create the subscription using the subscription checkout flow.",
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+
       let result: any;
 
       switch (action) {
