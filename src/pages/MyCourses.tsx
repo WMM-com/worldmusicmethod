@@ -198,9 +198,14 @@ export default function MyCourses() {
     return courseCards.filter((c) => (c.course.title || '').toLowerCase().includes(normalizedSearch));
   }, [courseCards, normalizedSearch]);
 
+  // When NOT searching, show Continue section with in-progress courses
+  // When searching, we'll show a single deduplicated list
+  const isSearching = normalizedSearch.length > 0;
+
   const continueCards = useMemo(() => {
+    if (isSearching) return []; // Don't show Continue section when searching
     // "In progress" = started but not finished
-    const inProgress = filteredCards.filter((c) => c.progressPercent > 0 && c.progressPercent < 100);
+    const inProgress = courseCards.filter((c) => c.progressPercent > 0 && c.progressPercent < 100);
     return inProgress
       .sort((a, b) => {
         const aT = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
@@ -208,14 +213,14 @@ export default function MyCourses() {
         return bT - aT;
       })
       .slice(0, 3);
-  }, [filteredCards]);
+  }, [courseCards, isSearching]);
 
-  const remainingCards = useMemo(() => {
-    const continueIds = new Set(continueCards.map((c) => c.course.id));
-    return filteredCards
-      .filter((c) => !continueIds.has(c.course.id))
-      .sort((a, b) => (a.course.title || '').localeCompare(b.course.title || ''));
-  }, [continueCards, filteredCards]);
+  const allCoursesCards = useMemo(() => {
+    // When searching: show filtered results, no duplicates
+    // When NOT searching: show ALL courses alphabetically (Continue courses appear twice)
+    const cardsToSort = isSearching ? filteredCards : courseCards;
+    return cardsToSort.sort((a, b) => (a.course.title || '').localeCompare(b.course.title || ''));
+  }, [courseCards, filteredCards, isSearching]);
 
   const renderCourseCard = (card: CourseCardVM, i: number) => {
     const { enrollment, course, progressPercent } = card;
@@ -331,7 +336,7 @@ export default function MyCourses() {
 
         {/* Course grid */}
         <main className="max-w-6xl mx-auto px-6 py-8">
-          {filteredCards.length > 0 ? (
+          {(isSearching ? filteredCards.length > 0 : courseCards.length > 0) ? (
             <div className="space-y-10">
               {continueCards.length > 0 && (
                 <section>
@@ -345,7 +350,7 @@ export default function MyCourses() {
               <section>
                 {continueCards.length > 0 && <h2 className="text-lg font-semibold mb-4">All Courses</h2>}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {remainingCards.map(renderCourseCard)}
+                  {allCoursesCards.map(renderCourseCard)}
                 </div>
               </section>
             </div>

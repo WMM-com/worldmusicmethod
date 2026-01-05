@@ -212,22 +212,39 @@ serve(async (req) => {
         }
         
         // Link payment method from payment intent to customer
+        // First, retrieve the payment method to check its customer
+        let paymentMethodId: string | null = null;
         if (paymentIntent.payment_method) {
-          const pmId = typeof paymentIntent.payment_method === 'string' 
+          paymentMethodId = typeof paymentIntent.payment_method === 'string' 
             ? paymentIntent.payment_method 
             : paymentIntent.payment_method.id;
           
           try {
-            await stripe.paymentMethods.attach(pmId, { customer: customerId });
-            await stripe.customers.update(customerId, {
-              invoice_settings: { default_payment_method: pmId },
-            });
-            logStep("Payment method attached to customer", { pmId });
-          } catch (attachErr: any) {
-            // Payment method might already be attached
-            if (!attachErr.message?.includes('already been attached')) {
-              logStep("Payment method attach warning", { error: attachErr.message });
+            // Check if payment method is already attached to this customer
+            const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+            
+            if (pm.customer === customerId) {
+              // Already attached to this customer
+              logStep("Payment method already attached to customer", { pmId: paymentMethodId });
+            } else if (!pm.customer) {
+              // Not attached to any customer, attach it
+              await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
+              logStep("Payment method attached to customer", { pmId: paymentMethodId });
+            } else {
+              // Attached to different customer - can't use it, will need to bill off_session
+              logStep("Payment method attached to different customer, will use off_session billing", { pmId: paymentMethodId });
+              paymentMethodId = null;
             }
+            
+            // Set as default payment method if we have one
+            if (paymentMethodId) {
+              await stripe.customers.update(customerId, {
+                invoice_settings: { default_payment_method: paymentMethodId },
+              });
+            }
+          } catch (attachErr: any) {
+            logStep("Payment method handling warning", { error: attachErr.message });
+            paymentMethodId = null;
           }
         }
         
@@ -272,19 +289,29 @@ serve(async (req) => {
         }
         
         // Create actual Stripe subscription
+        // Since the initial payment has already been made, we use 'default_incomplete' which allows
+        // the subscription to be created. The first invoice is already paid via the payment intent.
         const subscriptionParams: Stripe.SubscriptionCreateParams = {
           customer: customerId,
           items: [{ price: priceId }],
-          payment_behavior: 'error_if_incomplete',
-          default_payment_method: paymentIntent.payment_method 
-            ? (typeof paymentIntent.payment_method === 'string' ? paymentIntent.payment_method : paymentIntent.payment_method.id)
-            : undefined,
+          payment_behavior: 'default_incomplete',
+          payment_settings: {
+            payment_method_types: ['card'],
+            save_default_payment_method: 'on_subscription',
+          },
           metadata: {
             supabase_product_id: detail.id,
             product_name: detail.name,
             user_id: userId,
           },
         };
+        
+        // If we have a valid payment method attached, use it
+        if (paymentMethodId) {
+          subscriptionParams.default_payment_method = paymentMethodId;
+          // Use 'allow_incomplete' when we have a valid payment method
+          subscriptionParams.payment_behavior = 'allow_incomplete';
+        }
         
         // Check if this is a trial
         const isTrial = productInfo.trial_enabled && paymentAmount <= (productInfo.trial_price_usd || 0) * 1.1;
