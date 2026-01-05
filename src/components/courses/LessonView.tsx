@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -6,7 +6,9 @@ import {
   Headphones, 
   ExternalLink,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -107,6 +109,12 @@ export function LessonView({
   };
 
   const listeningRefs = lesson.listening_references || [];
+  
+  // Access additional fields from database
+  const lessonData = lesson as any;
+  const dbYoutubeUrls: string[] = lessonData.youtube_urls || [];
+  const dbSpotifyUrls: string[] = lessonData.spotify_urls || [];
+  const fileAttachments: { name: string; url: string; type: string }[] = lessonData.file_attachments || [];
 
   const contentText = lesson.content || '';
   const videoUrl = lesson.video_url || '';
@@ -119,18 +127,26 @@ export function LessonView({
     return m ? `${m[1]}/${m[2]}` : null;
   }, [videoUrl]);
 
+  // Extract YouTube IDs from dedicated field
+  const dbYoutubeIds = useMemo(() => dbYoutubeUrls.flatMap(url => extractYouTubeIds(url)), [dbYoutubeUrls]);
+  
+  // Extract Spotify paths from dedicated field
+  const dbSpotifyPaths = useMemo(() => dbSpotifyUrls.flatMap(url => extractSpotifyPaths(url)), [dbSpotifyUrls]);
+
   const youtubeIdsToRender = useMemo(() => {
-    // If main player is already YouTube, don't double-render from content
-    if (videoUrl.includes('youtube') || videoUrl.includes('youtu.be')) return [];
-    return contentYoutubeIds;
-  }, [contentYoutubeIds, videoUrl]);
+    // Combine db field and content parsed, but skip if main player is YouTube
+    if (videoUrl.includes('youtube') || videoUrl.includes('youtu.be')) return dbYoutubeIds;
+    const all = new Set([...dbYoutubeIds, ...contentYoutubeIds]);
+    return Array.from(all);
+  }, [contentYoutubeIds, dbYoutubeIds, videoUrl]);
 
   const spotifyPathsToRender = useMemo(() => {
     const all = new Set<string>();
     if (spotifyPathFromVideoUrl) all.add(spotifyPathFromVideoUrl);
+    dbSpotifyPaths.forEach((p) => all.add(p));
     contentSpotifyPaths.forEach((p) => all.add(p));
     return Array.from(all);
-  }, [contentSpotifyPaths, spotifyPathFromVideoUrl]);
+  }, [contentSpotifyPaths, dbSpotifyPaths, spotifyPathFromVideoUrl]);
 
   return (
     <div className="flex-1 overflow-auto w-full">
@@ -303,6 +319,41 @@ export function LessonView({
                       </Button>
                     )}
                   </div>
+                ))}
+              </div>
+          </Card>
+        </motion.div>
+        )}
+
+        {/* File Attachments - from dedicated field */}
+        {fileAttachments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mb-8"
+          >
+            <Card className="p-6 bg-gray-50 border-gray-200">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold text-gray-900">Resources & Downloads</h2>
+              </div>
+              <div className="space-y-3">
+                {fileAttachments.map((file, i) => (
+                  <a
+                    key={i}
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Download className="w-4 h-4 text-gray-400" />
+                      <span className="font-medium text-sm text-gray-900">{file.name}</span>
+                      <span className="text-xs text-gray-500 uppercase">{file.type}</span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-gray-400" />
+                  </a>
                 ))}
               </div>
             </Card>
