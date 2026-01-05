@@ -310,7 +310,7 @@ serve(async (req) => {
           const { data: couponData, error: couponError } = await supabaseClient
             .from('coupons')
             .select('*')
-            .eq('code', couponCode.toUpperCase())
+            .ilike('code', couponCode.trim())
             .eq('is_active', true)
             .single();
 

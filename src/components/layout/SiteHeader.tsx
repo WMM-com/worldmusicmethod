@@ -14,7 +14,7 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { MessagesDropdown } from '@/components/messaging/MessagesDropdown';
-import siteLogo from '@/assets/world-music-method-logo.png';
+const siteLogo = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/04/o35xPjFH-Site-Logo-White.png';
 
 export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
   const navigate = useNavigate();
