@@ -99,28 +99,40 @@ serve(async (req) => {
 
     console.log("[CREATE-PAYPAL-ORDER] Price calculated", { totalAmount: formattedPrice, currency: paymentCurrency });
 
+    // Store order metadata in pending orders table (PayPal custom_id has 127 char limit)
+    const { data: pendingOrder, error: pendingError } = await supabaseClient
+      .from("paypal_pending_orders")
+      .insert({
+        product_ids: productIdList,
+        product_details: itemDetails,
+        email,
+        full_name: fullName,
+        coupon_code: couponCode || null,
+        currency: paymentCurrency,
+        total_amount: totalAmount,
+      })
+      .select()
+      .single();
+
+    if (pendingError || !pendingOrder) {
+      console.error("[CREATE-PAYPAL-ORDER] Failed to create pending order:", pendingError);
+      throw new Error("Failed to prepare order");
+    }
+
+    console.log("[CREATE-PAYPAL-ORDER] Pending order created", { pendingOrderId: pendingOrder.id });
+
     const accessToken = await getPayPalAccessToken();
 
     // Build item descriptions for multiple products
     const productNames = products.map(p => p.name).join(', ');
-    const firstProduct = products[0];
 
     const orderPayload = {
       intent: "CAPTURE",
       purchase_units: [
         {
-          reference_id: productIdList[0],
+          reference_id: pendingOrder.id,
           description: productNames.length > 127 ? productNames.substring(0, 124) + '...' : productNames,
-          custom_id: JSON.stringify({
-            product_ids: productIdList,
-            product_details: itemDetails,
-            product_id: productIdList[0], // Legacy support
-            product_type: firstProduct.product_type,
-            course_id: firstProduct.course_id || null,
-            email,
-            full_name: fullName,
-            coupon_code: couponCode || null,
-          }),
+          custom_id: pendingOrder.id, // Just the UUID - stays under 127 chars
           amount: {
             currency_code: paymentCurrency,
             value: formattedPrice,

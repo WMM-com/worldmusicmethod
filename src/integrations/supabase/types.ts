@@ -2876,6 +2876,48 @@ export type Database = {
         }
         Relationships: []
       }
+      paypal_pending_orders: {
+        Row: {
+          captured_at: string | null
+          coupon_code: string | null
+          created_at: string
+          currency: string | null
+          email: string
+          expires_at: string
+          full_name: string
+          id: string
+          product_details: Json
+          product_ids: string[]
+          total_amount: number
+        }
+        Insert: {
+          captured_at?: string | null
+          coupon_code?: string | null
+          created_at?: string
+          currency?: string | null
+          email: string
+          expires_at?: string
+          full_name: string
+          id?: string
+          product_details: Json
+          product_ids: string[]
+          total_amount: number
+        }
+        Update: {
+          captured_at?: string | null
+          coupon_code?: string | null
+          created_at?: string
+          currency?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          product_details?: Json
+          product_ids?: string[]
+          total_amount?: number
+        }
+        Relationships: []
+      }
       pinned_audio: {
         Row: {
           artist: string | null
