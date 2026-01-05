@@ -37,63 +37,98 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, email, fullName, couponCode, returnUrl, cancelUrl } = await req.json();
+    const { productId, productIds, email, fullName, couponCode, returnUrl, cancelUrl, currency, amounts } = await req.json();
     
-    console.log("[CREATE-PAYPAL-ORDER] Starting", { productId, email, fullName });
+    // Support both single productId (legacy) and multiple productIds
+    const productIdList = productIds || (productId ? [productId] : []);
+    const amountList = amounts || [];
+    
+    console.log("[CREATE-PAYPAL-ORDER] Starting", { productIds: productIdList, email, fullName, currency });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get product details
-    const { data: product, error: productError } = await supabaseClient
+    if (productIdList.length === 0) {
+      throw new Error("No products provided");
+    }
+
+    // Get all product details
+    const { data: products, error: productsError } = await supabaseClient
       .from("products")
       .select("*")
-      .eq("id", productId)
-      .single();
+      .in("id", productIdList);
 
-    if (productError || !product) {
-      throw new Error("Product not found");
+    if (productsError || !products || products.length === 0) {
+      throw new Error("Products not found");
     }
 
-    console.log("[CREATE-PAYPAL-ORDER] Product found", { name: product.name, price: product.base_price_usd });
+    console.log("[CREATE-PAYPAL-ORDER] Products found", { count: products.length });
 
-    // Calculate price - use sale price if available and valid
-    let finalPrice = product.base_price_usd;
-    if (product.sale_price_usd && (!product.sale_ends_at || new Date(product.sale_ends_at) > new Date())) {
-      finalPrice = product.sale_price_usd;
+    // Use geo-priced currency or default to USD
+    const paymentCurrency = (currency || 'USD').toUpperCase();
+    
+    // Calculate total from geo-priced amounts or product prices
+    let totalAmount = 0;
+    const itemDetails: { product_id: string; name: string; course_id: string | null; amount: number }[] = [];
+    
+    for (let i = 0; i < productIdList.length; i++) {
+      const product = products.find(p => p.id === productIdList[i]);
+      if (product) {
+        // Use geo-priced amount if provided, otherwise use product price
+        let productAmount = amountList[i];
+        if (!productAmount) {
+          // Calculate from product
+          productAmount = product.base_price_usd;
+          if (product.sale_price_usd && (!product.sale_ends_at || new Date(product.sale_ends_at) > new Date())) {
+            productAmount = product.sale_price_usd;
+          }
+        }
+        totalAmount += productAmount;
+        itemDetails.push({
+          product_id: product.id,
+          name: product.name,
+          course_id: product.course_id || null,
+          amount: productAmount,
+        });
+      }
     }
 
-    // No discount for PayPal (incentivize Stripe)
-    const formattedPrice = finalPrice.toFixed(2);
+    const formattedPrice = totalAmount.toFixed(2);
 
-    console.log("[CREATE-PAYPAL-ORDER] Price calculated", { finalPrice: formattedPrice });
+    console.log("[CREATE-PAYPAL-ORDER] Price calculated", { totalAmount: formattedPrice, currency: paymentCurrency });
 
     const accessToken = await getPayPalAccessToken();
+
+    // Build item descriptions for multiple products
+    const productNames = products.map(p => p.name).join(', ');
+    const firstProduct = products[0];
 
     const orderPayload = {
       intent: "CAPTURE",
       purchase_units: [
         {
-          reference_id: productId,
-          description: product.name,
+          reference_id: productIdList[0],
+          description: productNames.length > 127 ? productNames.substring(0, 124) + '...' : productNames,
           custom_id: JSON.stringify({
-            product_id: productId,
-            product_type: product.product_type,
-            course_id: product.course_id || null,
+            product_ids: productIdList,
+            product_details: itemDetails,
+            product_id: productIdList[0], // Legacy support
+            product_type: firstProduct.product_type,
+            course_id: firstProduct.course_id || null,
             email,
             full_name: fullName,
             coupon_code: couponCode || null,
           }),
           amount: {
-            currency_code: "USD",
+            currency_code: paymentCurrency,
             value: formattedPrice,
           },
         },
       ],
       application_context: {
-        brand_name: "Pickup Music",
+        brand_name: "World Music Method",
         landing_page: "NO_PREFERENCE",
         user_action: "PAY_NOW",
         return_url: returnUrl,
@@ -125,7 +160,8 @@ serve(async (req) => {
       JSON.stringify({
         orderId: order.id,
         approveUrl,
-        amount: finalPrice,
+        amount: totalAmount,
+        currency: paymentCurrency,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

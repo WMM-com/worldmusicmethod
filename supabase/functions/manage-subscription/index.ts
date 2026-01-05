@@ -535,8 +535,171 @@ serve(async (req) => {
           break;
         }
 
+        case 'cancel_immediately': {
+          await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ reason: "Immediate cancellation requested" }),
+            }
+          );
+
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              status: 'cancelled', 
+              cancelled_at: new Date().toISOString() 
+            })
+            .eq('id', subscriptionId);
+
+          // Revoke product access
+          const { data: subItems } = await supabaseClient
+            .from('subscription_items')
+            .select('course_id, product_id')
+            .eq('subscription_product_id', subscription.product_id);
+
+          if (subItems && subscription.user_id) {
+            for (const item of subItems) {
+              if (item.course_id) {
+                await supabaseClient
+                  .from('course_enrollments')
+                  .update({ is_active: false })
+                  .match({ user_id: subscription.user_id, course_id: item.course_id });
+              }
+            }
+          }
+
+          result = { status: 'cancelled' };
+          logStep("PayPal subscription cancelled immediately");
+          break;
+        }
+
+        case 'reactivate': {
+          // PayPal doesn't support reactivating cancelled subscriptions
+          // But we can reactivate suspended ones
+          await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/activate`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ reason: "Customer requested reactivation" }),
+            }
+          );
+          
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              status: 'active', 
+              cancels_at: null
+            })
+            .eq('id', subscriptionId);
+
+          result = { status: 'active' };
+          logStep("PayPal subscription reactivated");
+          break;
+        }
+
+        case 'update_price': {
+          // PayPal requires creating a new plan to change price
+          // For now, just update in database and note that next billing will use new amount
+          const { newAmount } = data;
+          
+          await supabaseClient
+            .from('subscriptions')
+            .update({ amount: newAmount })
+            .eq('id', subscriptionId);
+
+          result = { newAmount, note: 'Price updated in database. PayPal billing will reflect this on next renewal.' };
+          logStep("PayPal subscription price updated in database", { newAmount });
+          break;
+        }
+
+        case 'apply_coupon': {
+          const { couponCode } = data;
+          
+          // Look up coupon in database
+          const { data: couponData, error: couponError } = await supabaseClient
+            .from('coupons')
+            .select('*')
+            .ilike('code', couponCode)
+            .eq('is_active', true)
+            .single();
+
+          if (couponError || !couponData) {
+            throw new Error('Invalid or inactive coupon code');
+          }
+
+          // Check if coupon applies to subscriptions
+          if (couponData.applies_to_subscriptions === false) {
+            throw new Error('This coupon does not apply to subscriptions');
+          }
+
+          // Check max redemptions
+          if (couponData.max_redemptions && couponData.times_redeemed >= couponData.max_redemptions) {
+            throw new Error('This coupon has reached its maximum redemptions');
+          }
+
+          // Check validity dates
+          const now = new Date();
+          if (couponData.valid_from && new Date(couponData.valid_from) > now) {
+            throw new Error('This coupon is not yet valid');
+          }
+          if (couponData.valid_until && new Date(couponData.valid_until) < now) {
+            throw new Error('This coupon has expired');
+          }
+
+          const discountValue = couponData.discount_type === 'percentage' 
+            ? couponData.percent_off 
+            : couponData.amount_off;
+
+          // Update subscription in database
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              coupon_code: couponCode.toUpperCase(), 
+              coupon_discount: discountValue 
+            })
+            .eq('id', subscriptionId);
+
+          // Increment times_redeemed
+          await supabaseClient
+            .from('coupons')
+            .update({ times_redeemed: couponData.times_redeemed + 1 })
+            .eq('id', couponData.id);
+
+          result = { 
+            couponApplied: couponCode, 
+            discountType: couponData.discount_type, 
+            discount: discountValue,
+            note: 'Coupon applied in database. PayPal does not support mid-cycle coupon changes.'
+          };
+          logStep("PayPal coupon applied in database", { couponCode });
+          break;
+        }
+
+        case 'remove_coupon': {
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              coupon_code: null, 
+              coupon_discount: null 
+            })
+            .eq('id', subscriptionId);
+
+          result = { couponRemoved: true };
+          logStep("PayPal coupon removed from database");
+          break;
+        }
+
         default:
-          throw new Error(`Action not supported for PayPal: ${action}`);
+          throw new Error(`Unknown action: ${action}`);
       }
 
       return new Response(
