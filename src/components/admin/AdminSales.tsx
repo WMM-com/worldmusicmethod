@@ -213,14 +213,14 @@ export function AdminSales() {
   };
 
   const handleCouponUpdate = () => {
-    if (!couponCode || !couponDiscount || isNaN(parseFloat(couponDiscount))) {
-      toast.error('Please enter valid coupon details');
+    if (!couponCode) {
+      toast.error('Please enter a coupon code');
       return;
     }
     manageSub.mutate({ 
       action: 'apply_coupon', 
       subscriptionId: couponDialog.subscription.id,
-      data: { couponCode, discountPercent: parseFloat(couponDiscount) }
+      data: { couponCode: couponCode.toUpperCase() }
     });
     setCouponDialog({ open: false, subscription: null });
   };
@@ -783,18 +783,12 @@ export function AdminSales() {
               <Label>Coupon Code</Label>
               <Input
                 value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                 placeholder="SUMMER20"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Discount Percentage</Label>
-              <Input
-                type="number"
-                value={couponDiscount}
-                onChange={(e) => setCouponDiscount(e.target.value)}
-                placeholder="20"
-              />
+              <p className="text-xs text-muted-foreground">
+                Enter an existing coupon code from the Coupons tab
+              </p>
             </div>
           </div>
           <DialogFooter>

@@ -354,6 +354,78 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          amount_off: number | null
+          applies_to_one_time: boolean | null
+          applies_to_products: string[] | null
+          applies_to_subscriptions: boolean | null
+          code: string
+          created_at: string
+          currency: string | null
+          description: string | null
+          discount_type: string
+          duration: string
+          duration_in_months: number | null
+          id: string
+          is_active: boolean | null
+          max_redemptions: number | null
+          name: string | null
+          percent_off: number | null
+          stripe_coupon_id: string | null
+          times_redeemed: number | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          amount_off?: number | null
+          applies_to_one_time?: boolean | null
+          applies_to_products?: string[] | null
+          applies_to_subscriptions?: boolean | null
+          code: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          discount_type?: string
+          duration?: string
+          duration_in_months?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_redemptions?: number | null
+          name?: string | null
+          percent_off?: number | null
+          stripe_coupon_id?: string | null
+          times_redeemed?: number | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          amount_off?: number | null
+          applies_to_one_time?: boolean | null
+          applies_to_products?: string[] | null
+          applies_to_subscriptions?: boolean | null
+          code?: string
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          discount_type?: string
+          duration?: string
+          duration_in_months?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_redemptions?: number | null
+          name?: string | null
+          percent_off?: number | null
+          stripe_coupon_id?: string | null
+          times_redeemed?: number | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       course_enrollments: {
         Row: {
           course_id: string
