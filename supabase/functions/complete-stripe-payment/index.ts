@@ -254,10 +254,12 @@ serve(async (req) => {
           logStep("Created Stripe price", { priceId, interval: stripeInterval });
         }
         
-        // Create subscription with trial to skip first payment (since it's already paid)
-        // We use a 0-day trial but set billing_cycle_anchor to now + interval
+        // Create subscription with a future billing date.
+        // For non-trial products: we set the "trial_end" to the end of the first paid period
+        // (the customer already paid via the initial PaymentIntent).
+        // For trial products: we set "trial_end" to the configured trial length from the product.
         const now = Math.floor(Date.now() / 1000);
-        
+
         // Calculate next billing date based on interval
         let nextBillingTimestamp: number;
         switch (stripeInterval) {
@@ -276,13 +278,18 @@ serve(async (req) => {
           default:
             nextBillingTimestamp = now + 2592000;
         }
-        
+
+        let trialEndTimestamp = nextBillingTimestamp;
+        if (productInfo.trial_enabled && productInfo.trial_length_days) {
+          trialEndTimestamp = now + productInfo.trial_length_days * 86400;
+          logStep("Trial period applied from product", { days: productInfo.trial_length_days });
+        }
+
         const subscriptionParams: Stripe.SubscriptionCreateParams = {
           customer: customerId,
           items: [{ price: priceId }],
-          // The customer already paid, so we set trial_end to next billing date
-          // This effectively makes the subscription start now but first charge is in future
-          trial_end: nextBillingTimestamp,
+          // Billing starts after trial_end
+          trial_end: trialEndTimestamp,
           metadata: {
             supabase_product_id: detail.id,
             product_name: detail.name,
@@ -294,20 +301,11 @@ serve(async (req) => {
             save_default_payment_method: 'on_subscription',
           },
         };
-        
+
         if (paymentMethodId) {
           subscriptionParams.default_payment_method = paymentMethodId;
         }
-        
-        // Check if product has trial settings that extend beyond initial period
-        if (productInfo.trial_enabled && productInfo.trial_length_days) {
-          const trialEndDate = now + (productInfo.trial_length_days * 86400);
-          if (trialEndDate > nextBillingTimestamp) {
-            subscriptionParams.trial_end = trialEndDate;
-            logStep("Extended trial period applied", { days: productInfo.trial_length_days });
-          }
-        }
-        
+
         const stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
         logStep("Stripe subscription created", { 
           subscriptionId: stripeSubscription.id, 

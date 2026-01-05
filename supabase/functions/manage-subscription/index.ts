@@ -11,6 +11,23 @@ const logStep = (step: string, details?: any) => {
   console.log(`[MANAGE-SUBSCRIPTION] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+const unixSecondsToIso = (unixSeconds: unknown): string | null => {
+  const n = Number(unixSeconds);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  try {
+    return new Date(n * 1000).toISOString();
+  } catch {
+    return null;
+  }
+};
+
+const isoFromDateLike = (value: unknown): string | null => {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,23 +40,61 @@ serve(async (req) => {
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
     );
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: actorData, error: actorError } = await supabaseClient.auth.getUser(token);
+    if (actorError || !actorData.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const actor = actorData.user;
 
     // Get subscription from database
     const { data: subscription, error: subError } = await supabaseClient
-      .from('subscriptions')
-      .select('*')
-      .eq('id', subscriptionId)
+      .from("subscriptions")
+      .select("*")
+      .eq("id", subscriptionId)
       .single();
 
     if (subError || !subscription) {
-      throw new Error("Subscription not found");
+      return new Response(JSON.stringify({ error: "Subscription not found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 404,
+      });
     }
 
-    logStep("Subscription found", { 
-      provider: subscription.payment_provider, 
-      providerId: subscription.provider_subscription_id 
+    const { data: isAdmin } = await supabaseClient.rpc("has_role", {
+      _user_id: actor.id,
+      _role: "admin",
+    });
+
+    const canManage = isAdmin === true || actor.id === subscription.user_id;
+    if (!canManage) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+      });
+    }
+
+    logStep("Subscription found", {
+      provider: subscription.payment_provider,
+      providerId: subscription.provider_subscription_id,
+      actorId: actor.id,
+      isAdmin: isAdmin === true,
     });
 
     if (subscription.payment_provider === 'stripe') {
@@ -68,21 +123,38 @@ serve(async (req) => {
             subscription.provider_subscription_id,
             { cancel_at_period_end: true }
           );
-          
+
+          logStep("Stripe cancel_at_period_end applied", {
+            current_period_end: canceledSub.current_period_end,
+            trial_end: canceledSub.trial_end,
+            cancel_at: canceledSub.cancel_at,
+          });
+
+          const cancelsAtIso =
+            unixSecondsToIso(canceledSub.cancel_at) ??
+            unixSecondsToIso(canceledSub.current_period_end) ??
+            unixSecondsToIso(canceledSub.trial_end);
+
+          const currentPeriodEndIso =
+            unixSecondsToIso(canceledSub.current_period_end) ??
+            unixSecondsToIso(canceledSub.trial_end) ??
+            cancelsAtIso ??
+            null;
+
           await supabaseClient
             .from('subscriptions')
-            .update({ 
-              status: 'pending_cancellation', 
-              cancels_at: new Date(canceledSub.current_period_end * 1000).toISOString(),
-              current_period_end: new Date(canceledSub.current_period_end * 1000).toISOString()
+            .update({
+              status: 'pending_cancellation',
+              cancels_at: cancelsAtIso,
+              current_period_end: currentPeriodEndIso ?? subscription.current_period_end,
             })
             .eq('id', subscriptionId);
 
-          result = { 
+          result = {
             status: 'pending_cancellation',
-            cancels_at: new Date(canceledSub.current_period_end * 1000).toISOString()
+            cancels_at: cancelsAtIso,
           };
-          logStep("Subscription set to cancel at period end");
+          logStep("Subscription set to cancel at period end", { cancels_at: cancelsAtIso });
           break;
         }
 
@@ -323,9 +395,8 @@ serve(async (req) => {
 
           // Mark as pending cancellation if there's remaining time
           const now = new Date();
-          const periodEnd = subscription.current_period_end 
-            ? new Date(subscription.current_period_end) 
-            : now;
+          const parsedPeriodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : null;
+          const periodEnd = parsedPeriodEnd && !Number.isNaN(parsedPeriodEnd.getTime()) ? parsedPeriodEnd : now;
 
           if (periodEnd > now) {
             await supabaseClient
