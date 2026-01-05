@@ -239,24 +239,36 @@ function CheckoutContent() {
       const { data: coupon, error } = await supabase
         .from('coupons')
         .select('*')
-        .eq('code', couponCode.trim().toUpperCase())
+        .ilike('code', couponCode.trim())
         .eq('is_active', true)
         .maybeSingle();
 
-      if (error || !coupon) {
+      if (error) {
+        console.error('Coupon fetch error:', error);
+        toast.error('Failed to validate coupon');
+        return;
+      }
+      
+      if (!coupon) {
         toast.error('Invalid coupon code');
         return;
       }
 
       // Check validity dates
       const now = new Date();
-      if (coupon.valid_from && new Date(coupon.valid_from) > now) {
-        toast.error('This coupon is not yet active');
-        return;
+      if (coupon.valid_from) {
+        const validFrom = new Date(coupon.valid_from);
+        if (validFrom > now) {
+          toast.error('This coupon is not yet active');
+          return;
+        }
       }
-      if (coupon.valid_until && new Date(coupon.valid_until) < now) {
-        toast.error('This coupon has expired');
-        return;
+      if (coupon.valid_until) {
+        const validUntil = new Date(coupon.valid_until);
+        if (validUntil < now) {
+          toast.error('This coupon has expired');
+          return;
+        }
       }
 
       // Check max redemptions
@@ -265,7 +277,7 @@ function CheckoutContent() {
         return;
       }
 
-      // Check if coupon applies to this product type
+      // Determine product type(s) in checkout
       const isSubscriptionProduct = isCartMode
         ? cartItems.some(item => item.productType === 'subscription' || item.productType === 'membership')
         : (product?.product_type === 'subscription' || product?.product_type === 'membership');
@@ -273,11 +285,12 @@ function CheckoutContent() {
         ? cartItems.some(item => item.productType !== 'subscription' && item.productType !== 'membership')
         : (product?.product_type !== 'subscription' && product?.product_type !== 'membership');
 
-      if (isOneTimeProduct && !coupon.applies_to_one_time) {
+      // Check coupon applicability
+      if (isOneTimeProduct && coupon.applies_to_one_time === false) {
         toast.error('This coupon only applies to subscriptions');
         return;
       }
-      if (isSubscriptionProduct && !coupon.applies_to_subscriptions) {
+      if (isSubscriptionProduct && coupon.applies_to_subscriptions === false) {
         toast.error('This coupon only applies to one-time purchases');
         return;
       }
@@ -286,7 +299,7 @@ function CheckoutContent() {
       if (coupon.applies_to_products && coupon.applies_to_products.length > 0) {
         const productIdsToCheck = isCartMode 
           ? cartItems.map(item => item.productId) 
-          : [productId];
+          : productId ? [productId] : [];
         const hasApplicableProduct = productIdsToCheck.some(
           pid => coupon.applies_to_products?.includes(pid)
         );
