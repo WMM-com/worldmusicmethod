@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -17,6 +17,7 @@ import { LandingPageEditor } from '@/components/admin/LandingPageEditor';
 import { AdminEmailCRM } from '@/components/admin/AdminEmailCRM';
 import { AdminReports } from '@/components/admin/AdminReports';
 import { AdminSales } from '@/components/admin/AdminSales';
+import { AdminCoupons } from '@/components/admin/AdminCoupons';
 import { Skeleton } from '@/components/ui/skeleton';
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -205,6 +206,10 @@ export default function AdminDashboard() {
                 <DollarSign className="h-4 w-4" />
                 Sales
               </TabsTrigger>
+              <TabsTrigger value="coupons" className="gap-2">
+                <Tag className="h-4 w-4" />
+                Coupons
+              </TabsTrigger>
               <TabsTrigger value="media" className="gap-2">
                 <Image className="h-4 w-4" />
                 Media Library
@@ -246,6 +251,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="sales">
               <AdminSales />
+            </TabsContent>
+            <TabsContent value="coupons">
+              <AdminCoupons />
             </TabsContent>
             <TabsContent value="media">
               <AdminMedia />

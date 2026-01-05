@@ -304,30 +304,91 @@ serve(async (req) => {
         }
 
         case 'apply_coupon': {
-          const { couponCode, discountPercent } = data;
+          const { couponCode } = data;
           
+          // Look up coupon in database
+          const { data: couponData, error: couponError } = await supabaseClient
+            .from('coupons')
+            .select('*')
+            .eq('code', couponCode.toUpperCase())
+            .eq('is_active', true)
+            .single();
+
+          if (couponError || !couponData) {
+            throw new Error('Invalid or inactive coupon code');
+          }
+
+          // Check if coupon applies to subscriptions
+          if (!couponData.applies_to_subscriptions) {
+            throw new Error('This coupon does not apply to subscriptions');
+          }
+
+          // Check max redemptions
+          if (couponData.max_redemptions && couponData.times_redeemed >= couponData.max_redemptions) {
+            throw new Error('This coupon has reached its maximum redemptions');
+          }
+
+          // Check validity dates
+          const now = new Date();
+          if (couponData.valid_from && new Date(couponData.valid_from) > now) {
+            throw new Error('This coupon is not yet valid');
+          }
+          if (couponData.valid_until && new Date(couponData.valid_until) < now) {
+            throw new Error('This coupon has expired');
+          }
+
+          // Build Stripe coupon config
+          const stripeCouponConfig: any = {
+            name: couponCode.toUpperCase(),
+          };
+
+          // Set duration
+          if (couponData.duration === 'once') {
+            stripeCouponConfig.duration = 'once';
+          } else if (couponData.duration === 'forever') {
+            stripeCouponConfig.duration = 'forever';
+          } else if (couponData.duration === 'repeating') {
+            stripeCouponConfig.duration = 'repeating';
+            stripeCouponConfig.duration_in_months = couponData.duration_in_months || 1;
+          }
+
+          // Set discount type
+          if (couponData.discount_type === 'percentage') {
+            stripeCouponConfig.percent_off = couponData.percent_off;
+          } else {
+            stripeCouponConfig.amount_off = Math.round(couponData.amount_off * 100); // Convert to cents
+            stripeCouponConfig.currency = (couponData.currency || 'USD').toLowerCase();
+          }
+
           // Create coupon in Stripe
-          const coupon = await stripe.coupons.create({
-            percent_off: discountPercent,
-            duration: 'forever',
-            name: couponCode,
-          });
+          const coupon = await stripe.coupons.create(stripeCouponConfig);
 
           await stripe.subscriptions.update(
             subscription.provider_subscription_id,
             { coupon: coupon.id }
           );
 
+          // Update subscription in database
+          const discountValue = couponData.discount_type === 'percentage' 
+            ? couponData.percent_off 
+            : couponData.amount_off;
+
           await supabaseClient
             .from('subscriptions')
             .update({ 
-              coupon_code: couponCode, 
-              coupon_discount: discountPercent 
+              coupon_code: couponCode.toUpperCase(), 
+              coupon_discount: discountValue 
             })
             .eq('id', subscriptionId);
 
-          result = { couponApplied: couponCode };
-          logStep("Coupon applied", { couponCode, discountPercent });
+          // Increment times_redeemed
+          await supabaseClient
+            .from('coupons')
+            .update({ times_redeemed: couponData.times_redeemed + 1 })
+            .eq('id', couponData.id);
+
+          result = { couponApplied: couponCode, discountType: couponData.discount_type, discount: discountValue };
+          logStep("Coupon applied", { couponCode, discountType: couponData.discount_type, discount: discountValue });
           break;
         }
 
