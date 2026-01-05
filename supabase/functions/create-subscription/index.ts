@@ -336,7 +336,7 @@ serve(async (req) => {
             email_address: email,
           },
           application_context: {
-            brand_name: "Pickup Music",
+            brand_name: "World Music Method",
             return_url: returnUrl || `${Deno.env.get("SUPABASE_URL")?.replace('supabase.co', 'supabase.co')}/payment-success`,
             cancel_url: returnUrl?.replace('success', 'cancelled') || `${Deno.env.get("SUPABASE_URL")}/payment-cancelled`,
           },

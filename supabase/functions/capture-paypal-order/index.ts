@@ -62,11 +62,15 @@ serve(async (req) => {
 
     // Parse custom data from the order
     const purchaseUnit = captureData.purchase_units?.[0];
-    const customData = JSON.parse(purchaseUnit?.payments?.captures?.[0]?.custom_id || purchaseUnit?.custom_id || "{}");
+    const capture = purchaseUnit?.payments?.captures?.[0];
+    const customData = JSON.parse(capture?.custom_id || purchaseUnit?.custom_id || "{}");
     
-    const { email, full_name, product_id, product_type, course_id } = customData;
+    // Support both single product (legacy) and multi-product
+    const productIds = customData.product_ids || (customData.product_id ? [customData.product_id] : []);
+    const productDetails = customData.product_details || [];
+    const { email, full_name, coupon_code } = customData;
 
-    console.log("[CAPTURE-PAYPAL-ORDER] Custom data", customData);
+    console.log("[CAPTURE-PAYPAL-ORDER] Custom data", { productIds, email, full_name });
 
     // Create user account and enrollment
     const supabaseClient = createClient(
@@ -100,24 +104,110 @@ serve(async (req) => {
       console.log("[CAPTURE-PAYPAL-ORDER] New user created", { userId });
     }
 
-    // Create course enrollment if it's a course product
-    if (product_type === "course" && course_id) {
-      const { error: enrollError } = await supabaseClient
-        .from("course_enrollments")
-        .upsert({
-          user_id: userId,
-          course_id,
-          enrollment_type: "purchase",
-          is_active: true,
-        }, {
-          onConflict: "user_id,course_id",
-        });
+    // Get all product details
+    const { data: products } = await supabaseClient
+      .from("products")
+      .select("*")
+      .in("id", productIds);
 
-      if (enrollError) {
-        console.error("[CAPTURE-PAYPAL-ORDER] Enrollment error:", enrollError);
+    // Get capture amount
+    const captureAmount = parseFloat(capture?.amount?.value || "0");
+    const captureCurrency = capture?.amount?.currency_code || "USD";
+    const captureId = capture?.id || captureData.id;
+
+    const enrolledCourseIds: string[] = [];
+    const orderIds: string[] = [];
+
+    // Create order record for each product (parity with Stripe multi-product)
+    for (let i = 0; i < productIds.length; i++) {
+      const productId = productIds[i];
+      const product = products?.find(p => p.id === productId);
+      const detail = productDetails.find((d: any) => d.product_id === productId);
+      const productAmount = detail?.amount || (captureAmount / productIds.length);
+
+      const { data: orderData, error: orderError } = await supabaseClient
+        .from("orders")
+        .insert({
+          user_id: userId,
+          product_id: productId,
+          amount: productAmount,
+          currency: captureCurrency,
+          status: "completed",
+          payment_provider: "paypal",
+          provider_payment_id: captureId,
+          customer_email: email,
+          customer_name: full_name,
+          coupon_code: coupon_code || null,
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error("[CAPTURE-PAYPAL-ORDER] Order creation error:", orderError);
       } else {
-        console.log("[CAPTURE-PAYPAL-ORDER] Course enrollment created");
+        console.log("[CAPTURE-PAYPAL-ORDER] Order created", { orderId: orderData.id, productId });
+        orderIds.push(orderData.id);
       }
+
+      // Create course enrollment if it's a course product
+      if (product?.course_id) {
+        const { error: enrollError } = await supabaseClient
+          .from("course_enrollments")
+          .upsert({
+            user_id: userId,
+            course_id: product.course_id,
+            enrollment_type: "purchase",
+            is_active: true,
+          }, {
+            onConflict: "user_id,course_id",
+          });
+
+        if (enrollError) {
+          console.error("[CAPTURE-PAYPAL-ORDER] Enrollment error:", enrollError);
+        } else {
+          console.log("[CAPTURE-PAYPAL-ORDER] Course enrollment created", { courseId: product.course_id });
+          enrolledCourseIds.push(product.course_id);
+        }
+      }
+
+      // Assign purchase tag if product has one
+      if (product?.purchase_tag_id && userId) {
+        const { data: emailContact } = await supabaseClient
+          .from('email_contacts')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+
+        if (emailContact) {
+          await supabaseClient
+            .from('contact_tags')
+            .upsert({
+              contact_id: emailContact.id,
+              tag_id: product.purchase_tag_id,
+            }, {
+              onConflict: 'contact_id,tag_id',
+            });
+          console.log("[CAPTURE-PAYPAL-ORDER] Purchase tag assigned", { tagId: product.purchase_tag_id });
+        }
+      }
+    }
+
+    // Send order confirmation email
+    const productNames = products?.map(p => p.name).join(', ') || 'Product';
+    try {
+      await supabaseClient.functions.invoke('send-order-confirmation', {
+        body: {
+          orderId: orderIds[0],
+          email,
+          customerName: full_name,
+          productName: productNames,
+          amount: captureAmount,
+          currency: captureCurrency,
+        },
+      });
+      console.log("[CAPTURE-PAYPAL-ORDER] Confirmation email sent");
+    } catch (emailError) {
+      console.error("[CAPTURE-PAYPAL-ORDER] Failed to send confirmation email:", emailError);
     }
 
     return new Response(
@@ -126,7 +216,8 @@ serve(async (req) => {
         captureId: captureData.id,
         status: captureData.status,
         userId,
-        courseId: course_id,
+        courseIds: enrolledCourseIds,
+        orderIds,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
