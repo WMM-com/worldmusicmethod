@@ -7,7 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Sanitize identifiers to prevent filter injection
 function sanitizeIdentifier(id: string): string {
   if (!id || typeof id !== 'string') return '';
   return id.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 36);
@@ -51,7 +50,6 @@ serve(async (req) => {
       product_ids, 
       product_details,
       currency,
-      original_amount,
     } = paymentIntent.metadata;
 
     // Parse multi-product data
@@ -90,12 +88,10 @@ serve(async (req) => {
       userId = user.id;
       logStep("Existing user found", { userId });
       
-      // Ensure existing user has email_verified set to true (they paid, so verify them)
       await supabaseClient
         .from("profiles")
         .update({ email_verified: true, email_verified_at: new Date().toISOString() })
         .eq("id", userId);
-      logStep("Marked existing user as email verified");
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -113,30 +109,12 @@ serve(async (req) => {
       isNewUser = true;
       logStep("New user created", { userId });
 
-      // Mark the user's profile as email verified (purchasing = verified)
-      // Wait a moment for the profile trigger to create the profile row
       await new Promise(resolve => setTimeout(resolve, 500));
       
       await supabaseClient
         .from("profiles")
         .update({ email_verified: true, email_verified_at: new Date().toISOString() })
         .eq("id", userId);
-      logStep("Marked new user as email verified");
-
-      // Generate a session token for the new user so they stay logged in
-      try {
-        const { data: sessionData, error: sessionError } = await supabaseClient.auth.admin.generateLink({
-          type: 'magiclink',
-          email,
-        });
-        
-        if (sessionData?.properties?.hashed_token) {
-          sessionToken = sessionData.properties.hashed_token;
-          logStep("Session token generated for new user");
-        }
-      } catch (sessionErr) {
-        logStep("Could not generate session token (non-fatal):", sessionErr);
-      }
     }
 
     // Create course enrollments for ALL products that are courses
@@ -154,37 +132,30 @@ serve(async (req) => {
             onConflict: "user_id,course_id",
           });
 
-        if (enrollError) {
-          logStep("Enrollment error for course:", { courseId: detail.course_id, error: enrollError });
-        } else {
+        if (!enrollError) {
           courseIds.push(detail.course_id);
           logStep("Course enrollment created", { courseId: detail.course_id });
         }
       }
     }
 
-    // Create order records for EACH product
-    const paymentAmount = paymentIntent.amount / 100; // Convert from cents (this is the DISCOUNTED total)
+    // Calculate discount ratio
+    const paymentAmount = paymentIntent.amount / 100;
     const paymentCurrency = (currency || paymentIntent.currency || 'USD').toUpperCase();
-    
-    // Calculate the total original amount to determine discount ratio
     const totalOriginalAmount = productDetailsList.reduce((sum, d) => sum + d.amount, 0);
     const discountRatio = totalOriginalAmount > 0 ? paymentAmount / totalOriginalAmount : 1;
 
-    // Track created subscriptions to link to orders
+    // Track created subscriptions
     const subscriptionIdsByProduct = new Map<string, string>();
     
-    // First, handle subscription/membership products - create subscription records
+    // Handle subscription/membership products
     for (const detail of productDetailsList) {
       const productInfo = productsMap.get(detail.id);
       
       if (productInfo && (productInfo.product_type === 'subscription' || productInfo.product_type === 'membership')) {
         logStep("Processing subscription product", { productId: detail.id, productType: productInfo.product_type });
         
-        // Calculate subscription amount
-        const subscriptionAmount = detail.amount * discountRatio;
-        
-        // Map billing interval to Stripe interval
+        // Map billing interval to Stripe interval (dynamic from product)
         const intervalMap: Record<string, Stripe.PriceCreateParams.Recurring.Interval> = {
           'daily': 'day',
           'weekly': 'week',
@@ -192,7 +163,10 @@ serve(async (req) => {
           'yearly': 'year',
           'annual': 'year',
         };
-        const stripeInterval = intervalMap[productInfo.billing_interval || 'monthly'] || 'month';
+        const billingInterval = productInfo.billing_interval || 'monthly';
+        const stripeInterval = intervalMap[billingInterval] || 'month';
+        
+        logStep("Billing interval from product", { billingInterval, stripeInterval });
         
         // Create or get Stripe customer
         const customers = await stripe.customers.list({ email, limit: 1 });
@@ -211,46 +185,38 @@ serve(async (req) => {
           logStep("New Stripe customer created", { customerId });
         }
         
-        // Link payment method from payment intent to customer
-        // First, retrieve the payment method to check its customer
+        // Attach payment method to customer if possible
         let paymentMethodId: string | null = null;
         if (paymentIntent.payment_method) {
-          paymentMethodId = typeof paymentIntent.payment_method === 'string' 
+          const pmId = typeof paymentIntent.payment_method === 'string' 
             ? paymentIntent.payment_method 
             : paymentIntent.payment_method.id;
           
           try {
-            // Check if payment method is already attached to this customer
-            const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+            const pm = await stripe.paymentMethods.retrieve(pmId);
             
             if (pm.customer === customerId) {
-              // Already attached to this customer
-              logStep("Payment method already attached to customer", { pmId: paymentMethodId });
+              paymentMethodId = pmId;
+              logStep("Payment method already attached", { pmId });
             } else if (!pm.customer) {
-              // Not attached to any customer, attach it
-              await stripe.paymentMethods.attach(paymentMethodId, { customer: customerId });
-              logStep("Payment method attached to customer", { pmId: paymentMethodId });
-            } else {
-              // Attached to different customer - can't use it, will need to bill off_session
-              logStep("Payment method attached to different customer, will use off_session billing", { pmId: paymentMethodId });
-              paymentMethodId = null;
+              await stripe.paymentMethods.attach(pmId, { customer: customerId });
+              paymentMethodId = pmId;
+              logStep("Payment method attached", { pmId });
             }
             
-            // Set as default payment method if we have one
             if (paymentMethodId) {
               await stripe.customers.update(customerId, {
                 invoice_settings: { default_payment_method: paymentMethodId },
               });
             }
-          } catch (attachErr: any) {
-            logStep("Payment method handling warning", { error: attachErr.message });
-            paymentMethodId = null;
+          } catch (pmErr: any) {
+            logStep("Payment method handling note", { message: pmErr.message });
           }
         }
         
-        // Create or get price in Stripe
+        // Create or get recurring price in Stripe
         const priceAmount = Math.round((productInfo.base_price_usd || 0) * 100);
-        const lookupKey = `subscription_${detail.id}_${stripeInterval}`;
+        const lookupKey = `sub_${detail.id}_${stripeInterval}`;
         
         const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
         let priceId: string;
@@ -259,7 +225,7 @@ serve(async (req) => {
           priceId = prices.data[0].id;
           logStep("Existing Stripe price found", { priceId });
         } else {
-          // Create or find product in Stripe
+          // Find or create Stripe product
           const stripeProducts = await stripe.products.list({ limit: 100 });
           const existingProduct = stripeProducts.data.find((p: any) => 
             p.metadata?.supabase_product_id === detail.id
@@ -285,56 +251,81 @@ serve(async (req) => {
             lookup_key: lookupKey,
           });
           priceId = newPrice.id;
-          logStep("Created Stripe price", { priceId });
+          logStep("Created Stripe price", { priceId, interval: stripeInterval });
         }
         
-        // Create actual Stripe subscription
-        // Since the initial payment has already been made, we use 'default_incomplete' which allows
-        // the subscription to be created. The first invoice is already paid via the payment intent.
+        // Create subscription with trial to skip first payment (since it's already paid)
+        // We use a 0-day trial but set billing_cycle_anchor to now + interval
+        const now = Math.floor(Date.now() / 1000);
+        
+        // Calculate next billing date based on interval
+        let nextBillingTimestamp: number;
+        switch (stripeInterval) {
+          case 'day':
+            nextBillingTimestamp = now + 86400; // 1 day
+            break;
+          case 'week':
+            nextBillingTimestamp = now + 604800; // 7 days
+            break;
+          case 'month':
+            nextBillingTimestamp = now + 2592000; // ~30 days
+            break;
+          case 'year':
+            nextBillingTimestamp = now + 31536000; // 365 days
+            break;
+          default:
+            nextBillingTimestamp = now + 2592000;
+        }
+        
         const subscriptionParams: Stripe.SubscriptionCreateParams = {
           customer: customerId,
           items: [{ price: priceId }],
-          payment_behavior: 'default_incomplete',
-          payment_settings: {
-            payment_method_types: ['card'],
-            save_default_payment_method: 'on_subscription',
-          },
+          // The customer already paid, so we set trial_end to next billing date
+          // This effectively makes the subscription start now but first charge is in future
+          trial_end: nextBillingTimestamp,
           metadata: {
             supabase_product_id: detail.id,
             product_name: detail.name,
             user_id: userId,
+            initial_payment_intent: paymentIntentId,
+          },
+          payment_settings: {
+            payment_method_types: ['card'],
+            save_default_payment_method: 'on_subscription',
           },
         };
         
-        // If we have a valid payment method attached, use it
         if (paymentMethodId) {
           subscriptionParams.default_payment_method = paymentMethodId;
-          // Use 'allow_incomplete' when we have a valid payment method
-          subscriptionParams.payment_behavior = 'allow_incomplete';
         }
         
-        // Check if this is a trial
-        const isTrial = productInfo.trial_enabled && paymentAmount <= (productInfo.trial_price_usd || 0) * 1.1;
-        
-        if (isTrial && productInfo.trial_length_days) {
-          subscriptionParams.trial_period_days = productInfo.trial_length_days;
-          logStep("Trial period added", { days: productInfo.trial_length_days });
+        // Check if product has trial settings that extend beyond initial period
+        if (productInfo.trial_enabled && productInfo.trial_length_days) {
+          const trialEndDate = now + (productInfo.trial_length_days * 86400);
+          if (trialEndDate > nextBillingTimestamp) {
+            subscriptionParams.trial_end = trialEndDate;
+            logStep("Extended trial period applied", { days: productInfo.trial_length_days });
+          }
         }
         
         const stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
         logStep("Stripe subscription created", { 
           subscriptionId: stripeSubscription.id, 
-          status: stripeSubscription.status 
+          status: stripeSubscription.status,
+          trialEnd: stripeSubscription.trial_end,
         });
         
-        // Calculate local dates for DB
-        const now = new Date();
-        const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
-        const trialEnd = stripeSubscription.trial_end 
+        // Calculate dates for DB
+        const periodStart = new Date();
+        const periodEnd = stripeSubscription.trial_end 
+          ? new Date(stripeSubscription.trial_end * 1000)
+          : new Date(nextBillingTimestamp * 1000);
+        
+        const trialEndDate = stripeSubscription.trial_end 
           ? new Date(stripeSubscription.trial_end * 1000) 
           : null;
 
-        // Create the subscription record with proper Stripe subscription ID
+        // Create the subscription record
         const { data: subscription, error: subError } = await supabaseClient
           .from('subscriptions')
           .insert({
@@ -343,16 +334,16 @@ serve(async (req) => {
             product_name: detail.name,
             customer_email: email.toLowerCase(),
             customer_name: full_name,
-            status: stripeSubscription.status === 'active' ? 'active' : (stripeSubscription.status === 'trialing' ? 'trialing' : 'active'),
+            status: stripeSubscription.status === 'trialing' ? 'active' : stripeSubscription.status,
             payment_provider: 'stripe',
-            provider_subscription_id: stripeSubscription.id, // Store actual Stripe subscription ID (sub_xxx)
+            provider_subscription_id: stripeSubscription.id,
             amount: productInfo.base_price_usd,
             currency: paymentCurrency,
-            interval: productInfo.billing_interval || 'monthly',
-            current_period_start: now.toISOString(),
+            interval: billingInterval,
+            current_period_start: periodStart.toISOString(),
             current_period_end: periodEnd.toISOString(),
-            trial_end: trialEnd?.toISOString() || null,
-            trial_ends_at: trialEnd?.toISOString() || null,
+            trial_end: trialEndDate?.toISOString() || null,
+            trial_ends_at: trialEndDate?.toISOString() || null,
           })
           .select('id')
           .single();
@@ -361,7 +352,11 @@ serve(async (req) => {
           logStep("Subscription creation error", { error: subError });
         } else {
           subscriptionIdsByProduct.set(detail.id, subscription.id);
-          logStep("DB Subscription created", { dbSubscriptionId: subscription.id, stripeSubId: stripeSubscription.id });
+          logStep("DB Subscription created", { 
+            dbSubscriptionId: subscription.id, 
+            stripeSubId: stripeSubscription.id,
+            interval: billingInterval 
+          });
         }
 
         // Grant access to courses from subscription_items
@@ -375,7 +370,6 @@ serve(async (req) => {
           
           for (const item of subItems) {
             if (item.item_type === 'course') {
-              // Direct course access
               const { error: enrollError } = await supabaseClient
                 .from('course_enrollments')
                 .upsert({
@@ -390,7 +384,6 @@ serve(async (req) => {
                 logStep("Enrolled in course from subscription", { courseId: item.item_id });
               }
             } else if (item.item_type === 'course_group') {
-              // Get all courses in the group
               const { data: groupCourses } = await supabaseClient
                 .from('course_group_courses')
                 .select('course_id')
@@ -414,7 +407,6 @@ serve(async (req) => {
                 logStep("Enrolled in courses from course group", { groupId: item.item_id, courseCount: groupCourses.length });
               }
             } else if (item.item_type === 'product') {
-              // Get the product to check if it has a course_id
               const { data: linkedProduct } = await supabaseClient
                 .from('products')
                 .select('course_id')
@@ -445,7 +437,6 @@ serve(async (req) => {
     // Create order records for EACH product
     for (const detail of productDetailsList) {
       try {
-        // Apply the proportional discount to each product's amount
         const discountedAmount = detail.amount * discountRatio;
         const subscriptionId = subscriptionIdsByProduct.get(detail.id) || null;
         
@@ -455,7 +446,7 @@ serve(async (req) => {
             user_id: userId,
             email: email.toLowerCase(),
             product_id: detail.id,
-            amount: discountedAmount, // Store the actual charged amount (after discount)
+            amount: discountedAmount,
             currency: paymentCurrency,
             payment_provider: "stripe",
             provider_payment_id: paymentIntentId,
@@ -478,7 +469,6 @@ serve(async (req) => {
     const safeUserId = userId ? sanitizeIdentifier(userId) : '';
     const safeEmail = email ? sanitizeEmail(email) : '';
     
-    // Build filter parts safely
     const filterParts = [];
     if (safeUserId) filterParts.push(`user_id.eq.${safeUserId}`);
     if (safeEmail) filterParts.push(`email.eq.${safeEmail}`);
@@ -537,7 +527,7 @@ serve(async (req) => {
       }
     }
 
-    // Trigger purchase sequences (once, not per product)
+    // Trigger purchase sequences
     try {
       const { data: purchaseSequences } = await supabaseClient
         .from("email_sequences")
@@ -593,10 +583,10 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         userId,
-        courseIds: [...new Set(courseIds)], // Dedupe course IDs
+        courseIds: [...new Set(courseIds)],
         isNewUser,
         email,
-        password: isNewUser ? password : undefined, // Return password only for new users to allow auto-login
+        password: isNewUser ? password : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

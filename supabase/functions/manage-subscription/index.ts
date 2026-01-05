@@ -190,12 +190,23 @@ serve(async (req) => {
           const currentItem = stripeSub.items.data[0];
           const currentPrice = await stripe.prices.retrieve(currentItem.price.id);
           
-          // Create new price
+          // Map database interval to Stripe interval
+          const intervalMap: Record<string, 'day' | 'week' | 'month' | 'year'> = {
+            'daily': 'day',
+            'weekly': 'week',
+            'monthly': 'month',
+            'yearly': 'year',
+            'annual': 'year',
+          };
+          const dbInterval = subscription.interval || 'monthly';
+          const stripeInterval = intervalMap[dbInterval] || currentPrice.recurring?.interval || 'month';
+          
+          // Create new price with correct interval from subscription
           const newPrice = await stripe.prices.create({
             product: currentPrice.product as string,
             unit_amount: Math.round(newAmount * 100),
             currency: 'usd',
-            recurring: { interval: currentPrice.recurring?.interval || 'month' },
+            recurring: { interval: stripeInterval },
           });
 
           // Update subscription with new price
@@ -216,7 +227,7 @@ serve(async (req) => {
             .eq('id', subscriptionId);
 
           result = { newAmount };
-          logStep("Price updated", { newAmount });
+          logStep("Price updated", { newAmount, interval: stripeInterval });
           break;
         }
 
