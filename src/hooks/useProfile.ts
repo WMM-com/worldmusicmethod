@@ -113,7 +113,16 @@ export function useUploadAvatar() {
     mutationFn: async (file: File) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Upload to R2 with avatar optimization
+      // Get current avatar URL to delete old one
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      const oldAvatarUrl = profile?.avatar_url;
+
+      // Upload new avatar to R2 with avatar optimization
       const result = await uploadFile(file, {
         bucket: 'user',
         folder: 'avatars',
@@ -133,6 +142,28 @@ export function useUploadAvatar() {
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Delete old avatar from R2 if it exists and is a user R2 URL
+      if (oldAvatarUrl && oldAvatarUrl.includes('r2.dev')) {
+        try {
+          const url = new URL(oldAvatarUrl);
+          const objectKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          
+          if (objectKey) {
+            const { error: r2Error } = await supabase.functions.invoke('r2-delete', {
+              body: { objectKey, bucket: 'user' }
+            });
+            
+            if (r2Error) {
+              console.error('Failed to delete old avatar from R2:', r2Error);
+            } else {
+              console.log('Old avatar deleted from R2:', objectKey);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing old avatar URL for R2 deletion:', err);
+        }
+      }
 
       return result.url;
     },

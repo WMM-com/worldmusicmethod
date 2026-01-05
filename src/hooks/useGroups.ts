@@ -244,7 +244,7 @@ export function useDeleteGroup() {
       // Check if user is the creator or admin
       const { data: group } = await supabase
         .from('groups')
-        .select('created_by')
+        .select('created_by, cover_image_url')
         .eq('id', groupId)
         .single();
       
@@ -266,16 +266,47 @@ export function useDeleteGroup() {
       }
       await supabase.from('group_polls').delete().eq('group_id', groupId);
       
-      // Get post IDs for this group
+      // Get posts with media for R2 cleanup
       const { data: posts } = await supabase
         .from('group_posts')
-        .select('id')
+        .select('id, media_url')
         .eq('group_id', groupId);
       
+      // Delete post media from R2
       if (posts?.length) {
+        for (const post of posts) {
+          if (post.media_url && post.media_url.includes('r2.dev')) {
+            try {
+              const url = new URL(post.media_url);
+              const objectKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+              if (objectKey) {
+                await supabase.functions.invoke('r2-delete', {
+                  body: { objectKey, bucket: 'user' }
+                }).catch(err => console.error('Failed to delete post media:', err));
+              }
+            } catch (err) {
+              console.error('Error parsing media URL:', err);
+            }
+          }
+        }
         await supabase.from('group_post_comments').delete().in('post_id', posts.map(p => p.id));
       }
       await supabase.from('group_posts').delete().eq('group_id', groupId);
+      
+      // Delete group cover image from R2
+      if (group.cover_image_url && group.cover_image_url.includes('r2.dev')) {
+        try {
+          const url = new URL(group.cover_image_url);
+          const objectKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          if (objectKey) {
+            await supabase.functions.invoke('r2-delete', {
+              body: { objectKey, bucket: 'user' }
+            }).catch(err => console.error('Failed to delete group cover:', err));
+          }
+        } catch (err) {
+          console.error('Error parsing cover URL:', err);
+        }
+      }
       
       await supabase.from('group_events').delete().eq('group_id', groupId);
       await supabase.from('group_invites').delete().eq('group_id', groupId);
@@ -582,6 +613,39 @@ export function useDeleteGroupPost() {
   
   return useMutation({
     mutationFn: async ({ postId, groupId }: { postId: string; groupId: string }) => {
+      // First, fetch the post to get media URL for R2 cleanup
+      const { data: post, error: fetchError } = await supabase
+        .from('group_posts')
+        .select('media_url')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Failed to fetch group post for deletion:', fetchError);
+      }
+
+      // Delete from R2 if there's media
+      if (post?.media_url) {
+        try {
+          const url = new URL(post.media_url);
+          const objectKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname;
+          
+          if (objectKey) {
+            const { error: r2Error } = await supabase.functions.invoke('r2-delete', {
+              body: { objectKey, bucket: 'user' }
+            });
+            
+            if (r2Error) {
+              console.error('Failed to delete group post media from R2:', r2Error);
+            } else {
+              console.log('R2 group post media deleted:', objectKey);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing group post media URL for R2 deletion:', err);
+        }
+      }
+
       const { error } = await supabase
         .from('group_posts')
         .delete()
