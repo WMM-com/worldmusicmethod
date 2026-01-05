@@ -235,87 +235,52 @@ function CheckoutContent() {
     if (!couponCode.trim()) return;
     setIsValidatingCoupon(true);
     try {
-      // Fetch coupon from database
-      const { data: coupon, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .ilike('code', couponCode.trim())
-        .eq('is_active', true)
-        .maybeSingle();
+      const productIdsToCheck = isCartMode
+        ? cartItems.map((item) => item.productId)
+        : productId
+          ? [productId]
+          : [];
+
+      const { data, error } = await supabase.functions.invoke('validate-coupon', {
+        body: {
+          couponCode: couponCode.trim(),
+          productIds: productIdsToCheck,
+        },
+      });
 
       if (error) {
-        console.error('Coupon fetch error:', error);
-        toast.error('Failed to validate coupon');
+        let message = 'Invalid coupon code';
+        try {
+          const body = await (error as any)?.context?.json?.();
+          if (body?.error) message = body.error;
+        } catch {
+          // ignore parse errors
+        }
+        toast.error(message);
         return;
       }
-      
+
+      const coupon = (data as any)?.coupon as
+        | {
+            code: string;
+            discountType: 'percentage' | 'fixed';
+            percentOff?: number | null;
+            amountOff?: number | null;
+            currency?: string | null;
+          }
+        | undefined;
+
       if (!coupon) {
         toast.error('Invalid coupon code');
         return;
       }
 
-      // Check validity dates
-      const now = new Date();
-      if (coupon.valid_from) {
-        const validFrom = new Date(coupon.valid_from);
-        if (validFrom > now) {
-          toast.error('This coupon is not yet active');
-          return;
-        }
-      }
-      if (coupon.valid_until) {
-        const validUntil = new Date(coupon.valid_until);
-        if (validUntil < now) {
-          toast.error('This coupon has expired');
-          return;
-        }
-      }
-
-      // Check max redemptions
-      if (coupon.max_redemptions && (coupon.times_redeemed || 0) >= coupon.max_redemptions) {
-        toast.error('This coupon has reached its maximum usage');
-        return;
-      }
-
-      // Determine product type(s) in checkout
-      const isSubscriptionProduct = isCartMode
-        ? cartItems.some(item => item.productType === 'subscription' || item.productType === 'membership')
-        : (product?.product_type === 'subscription' || product?.product_type === 'membership');
-      const isOneTimeProduct = isCartMode
-        ? cartItems.some(item => item.productType !== 'subscription' && item.productType !== 'membership')
-        : (product?.product_type !== 'subscription' && product?.product_type !== 'membership');
-
-      // Check coupon applicability
-      if (isOneTimeProduct && coupon.applies_to_one_time === false) {
-        toast.error('This coupon only applies to subscriptions');
-        return;
-      }
-      if (isSubscriptionProduct && coupon.applies_to_subscriptions === false) {
-        toast.error('This coupon only applies to one-time purchases');
-        return;
-      }
-
-      // Check if coupon applies to specific products
-      if (coupon.applies_to_products && coupon.applies_to_products.length > 0) {
-        const productIdsToCheck = isCartMode 
-          ? cartItems.map(item => item.productId) 
-          : productId ? [productId] : [];
-        const hasApplicableProduct = productIdsToCheck.some(
-          pid => coupon.applies_to_products?.includes(pid)
-        );
-        if (!hasApplicableProduct) {
-          toast.error('This coupon does not apply to the selected products');
-          return;
-        }
-      }
-
-      // Set applied coupon with discount details
-      setAppliedCoupon({ 
+      setAppliedCoupon({
         code: coupon.code,
-        discountType: coupon.discount_type as 'percentage' | 'fixed',
-        percentOff: coupon.percent_off || undefined,
-        amountOff: coupon.amount_off || undefined,
-        currency: coupon.currency || 'USD',
+        discountType: coupon.discountType,
+        percentOff: coupon.percentOff ?? undefined,
+        amountOff: coupon.amountOff ?? undefined,
+        currency: coupon.currency ?? 'USD',
       });
       toast.success(`Coupon "${coupon.code}" applied!`);
       setShowCouponInput(false);
