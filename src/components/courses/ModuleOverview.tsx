@@ -215,8 +215,20 @@ export function ModuleOverview({
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
   const isComplete = completedCount === lessons.length && lessons.length > 0;
   
-  // Parse the actual module description
-  const { introParagraphs, sections, youtubeUrls, spotifyUrls } = parseModuleDescription(module.description);
+  // Parse the description for any inline media
+  const { introParagraphs, sections, youtubeUrls: descYoutubeUrls, spotifyUrls: descSpotifyUrls } = parseModuleDescription(module.description);
+  
+  // Use dedicated fields from database if available, otherwise fall back to parsed description
+  const moduleData = module as any;
+  const learningOutcomes: string[] = (moduleData.learning_outcomes || []).map((o: any) => o.text || o);
+  const culturalContext: string = moduleData.cultural_context || '';
+  const youtubeUrls: string[] = (moduleData.youtube_urls || []).length > 0 
+    ? moduleData.youtube_urls.flatMap((url: string) => extractYouTubeIds(url))
+    : descYoutubeUrls;
+  const spotifyUrls: string[] = (moduleData.spotify_urls || []).length > 0 
+    ? moduleData.spotify_urls.flatMap((url: string) => extractSpotifyPaths(url))
+    : descSpotifyUrls;
+  const listeningRefs: { title: string; artist: string; url?: string }[] = moduleData.listening_references || [];
 
   const totalDuration = lessons.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
   const formatDuration = (seconds: number) => {
@@ -300,10 +312,50 @@ export function ModuleOverview({
           </div>
         )}
 
-        {/* Dynamic Sections from description */}
+        {/* Learning Outcomes - from dedicated field */}
+        {learningOutcomes.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-6 rounded-full bg-primary" />
+              Learning Outcomes
+            </h2>
+            <div className="space-y-3 pl-1">
+              {learningOutcomes.map((outcome, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-primary/60 flex-shrink-0 mt-2" />
+                  <span className="text-gray-700">{parseTextWithBold(outcome)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Cultural Context - from dedicated field */}
+        {culturalContext && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-6 rounded-full bg-amber-500" />
+              Cultural & Musical Context
+            </h2>
+            <div className="space-y-4">
+              {culturalContext.split('\n\n').map((paragraph, i) => (
+                <p key={i} className="text-gray-700 leading-relaxed">
+                  {parseTextWithBold(paragraph)}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Dynamic Sections from description (if no structured data) */}
         {sections.map((section, idx) => {
-          const isLearningFocus = section.title.toLowerCase().includes('learning focus');
-          // For Learning Focus, treat all items as bullet points
+          // Skip if we already have dedicated learning outcomes or cultural context
+          const isLearningFocus = section.title.toLowerCase().includes('learning');
+          const isCulturalContext = section.title.toLowerCase().includes('context');
+          if ((isLearningFocus && learningOutcomes.length > 0) || (isCulturalContext && culturalContext)) {
+            return null;
+          }
+          
           const shouldBullet = isLearningFocus && section.content.length > 1;
           
           return (
@@ -318,7 +370,6 @@ export function ModuleOverview({
               {section.content.length > 0 && (
                 <div className={cn("space-y-3", shouldBullet && "pl-1")}>
                   {section.content.map((item, i) => {
-                    // Check if it looks like a bullet point or should be bulleted
                     const isBullet = item.startsWith('•') || item.startsWith('-') || item.startsWith('*') || shouldBullet;
                     const cleanItem = (item.startsWith('•') || item.startsWith('-') || item.startsWith('*')) 
                       ? item.slice(1).trim() 
@@ -345,7 +396,7 @@ export function ModuleOverview({
           );
         })}
 
-        {/* YouTube Embeds */}
+        {/* YouTube Embeds - from dedicated field or parsed */}
         {youtubeUrls.length > 0 && (
           <div className="space-y-4">
             {youtubeUrls.map((videoId, idx) => (
@@ -354,12 +405,45 @@ export function ModuleOverview({
           </div>
         )}
 
-        {/* Spotify Embeds */}
+        {/* Spotify Embeds - from dedicated field or parsed */}
         {spotifyUrls.length > 0 && (
           <div className="space-y-4">
             {spotifyUrls.map((embedPath, idx) => (
               <SpotifyEmbed key={idx} embedPath={embedPath} />
             ))}
+          </div>
+        )}
+
+        {/* Listening References - from dedicated field */}
+        {listeningRefs.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-6 rounded-full bg-green-500" />
+              Listening References
+            </h2>
+            <div className="space-y-3">
+              {listeningRefs.map((ref, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                >
+                  <div>
+                    <p className="font-medium text-sm text-gray-900">{ref.title}</p>
+                    <p className="text-xs text-gray-500">{ref.artist}</p>
+                  </div>
+                  {ref.url && (
+                    <a
+                      href={ref.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline text-sm"
+                    >
+                      Listen
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
