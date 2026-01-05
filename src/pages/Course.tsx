@@ -70,8 +70,6 @@ export default function Course() {
     return allLessons.findIndex(l => l.id === selectedLessonId);
   }, [allLessons, selectedLessonId]);
 
-  const sidebarTopClass = headerCollapsed ? 'top-12' : 'top-16';
-  const sidebarHeightClass = headerCollapsed ? 'h-[calc(100vh-3rem)]' : 'h-[calc(100vh-4rem)]';
 
   // Find first incomplete lesson
   const findNextLesson = () => {
@@ -170,22 +168,28 @@ export default function Course() {
     <div className="min-h-screen flex flex-col">
       {/* Course-only collapsible header */}
       {!headerCollapsed ? (
-        <SiteHeader />
-      ) : (
-        <div className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-12 flex items-center justify-between gap-3">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setHeaderCollapsed(false)}
-              className="gap-2"
-            >
-              <ChevronDown className="h-4 w-4" />
-              Show menu
-            </Button>
-            <p className="text-sm text-muted-foreground truncate">{course.title}</p>
-          </div>
+        <div className="relative">
+          <SiteHeader />
+          {/* Hide menu button - positioned at the right of the header */}
+          <Button
+            size="sm"
+            onClick={() => setHeaderCollapsed(true)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <ChevronUp className="h-4 w-4" />
+            Hide menu
+          </Button>
         </div>
+      ) : (
+        /* Show menu button - fixed at top right when header is hidden */
+        <Button
+          size="sm"
+          onClick={() => setHeaderCollapsed(false)}
+          className="fixed top-4 right-4 z-50 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+        >
+          <ChevronDown className="h-4 w-4" />
+          Show menu
+        </Button>
       )}
       
       <div className="flex-1 flex">
@@ -195,8 +199,8 @@ export default function Course() {
             <aside
               className={cn(
                 "flex-shrink-0 overflow-hidden transition-all duration-300 sticky",
-                sidebarTopClass,
-                sidebarHeightClass,
+                headerCollapsed ? "top-0" : "top-16",
+                headerCollapsed ? "h-screen" : "h-[calc(100vh-4rem)]",
                 sidebarCollapsed
                   ? "w-0"
                   : "w-80 border-r border-sidebar-border bg-sidebar"
@@ -209,7 +213,10 @@ export default function Course() {
             {sidebarCollapsed && (
               <button
                 onClick={() => setSidebarCollapsed(false)}
-                className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg px-3 py-2 shadow-lg flex items-center gap-2 hover:bg-muted transition-colors"
+                className={cn(
+                  "fixed left-0 z-40 bg-card border border-l-0 border-border rounded-r-lg px-3 py-2 shadow-lg flex items-center gap-2 hover:bg-muted transition-colors",
+                  headerCollapsed ? "top-1/2 -translate-y-1/2" : "top-1/2 -translate-y-1/2"
+                )}
               >
                 <Menu className="w-4 h-4" />
                 <span className="text-sm font-medium">View Curriculum</span>
@@ -231,7 +238,7 @@ export default function Course() {
         <main
           className={cn(
             "flex-1 light bg-background text-foreground",
-            headerCollapsed ? "min-h-[calc(100vh-3rem)]" : "min-h-[calc(100vh-4rem)]"
+            headerCollapsed ? "min-h-screen" : "min-h-[calc(100vh-4rem)]"
           )}
         >
           {/* Mobile top bar */}
@@ -239,7 +246,7 @@ export default function Course() {
             <div
               className={cn(
                 "sticky z-40 border-b border-border bg-background px-4 py-3 flex items-center gap-3",
-                headerCollapsed ? "top-12" : "top-0"
+                headerCollapsed ? "top-0" : "top-0"
               )}
             >
               <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)} aria-label="Open curriculum">
@@ -248,45 +255,16 @@ export default function Course() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{course.title}</p>
               </div>
-
-              {!headerCollapsed && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setHeaderCollapsed(true)}
-                  aria-label="Hide top menu"
-                  title="Hide menu"
-                >
-                  <ChevronUp className="w-5 h-5" />
-                </Button>
-              )}
             </div>
           )}
 
           {/* Desktop top controls */}
-          {!isMobile && (
-            <div className="p-4 border-b border-border flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {viewState !== 'dashboard' && (
-                  <Button variant="ghost" size="sm" onClick={handleBackToDashboard} className="gap-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    Course Dashboard
-                  </Button>
-                )}
-              </div>
-
-              {!headerCollapsed && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setHeaderCollapsed(true)}
-                  className="gap-2"
-                  title="Hide menu"
-                >
-                  <ChevronUp className="w-4 h-4" />
-                  Hide menu
-                </Button>
-              )}
+          {!isMobile && viewState !== 'dashboard' && (
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleBackToDashboard} className="gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Course Dashboard
+              </Button>
             </div>
           )}
 
