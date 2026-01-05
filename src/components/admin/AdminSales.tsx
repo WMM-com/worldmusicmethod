@@ -437,20 +437,20 @@ export function AdminSales() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="p-0">
+              <Table className="text-sm">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Coupon</TableHead>
-                    <TableHead className="text-right">Fee</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="py-2 px-3">Date</TableHead>
+                    <TableHead className="py-2 px-3">Customer</TableHead>
+                    <TableHead className="py-2 px-3">Product</TableHead>
+                    <TableHead className="py-2 px-3 text-right">Amount</TableHead>
+                    <TableHead className="py-2 px-3">Coupon</TableHead>
+                    <TableHead className="py-2 px-3 text-right">Fee</TableHead>
+                    <TableHead className="py-2 px-3 text-right">Net</TableHead>
+                    <TableHead className="py-2 px-3">Provider</TableHead>
+                    <TableHead className="py-2 px-3">Status</TableHead>
+                    <TableHead className="py-2 px-3 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -473,62 +473,51 @@ export function AdminSales() {
                       
                       return (
                         <TableRow key={order.id}>
-                          <TableCell className="text-sm whitespace-nowrap">
+                          <TableCell className="py-2 px-3 whitespace-nowrap">
                             {format(new Date(order.created_at), 'MMM d, HH:mm')}
                           </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-sm">{order.customer_name || '-'}</p>
-                              <p className="text-xs text-muted-foreground">{order.email}</p>
-                            </div>
+                          <TableCell className="py-2 px-3">
+                            <p className="font-medium truncate max-w-[140px]" title={order.customer_name}>{order.customer_name || '-'}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[140px]" title={order.email}>{order.email}</p>
                           </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-sm">{order.products?.name}</p>
-                              <Badge variant="outline" className="text-xs">
-                                {order.products?.product_type}
-                              </Badge>
-                            </div>
+                          <TableCell className="py-2 px-3 max-w-[180px]">
+                            <p className="font-medium line-clamp-2">{order.products?.name}</p>
                           </TableCell>
-                          <TableCell className="text-right font-medium">
+                          <TableCell className="py-2 px-3 text-right font-medium whitespace-nowrap">
                             {formatPrice(order.amount, order.currency)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2 px-3">
                             {order.coupon_code ? (
                               <div>
-                                <Badge variant="outline" className="text-xs">
-                                  {order.coupon_code}
-                                </Badge>
+                                <Badge variant="outline" className="text-xs">{order.coupon_code}</Badge>
                                 {order.coupon_discount > 0 && (
-                                  <p className="text-xs text-green-600 mt-0.5">
-                                    -{formatPrice(order.coupon_discount, order.currency)}
-                                  </p>
+                                  <p className="text-xs text-green-600">-{formatPrice(order.coupon_discount, order.currency)}</p>
                                 )}
                               </div>
                             ) : (
-                              <span className="text-muted-foreground text-xs">-</span>
+                              <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right text-sm text-destructive">
-                            -{formatPrice(fee, order.currency)}
+                          <TableCell className="py-2 px-3 text-right text-destructive whitespace-nowrap">
+                            {fee > 0 ? `-${formatPrice(fee, order.currency)}` : '-'}
                           </TableCell>
-                          <TableCell className="text-right text-sm text-green-600 font-medium">
+                          <TableCell className="py-2 px-3 text-right text-green-600 font-medium whitespace-nowrap">
                             {formatPrice(net, order.currency)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2 px-3">
                             <Badge variant="secondary" className="capitalize text-xs">
                               {order.payment_provider}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2 px-3">
                             {getStatusBadge(order.status)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-2 px-3">
                             {order.status === 'completed' && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-7 w-7"
                                 onClick={() => handleRefund(order)}
                                 title="Refund"
                               >
