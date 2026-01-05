@@ -2559,6 +2559,7 @@ export type Database = {
           listening_references: Json | null
           module_id: string
           order_index: number
+          soundslice_preset: string | null
           spotify_urls: string[] | null
           title: string
           updated_at: string
@@ -2575,6 +2576,7 @@ export type Database = {
           listening_references?: Json | null
           module_id: string
           order_index?: number
+          soundslice_preset?: string | null
           spotify_urls?: string[] | null
           title: string
           updated_at?: string
@@ -2591,6 +2593,7 @@ export type Database = {
           listening_references?: Json | null
           module_id?: string
           order_index?: number
+          soundslice_preset?: string | null
           spotify_urls?: string[] | null
           title?: string
           updated_at?: string

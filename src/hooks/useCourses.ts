@@ -78,7 +78,8 @@ export function useCourse(courseId: string | undefined) {
             lessons: (lessons || []).map(l => ({
               ...l,
               lesson_type: l.lesson_type as ModuleLesson['lesson_type'],
-              listening_references: (l.listening_references || []) as any[]
+              listening_references: (l.listening_references || []) as any[],
+              soundslice_preset: l.soundslice_preset || 'guitar'
             })) as ModuleLesson[]
           };
         })

@@ -41,6 +41,7 @@ interface LessonEditDialogProps {
     title: string;
     lesson_type: string;
     video_url: string | null;
+    soundslice_preset?: string | null;
     content: string | null;
     duration_seconds: number | null;
     order_index: number;
@@ -58,6 +59,7 @@ export function LessonEditDialog({ lesson, open, onOpenChange }: LessonEditDialo
   const [title, setTitle] = useState(lesson.title);
   const [lessonType, setLessonType] = useState(lesson.lesson_type);
   const [videoUrl, setVideoUrl] = useState(lesson.video_url || '');
+  const [soundslicePreset, setSoundslicePreset] = useState(lesson.soundslice_preset || 'guitar');
   const [content, setContent] = useState(lesson.content || '');
   const [duration, setDuration] = useState(lesson.duration_seconds?.toString() || '');
   const [orderIndex, setOrderIndex] = useState(lesson.order_index.toString());
@@ -76,6 +78,7 @@ export function LessonEditDialog({ lesson, open, onOpenChange }: LessonEditDialo
           title,
           lesson_type: lessonType,
           video_url: videoUrl || null,
+          soundslice_preset: soundslicePreset || 'guitar',
           content: content || null,
           duration_seconds: duration ? parseInt(duration) : null,
           order_index: parseInt(orderIndex),
@@ -178,12 +181,26 @@ export function LessonEditDialog({ lesson, open, onOpenChange }: LessonEditDialo
                 <div className="space-y-2">
                   <Label htmlFor="les-video">Soundslice ID</Label>
                   <Input id="les-video" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="e.g. lrXCc" />
-                  <p className="text-xs text-muted-foreground">Just the ID, not the full URL</p>
+                  <p className="text-xs text-muted-foreground">Just the 5-digit code, not the full URL</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="les-duration">Duration (seconds)</Label>
-                  <Input id="les-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} />
+                  <Label htmlFor="les-preset">Soundslice Preset</Label>
+                  <Select value={soundslicePreset} onValueChange={setSoundslicePreset}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="guitar">Guitar, Bass, Vocals</SelectItem>
+                      <SelectItem value="flute">Flute</SelectItem>
+                      <SelectItem value="drum">Drums</SelectItem>
+                      <SelectItem value="backing">Backing Track</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="les-duration">Duration (seconds)</Label>
+                <Input id="les-duration" type="number" value={duration} onChange={(e) => setDuration(e.target.value)} />
               </div>
             </TabsContent>
 
