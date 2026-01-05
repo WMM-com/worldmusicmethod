@@ -191,7 +191,13 @@ function CheckoutContent() {
   const { user, signIn } = useAuth();
   const { items: cartItems, clearCart, removeFromCart } = useCart();
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ 
+    code: string; 
+    discountType: 'percentage' | 'fixed';
+    percentOff?: number;
+    amountOff?: number;
+    currency?: string;
+  } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   const [showCouponInput, setShowCouponInput] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
@@ -229,11 +235,76 @@ function CheckoutContent() {
     if (!couponCode.trim()) return;
     setIsValidatingCoupon(true);
     try {
-      setAppliedCoupon({ code: couponCode.trim().toUpperCase(), discount: 0 });
-      toast.success('Coupon will be applied at checkout');
+      // Fetch coupon from database
+      const { data: coupon, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('code', couponCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error || !coupon) {
+        toast.error('Invalid coupon code');
+        return;
+      }
+
+      // Check validity dates
+      const now = new Date();
+      if (coupon.valid_from && new Date(coupon.valid_from) > now) {
+        toast.error('This coupon is not yet active');
+        return;
+      }
+      if (coupon.valid_until && new Date(coupon.valid_until) < now) {
+        toast.error('This coupon has expired');
+        return;
+      }
+
+      // Check max redemptions
+      if (coupon.max_redemptions && (coupon.times_redeemed || 0) >= coupon.max_redemptions) {
+        toast.error('This coupon has reached its maximum usage');
+        return;
+      }
+
+      // Check if coupon applies to this product type
+      const isSubscriptionProduct = product?.product_type === 'subscription';
+      const isOneTimeProduct = !isSubscriptionProduct;
+
+      if (isOneTimeProduct && !coupon.applies_to_one_time) {
+        toast.error('This coupon only applies to subscriptions');
+        return;
+      }
+      if (isSubscriptionProduct && !coupon.applies_to_subscriptions) {
+        toast.error('This coupon only applies to one-time purchases');
+        return;
+      }
+
+      // Check if coupon applies to specific products
+      if (coupon.applies_to_products && coupon.applies_to_products.length > 0) {
+        const productIdsToCheck = isCartMode 
+          ? cartItems.map(item => item.productId) 
+          : [productId];
+        const hasApplicableProduct = productIdsToCheck.some(
+          pid => coupon.applies_to_products?.includes(pid)
+        );
+        if (!hasApplicableProduct) {
+          toast.error('This coupon does not apply to the selected products');
+          return;
+        }
+      }
+
+      // Set applied coupon with discount details
+      setAppliedCoupon({ 
+        code: coupon.code,
+        discountType: coupon.discount_type as 'percentage' | 'fixed',
+        percentOff: coupon.percent_off || undefined,
+        amountOff: coupon.amount_off || undefined,
+        currency: coupon.currency || 'USD',
+      });
+      toast.success(`Coupon "${coupon.code}" applied!`);
       setShowCouponInput(false);
-    } catch {
-      toast.error('Invalid coupon code');
+    } catch (err) {
+      console.error('Coupon validation error:', err);
+      toast.error('Failed to validate coupon');
     } finally {
       setIsValidatingCoupon(false);
     }
@@ -321,8 +392,23 @@ function CheckoutContent() {
   const currency = isCartMode
     ? cartItems[0]?.currency || 'USD'
     : productPriceInfo?.currency || 'USD';
-  const stripeDiscount = basePrice * 0.02;
-  const cardPrice = basePrice - stripeDiscount;
+
+  // Calculate coupon discount
+  const couponDiscount = useMemo(() => {
+    if (!appliedCoupon) return 0;
+    if (appliedCoupon.discountType === 'percentage' && appliedCoupon.percentOff) {
+      return basePrice * (appliedCoupon.percentOff / 100);
+    }
+    if (appliedCoupon.discountType === 'fixed' && appliedCoupon.amountOff) {
+      // For fixed discounts, we use the amount directly (assuming same currency or converted)
+      return Math.min(appliedCoupon.amountOff, basePrice);
+    }
+    return 0;
+  }, [appliedCoupon, basePrice]);
+
+  const priceAfterCoupon = basePrice - couponDiscount;
+  const stripeDiscount = priceAfterCoupon * 0.02;
+  const cardPrice = priceAfterCoupon - stripeDiscount;
   const isCourse = isCartMode
     ? cartItems.some((item) => item.productType === 'course')
     : product?.product_type === 'course';
@@ -549,6 +635,22 @@ function CheckoutContent() {
                   )}
                 </div>
 
+                {/* Coupon discount row - shown when coupon applied */}
+                {appliedCoupon && couponDiscount > 0 && (
+                  <div className="py-3 border-b border-border">
+                    <div className="flex justify-between items-center text-green-600">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4" />
+                        <span className="text-sm">
+                          Coupon: {appliedCoupon.code}
+                          {appliedCoupon.discountType === 'percentage' && ` (${appliedCoupon.percentOff}% off)`}
+                        </span>
+                      </div>
+                      <span className="font-medium">-{formatPrice(couponDiscount, currency)}</span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Total row - always shown */}
                 <div className="py-4 border-b border-border">
                   <div className="flex justify-between items-center">
@@ -560,9 +662,16 @@ function CheckoutContent() {
                         </p>
                       )}
                     </div>
-                    <p className="font-bold text-lg">
-                      {formatPrice(paymentMethod === 'card' ? cardPrice : basePrice, currency)}
-                    </p>
+                    <div className="text-right">
+                      {couponDiscount > 0 && (
+                        <p className="text-sm text-muted-foreground line-through">
+                          {formatPrice(basePrice, currency)}
+                        </p>
+                      )}
+                      <p className="font-bold text-lg">
+                        {formatPrice(paymentMethod === 'card' ? cardPrice : priceAfterCoupon, currency)}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -599,12 +708,9 @@ function CheckoutContent() {
 
                   {appliedCoupon && (
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-green-600" />
-                        <span className="text-sm text-green-600">{appliedCoupon.code}</span>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={handleRemoveCoupon}>
-                        Remove
+                      <span className="text-sm text-muted-foreground">Coupon applied</span>
+                      <Button variant="ghost" size="sm" onClick={handleRemoveCoupon} className="text-destructive hover:text-destructive">
+                        Remove coupon
                       </Button>
                     </div>
                   )}
@@ -668,7 +774,7 @@ function CheckoutContent() {
                         fullName={fullName || user?.email || email}
                         password={password}
                         couponCode={appliedCoupon?.code}
-                        amount={basePrice}
+                        amount={priceAfterCoupon}
                         currency={currency}
                         onSuccess={handleSuccess}
                         disabled={!user && (!email || !password || password.length < 8)}
