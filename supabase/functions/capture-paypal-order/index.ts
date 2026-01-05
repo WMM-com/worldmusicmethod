@@ -40,6 +40,11 @@ serve(async (req) => {
     
     console.log("[CAPTURE-PAYPAL-ORDER] Starting", { orderId });
 
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
     const accessToken = await getPayPalAccessToken();
 
     // Capture the order
@@ -60,23 +65,39 @@ serve(async (req) => {
 
     console.log("[CAPTURE-PAYPAL-ORDER] Order captured", { status: captureData.status });
 
-    // Parse custom data from the order
+    // Get the pending order ID from custom_id
     const purchaseUnit = captureData.purchase_units?.[0];
     const capture = purchaseUnit?.payments?.captures?.[0];
-    const customData = JSON.parse(capture?.custom_id || purchaseUnit?.custom_id || "{}");
-    
-    // Support both single product (legacy) and multi-product
-    const productIds = customData.product_ids || (customData.product_id ? [customData.product_id] : []);
-    const productDetails = customData.product_details || [];
-    const { email, full_name, coupon_code } = customData;
+    const pendingOrderId = capture?.custom_id || purchaseUnit?.custom_id;
 
-    console.log("[CAPTURE-PAYPAL-ORDER] Custom data", { productIds, email, full_name });
+    console.log("[CAPTURE-PAYPAL-ORDER] Pending order ID", { pendingOrderId });
 
-    // Create user account and enrollment
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    // Fetch the pending order metadata from our table
+    const { data: pendingOrder, error: pendingError } = await supabaseClient
+      .from("paypal_pending_orders")
+      .select("*")
+      .eq("id", pendingOrderId)
+      .single();
+
+    if (pendingError || !pendingOrder) {
+      console.error("[CAPTURE-PAYPAL-ORDER] Pending order not found:", pendingError);
+      throw new Error("Order metadata not found");
+    }
+
+    // Extract data from pending order
+    const productIds = pendingOrder.product_ids || [];
+    const productDetails = pendingOrder.product_details || [];
+    const email = pendingOrder.email;
+    const full_name = pendingOrder.full_name;
+    const coupon_code = pendingOrder.coupon_code;
+
+    console.log("[CAPTURE-PAYPAL-ORDER] Order data", { productIds, email, full_name });
+
+    // Mark pending order as captured
+    await supabaseClient
+      .from("paypal_pending_orders")
+      .update({ captured_at: new Date().toISOString() })
+      .eq("id", pendingOrderId);
 
     // Check if user exists
     const { data: existingUser } = await supabaseClient.auth.admin.listUsers();
@@ -118,7 +139,7 @@ serve(async (req) => {
     const enrolledCourseIds: string[] = [];
     const orderIds: string[] = [];
 
-    // Create order record for each product (parity with Stripe multi-product)
+    // Create order record for each product
     for (let i = 0; i < productIds.length; i++) {
       const productId = productIds[i];
       const product = products?.find(p => p.id === productId);
