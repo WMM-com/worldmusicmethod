@@ -627,16 +627,17 @@ export function AdminUsers() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete User</AlertDialogTitle>
-                              <AlertDialogDescription>
+                              <AlertDialogDescription className="text-left">
                                 Are you sure you want to delete {user.full_name || user.email}? This will permanently remove:
                                 <ul className="list-disc list-inside mt-2 space-y-1">
-                                  <li>All posts and comments</li>
-                                  <li>All uploaded media and files</li>
-                                  <li>Course enrollments</li>
-                                  <li>Messages and conversations</li>
-                                  <li>All other user data</li>
+                                  <li>All posts, comments, and group activity</li>
+                                  <li>All uploaded files from cloud storage (R2)</li>
+                                  <li>Profile images, gallery, and media library items</li>
+                                  <li>Course enrollments and progress</li>
+                                  <li>Messages, conversations, and notifications</li>
+                                  <li>Financial records (invoices, expenses, contracts)</li>
                                 </ul>
-                                <p className="mt-2 font-semibold">This action cannot be undone.</p>
+                                <p className="mt-3 font-semibold text-destructive">This action cannot be undone. All data and files will be permanently deleted.</p>
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
