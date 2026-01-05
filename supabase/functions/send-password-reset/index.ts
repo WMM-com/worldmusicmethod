@@ -181,9 +181,6 @@ function getPasswordResetEmailHtml(resetLink: string, firstName: string): string
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://bfwvjhrokucqjcbeufwk.supabase.co/storage/v1/object/public/media/world-music-method-logo.png" alt="World Music Method" style="height: 60px; margin-bottom: 16px;" />
-        </div>
         <h1 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Reset Your Password</h1>
         <p style="color: #333; font-size: 16px; line-height: 1.6;">
           Hi${firstName ? ` ${firstName}` : ''},
@@ -192,7 +189,7 @@ function getPasswordResetEmailHtml(resetLink: string, firstName: string): string
           You requested to reset your password. Click the button below to create a new password:
         </p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="${resetLink}" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Reset Password
           </a>
         </div>
@@ -207,7 +204,7 @@ function getPasswordResetEmailHtml(resetLink: string, firstName: string): string
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
             This is an automated message, please do not reply.<br>
-            <a href="https://worldmusicmethod.com" style="color: #f97316; text-decoration: none;">worldmusicmethod.com</a>
+            <a href="https://worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">worldmusicmethod.com</a>
           </p>
         </div>
       </div>
@@ -222,8 +219,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email } = await req.json();
-    
+    const { email, redirectTo } = await req.json();
+
     if (!email) {
       return new Response(
         JSON.stringify({ error: 'Email is required' }),
@@ -243,6 +240,25 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Email service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    const origin = req.headers.get('origin') ?? 'https://worldmusicmethod.com';
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const defaultRedirectTo = `${normalizedOrigin}/reset-password`;
+
+    let safeRedirectTo = defaultRedirectTo;
+    if (typeof redirectTo === 'string' && redirectTo.trim().length > 0) {
+      try {
+        const originUrl = new URL(origin);
+        const redirectUrl = new URL(redirectTo);
+
+        // Only allow redirects back to the same site that initiated the request
+        if (redirectUrl.host === originUrl.host) {
+          safeRedirectTo = redirectUrl.toString();
+        }
+      } catch {
+        // ignore and use default
+      }
     }
 
     const supabaseClient = createClient(
@@ -277,11 +293,11 @@ Deno.serve(async (req) => {
       type: 'recovery',
       email: email,
       options: {
-        redirectTo: 'https://worldmusicmethod.com/reset-password',
+        redirectTo: safeRedirectTo,
       },
     });
 
-    if (linkError || !linkData?.properties?.hashed_token) {
+    if (linkError || !linkData?.properties?.action_link) {
       logStep("ERROR: Failed to generate reset link", { error: linkError });
       return new Response(
         JSON.stringify({ error: 'Failed to generate reset link' }),
@@ -289,9 +305,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the reset link using the action_link from Supabase
+    // Build the reset link using the action_link
     const resetLink = linkData.properties.action_link;
-    logStep("Reset link generated", { hasLink: !!resetLink });
+    logStep("Reset link generated", { hasLink: !!resetLink, redirectTo: safeRedirectTo });
 
     const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
 

@@ -213,10 +213,6 @@ function getOrderConfirmationHtml(
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
       <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
         <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://bfwvjhrokucqjcbeufwk.supabase.co/storage/v1/object/public/media/world-music-method-logo.png" alt="World Music Method" style="height: 60px; margin-bottom: 16px;" />
-        </div>
-        
-        <div style="text-align: center; margin-bottom: 30px;">
           <div style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 50%; padding: 15px; margin-bottom: 16px;">
             <span style="font-size: 32px;">✓</span>
           </div>
@@ -233,7 +229,7 @@ function getOrderConfirmationHtml(
                 <strong style="font-size: 18px;">Total</strong>
               </td>
               <td style="padding: 16px 0 0 0; text-align: right;">
-                <strong style="font-size: 18px; color: #f97316;">${formatCurrency(totalAmount, currency)}</strong>
+                <strong style="font-size: 18px; color: #BE1E2D;">${formatCurrency(totalAmount, currency)}</strong>
               </td>
             </tr>
           </table>
@@ -252,21 +248,21 @@ function getOrderConfirmationHtml(
           <p style="color: #333; font-size: 16px; margin-bottom: 20px;">
             You can access your courses from your account dashboard.
           </p>
-          <a href="https://worldmusicmethod.com/my-courses" style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="https://worldmusicmethod.com/my-courses" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Go to My Courses
           </a>
         </div>
 
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-        
+
         <div style="text-align: center;">
           <p style="color: #999; font-size: 12px; margin: 0;">
             <strong>World Music Method</strong><br>
             Learn authentic world music from master musicians
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
-            Questions? Contact us at <a href="mailto:info@worldmusicmethod.com" style="color: #f97316; text-decoration: none;">info@worldmusicmethod.com</a><br>
-            <a href="https://worldmusicmethod.com" style="color: #f97316; text-decoration: none;">worldmusicmethod.com</a>
+            Questions? Contact us at <a href="mailto:info@worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">info@worldmusicmethod.com</a><br>
+            <a href="https://worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">worldmusicmethod.com</a>
           </p>
         </div>
       </div>
