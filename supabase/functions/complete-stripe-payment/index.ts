@@ -434,11 +434,39 @@ serve(async (req) => {
       }
     }
     
-    // Create order records for EACH product
+    // Get actual Stripe fee from the payment intent's charge
+    let actualStripeFee = 0;
+    try {
+      if (paymentIntent.latest_charge) {
+        const chargeId = typeof paymentIntent.latest_charge === 'string' 
+          ? paymentIntent.latest_charge 
+          : paymentIntent.latest_charge.id;
+        const charge = await stripe.charges.retrieve(chargeId);
+        
+        if (charge.balance_transaction) {
+          const btId = typeof charge.balance_transaction === 'string'
+            ? charge.balance_transaction
+            : charge.balance_transaction.id;
+          const balanceTransaction = await stripe.balanceTransactions.retrieve(btId);
+          actualStripeFee = balanceTransaction.fee / 100; // Convert from cents
+          logStep("Retrieved actual Stripe fee", { fee: actualStripeFee, currency: balanceTransaction.currency });
+        }
+      }
+    } catch (feeErr: any) {
+      logStep("Could not retrieve Stripe fee", { error: feeErr.message });
+    }
+
+    // Create order records for EACH product with proportional fee distribution
     for (const detail of productDetailsList) {
       try {
         const discountedAmount = detail.amount * discountRatio;
         const subscriptionId = subscriptionIdsByProduct.get(detail.id) || null;
+        
+        // Calculate proportional fee for this product
+        const proportion = totalOriginalAmount > 0 ? detail.amount / totalOriginalAmount : 1 / productDetailsList.length;
+        const proportionalFee = actualStripeFee * proportion;
+        const proportionalCouponDiscount = parseFloat(coupon_discount || '0') * proportion;
+        const netAmount = discountedAmount - proportionalFee;
         
         const { error: orderError } = await supabaseClient
           .from("orders")
@@ -454,13 +482,15 @@ serve(async (req) => {
             customer_name: full_name,
             subscription_id: subscriptionId,
             coupon_code: coupon_code || null,
-            coupon_discount: parseFloat(coupon_discount || '0'),
+            coupon_discount: proportionalCouponDiscount,
+            stripe_fee: proportionalFee,
+            net_amount: netAmount,
           });
 
         if (orderError) {
           logStep("Order creation error", { error: orderError });
         } else {
-          logStep("Order created for product", { productId: detail.id, amount: discountedAmount, subscriptionId });
+          logStep("Order created for product", { productId: detail.id, amount: discountedAmount, fee: proportionalFee, net: netAmount, subscriptionId });
         }
       } catch (orderErr) {
         logStep("Order insert failed", { error: orderErr });

@@ -132,10 +132,21 @@ serve(async (req) => {
       .select("*")
       .in("id", productIds);
 
-    // Get capture amount
+    // Get capture details including actual PayPal fee
     const captureAmount = parseFloat(capture?.amount?.value || "0");
     const captureCurrency = capture?.amount?.currency_code || "USD";
     const captureId = capture?.id || captureData.id;
+    
+    // Get actual PayPal fee from the seller_receivable_breakdown
+    const sellerBreakdown = capture?.seller_receivable_breakdown;
+    const paypalFeeData = sellerBreakdown?.paypal_fee;
+    const actualPaypalFee = paypalFeeData ? parseFloat(paypalFeeData.value) : 0;
+    
+    console.log("[CAPTURE-PAYPAL-ORDER] Fee data", { 
+      actualPaypalFee, 
+      feeCurrency: paypalFeeData?.currency_code,
+      captureAmount 
+    });
 
     const enrolledCourseIds: string[] = [];
     const orderIds: string[] = [];
@@ -157,6 +168,9 @@ serve(async (req) => {
       // Apply the same proportion to the captured (discounted) amount
       const productAmount = captureAmount * proportion;
       const productCouponDiscount = coupon_discount * proportion;
+      // Apply proportion to the actual PayPal fee
+      const productPaypalFee = actualPaypalFee * proportion;
+      const productNetAmount = productAmount - productPaypalFee;
 
       const { data: orderData, error: orderError } = await supabaseClient
         .from("orders")
@@ -172,6 +186,8 @@ serve(async (req) => {
           email: email,
           coupon_code: coupon_code || null,
           coupon_discount: productCouponDiscount,
+          paypal_fee: productPaypalFee,
+          net_amount: productNetAmount,
         })
         .select()
         .single();

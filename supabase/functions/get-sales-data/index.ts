@@ -162,29 +162,12 @@ serve(async (req) => {
             }
           }
           
-          // Estimate proportional PayPal fee using actual PayPal rates
-          // PayPal standard rates: 2.9% + fixed fee (varies by currency)
-          // Fixed fees: USD $0.30, GBP £0.30, EUR €0.35
-          if (order.payment_provider === 'paypal' && order.provider_payment_id && order.status === 'completed' && !order.paypal_fee) {
-            const ordersForPayment = ordersByPaymentId[order.provider_payment_id] || [order];
-            const totalAmount = ordersForPayment.reduce((sum, o) => sum + (o.amount || 0), 0);
-            const proportion = totalAmount > 0 ? (order.amount || 0) / totalAmount : 1;
-            
-            // Get currency-specific fixed fee
-            const curr = (order.currency || 'USD').toUpperCase();
-            const fixedFees: Record<string, number> = { USD: 0.30, GBP: 0.30, EUR: 0.35 };
-            const fixedFee = fixedFees[curr] || 0.30;
-            
-            // PayPal fee: 2.9% per order amount + proportional share of fixed fee
-            const paypalFee = ((order.amount || 0) * 0.029) + (fixedFee * proportion);
-            const netAmount = (order.amount || 0) - paypalFee;
-            
-            await supabaseClient
-              .from('orders')
-              .update({ paypal_fee: paypalFee, net_amount: netAmount })
-              .eq('id', order.id);
-            
-            return { ...order, paypal_fee: paypalFee, net_amount: netAmount };
+          // For PayPal orders without fees, they should have been set at capture time
+          // Only estimate if really needed (for old orders before this fix)
+          if (order.payment_provider === 'paypal' && order.status === 'completed' && !order.paypal_fee) {
+            // Mark as needing fee fetch - we can't get it retroactively without the capture ID
+            // Just return the order without estimated fee
+            return order;
           }
           
           return order;
