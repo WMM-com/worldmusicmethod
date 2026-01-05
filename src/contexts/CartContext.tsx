@@ -12,12 +12,14 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
+  addToCart: (item: Omit<CartItem, 'quantity'>) => boolean;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
+  hasSubscription: () => boolean;
+  hasOneTimeProduct: () => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -34,12 +36,33 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
+  const isSubscriptionType = (type: string) => 
+    type === 'subscription' || type === 'membership';
+
+  const hasSubscription = () => items.some(i => isSubscriptionType(i.productType));
+  const hasOneTimeProduct = () => items.some(i => !isSubscriptionType(i.productType));
+
+  const addToCart = (item: Omit<CartItem, 'quantity'>): boolean => {
+    const isNewItemSubscription = isSubscriptionType(item.productType);
+    
+    // Check for mixed product types
+    if (items.length > 0) {
+      const cartHasSubscription = hasSubscription();
+      const cartHasOneTime = hasOneTimeProduct();
+      
+      if (isNewItemSubscription && cartHasOneTime) {
+        return false; // Cannot add subscription to cart with one-time products
+      }
+      if (!isNewItemSubscription && cartHasSubscription) {
+        return false; // Cannot add one-time product to cart with subscriptions
+      }
+    }
+    
     setItems(prev => {
       const existing = prev.find(i => i.productId === item.productId);
       if (existing) {
-        // For courses, don't increase quantity - just return existing cart
-        if (item.productType === 'course') {
+        // For courses/subscriptions, don't increase quantity
+        if (item.productType === 'course' || isSubscriptionType(item.productType)) {
           return prev;
         }
         return prev.map(i => 
@@ -50,6 +73,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { ...item, quantity: 1 }];
     });
+    return true;
   };
 
   const removeFromCart = (productId: string) => {
@@ -87,6 +111,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       clearCart,
       getTotal,
       getItemCount,
+      hasSubscription,
+      hasOneTimeProduct,
     }}>
       {children}
     </CartContext.Provider>
