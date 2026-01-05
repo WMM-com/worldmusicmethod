@@ -77,7 +77,8 @@ const PayPalButton = ({
           `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
         );
 
-        const orderData = { orderId: data.orderId, password, productId };
+        // Store the order ID from our create call - this is the PayPal order ID
+        const paypalOrderId = data.orderId;
 
         const pollTimer = setInterval(async () => {
           if (popup?.closed) {
@@ -86,9 +87,11 @@ const PayPalButton = ({
             if (successData) {
               sessionStorage.removeItem('paypal_success');
               const parsed = JSON.parse(successData);
+              // Use the orderId from the redirect (token) or fallback to our stored orderId
+              const captureOrderId = parsed.orderId || paypalOrderId;
               try {
                 const { error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
-                  body: { orderId: parsed.orderId || orderData.orderId, password: orderData.password },
+                  body: { orderId: captureOrderId, password },
                 });
                 if (captureError) throw captureError;
                 toast.success('Payment successful!');
@@ -105,7 +108,10 @@ const PayPalButton = ({
           if (event.origin !== window.location.origin) return;
           if (event.data.type === 'paypal_success') {
             window.removeEventListener('message', messageHandler);
-            sessionStorage.setItem('paypal_success', JSON.stringify({ orderId: event.data.orderId }));
+            // Store the orderId (which comes from the token param in the redirect URL)
+            sessionStorage.setItem('paypal_success', JSON.stringify({ 
+              orderId: event.data.orderId || paypalOrderId 
+            }));
             popup?.close();
           }
         };

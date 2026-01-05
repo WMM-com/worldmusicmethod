@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, BookOpen, ArrowRight } from 'lucide-react';
+import { CheckCircle, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import confetti from 'canvas-confetti';
 
 export default function PaymentSuccess() {
@@ -13,15 +14,84 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const courseId = searchParams.get('course_id');
+  const method = searchParams.get('method');
+  const paypalToken = searchParams.get('token'); // PayPal adds this to return URL
+  const paypalPayerId = searchParams.get('PayerID'); // PayPal adds this when approved
+  
+  const [isProcessingPaypal, setIsProcessingPaypal] = useState(false);
+  const [paypalProcessed, setPaypalProcessed] = useState(false);
 
   useEffect(() => {
-    // Celebrate with confetti
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  }, []);
+    // Check if this is a PayPal popup return
+    if (method === 'paypal' && paypalToken && window.opener) {
+      // Send message to parent window with the token (order ID)
+      window.opener.postMessage({ 
+        type: 'paypal_success', 
+        orderId: paypalToken,
+        payerId: paypalPayerId 
+      }, window.location.origin);
+      
+      // Store in sessionStorage as backup
+      sessionStorage.setItem('paypal_success', JSON.stringify({ 
+        orderId: paypalToken,
+        payerId: paypalPayerId 
+      }));
+      
+      // Close this popup window
+      window.close();
+      return;
+    }
+
+    // If PayPal return but NOT in a popup (user opened in same window somehow)
+    // OR if this is the main window after PayPal approval, process the capture
+    if (method === 'paypal' && paypalToken && !window.opener && !paypalProcessed) {
+      setIsProcessingPaypal(true);
+      
+      // Capture the PayPal order directly
+      supabase.functions.invoke('capture-paypal-order', {
+        body: { orderId: paypalToken }
+      }).then(({ error }) => {
+        setIsProcessingPaypal(false);
+        setPaypalProcessed(true);
+        if (error) {
+          console.error('PayPal capture failed:', error);
+        } else {
+          // Trigger confetti on success
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      });
+      return;
+    }
+
+    // Regular success page - celebrate with confetti
+    if (!isProcessingPaypal) {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    }
+  }, [method, paypalToken, paypalPayerId, paypalProcessed, isProcessingPaypal]);
+
+  // Show loading state while processing PayPal
+  if (isProcessingPaypal) {
+    return (
+      <>
+        <SiteHeader />
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <Card className="p-8 text-center max-w-md w-full">
+            <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-primary" />
+            <h1 className="text-xl font-bold mb-2">Processing Payment...</h1>
+            <p className="text-muted-foreground">Please wait while we complete your PayPal payment.</p>
+          </Card>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
