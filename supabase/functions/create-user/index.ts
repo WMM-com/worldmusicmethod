@@ -88,6 +88,21 @@ serve(async (req) => {
 
     console.log(`User created: ${newUser.user.id}`);
 
+    // Mark email as verified in profiles for admin-created users
+    const { error: profileUpdateError } = await supabaseAdmin
+      .from('profiles')
+      .update({ 
+        email_verified: true, 
+        email_verified_at: new Date().toISOString() 
+      })
+      .eq('id', newUser.user.id);
+
+    if (profileUpdateError) {
+      console.error('Error updating profile email_verified:', profileUpdateError);
+    } else {
+      console.log(`Email verified flag set for user: ${newUser.user.id}`);
+    }
+
     // If role is admin, update the user_roles table
     if (role === 'admin' && newUser.user) {
       // First delete existing role if any

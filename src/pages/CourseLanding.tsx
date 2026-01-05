@@ -864,7 +864,7 @@ export default function CourseLanding() {
       navigate(`/courses/${courseId}/learn`);
     } else if (product && priceInfo) {
       // Add to cart silently, then go to checkout
-      addToCart({
+      const added = addToCart({
         productId: product.id,
         name: product.name,
         price: priceInfo.price,
@@ -872,6 +872,10 @@ export default function CourseLanding() {
         courseId: product.course_id || undefined,
         productType: product.product_type,
       });
+      if (!added) {
+        toast.error('Cannot mix subscriptions and one-time purchases in the same cart. Please clear your cart first.');
+        return;
+      }
       navigate(`/checkout`);
     } else if (!user) {
       navigate('/auth');
@@ -880,7 +884,7 @@ export default function CourseLanding() {
 
   const handleAddToCart = () => {
     if (product && priceInfo) {
-      addToCart({
+      const added = addToCart({
         productId: product.id,
         name: product.name,
         price: priceInfo.price,
@@ -888,7 +892,11 @@ export default function CourseLanding() {
         courseId: product.course_id || undefined,
         productType: product.product_type,
       });
-      toast.success('Added to cart!');
+      if (added) {
+        toast.success('Added to cart!');
+      } else {
+        toast.error('Cannot mix subscriptions and one-time purchases in the same cart. Please clear your cart first.');
+      }
     }
   };
 
