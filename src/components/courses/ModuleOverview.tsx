@@ -75,7 +75,7 @@ function removeMediaUrls(text: string): string {
 // Parse module description to extract sections
 function parseModuleDescription(description: string | null) {
   if (!description) {
-    return { intro: '', sections: [], youtubeUrls: [], spotifyUrls: [] };
+    return { introParagraphs: [] as string[], sections: [], youtubeUrls: [], spotifyUrls: [] };
   }
 
   // Extract all media URLs from the entire description first
@@ -84,8 +84,16 @@ function parseModuleDescription(description: string | null) {
 
   const lines = description.split('\n');
   const sections: { title: string; content: string[] }[] = [];
-  let intro: string[] = [];
+
+  const introParagraphs: string[] = [];
+  let introBuffer: string[] = [];
   let currentSection: { title: string; content: string[] } | null = null;
+
+  const flushIntro = () => {
+    const paragraph = introBuffer.join(' ').trim();
+    if (paragraph) introParagraphs.push(paragraph);
+    introBuffer = [];
+  };
 
   // Common section headers to detect
   const sectionHeaders = [
@@ -98,50 +106,55 @@ function parseModuleDescription(description: string | null) {
     'About This Module',
   ];
 
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    
-    // Skip lines that are just YouTube/Spotify URLs
-    if (trimmedLine.match(/^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)/i) ||
-        trimmedLine.match(/^(?:https?:\/\/)?(?:open\.)?spotify\.com/i)) {
+  for (const rawLine of lines) {
+    const trimmedLine = rawLine.trim();
+
+    // Blank line = paragraph break (only for intro)
+    if (!trimmedLine) {
+      if (!currentSection) flushIntro();
       continue;
     }
-    
+
+    // Skip lines that are just YouTube/Spotify URLs
+    if (
+      trimmedLine.match(/^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)/i) ||
+      trimmedLine.match(/^(?:https?:\/\/)?(?:open\.)?spotify\.com/i)
+    ) {
+      continue;
+    }
+
     // Remove any embedded URLs from the line for display
-    const cleanedLine = removeMediaUrls(trimmedLine);
+    const cleanedLine = removeMediaUrls(trimmedLine).trim();
     if (!cleanedLine) continue;
 
     // Check if this line is a section header
-    const isHeader = sectionHeaders.some(header => 
-      cleanedLine.toLowerCase().includes(header.toLowerCase()) && 
-      cleanedLine.length < 50
+    const isHeader = sectionHeaders.some(
+      (header) =>
+        cleanedLine.toLowerCase().includes(header.toLowerCase()) && cleanedLine.length < 50
     );
 
     if (isHeader) {
-      // Save previous section if exists
-      if (currentSection) {
-        sections.push(currentSection);
-      }
+      if (!currentSection) flushIntro();
+      if (currentSection) sections.push(currentSection);
       currentSection = { title: cleanedLine, content: [] };
-    } else if (currentSection) {
-      // Add to current section
-      if (cleanedLine) {
-        currentSection.content.push(cleanedLine);
-      }
+      continue;
+    }
+
+    if (currentSection) {
+      currentSection.content.push(cleanedLine);
     } else {
-      // Add to intro
-      if (cleanedLine) {
-        intro.push(cleanedLine);
-      }
+      introBuffer.push(cleanedLine);
     }
   }
+
+  flushIntro();
 
   // Don't forget the last section
   if (currentSection) {
     sections.push(currentSection);
   }
 
-  return { intro: intro.join(' '), sections, youtubeUrls, spotifyUrls };
+  return { introParagraphs, sections, youtubeUrls, spotifyUrls };
 }
 
 // Parse text for bold markers (** or __)
@@ -203,7 +216,7 @@ export function ModuleOverview({
   const isComplete = completedCount === lessons.length && lessons.length > 0;
   
   // Parse the actual module description
-  const { intro, sections, youtubeUrls, spotifyUrls } = parseModuleDescription(module.description);
+  const { introParagraphs, sections, youtubeUrls, spotifyUrls } = parseModuleDescription(module.description);
 
   const totalDuration = lessons.reduce((sum, l) => sum + (l.duration_seconds || 0), 0);
   const formatDuration = (seconds: number) => {
@@ -277,11 +290,13 @@ export function ModuleOverview({
         </div>
 
         {/* Intro Description */}
-        {intro && (
-          <div className="prose prose-neutral max-w-none">
-            <p className="text-lg leading-relaxed text-gray-700">
-              {intro}
-            </p>
+        {introParagraphs.length > 0 && (
+          <div className="space-y-4">
+            {introParagraphs.map((paragraph, idx) => (
+              <p key={idx} className="text-lg leading-relaxed text-gray-700">
+                {parseTextWithBold(paragraph)}
+              </p>
+            ))}
           </div>
         )}
 
