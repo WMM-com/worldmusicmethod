@@ -45,20 +45,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addToCart = (item: Omit<CartItem, 'quantity'>): boolean => {
     const isNewItemSubscription = isSubscriptionType(item.productType);
     
-    // Check for mixed product types
-    if (items.length > 0) {
-      const cartHasSubscription = hasSubscription();
-      const cartHasOneTime = hasOneTimeProduct();
-      
-      if (isNewItemSubscription && cartHasOneTime) {
-        return false; // Cannot add subscription to cart with one-time products
-      }
-      if (!isNewItemSubscription && cartHasSubscription) {
-        return false; // Cannot add one-time product to cart with subscriptions
-      }
-    }
-    
     setItems(prev => {
+      // Check if adding different product type - clear cart if so
+      if (prev.length > 0) {
+        const cartHasSubscription = prev.some(i => isSubscriptionType(i.productType));
+        const cartHasOneTime = prev.some(i => !isSubscriptionType(i.productType));
+        
+        // If mixing types, clear cart and start fresh with new item
+        if ((isNewItemSubscription && cartHasOneTime) || (!isNewItemSubscription && cartHasSubscription)) {
+          return [{ ...item, quantity: 1 }];
+        }
+      }
+      
       const existing = prev.find(i => i.productId === item.productId);
       if (existing) {
         // For courses/subscriptions, don't increase quantity
