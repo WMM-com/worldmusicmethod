@@ -2759,6 +2759,8 @@ export type Database = {
       orders: {
         Row: {
           amount: number
+          coupon_code: string | null
+          coupon_discount: number | null
           created_at: string
           currency: string
           customer_name: string | null
@@ -2780,6 +2782,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string
           currency?: string
           customer_name?: string | null
@@ -2801,6 +2805,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string
           currency?: string
           customer_name?: string | null
@@ -2880,12 +2886,14 @@ export type Database = {
         Row: {
           captured_at: string | null
           coupon_code: string | null
+          coupon_discount: number | null
           created_at: string
           currency: string | null
           email: string
           expires_at: string
           full_name: string
           id: string
+          original_amount: number | null
           product_details: Json
           product_ids: string[]
           total_amount: number
@@ -2893,12 +2901,14 @@ export type Database = {
         Insert: {
           captured_at?: string | null
           coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string
           currency?: string | null
           email: string
           expires_at?: string
           full_name: string
           id?: string
+          original_amount?: number | null
           product_details: Json
           product_ids: string[]
           total_amount: number
@@ -2906,12 +2916,14 @@ export type Database = {
         Update: {
           captured_at?: string | null
           coupon_code?: string | null
+          coupon_discount?: number | null
           created_at?: string
           currency?: string | null
           email?: string
           expires_at?: string
           full_name?: string
           id?: string
+          original_amount?: number | null
           product_details?: Json
           product_ids?: string[]
           total_amount?: number

@@ -90,8 +90,9 @@ serve(async (req) => {
     const email = pendingOrder.email;
     const full_name = pendingOrder.full_name;
     const coupon_code = pendingOrder.coupon_code;
+    const coupon_discount = pendingOrder.coupon_discount || 0;
 
-    console.log("[CAPTURE-PAYPAL-ORDER] Order data", { productIds, email, full_name });
+    console.log("[CAPTURE-PAYPAL-ORDER] Order data", { productIds, email, full_name, coupon_code, coupon_discount });
 
     // Mark pending order as captured
     await supabaseClient
@@ -156,9 +157,10 @@ serve(async (req) => {
           status: "completed",
           payment_provider: "paypal",
           provider_payment_id: captureId,
-          customer_email: email,
           customer_name: full_name,
+          email: email,
           coupon_code: coupon_code || null,
+          coupon_discount: coupon_discount / productIds.length, // Distribute discount evenly
         })
         .select()
         .single();

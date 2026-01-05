@@ -50,6 +50,8 @@ serve(async (req) => {
       product_ids, 
       product_details,
       currency,
+      coupon_code,
+      coupon_discount,
     } = paymentIntent.metadata;
 
     // Parse multi-product data
@@ -451,6 +453,8 @@ serve(async (req) => {
             status: "completed",
             customer_name: full_name,
             subscription_id: subscriptionId,
+            coupon_code: coupon_code || null,
+            coupon_discount: parseFloat(coupon_discount || '0'),
           });
 
         if (orderError) {

@@ -19,7 +19,7 @@ serve(async (req) => {
     const productIdList = productIds || [];
     const amountList = amounts || [];
     
-    console.log("[CREATE-PAYMENT-INTENT] Starting", { productIds: productIdList, email, fullName, couponCode, currency });
+    console.log("[CREATE-PAYMENT-INTENT] Starting", { productIds: productIdList, email, fullName, couponCode, currency, amounts: amountList });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -45,16 +45,19 @@ serve(async (req) => {
     // Use the currency passed from frontend (geo-priced) or default to USD
     const paymentCurrency = (currency || 'USD').toLowerCase();
     
-    // Calculate total amount from the amounts passed by frontend (already geo-priced)
+    // Calculate total amount from the amounts passed by frontend (already geo-priced AND coupon-discounted)
     let totalAmount = 0;
+    let originalAmount = 0;
     const productDetails: { id: string; name: string; course_id: string | null; amount: number }[] = [];
     
     for (let i = 0; i < productIdList.length; i++) {
       const product = products.find(p => p.id === productIdList[i]);
       if (product) {
-        // Use the pre-calculated geo-priced amount from frontend
+        // Use the pre-calculated amount from frontend (includes geo-pricing AND coupon discount)
         const productAmount = amountList[i] || product.base_price_usd;
         totalAmount += productAmount;
+        // Track original for discount calculation
+        originalAmount += product.base_price_usd;
         productDetails.push({
           id: product.id,
           name: product.name,
@@ -64,6 +67,9 @@ serve(async (req) => {
       }
     }
 
+    // Calculate coupon discount (difference between original and passed amount)
+    const couponDiscount = originalAmount > totalAmount ? originalAmount - totalAmount : 0;
+
     // Apply 2% discount for card payments (Stripe incentive)
     const stripeDiscount = totalAmount * 0.02;
     const finalPrice = totalAmount - stripeDiscount;
@@ -71,6 +77,9 @@ serve(async (req) => {
 
     console.log("[CREATE-PAYMENT-INTENT] Price calculated", { 
       totalAmount, 
+      originalAmount,
+      couponDiscount,
+      couponCode,
       stripeDiscount, 
       finalPrice, 
       amountInCents, 
@@ -110,9 +119,11 @@ serve(async (req) => {
         email,
         full_name: fullName,
         coupon_code: couponCode || "",
+        coupon_discount: couponDiscount.toFixed(2),
         stripe_discount: stripeDiscount.toFixed(2),
         currency: paymentCurrency.toUpperCase(),
-        original_amount: totalAmount.toFixed(2),
+        original_amount: originalAmount.toFixed(2),
+        final_amount: finalPrice.toFixed(2),
       },
     });
 
