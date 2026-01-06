@@ -134,91 +134,103 @@ export function UserSubscriptions() {
           </div>
         ) : (
           <div className="space-y-4">
-            {subscriptions?.map((sub) => (
-              <Card key={sub.id} className="border">
-                <CardContent className="p-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold">
-                          {sub.products?.name || sub.product_name || 'Subscription'}
-                        </h4>
-                        {getStatusBadge(sub.status)}
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-4">
-                        <span className="font-medium">
-                          {formatPrice(sub.amount, sub.currency)}/{sub.interval}
-                        </span>
-                        {sub.coupon_code && (
-                          <Badge variant="secondary" className="text-xs">
-                            {sub.coupon_code} ({sub.coupon_discount}% off)
-                          </Badge>
+            {subscriptions?.map((sub) => {
+              const baseAmount = Number(sub.amount || 0);
+              const discountAmount = Number(sub.coupon_discount || 0);
+              const hasCoupon = Boolean(sub.coupon_code) && discountAmount > 0;
+              const effectiveAmount = hasCoupon ? Math.max(baseAmount - discountAmount, 0) : baseAmount;
+
+              return (
+                <Card key={sub.id} className="border">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">
+                            {sub.products?.name || sub.product_name || 'Subscription'}
+                          </h4>
+                          {getStatusBadge(sub.status)}
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-4">
+                          <span className="font-medium">
+                            {hasCoupon && (
+                              <span className="mr-2 text-xs line-through text-muted-foreground">
+                                {formatPrice(baseAmount, sub.currency)}
+                              </span>
+                            )}
+                            {formatPrice(effectiveAmount, sub.currency)}/{sub.interval}
+                          </span>
+                          {sub.coupon_code && (
+                            <Badge variant="secondary" className="text-xs">
+                              {sub.coupon_code}
+                              {hasCoupon ? ` (-${formatPrice(discountAmount, sub.currency)})` : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        {sub.current_period_end && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {sub.status === 'pending_cancellation'
+                              ? `Access until ${format(new Date(sub.cancels_at || sub.current_period_end), 'MMM d, yyyy')}`
+                              : `Next billing: ${format(new Date(sub.current_period_end), 'MMM d, yyyy')}`}
+                          </p>
                         )}
                       </div>
-                      {sub.current_period_end && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {sub.status === 'pending_cancellation' 
-                            ? `Access until ${format(new Date(sub.cancels_at || sub.current_period_end), 'MMM d, yyyy')}`
-                            : `Next billing: ${format(new Date(sub.current_period_end), 'MMM d, yyyy')}`
-                          }
-                        </p>
-                      )}
-                    </div>
 
-                    <div className="flex items-center gap-2">
-                      {sub.status === 'active' && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <X className="h-4 w-4 mr-1" />
-                              Cancel
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Your subscription will remain active until the end of your current billing period. 
-                                After that, you will lose access to the included content.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => cancelMutation.mutate(sub.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                {cancelMutation.isPending && (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                )}
-                                Cancel Subscription
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {sub.status === 'active' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <X className="h-4 w-4 mr-1" />
+                                Cancel
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Your subscription will remain active until the end of your current billing period.
+                                  After that, you will lose access to the included content.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => cancelMutation.mutate(sub.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {cancelMutation.isPending && (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  )}
+                                  Cancel Subscription
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
 
-                      {sub.status === 'pending_cancellation' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => reactivateMutation.mutate(sub.id)}
-                          disabled={reactivateMutation.isPending}
-                        >
-                          {reactivateMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                          ) : (
-                            <RotateCcw className="h-4 w-4 mr-1" />
-                          )}
-                          Reactivate
-                        </Button>
-                      )}
+                        {sub.status === 'pending_cancellation' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => reactivateMutation.mutate(sub.id)}
+                            disabled={reactivateMutation.isPending}
+                          >
+                            {reactivateMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4 mr-1" />
+                            )}
+                            Reactivate
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </CardContent>

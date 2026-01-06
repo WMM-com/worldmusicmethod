@@ -613,35 +613,55 @@ export function AdminSales() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    subsData?.data?.map((sub: any) => (
-                      <TableRow key={sub.id}>
-                        <TableCell className="text-sm whitespace-nowrap">
-                          {format(new Date(sub.created_at), 'MMM d, yyyy')}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-sm">{sub.customer_name || '-'}</p>
-                            <p className="text-xs text-muted-foreground">{sub.customer_email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium text-sm">
-                          {sub.products?.name}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatPrice(sub.amount, sub.currency)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize text-xs">
-                            {sub.interval}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {sub.coupon_code ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {sub.coupon_code} ({sub.coupon_discount}%)
+                    subsData?.data?.map((sub: any) => {
+                      const baseAmount = Number(sub.amount || 0);
+                      const discountAmount = Number(sub.coupon_discount || 0);
+                      const hasCoupon = Boolean(sub.coupon_code) && discountAmount > 0;
+                      const effectiveAmount = hasCoupon ? Math.max(baseAmount - discountAmount, 0) : baseAmount;
+
+                      return (
+                        <TableRow key={sub.id}>
+                          <TableCell className="text-sm whitespace-nowrap">
+                            {format(new Date(sub.created_at), 'MMM d, yyyy')}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-sm">{sub.customer_name || '-'}</p>
+                              <p className="text-xs text-muted-foreground">{sub.customer_email}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium text-sm">
+                            {sub.products?.name}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {hasCoupon ? (
+                              <div className="text-right">
+                                <p className="text-xs line-through text-muted-foreground">
+                                  {formatPrice(baseAmount, sub.currency)}
+                                </p>
+                                <p className="font-medium">{formatPrice(effectiveAmount, sub.currency)}</p>
+                              </div>
+                            ) : (
+                              formatPrice(baseAmount, sub.currency)
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize text-xs">
+                              {sub.interval}
                             </Badge>
-                          ) : '-'}
-                        </TableCell>
+                          </TableCell>
+                          <TableCell>
+                            {sub.coupon_code ? (
+                              <div>
+                                <Badge variant="secondary" className="text-xs">
+                                  {sub.coupon_code}
+                                </Badge>
+                                {hasCoupon && (
+                                  <p className="text-xs text-green-600">-{formatPrice(discountAmount, sub.currency)}</p>
+                                )}
+                              </div>
+                            ) : '-'}
+                          </TableCell>
                         <TableCell className="text-sm">
                           {sub.current_period_end
                             ? format(new Date(sub.current_period_end), 'MMM d, yyyy')
@@ -709,8 +729,9 @@ export function AdminSales() {
                             )}
                           </div>
                         </TableCell>
-                      </TableRow>
-                    ))
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
