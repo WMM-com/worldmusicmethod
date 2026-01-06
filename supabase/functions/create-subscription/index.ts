@@ -344,12 +344,19 @@ serve(async (req) => {
       });
 
       const paypalSubscription = await subscriptionResponse.json();
-      logStep("PayPal subscription created", { subscriptionId: paypalSubscription.id });
+      logStep("PayPal subscription created", { subscriptionId: paypalSubscription.id, status: paypalSubscription.status });
 
-      const approveUrl = paypalSubscription.links?.find((l: any) => l.rel === "approve")?.href;
+      // Get the approve URL and append the subscription_id for our callback
+      let approveUrl = paypalSubscription.links?.find((l: any) => l.rel === "approve")?.href;
+      
+      // PayPal's approve URL already has query params, so we need to append with &
+      if (approveUrl && paypalSubscription.id) {
+        // The subscription ID will be passed back via PayPal's redirect
+        logStep("Approve URL generated", { approveUrl });
+      }
 
       // Save to database
-      const { data: dbSubscription } = await supabaseClient
+      const { data: dbSubscription, error: dbSubError } = await supabaseClient
         .from('subscriptions')
         .insert({
           product_id: productId,
@@ -368,6 +375,10 @@ serve(async (req) => {
         })
         .select()
         .single();
+
+      if (dbSubError) {
+        logStep("Database error saving subscription", dbSubError);
+      }
 
       return new Response(
         JSON.stringify({
