@@ -78,6 +78,92 @@ serve(async (req) => {
 
     const productsMap = new Map(productsData?.map(p => [p.id, p]) || []);
 
+    // Prepare recurring subscription coupon (Stripe uses discounts[] in basil API versions)
+    const normalizedCouponCode =
+      typeof coupon_code === 'string' ? coupon_code.trim().toUpperCase() : '';
+
+    let subscriptionCoupon:
+      | {
+          code: string;
+          stripeCouponId: string;
+          discount_type: 'percentage' | 'fixed';
+          percent_off: number | null;
+          amount_off: number | null;
+          duration: 'once' | 'repeating' | 'forever';
+          duration_in_months: number | null;
+          currency: string | null;
+        }
+      | null = null;
+
+    if (normalizedCouponCode) {
+      const { data: couponRow, error: couponRowError } = await supabaseClient
+        .from('coupons')
+        .select('*')
+        .ilike('code', normalizedCouponCode)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (couponRowError) {
+        logStep('Coupon lookup error', { code: normalizedCouponCode, error: couponRowError });
+      } else if (couponRow && couponRow.applies_to_subscriptions && couponRow.duration !== 'once') {
+        const nowDate = new Date();
+        const validFromOk = !couponRow.valid_from || new Date(couponRow.valid_from) <= nowDate;
+        const validUntilOk = !couponRow.valid_until || new Date(couponRow.valid_until) >= nowDate;
+
+        if (!validFromOk || !validUntilOk) {
+          logStep('Coupon not valid for subscription dates', { code: normalizedCouponCode });
+        } else {
+          let stripeCouponId: string | null = couponRow.stripe_coupon_id;
+
+          if (!stripeCouponId) {
+            const stripeCouponParams: Stripe.CouponCreateParams = {
+              name: couponRow.name || couponRow.code,
+              duration: couponRow.duration as 'once' | 'repeating' | 'forever',
+            };
+
+            if (couponRow.duration === 'repeating' && couponRow.duration_in_months) {
+              stripeCouponParams.duration_in_months = couponRow.duration_in_months;
+            }
+
+            if (couponRow.discount_type === 'percentage' && couponRow.percent_off) {
+              stripeCouponParams.percent_off = couponRow.percent_off;
+            } else if (couponRow.discount_type === 'fixed' && couponRow.amount_off) {
+              stripeCouponParams.amount_off = Math.round(couponRow.amount_off * 100);
+              stripeCouponParams.currency = (couponRow.currency || 'USD').toLowerCase();
+            }
+
+            const stripeCoupon = await stripe.coupons.create(stripeCouponParams);
+            stripeCouponId = stripeCoupon.id;
+
+            await supabaseClient
+              .from('coupons')
+              .update({ stripe_coupon_id: stripeCouponId })
+              .eq('id', couponRow.id);
+
+            logStep('Created Stripe coupon for subscription', { code: normalizedCouponCode, stripeCouponId });
+          }
+
+          if (stripeCouponId) {
+            subscriptionCoupon = {
+              code: couponRow.code,
+              stripeCouponId,
+              discount_type: couponRow.discount_type,
+              percent_off: couponRow.percent_off,
+              amount_off: couponRow.amount_off,
+              duration: couponRow.duration,
+              duration_in_months: couponRow.duration_in_months,
+              currency: couponRow.currency,
+            };
+            logStep('Prepared subscription coupon', {
+              code: couponRow.code,
+              stripeCouponId,
+              duration: couponRow.duration,
+            });
+          }
+        }
+      }
+    }
+
     // Check if user exists
     const { data: existingUser } = await supabaseClient.auth.admin.listUsers();
     const user = existingUser?.users?.find(u => u.email === email);
@@ -308,6 +394,25 @@ serve(async (req) => {
           subscriptionParams.default_payment_method = paymentMethodId;
         }
 
+        // Apply recurring coupon discount to the Stripe subscription (so renewals are discounted too)
+        let recurringDiscountAmount: number | null = null;
+        if (subscriptionCoupon) {
+          subscriptionParams.discounts = [{ coupon: subscriptionCoupon.stripeCouponId }];
+
+          const base = Number(productInfo.base_price_usd || 0);
+          if (subscriptionCoupon.discount_type === 'percentage' && subscriptionCoupon.percent_off) {
+            recurringDiscountAmount = Math.min(base * (subscriptionCoupon.percent_off / 100), base);
+          } else if (subscriptionCoupon.discount_type === 'fixed' && subscriptionCoupon.amount_off) {
+            recurringDiscountAmount = Math.min(subscriptionCoupon.amount_off, base);
+          }
+
+          logStep('Applied subscription discount', {
+            code: subscriptionCoupon.code,
+            stripeCouponId: subscriptionCoupon.stripeCouponId,
+            recurringDiscountAmount,
+          });
+        }
+
         const stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
         logStep("Stripe subscription created", { 
           subscriptionId: stripeSubscription.id, 
@@ -344,6 +449,8 @@ serve(async (req) => {
             current_period_end: periodEnd.toISOString(),
             trial_end: trialEndDate?.toISOString() || null,
             trial_ends_at: trialEndDate?.toISOString() || null,
+            coupon_code: subscriptionCoupon ? subscriptionCoupon.code : null,
+            coupon_discount: recurringDiscountAmount,
           })
           .select('id')
           .single();

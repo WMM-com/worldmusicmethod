@@ -305,7 +305,7 @@ serve(async (req) => {
 
         case 'apply_coupon': {
           const { couponCode } = data;
-          
+
           // Look up coupon in database
           const { data: couponData, error: couponError } = await supabaseClient
             .from('coupons')
@@ -337,77 +337,96 @@ serve(async (req) => {
             throw new Error('This coupon has expired');
           }
 
-          // Build Stripe coupon config
-          const stripeCouponConfig: any = {
-            name: couponCode.toUpperCase(),
-          };
+          // Get or create Stripe coupon once (re-use via coupons.stripe_coupon_id)
+          let stripeCouponId: string | null = couponData.stripe_coupon_id;
 
-          // Set duration
-          if (couponData.duration === 'once') {
-            stripeCouponConfig.duration = 'once';
-          } else if (couponData.duration === 'forever') {
-            stripeCouponConfig.duration = 'forever';
-          } else if (couponData.duration === 'repeating') {
-            stripeCouponConfig.duration = 'repeating';
-            stripeCouponConfig.duration_in_months = couponData.duration_in_months || 1;
+          if (!stripeCouponId) {
+            const stripeCouponParams: Stripe.CouponCreateParams = {
+              name: couponData.name || couponData.code,
+              duration: couponData.duration as 'once' | 'repeating' | 'forever',
+            };
+
+            if (couponData.duration === 'repeating' && couponData.duration_in_months) {
+              stripeCouponParams.duration_in_months = couponData.duration_in_months;
+            }
+
+            if (couponData.discount_type === 'percentage' && couponData.percent_off) {
+              stripeCouponParams.percent_off = couponData.percent_off;
+            } else if (couponData.discount_type === 'fixed' && couponData.amount_off) {
+              stripeCouponParams.amount_off = Math.round(couponData.amount_off * 100);
+              stripeCouponParams.currency = (couponData.currency || 'USD').toLowerCase();
+            }
+
+            const stripeCoupon = await stripe.coupons.create(stripeCouponParams);
+            stripeCouponId = stripeCoupon.id;
+
+            await supabaseClient
+              .from('coupons')
+              .update({ stripe_coupon_id: stripeCouponId })
+              .eq('id', couponData.id);
+
+            logStep('Stripe coupon created', { code: couponData.code, stripeCouponId });
           }
 
-          // Set discount type
-          if (couponData.discount_type === 'percentage') {
-            stripeCouponConfig.percent_off = couponData.percent_off;
-          } else {
-            stripeCouponConfig.amount_off = Math.round(couponData.amount_off * 100); // Convert to cents
-            stripeCouponConfig.currency = (couponData.currency || 'USD').toLowerCase();
+          if (!stripeCouponId) {
+            throw new Error('Failed to prepare coupon');
           }
 
-          // Create coupon in Stripe
-          const coupon = await stripe.coupons.create(stripeCouponConfig);
+          // Basil API versions use discounts[] (coupon/promotion_code removed)
+          await stripe.subscriptions.update(subscription.provider_subscription_id, {
+            discounts: [{ coupon: stripeCouponId }],
+          });
 
-          await stripe.subscriptions.update(
-            subscription.provider_subscription_id,
-            { coupon: coupon.id }
-          );
-
-          // Update subscription in database
-          const discountValue = couponData.discount_type === 'percentage' 
-            ? couponData.percent_off 
-            : couponData.amount_off;
+          // Store coupon discount as an amount-per-period for display
+          const baseAmount = Number(subscription.amount || 0);
+          let discountAmount = 0;
+          if (couponData.discount_type === 'percentage' && couponData.percent_off) {
+            discountAmount = Math.min(baseAmount * (couponData.percent_off / 100), baseAmount);
+          } else if (couponData.discount_type === 'fixed' && couponData.amount_off) {
+            discountAmount = Math.min(couponData.amount_off, baseAmount);
+          }
 
           await supabaseClient
             .from('subscriptions')
-            .update({ 
-              coupon_code: couponCode.toUpperCase(), 
-              coupon_discount: discountValue 
+            .update({
+              coupon_code: couponData.code,
+              coupon_discount: discountAmount,
             })
             .eq('id', subscriptionId);
 
           // Increment times_redeemed
           await supabaseClient
             .from('coupons')
-            .update({ times_redeemed: couponData.times_redeemed + 1 })
+            .update({ times_redeemed: (couponData.times_redeemed || 0) + 1 })
             .eq('id', couponData.id);
 
-          result = { couponApplied: couponCode, discountType: couponData.discount_type, discount: discountValue };
-          logStep("Coupon applied", { couponCode, discountType: couponData.discount_type, discount: discountValue });
+          result = {
+            couponApplied: couponData.code,
+            discountType: couponData.discount_type,
+            discountAmount,
+          };
+          logStep('Coupon applied', { couponCode: couponData.code, stripeCouponId, discountAmount });
           break;
         }
 
         case 'remove_coupon': {
-          await stripe.subscriptions.update(
-            subscription.provider_subscription_id,
-            { coupon: '' }
-          );
+          try {
+            await stripe.subscriptions.deleteDiscount(subscription.provider_subscription_id);
+          } catch (e) {
+            // If there's no discount, Stripe may error; ignore.
+            logStep('deleteDiscount note', { message: String(e) });
+          }
 
           await supabaseClient
             .from('subscriptions')
-            .update({ 
-              coupon_code: null, 
-              coupon_discount: null 
+            .update({
+              coupon_code: null,
+              coupon_discount: null,
             })
             .eq('id', subscriptionId);
 
           result = { couponRemoved: true };
-          logStep("Coupon removed");
+          logStep('Coupon removed');
           break;
         }
 

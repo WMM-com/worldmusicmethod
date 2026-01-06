@@ -221,8 +221,8 @@ serve(async (req) => {
                 .eq('id', dbCoupon.id);
             }
 
-            // Apply coupon to subscription
-            subscriptionParams.coupon = stripeCouponId;
+            // Apply coupon to subscription (Stripe basil uses discounts[] instead of coupon)
+            subscriptionParams.discounts = [{ coupon: stripeCouponId }];
             logStep("Applied coupon to subscription", { stripeCouponId, duration: dbCoupon.duration });
           }
         } catch (couponError) {
