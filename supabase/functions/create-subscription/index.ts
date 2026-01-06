@@ -24,6 +24,9 @@ serve(async (req) => {
       paymentMethod, 
       paymentMethodId, 
       couponCode,
+      couponDiscount,
+      amount,
+      currency,
       returnUrl 
     } = await req.json();
 
@@ -45,7 +48,7 @@ serve(async (req) => {
       throw new Error("Product not found");
     }
 
-    if (product.product_type !== 'subscription') {
+    if (product.product_type !== 'subscription' && product.product_type !== 'membership') {
       throw new Error("Product is not a subscription");
     }
 
@@ -263,6 +266,14 @@ serve(async (req) => {
       logStep("PayPal product created", { productId: paypalProduct.id });
 
       // Create billing plan
+      const currencyCode = (typeof currency === 'string' && currency.trim())
+        ? currency.trim().toUpperCase()
+        : 'USD';
+
+      const recurringAmount = typeof amount === 'number' && isFinite(amount)
+        ? amount
+        : (product.base_price_usd || 0);
+
       const planPayload: any = {
         product_id: paypalProduct.id,
         name: `${product.name} - ${product.billing_interval}`,
@@ -277,8 +288,8 @@ serve(async (req) => {
             total_cycles: 0, // Infinite
             pricing_scheme: {
               fixed_price: {
-                value: product.base_price_usd?.toFixed(2) || "0.00",
-                currency_code: "USD",
+                value: recurringAmount.toFixed(2),
+                currency_code: currencyCode,
               },
             },
           },
@@ -359,19 +370,22 @@ serve(async (req) => {
       const { data: dbSubscription, error: dbSubError } = await supabaseClient
         .from('subscriptions')
         .insert({
+          user_id: null,
           product_id: productId,
+          product_name: product.name,
           payment_provider: 'paypal',
           provider_subscription_id: paypalSubscription.id,
           status: 'pending',
           customer_name: fullName,
           customer_email: email,
-          amount: product.base_price_usd,
-          currency: 'USD',
+          amount: recurringAmount,
+          currency: currencyCode,
           interval: product.billing_interval,
           trial_ends_at: product.trial_enabled && product.trial_length_days 
             ? new Date(Date.now() + product.trial_length_days * 24 * 60 * 60 * 1000).toISOString()
             : null,
           coupon_code: couponCode || null,
+          coupon_discount: typeof couponDiscount === 'number' ? couponDiscount : null,
         })
         .select()
         .single();

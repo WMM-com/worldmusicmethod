@@ -25,6 +25,7 @@ const PayPalButton = ({
   fullName,
   password,
   couponCode,
+  couponDiscount,
   amount,
   currency,
   productType,
@@ -36,6 +37,7 @@ const PayPalButton = ({
   fullName: string;
   password: string;
   couponCode?: string;
+  couponDiscount?: number;
   amount: number;
   currency: string;
   productType?: string;
@@ -52,10 +54,10 @@ const PayPalButton = ({
 
     setIsLoading(true);
     try {
-      const isSubscription = productType === 'subscription';
+      const isSubscription = productType === 'subscription' || productType === 'membership';
       
       if (isSubscription) {
-        // Handle subscription flow
+        // Handle subscription / membership flow
         const { data, error } = await supabase.functions.invoke('create-subscription', {
           body: {
             productId,
@@ -63,6 +65,9 @@ const PayPalButton = ({
             fullName,
             paymentMethod: 'paypal',
             couponCode,
+            couponDiscount: couponDiscount || 0,
+            amount,
+            currency,
             returnUrl: `${window.location.origin}/payment-success?method=paypal&type=subscription`,
           },
         });
@@ -848,6 +853,7 @@ function CheckoutContent() {
                         fullName={fullName || user?.email || email}
                         password={password}
                         couponCode={appliedCoupon?.code}
+                        couponDiscount={couponDiscount}
                         amount={priceAfterCoupon}
                         currency={currency}
                         productType={product?.product_type || cartItems[0]?.productType}
