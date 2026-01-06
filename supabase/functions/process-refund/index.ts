@@ -87,7 +87,7 @@ serve(async (req) => {
     } else if (order.payment_provider === 'paypal') {
       const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
       const clientSecret = Deno.env.get("PAYPAL_SECRET");
-      
+
       if (!clientId || !clientSecret) {
         throw new Error("PayPal credentials not configured");
       }
@@ -104,29 +104,85 @@ serve(async (req) => {
         body: "grant_type=client_credentials",
       });
 
-      const { access_token } = await tokenResponse.json();
+      const tokenJson = await tokenResponse.json();
+      const access_token = tokenJson?.access_token;
+      if (!tokenResponse.ok || !access_token) {
+        throw new Error(`PayPal auth failed: ${tokenJson?.error_description || tokenJson?.error || 'unknown error'}`);
+      }
 
-      // Get capture ID from order details
-      const captureId = order.provider_payment_id;
+      // For one-time PayPal orders, provider_payment_id is a capture id.
+      // For PayPal subscriptions, we historically stored the subscription id (I-...) here.
+      // In that case, look up the latest transaction and refund its capture/transaction id.
+      let captureId = String(order.provider_payment_id || '');
+
+      const looksLikeSubscriptionId = captureId.startsWith('I-');
+      if (looksLikeSubscriptionId) {
+        if (!order.subscription_id) {
+          throw new Error('PayPal subscription refund needs subscription_id on the order');
+        }
+
+        const { data: sub, error: subErr } = await supabaseClient
+          .from('subscriptions')
+          .select('provider_subscription_id, current_period_start')
+          .eq('id', order.subscription_id)
+          .maybeSingle();
+
+        if (subErr || !sub?.provider_subscription_id) {
+          throw new Error('PayPal subscription not found for this order');
+        }
+
+        const start = sub.current_period_start ? new Date(sub.current_period_start) : new Date(Date.now() - 14 * 86400000);
+        const end = new Date();
+
+        const txRes = await fetch(
+          `https://api-m.paypal.com/v1/billing/subscriptions/${sub.provider_subscription_id}/transactions?start_time=${encodeURIComponent(
+            start.toISOString()
+          )}&end_time=${encodeURIComponent(end.toISOString())}`,
+          {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        const txJson = await txRes.json();
+        if (!txRes.ok) {
+          throw new Error(`PayPal subscription transactions fetch failed: ${txJson?.message || JSON.stringify(txJson)}`);
+        }
+
+        const txList = (txJson?.transactions || txJson?.agreement_transaction_list || []) as any[];
+        const lastTx = txList.length ? txList[txList.length - 1] : null;
+        const txId = lastTx?.id || lastTx?.transaction_id || lastTx?.transaction_info?.transaction_id;
+
+        if (!txId) {
+          throw new Error('No PayPal subscription transaction id found to refund');
+        }
+
+        captureId = String(txId);
+
+        // Update the order so future refunds use the capture/transaction id directly
+        await supabaseClient
+          .from('orders')
+          .update({ provider_payment_id: captureId })
+          .eq('id', orderId);
+      }
 
       // Process refund
-      const refundResponse = await fetch(
-        `https://api-m.paypal.com/v2/payments/captures/${captureId}/refund`,
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${access_token}`,
-            "Content-Type": "application/json",
+      const refundResponse = await fetch(`https://api-m.paypal.com/v2/payments/captures/${captureId}/refund`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: {
+            value: refundAmount.toFixed(2),
+            currency_code: order.currency.toUpperCase(),
           },
-          body: JSON.stringify({
-            amount: {
-              value: refundAmount.toFixed(2),
-              currency_code: order.currency.toUpperCase(),
-            },
-            note_to_payer: reason || "Refund processed",
-          }),
-        }
-      );
+          note_to_payer: reason || "Refund processed",
+        }),
+      });
 
       if (!refundResponse.ok) {
         const errorData = await refundResponse.json();

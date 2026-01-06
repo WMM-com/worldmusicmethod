@@ -303,13 +303,60 @@ serve(async (req) => {
     }
 
     // Create (or ensure) an order record for reporting
+    // IMPORTANT: PayPal subscriptions are not captures; to support fees + refunds we must store the
+    // transaction/capture id from the subscription transactions endpoint (best-effort).
     const { data: existingOrder } = await supabaseClient
       .from("orders")
-      .select("id")
+      .select("id, provider_payment_id, paypal_fee, net_amount")
       .eq("provider_payment_id", subscriptionId)
       .eq("product_id", dbSub.product_id)
       .eq("payment_provider", "paypal")
       .maybeSingle();
+
+    let providerPaymentIdForOrder = subscriptionId;
+    let paypalFee: number | null = null;
+    let netAmount: number | null = null;
+
+    try {
+      const txStart = paypalSub?.start_time ? new Date(paypalSub.start_time) : new Date(Date.now() - 14 * 86400000);
+      const txEnd = new Date();
+
+      const txRes = await fetch(
+        `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}/transactions?start_time=${encodeURIComponent(
+          txStart.toISOString()
+        )}&end_time=${encodeURIComponent(txEnd.toISOString())}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const txJson = await txRes.json();
+      if (txRes.ok) {
+        const txList = (txJson?.transactions || txJson?.agreement_transaction_list || []) as any[];
+        const lastTx = txList.length ? txList[txList.length - 1] : null;
+
+        const txId = lastTx?.id || lastTx?.transaction_id || lastTx?.transaction_info?.transaction_id;
+        const feeVal = lastTx?.fee_amount?.value || lastTx?.transaction_info?.fee_amount?.value;
+        const netVal = lastTx?.net_amount?.value || lastTx?.transaction_info?.net_amount?.value;
+
+        if (txId) providerPaymentIdForOrder = String(txId);
+        if (feeVal != null && feeVal !== '') paypalFee = Number(feeVal);
+        if (netVal != null && netVal !== '') netAmount = Number(netVal);
+
+        logStep('PayPal subscription transaction resolved', {
+          providerPaymentIdForOrder,
+          paypalFee,
+          netAmount,
+        });
+      } else {
+        logStep('PayPal transactions fetch failed (non-fatal)', { error: txJson });
+      }
+    } catch (e) {
+      logStep('PayPal transactions fetch error (non-fatal)', { error: String(e) });
+    }
 
     if (!existingOrder) {
       const { error: orderError } = await supabaseClient.from("orders").insert({
@@ -319,18 +366,39 @@ serve(async (req) => {
         amount: dbSub.amount,
         currency: dbSub.currency,
         payment_provider: "paypal",
-        provider_payment_id: subscriptionId,
+        provider_payment_id: providerPaymentIdForOrder,
         status: "completed",
         customer_name: customerName,
         subscription_id: dbSub.id,
         coupon_code: dbSub.coupon_code,
         coupon_discount: dbSub.coupon_discount,
+        paypal_fee: paypalFee,
+        net_amount: netAmount,
       });
 
       if (orderError) {
         logStep("Order creation error", orderError);
       } else {
         logStep("Order created");
+      }
+    } else {
+      // Backfill fee and provider id if we previously stored the subscription id
+      const needsUpdate =
+        existingOrder.provider_payment_id === subscriptionId ||
+        existingOrder.paypal_fee == null ||
+        existingOrder.net_amount == null;
+
+      if (needsUpdate) {
+        await supabaseClient
+          .from('orders')
+          .update({
+            provider_payment_id: providerPaymentIdForOrder,
+            paypal_fee: existingOrder.paypal_fee ?? paypalFee,
+            net_amount: existingOrder.net_amount ?? netAmount,
+          })
+          .eq('id', existingOrder.id);
+
+        logStep('Order backfilled', { orderId: existingOrder.id });
       }
     }
 
