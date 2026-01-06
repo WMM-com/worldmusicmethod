@@ -162,14 +162,88 @@ serve(async (req) => {
             }
           }
           
-          // For PayPal orders without fees, they should have been set at capture time
-          // Only estimate if really needed (for old orders before this fix)
+          // PayPal fee backfill (subscriptions used to store subscriptionId instead of capture/transaction id)
           if (order.payment_provider === 'paypal' && order.status === 'completed' && !order.paypal_fee) {
-            // Mark as needing fee fetch - we can't get it retroactively without the capture ID
-            // Just return the order without estimated fee
+            try {
+              const clientId = Deno.env.get('PAYPAL_CLIENT_ID');
+              const clientSecret = Deno.env.get('PAYPAL_SECRET');
+
+              if (clientId && clientSecret) {
+                const auth = btoa(`${clientId}:${clientSecret}`);
+                const tokenRes = await fetch('https://api-m.paypal.com/v1/oauth2/token', {
+                  method: 'POST',
+                  headers: {
+                    Authorization: `Basic ${auth}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                  },
+                  body: 'grant_type=client_credentials',
+                });
+
+                const tokenJson = await tokenRes.json();
+                const accessToken = tokenJson?.access_token;
+
+                if (tokenRes.ok && accessToken) {
+                  let captureOrTxId = String(order.provider_payment_id || '');
+
+                  // If this is actually a subscription id (I-...), resolve the latest transaction id
+                  if (captureOrTxId.startsWith('I-') && order.subscription_id) {
+                    const { data: sub } = await supabaseClient
+                      .from('subscriptions')
+                      .select('provider_subscription_id, current_period_start')
+                      .eq('id', order.subscription_id)
+                      .maybeSingle();
+
+                    const subId = sub?.provider_subscription_id;
+                    if (subId) {
+                      const start = sub.current_period_start
+                        ? new Date(sub.current_period_start)
+                        : new Date(Date.now() - 14 * 86400000);
+                      const end = new Date();
+
+                      const txRes = await fetch(
+                        `https://api-m.paypal.com/v1/billing/subscriptions/${subId}/transactions?start_time=${encodeURIComponent(
+                          start.toISOString()
+                        )}&end_time=${encodeURIComponent(end.toISOString())}`,
+                        {
+                          headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                          },
+                        }
+                      );
+
+                      const txJson = await txRes.json();
+                      const txList = (txJson?.transactions || txJson?.agreement_transaction_list || []) as any[];
+                      const lastTx = txList.length ? txList[txList.length - 1] : null;
+                      const txId = lastTx?.id || lastTx?.transaction_id || lastTx?.transaction_info?.transaction_id;
+                      const feeVal = lastTx?.fee_amount?.value || lastTx?.transaction_info?.fee_amount?.value;
+                      const netVal = lastTx?.net_amount?.value || lastTx?.transaction_info?.net_amount?.value;
+
+                      if (txId) captureOrTxId = String(txId);
+                      const paypalFee = feeVal != null && feeVal !== '' ? Number(feeVal) : null;
+                      const netAmount = netVal != null && netVal !== '' ? Number(netVal) : null;
+
+                      await supabaseClient
+                        .from('orders')
+                        .update({
+                          provider_payment_id: captureOrTxId,
+                          paypal_fee: paypalFee,
+                          net_amount: netAmount,
+                        })
+                        .eq('id', order.id);
+
+                      return { ...order, provider_payment_id: captureOrTxId, paypal_fee: paypalFee, net_amount: netAmount };
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              logStep('PayPal fee backfill error (non-fatal)', { orderId: order.id, message: String(e) });
+            }
+
             return order;
           }
-          
+
           return order;
         })
       );

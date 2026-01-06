@@ -413,7 +413,25 @@ serve(async (req) => {
           });
         }
 
-        const stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
+        let stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
+
+        // Stripe sometimes shows the discount as "applied" but doesn't affect the upcoming renewal amount
+        // until a follow-up update. To make this deterministic, we always re-apply the discount after create.
+        if (subscriptionCoupon) {
+          try {
+            stripeSubscription = await stripe.subscriptions.update(stripeSubscription.id, {
+              discounts: [{ coupon: subscriptionCoupon.stripeCouponId }],
+              proration_behavior: 'none',
+            });
+            logStep('Ensured subscription discount is applied', {
+              stripeSubId: stripeSubscription.id,
+              stripeCouponId: subscriptionCoupon.stripeCouponId,
+            });
+          } catch (ensureErr: any) {
+            logStep('Ensure discount failed (non-fatal)', { message: ensureErr?.message || String(ensureErr) });
+          }
+        }
+
         logStep("Stripe subscription created", { 
           subscriptionId: stripeSubscription.id, 
           status: stripeSubscription.status,
