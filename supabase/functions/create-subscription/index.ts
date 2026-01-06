@@ -170,6 +170,66 @@ serve(async (req) => {
         }
       }
 
+      // Handle coupon for recurring subscription discount
+      if (couponCode) {
+        try {
+          // Look up coupon in our database
+          const { data: dbCoupon } = await supabaseClient
+            .from('coupons')
+            .select('*')
+            .eq('code', couponCode.toUpperCase())
+            .eq('is_active', true)
+            .single();
+
+          if (dbCoupon) {
+            logStep("Found coupon in database", { 
+              code: dbCoupon.code, 
+              duration: dbCoupon.duration,
+              percentOff: dbCoupon.percent_off,
+              amountOff: dbCoupon.amount_off
+            });
+
+            // Try to find or create Stripe coupon
+            let stripeCouponId = dbCoupon.stripe_coupon_id;
+            
+            if (!stripeCouponId) {
+              // Create coupon in Stripe
+              const stripeCouponParams: Stripe.CouponCreateParams = {
+                name: dbCoupon.name || dbCoupon.code,
+                duration: dbCoupon.duration as 'once' | 'repeating' | 'forever',
+              };
+
+              if (dbCoupon.duration === 'repeating' && dbCoupon.duration_in_months) {
+                stripeCouponParams.duration_in_months = dbCoupon.duration_in_months;
+              }
+
+              if (dbCoupon.discount_type === 'percentage' && dbCoupon.percent_off) {
+                stripeCouponParams.percent_off = dbCoupon.percent_off;
+              } else if (dbCoupon.discount_type === 'fixed' && dbCoupon.amount_off) {
+                stripeCouponParams.amount_off = Math.round(dbCoupon.amount_off * 100); // Convert to cents
+                stripeCouponParams.currency = dbCoupon.currency?.toLowerCase() || 'usd';
+              }
+
+              const stripeCoupon = await stripe.coupons.create(stripeCouponParams);
+              stripeCouponId = stripeCoupon.id;
+              logStep("Created Stripe coupon", { stripeCouponId });
+
+              // Save Stripe coupon ID back to database
+              await supabaseClient
+                .from('coupons')
+                .update({ stripe_coupon_id: stripeCouponId })
+                .eq('id', dbCoupon.id);
+            }
+
+            // Apply coupon to subscription
+            subscriptionParams.coupon = stripeCouponId;
+            logStep("Applied coupon to subscription", { stripeCouponId, duration: dbCoupon.duration });
+          }
+        } catch (couponError) {
+          logStep("Coupon lookup/creation failed, continuing without", { error: String(couponError) });
+        }
+      }
+
       const subscription = await stripe.subscriptions.create(subscriptionParams);
       logStep("Stripe subscription created", { subscriptionId: subscription.id, status: subscription.status });
 

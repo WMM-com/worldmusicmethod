@@ -3737,7 +3737,7 @@ export type Database = {
           trial_end: string | null
           trial_ends_at: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount?: number
@@ -3762,7 +3762,7 @@ export type Database = {
           trial_end?: string | null
           trial_ends_at?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -3787,7 +3787,7 @@ export type Database = {
           trial_end?: string | null
           trial_ends_at?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
