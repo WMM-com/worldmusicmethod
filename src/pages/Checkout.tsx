@@ -27,6 +27,7 @@ const PayPalButton = ({
   couponCode,
   amount,
   currency,
+  productType,
   onSuccess,
   disabled,
 }: {
@@ -37,6 +38,7 @@ const PayPalButton = ({
   couponCode?: string;
   amount: number;
   currency: string;
+  productType?: string;
   onSuccess: () => void;
   disabled: boolean;
 }) => {
@@ -50,72 +52,145 @@ const PayPalButton = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-paypal-order', {
-        body: {
-          productId,
-          email,
-          fullName,
-          couponCode,
-          currency,
-          amount, // Pass the discounted amount from frontend
-          returnUrl: `${window.location.origin}/payment-success?method=paypal`,
-          cancelUrl: `${window.location.origin}/checkout/${productId}`,
-        },
-      });
+      const isSubscription = productType === 'subscription';
+      
+      if (isSubscription) {
+        // Handle subscription flow
+        const { data, error } = await supabase.functions.invoke('create-subscription', {
+          body: {
+            productId,
+            email,
+            fullName,
+            paymentMethod: 'paypal',
+            couponCode,
+            returnUrl: `${window.location.origin}/payment-success?method=paypal&type=subscription`,
+          },
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data?.approveUrl) {
-        const width = 450;
-        const height = 600;
-        const left = window.screenX + (window.outerWidth - width) / 2;
-        const top = window.screenY + (window.outerHeight - height) / 2;
+        if (data?.approveUrl) {
+          const width = 450;
+          const height = 600;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
 
-        const popup = window.open(
-          data.approveUrl,
-          'PayPal',
-          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-        );
+          const popup = window.open(
+            data.approveUrl,
+            'PayPal',
+            `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+          );
 
-        // Store the order ID from our create call - this is the PayPal order ID
-        const paypalOrderId = data.orderId;
+          // Store the subscription details
+          const paypalSubscriptionId = data.subscriptionId;
+          const dbSubscriptionId = data.dbSubscriptionId;
 
-        const pollTimer = setInterval(async () => {
-          if (popup?.closed) {
-            clearInterval(pollTimer);
-            const successData = sessionStorage.getItem('paypal_success');
-            if (successData) {
-              sessionStorage.removeItem('paypal_success');
-              const parsed = JSON.parse(successData);
-              // Use the orderId from the redirect (token) or fallback to our stored orderId
-              const captureOrderId = parsed.orderId || paypalOrderId;
-              try {
-                const { error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
-                  body: { orderId: captureOrderId, password },
-                });
-                if (captureError) throw captureError;
-                toast.success('Payment successful!');
-                onSuccess();
-              } catch (captureErr: any) {
-                toast.error(captureErr.message || 'Failed to complete PayPal payment');
+          const pollTimer = setInterval(async () => {
+            if (popup?.closed) {
+              clearInterval(pollTimer);
+              const successData = sessionStorage.getItem('paypal_success');
+              if (successData) {
+                sessionStorage.removeItem('paypal_success');
+                const parsed = JSON.parse(successData);
+                try {
+                  // Activate the subscription in the database
+                  const { error: activateError } = await supabase.functions.invoke('activate-paypal-subscription', {
+                    body: { 
+                      subscriptionId: parsed.subscriptionId || paypalSubscriptionId,
+                      dbSubscriptionId,
+                      password,
+                    },
+                  });
+                  if (activateError) throw activateError;
+                  toast.success('Subscription activated!');
+                  onSuccess();
+                } catch (activateErr: any) {
+                  toast.error(activateErr.message || 'Failed to activate subscription');
+                }
               }
+              setIsLoading(false);
             }
-            setIsLoading(false);
-          }
-        }, 500);
+          }, 500);
 
-        const messageHandler = (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return;
-          if (event.data.type === 'paypal_success') {
-            window.removeEventListener('message', messageHandler);
-            // Store the orderId (which comes from the token param in the redirect URL)
-            sessionStorage.setItem('paypal_success', JSON.stringify({ 
-              orderId: event.data.orderId || paypalOrderId 
-            }));
-            popup?.close();
-          }
-        };
-        window.addEventListener('message', messageHandler);
+          const messageHandler = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+            if (event.data.type === 'paypal_success') {
+              window.removeEventListener('message', messageHandler);
+              sessionStorage.setItem('paypal_success', JSON.stringify({ 
+                subscriptionId: event.data.subscriptionId || paypalSubscriptionId,
+                dbSubscriptionId,
+              }));
+              popup?.close();
+            }
+          };
+          window.addEventListener('message', messageHandler);
+        }
+      } else {
+        // Handle one-time payment flow
+        const { data, error } = await supabase.functions.invoke('create-paypal-order', {
+          body: {
+            productId,
+            email,
+            fullName,
+            couponCode,
+            currency,
+            amount,
+            returnUrl: `${window.location.origin}/payment-success?method=paypal`,
+            cancelUrl: `${window.location.origin}/checkout/${productId}`,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.approveUrl) {
+          const width = 450;
+          const height = 600;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+
+          const popup = window.open(
+            data.approveUrl,
+            'PayPal',
+            `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+          );
+
+          const paypalOrderId = data.orderId;
+
+          const pollTimer = setInterval(async () => {
+            if (popup?.closed) {
+              clearInterval(pollTimer);
+              const successData = sessionStorage.getItem('paypal_success');
+              if (successData) {
+                sessionStorage.removeItem('paypal_success');
+                const parsed = JSON.parse(successData);
+                const captureOrderId = parsed.orderId || paypalOrderId;
+                try {
+                  const { error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
+                    body: { orderId: captureOrderId, password },
+                  });
+                  if (captureError) throw captureError;
+                  toast.success('Payment successful!');
+                  onSuccess();
+                } catch (captureErr: any) {
+                  toast.error(captureErr.message || 'Failed to complete PayPal payment');
+                }
+              }
+              setIsLoading(false);
+            }
+          }, 500);
+
+          const messageHandler = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
+            if (event.data.type === 'paypal_success') {
+              window.removeEventListener('message', messageHandler);
+              sessionStorage.setItem('paypal_success', JSON.stringify({ 
+                orderId: event.data.orderId || paypalOrderId 
+              }));
+              popup?.close();
+            }
+          };
+          window.addEventListener('message', messageHandler);
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to start PayPal checkout');
@@ -775,6 +850,7 @@ function CheckoutContent() {
                         couponCode={appliedCoupon?.code}
                         amount={priceAfterCoupon}
                         currency={currency}
+                        productType={product?.product_type || cartItems[0]?.productType}
                         onSuccess={handleSuccess}
                         disabled={!user && (!email || !password || password.length < 8)}
                       />
