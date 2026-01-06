@@ -317,46 +317,61 @@ serve(async (req) => {
     let paypalFee: number | null = null;
     let netAmount: number | null = null;
 
-    try {
-      const txStart = paypalSub?.start_time ? new Date(paypalSub.start_time) : new Date(Date.now() - 14 * 86400000);
-      const txEnd = new Date();
+    // PayPal subscription transactions can take time to appear. We'll try multiple times with a delay.
+    const fetchPayPalTransactionDetails = async (retries = 3, delayMs = 2000): Promise<void> => {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const txStart = paypalSub?.start_time ? new Date(paypalSub.start_time) : new Date(Date.now() - 14 * 86400000);
+          const txEnd = new Date();
 
-      const txRes = await fetch(
-        `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}/transactions?start_time=${encodeURIComponent(
-          txStart.toISOString()
-        )}&end_time=${encodeURIComponent(txEnd.toISOString())}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
+          const txRes = await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}/transactions?start_time=${encodeURIComponent(
+              txStart.toISOString()
+            )}&end_time=${encodeURIComponent(txEnd.toISOString())}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const txJson = await txRes.json();
+          if (txRes.ok) {
+            const txList = (txJson?.transactions || txJson?.agreement_transaction_list || []) as any[];
+            const lastTx = txList.length ? txList[txList.length - 1] : null;
+
+            const txId = lastTx?.id || lastTx?.transaction_id || lastTx?.transaction_info?.transaction_id;
+            const feeVal = lastTx?.fee_amount?.value || lastTx?.transaction_info?.fee_amount?.value;
+            const netVal = lastTx?.net_amount?.value || lastTx?.transaction_info?.net_amount?.value;
+
+            if (txId) providerPaymentIdForOrder = String(txId);
+            if (feeVal != null && feeVal !== '') paypalFee = Number(feeVal);
+            if (netVal != null && netVal !== '') netAmount = Number(netVal);
+
+            logStep(`PayPal subscription transaction resolved (attempt ${attempt})`, {
+              providerPaymentIdForOrder,
+              paypalFee,
+              netAmount,
+            });
+
+            // If we got valid fee data, we're done
+            if (paypalFee !== null) return;
+          } else {
+            logStep(`PayPal transactions fetch failed (attempt ${attempt})`, { error: txJson });
+          }
+        } catch (e) {
+          logStep(`PayPal transactions fetch error (attempt ${attempt})`, { error: String(e) });
         }
-      );
 
-      const txJson = await txRes.json();
-      if (txRes.ok) {
-        const txList = (txJson?.transactions || txJson?.agreement_transaction_list || []) as any[];
-        const lastTx = txList.length ? txList[txList.length - 1] : null;
-
-        const txId = lastTx?.id || lastTx?.transaction_id || lastTx?.transaction_info?.transaction_id;
-        const feeVal = lastTx?.fee_amount?.value || lastTx?.transaction_info?.fee_amount?.value;
-        const netVal = lastTx?.net_amount?.value || lastTx?.transaction_info?.net_amount?.value;
-
-        if (txId) providerPaymentIdForOrder = String(txId);
-        if (feeVal != null && feeVal !== '') paypalFee = Number(feeVal);
-        if (netVal != null && netVal !== '') netAmount = Number(netVal);
-
-        logStep('PayPal subscription transaction resolved', {
-          providerPaymentIdForOrder,
-          paypalFee,
-          netAmount,
-        });
-      } else {
-        logStep('PayPal transactions fetch failed (non-fatal)', { error: txJson });
+        // Wait before retrying (except on last attempt)
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
       }
-    } catch (e) {
-      logStep('PayPal transactions fetch error (non-fatal)', { error: String(e) });
-    }
+    };
+
+    await fetchPayPalTransactionDetails();
 
     if (!existingOrder) {
       const { error: orderError } = await supabaseClient.from("orders").insert({
