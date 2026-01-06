@@ -72,16 +72,16 @@ serve(async (req) => {
 
       // Fetch profiles separately for user_ids that exist
       const userIds = [...new Set((orders || []).map(o => o.user_id).filter(Boolean))];
-      let profilesMap: Record<string, { first_name: string | null; last_name: string | null }> = {};
+      let profilesMap: Record<string, { full_name: string | null; first_name: string | null; last_name: string | null }> = {};
       
       if (userIds.length > 0) {
         const { data: profiles } = await supabaseClient
           .from('profiles')
-          .select('id, first_name, last_name')
+          .select('id, full_name, first_name, last_name')
           .in('id', userIds);
         
         (profiles || []).forEach(p => {
-          profilesMap[p.id] = { first_name: p.first_name, last_name: p.last_name };
+          profilesMap[p.id] = { full_name: p.full_name, first_name: p.first_name, last_name: p.last_name };
         });
       }
 
@@ -134,11 +134,11 @@ serve(async (req) => {
           let customerName = order.customer_name;
           const profile = order.user_id ? profilesMap[order.user_id] : null;
           if (profile) {
-            const firstName = profile.first_name || '';
-            const lastName = profile.last_name || '';
-            const fullName = `${firstName} ${lastName}`.trim();
-            if (fullName) {
-              customerName = fullName;
+            const fromFullName = (profile.full_name || '').trim();
+            const fromParts = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+            const bestName = fromFullName || fromParts;
+            if (bestName) {
+              customerName = bestName;
             }
           }
           order.customer_name = customerName;
