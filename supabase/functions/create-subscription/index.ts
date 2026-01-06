@@ -426,6 +426,10 @@ serve(async (req) => {
         logStep("Approve URL generated", { approveUrl });
       }
 
+      // IMPORTANT: Always store the base price (before discount) as the amount.
+      // The coupon_discount field stores the discount value, and the UI calculates the effective price.
+      const basePrice = product.base_price_usd || 0;
+      
       // Save to database
       const { data: dbSubscription, error: dbSubError } = await supabaseClient
         .from('subscriptions')
@@ -438,7 +442,7 @@ serve(async (req) => {
           status: 'pending',
           customer_name: fullName,
           customer_email: email,
-          amount: recurringAmount,
+          amount: basePrice, // Store base price, NOT discounted amount
           currency: currencyCode,
           interval: product.billing_interval,
           trial_ends_at: product.trial_enabled && product.trial_length_days 
