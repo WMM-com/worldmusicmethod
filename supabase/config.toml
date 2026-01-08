@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.activate-paypal-subscription]
 verify_jwt = false
+
+[functions.sync-subscription-payments]
+verify_jwt = true

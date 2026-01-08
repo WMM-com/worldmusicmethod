@@ -27,7 +27,8 @@ import {
   TrendingUp,
   TrendingDown,
   Undo2,
-  RotateCcw
+  RotateCcw,
+  CloudDownload
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -159,6 +160,25 @@ export function AdminSales() {
     },
   });
 
+  // Sync subscription payments mutation
+  const syncPayments = useMutation({
+    mutationFn: async () => {
+      const { data: result, error } = await supabase.functions.invoke('sync-subscription-payments');
+      if (error) throw error;
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales-stats'] });
+      const msg = `Synced: ${data.stripeUpdated} Stripe, ${data.paypalUpdated} PayPal. Orders created: ${data.stripeOrdersCreated + data.paypalOrdersCreated}`;
+      toast.success(msg);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to sync subscription payments');
+    },
+  });
+
   // Refund mutation
   const processRefund = useMutation({
     mutationFn: async ({ orderId, amount, reason }: { orderId: string; amount?: number; reason?: string }) => {
@@ -282,6 +302,18 @@ export function AdminSales() {
               <SelectItem value="all">All time</SelectItem>
             </SelectContent>
           </Select>
+          <Button 
+            variant="outline" 
+            onClick={() => syncPayments.mutate()}
+            disabled={syncPayments.isPending}
+          >
+            {syncPayments.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <CloudDownload className="h-4 w-4 mr-2" />
+            )}
+            Sync Payments
+          </Button>
           <Button 
             variant="outline" 
             size="icon" 
