@@ -15,6 +15,8 @@ import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { StripeCardFields } from '@/components/checkout/StripeCardFields';
+import { SubscriptionDetails } from '@/components/checkout/SubscriptionDetails';
+import { PriceSlider } from '@/components/checkout/PriceSlider';
 
 type PaymentMethod = 'card' | 'paypal';
 
@@ -298,6 +300,9 @@ function CheckoutContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [isReturningCustomer, setIsReturningCustomer] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  
+  // Pay What You Feel pricing
+  const [pwyfPrice, setPwyfPrice] = useState<number | null>(null);
 
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
 
@@ -470,9 +475,33 @@ function CheckoutContent() {
   // Calculate prices with geo pricing for single product mode
   const productPriceInfo = product ? calculatePrice(product.base_price_usd, productRegionalPricing || []) : null;
   
-  const basePrice = isCartMode
-    ? cartItems.reduce((sum, item) => sum + item.price, 0)
-    : productPriceInfo?.price || 0;
+  // Check if product has PWYF pricing
+  const isPwyf = product?.pwyf_enabled && product?.pwyf_min_price_usd != null;
+  const pwyfMin = product?.pwyf_min_price_usd || 0;
+  const pwyfMax = product?.pwyf_max_price_usd || 100;
+  const pwyfSuggested = product?.pwyf_suggested_price_usd || pwyfMin;
+  
+  // Get currency symbol for current region
+  const getCurrencySymbol = (curr: string) => {
+    const symbols: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
+    return symbols[curr] || '$';
+  };
+
+  // Initialize PWYF price to suggested price when product loads
+  useEffect(() => {
+    if (isPwyf && pwyfPrice === null) {
+      // Apply geo pricing ratio to PWYF prices
+      const ratio = productPriceInfo ? productPriceInfo.price / product.base_price_usd : 1;
+      setPwyfPrice(Math.round(pwyfSuggested * ratio));
+    }
+  }, [isPwyf, pwyfSuggested, pwyfPrice, productPriceInfo, product?.base_price_usd]);
+  
+  // Calculate actual base price (either PWYF or regular)
+  const effectiveBasePrice = isPwyf && pwyfPrice !== null 
+    ? pwyfPrice 
+    : (isCartMode ? cartItems.reduce((sum, item) => sum + item.price, 0) : productPriceInfo?.price || 0);
+  
+  const basePrice = effectiveBasePrice;
   const currency = isCartMode
     ? cartItems[0]?.currency || 'USD'
     : productPriceInfo?.currency || 'USD';
@@ -712,9 +741,39 @@ function CheckoutContent() {
                       ))}
                     </>
                   ) : (
-                    <div className="flex justify-between items-start">
-                      <p className="font-medium">{product?.name}</p>
-                      <p className="font-semibold">{formatPrice(basePrice, currency)}</p>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium">{product?.name}</p>
+                        {!isPwyf && <p className="font-semibold">{formatPrice(basePrice, currency)}</p>}
+                      </div>
+                      
+                      {/* Pay What You Feel Slider */}
+                      {isPwyf && pwyfPrice !== null && (
+                        <div className="pt-2">
+                          <PriceSlider
+                            value={pwyfPrice}
+                            onChange={setPwyfPrice}
+                            min={Math.round((pwyfMin * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
+                            max={Math.round((pwyfMax * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
+                            suggested={Math.round((pwyfSuggested * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
+                            currency={currency}
+                            currencySymbol={getCurrencySymbol(currency)}
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Subscription Details */}
+                      {(product?.product_type === 'subscription' || product?.product_type === 'membership') && (
+                        <SubscriptionDetails
+                          productName={product.name}
+                          price={basePrice}
+                          currency={currency}
+                          interval={product.billing_interval || 'month'}
+                          trialEnabled={product.trial_enabled}
+                          trialLengthDays={product.trial_length_days}
+                          trialPrice={product.trial_price_usd}
+                        />
+                      )}
                     </div>
                   )}
                 </div>
