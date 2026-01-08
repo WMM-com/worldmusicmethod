@@ -317,6 +317,20 @@ function CheckoutContent() {
     enabled: !!productId,
   });
 
+  // Fetch product-specific regional pricing
+  const { data: productRegionalPricing } = useQuery({
+    queryKey: ['product-regional-pricing', productId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_regional_pricing')
+        .select('region, discount_percentage, currency')
+        .eq('product_id', productId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!productId,
+  });
+
   const isCartMode = !productId && cartItems.length > 0;
 
   const handleApplyCoupon = async () => {
@@ -454,7 +468,7 @@ function CheckoutContent() {
   }
 
   // Calculate prices with geo pricing for single product mode
-  const productPriceInfo = product ? calculatePrice(product.base_price_usd) : null;
+  const productPriceInfo = product ? calculatePrice(product.base_price_usd, productRegionalPricing || []) : null;
   
   const basePrice = isCartMode
     ? cartItems.reduce((sum, item) => sum + item.price, 0)
