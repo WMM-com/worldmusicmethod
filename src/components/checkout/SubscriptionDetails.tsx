@@ -1,5 +1,5 @@
-import { format, addDays } from 'date-fns';
-import { Calendar, Info } from 'lucide-react';
+import { format, addDays, addMonths, addYears } from 'date-fns';
+import { Calendar, CheckCircle } from 'lucide-react';
 import { formatPrice } from '@/hooks/useGeoPricing';
 
 interface SubscriptionDetailsProps {
@@ -22,48 +22,60 @@ export function SubscriptionDetails({
   trialPrice,
 }: SubscriptionDetailsProps) {
   const today = new Date();
-  const intervalLabel = interval === 'annual' ? 'year' : interval?.replace('ly', '') || 'month';
   
-  // Calculate next payment date
+  // Normalize interval to handle various formats
+  const normalizedInterval = interval?.toLowerCase().replace('ly', '') || 'month';
+  const intervalLabel = normalizedInterval === 'annual' ? 'year' : normalizedInterval;
+  
+  // Calculate next payment date based on trial or billing cycle
   const getNextPaymentDate = () => {
-    if (trialEnabled && trialLengthDays) {
+    if (trialEnabled && trialLengthDays && trialLengthDays > 0) {
       return addDays(today, trialLengthDays);
     }
-    // If no trial, first payment is today
-    return today;
+    // If no trial, next payment is after first billing cycle
+    if (normalizedInterval === 'annual' || normalizedInterval === 'year') {
+      return addYears(today, 1);
+    }
+    return addMonths(today, 1);
   };
 
   const nextPaymentDate = getNextPaymentDate();
-  const isTrial = trialEnabled && trialLengthDays && trialLengthDays > 0;
-  const isFreeTrial = isTrial && (!trialPrice || trialPrice === 0);
+  const hasTrial = trialEnabled && trialLengthDays && trialLengthDays > 0;
+  const isFreeTrial = hasTrial && (!trialPrice || trialPrice === 0);
+  const todayCharge = hasTrial ? (trialPrice || 0) : price;
 
   return (
-    <div className="p-3 rounded-lg bg-muted/50 border border-border/50 space-y-2">
+    <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border space-y-2">
       <div className="flex items-start gap-2">
-        <Calendar className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+        <Calendar className="h-4 w-4 text-primary mt-0.5 shrink-0" />
         <div className="text-sm space-y-1">
-          {isTrial ? (
+          {hasTrial ? (
             <>
-              <p className="font-medium">
+              <p className="font-medium text-foreground">
                 {isFreeTrial 
                   ? `${trialLengthDays}-day free trial` 
                   : `${trialLengthDays}-day trial for ${formatPrice(trialPrice || 0, currency)}`
                 }
               </p>
               <p className="text-muted-foreground">
-                First payment of {formatPrice(price, currency)} on {format(nextPaymentDate, 'MMM d, yyyy')}
+                Then {formatPrice(price, currency)}/{intervalLabel} from {format(nextPaymentDate, 'MMM d, yyyy')}
               </p>
             </>
           ) : (
-            <p className="text-muted-foreground">
-              Billed {formatPrice(price, currency)}/{intervalLabel} starting today
-            </p>
+            <>
+              <p className="font-medium text-foreground">
+                {formatPrice(price, currency)}/{intervalLabel}
+              </p>
+              <p className="text-muted-foreground">
+                Next payment: {format(nextPaymentDate, 'MMM d, yyyy')}
+              </p>
+            </>
           )}
         </div>
       </div>
       
       <div className="flex items-center gap-2 text-xs text-green-600">
-        <Info className="h-3 w-3" />
+        <CheckCircle className="h-3 w-3" />
         <span>Cancel anytime, no questions asked</span>
       </div>
     </div>
