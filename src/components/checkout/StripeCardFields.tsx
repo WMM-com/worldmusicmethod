@@ -106,6 +106,58 @@ export function StripeCardFields({
       });
 
       if (intentError) throw intentError;
+      
+      // Check if this is a free trial product (no payment required)
+      if (intentData?.freeTrialMode) {
+        console.log('[StripeCardFields] Free trial detected, creating subscription without payment...');
+        
+        // Get the payment method for future billing
+        const cardNumberElement = elements.getElement(CardNumberElement);
+        let paymentMethodId: string | null = null;
+        
+        if (cardNumberElement) {
+          const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
+            type: 'card',
+            card: cardNumberElement,
+            billing_details: {
+              name: fullName || email,
+              email,
+            },
+          });
+          
+          if (!pmError && paymentMethod) {
+            paymentMethodId = paymentMethod.id;
+          }
+        }
+        
+        // Create free trial subscription
+        const { data: trialData, error: trialError } = await supabase.functions.invoke('create-free-trial-subscription', {
+          body: {
+            productId: intentData.productId,
+            email,
+            fullName: fullName || email.split('@')[0],
+            password,
+            paymentMethodId,
+            couponCode,
+          },
+        });
+        
+        if (trialError) throw trialError;
+        
+        // Sign in the user if new
+        if (trialData?.userId && password) {
+          try {
+            await supabase.auth.signInWithPassword({ email, password });
+          } catch {
+            // Non-fatal
+          }
+        }
+        
+        toast.success(`Free trial started! Your ${intentData.trialDays}-day trial begins now.`);
+        onSuccess();
+        return;
+      }
+      
       if (!intentData?.clientSecret) {
         throw new Error('Failed to initialize payment');
       }

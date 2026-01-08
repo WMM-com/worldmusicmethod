@@ -30,7 +30,7 @@ serve(async (req) => {
       throw new Error("No products provided");
     }
 
-    // Get all product details
+    // Get all product details including trial information
     const { data: products, error: productsError } = await supabaseClient
       .from("products")
       .select("*")
@@ -42,27 +42,74 @@ serve(async (req) => {
 
     console.log("[CREATE-PAYMENT-INTENT] Products found", { count: products.length });
 
+    // Check if any product has a free trial (trial_enabled=true AND trial_price_usd=0 or null)
+    // For single subscription/membership products with free trial, we should NOT charge upfront
+    const subscriptionProducts = products.filter(p => 
+      p.product_type === 'subscription' || p.product_type === 'membership'
+    );
+    
+    const hasFreeTrialProduct = subscriptionProducts.some(p => 
+      p.trial_enabled && 
+      (p.trial_price_usd === null || p.trial_price_usd === 0) &&
+      p.trial_length_days > 0
+    );
+
+    // If it's a single subscription/membership with free trial, return special response
+    // indicating the frontend should use the subscription flow instead of payment
+    if (productIdList.length === 1 && hasFreeTrialProduct) {
+      const freeTrialProduct = subscriptionProducts[0];
+      console.log("[CREATE-PAYMENT-INTENT] Free trial detected, skipping payment", { 
+        productId: freeTrialProduct.id,
+        trialDays: freeTrialProduct.trial_length_days 
+      });
+      
+      return new Response(
+        JSON.stringify({
+          freeTrialMode: true,
+          productId: freeTrialProduct.id,
+          productName: freeTrialProduct.name,
+          trialDays: freeTrialProduct.trial_length_days,
+          message: "This product has a free trial - no payment required to start"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Use the currency passed from frontend (geo-priced) or default to USD
     const paymentCurrency = (currency || 'USD').toLowerCase();
     
     // Calculate total amount from the amounts passed by frontend (already geo-priced AND coupon-discounted)
     let totalAmount = 0;
     let originalAmount = 0;
-    const productDetails: { id: string; name: string; course_id: string | null; amount: number }[] = [];
+    const productDetails: { id: string; name: string; course_id: string | null; amount: number; product_type?: string }[] = [];
     
     for (let i = 0; i < productIdList.length; i++) {
       const product = products.find(p => p.id === productIdList[i]);
       if (product) {
-        // Use the pre-calculated amount from frontend (includes geo-pricing AND coupon discount)
-        const productAmount = amountList[i] || product.base_price_usd;
+        // Check if this product has a paid trial
+        let productAmount = amountList[i] || product.base_price_usd;
+        
+        // For subscription/membership with PAID trial, charge the trial price instead
+        if ((product.product_type === 'subscription' || product.product_type === 'membership') &&
+            product.trial_enabled && 
+            product.trial_price_usd && 
+            product.trial_price_usd > 0) {
+          productAmount = product.trial_price_usd;
+          console.log("[CREATE-PAYMENT-INTENT] Using trial price for product", { 
+            productId: product.id, 
+            trialPrice: product.trial_price_usd 
+          });
+        }
+        
         totalAmount += productAmount;
-        // Track original for discount calculation
-        originalAmount += product.base_price_usd;
+        // Track original for discount calculation (use trial price if applicable)
+        originalAmount += productAmount;
         productDetails.push({
           id: product.id,
           name: product.name,
           course_id: product.course_id,
           amount: productAmount,
+          product_type: product.product_type,
         });
       }
     }
