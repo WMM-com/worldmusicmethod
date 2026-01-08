@@ -11,6 +11,46 @@ const logStep = (step: string, details?: any) => {
   console.log(`[SYNC-SUBSCRIPTION-PAYMENTS] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// Send recurring payment email
+async function sendRenewalEmail(
+  supabaseClient: any,
+  email: string,
+  firstName: string,
+  productName: string,
+  amount: number,
+  currency: string,
+  nextBillingDate: string | null
+) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-renewal-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        email,
+        firstName,
+        productName,
+        amount,
+        currency,
+        nextBillingDate,
+      }),
+    });
+    
+    if (response.ok) {
+      logStep("Sent renewal email", { email });
+    } else {
+      logStep("Failed to send renewal email", { email, status: response.status });
+    }
+  } catch (e: any) {
+    logStep("Error sending renewal email", { email, error: e.message });
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,11 +66,12 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    const results = {
+    const results: Record<string, any> = {
       stripeUpdated: 0,
       stripeOrdersCreated: 0,
       paypalUpdated: 0,
       paypalOrdersCreated: 0,
+      emailsSent: 0,
       errors: [] as string[],
     };
 
@@ -162,6 +203,36 @@ serve(async (req) => {
           if (!orderError) {
             results.stripeOrdersCreated++;
             logStep("Created order for Stripe invoice", { invoiceId: invoice.id });
+            
+            // Send renewal email for new orders (skip initial purchase which is handled by complete-stripe-payment)
+            // Check if this is not the first invoice by comparing dates
+            const invoiceDate = invoice.created ? new Date(invoice.created * 1000) : new Date();
+            const subCreated = stripeSub.created ? new Date(stripeSub.created * 1000) : new Date();
+            const daysDiff = (invoiceDate.getTime() - subCreated.getTime()) / (1000 * 60 * 60 * 24);
+            
+            if (daysDiff > 1) { // More than 1 day after subscription created = renewal
+              // Get product name
+              let productName = 'Subscription';
+              if (dbSub.product_id) {
+                const { data: product } = await supabaseClient
+                  .from("products")
+                  .select("name")
+                  .eq("id", dbSub.product_id)
+                  .maybeSingle();
+                if (product?.name) productName = product.name;
+              }
+              
+              await sendRenewalEmail(
+                supabaseClient,
+                dbSub.customer_email,
+                dbSub.customer_name?.split(' ')[0] || '',
+                productName,
+                amount,
+                (invoice.currency || 'usd').toUpperCase(),
+                dbSub.current_period_end
+              );
+              results.emailsSent = (results.emailsSent || 0) + 1;
+            }
           }
         }
       } catch (e: any) {
@@ -319,6 +390,35 @@ serve(async (req) => {
                 if (!orderError) {
                   results.paypalOrdersCreated++;
                   logStep("Created order for PayPal transaction", { txId });
+                  
+                  // Send renewal email for new PayPal orders
+                  // Check if this is a renewal (transaction date > subscription created)
+                  const txDate = tx.time ? new Date(tx.time) : new Date();
+                  const subCreated = dbSub.created_at ? new Date(dbSub.created_at) : new Date();
+                  const daysDiff = (txDate.getTime() - subCreated.getTime()) / (1000 * 60 * 60 * 24);
+                  
+                  if (daysDiff > 1) {
+                    let productName = 'Subscription';
+                    if (dbSub.product_id) {
+                      const { data: product } = await supabaseClient
+                        .from("products")
+                        .select("name")
+                        .eq("id", dbSub.product_id)
+                        .maybeSingle();
+                      if (product?.name) productName = product.name;
+                    }
+                    
+                    await sendRenewalEmail(
+                      supabaseClient,
+                      dbSub.customer_email,
+                      dbSub.customer_name?.split(' ')[0] || '',
+                      productName,
+                      amount,
+                      currency,
+                      dbSub.current_period_end
+                    );
+                    results.emailsSent = (results.emailsSent || 0) + 1;
+                  }
                 }
               }
             }
