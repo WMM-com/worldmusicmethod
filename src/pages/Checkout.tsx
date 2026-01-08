@@ -768,10 +768,16 @@ function CheckoutContent() {
                           productName={product.name}
                           price={basePrice}
                           currency={currency}
-                          interval={product.billing_interval || 'month'}
-                          trialEnabled={product.trial_enabled}
-                          trialLengthDays={product.trial_length_days}
-                          trialPrice={product.trial_price_usd}
+                          interval={product.billing_interval || 'monthly'}
+                          trialEnabled={product.trial_enabled || false}
+                          trialLengthDays={product.trial_length_days || 0}
+                          trialPrice={
+                            product.trial_price_usd 
+                              ? (productPriceInfo 
+                                  ? (product.trial_price_usd * productPriceInfo.price / product.base_price_usd)
+                                  : product.trial_price_usd)
+                              : 0
+                          }
                         />
                       )}
                     </div>
