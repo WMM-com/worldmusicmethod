@@ -3095,6 +3095,7 @@ export type Database = {
           created_at: string
           currency: string
           discount_percentage: number
+          fixed_price: number | null
           id: string
           product_id: string
           region: Database["public"]["Enums"]["pricing_region"]
@@ -3103,6 +3104,7 @@ export type Database = {
           created_at?: string
           currency?: string
           discount_percentage?: number
+          fixed_price?: number | null
           id?: string
           product_id: string
           region: Database["public"]["Enums"]["pricing_region"]
@@ -3111,6 +3113,7 @@ export type Database = {
           created_at?: string
           currency?: string
           discount_percentage?: number
+          fixed_price?: number | null
           id?: string
           product_id?: string
           region?: Database["public"]["Enums"]["pricing_region"]

@@ -80,15 +80,15 @@ interface ProductEditDialogProps {
 }
 
 const REGIONS = [
-  { value: 'africa', label: 'Africa', defaultDiscount: 65 },
-  { value: 'african_euros', label: 'Africa (Francophone/Lusophone)', defaultDiscount: 65, currency: 'EUR' },
-  { value: 'south_america', label: 'South America', defaultDiscount: 65 },
-  { value: 'usa_canada', label: 'USA & Canada', defaultDiscount: 0 },
-  { value: 'uk', label: 'UK', defaultDiscount: 20.2 },
-  { value: 'north_west_europe', label: 'North West Europe', defaultDiscount: 14.14 },
-  { value: 'east_south_europe', label: 'East & South Europe', defaultDiscount: 30.3 },
-  { value: 'asia_lower', label: 'Asia (Lower Income)', defaultDiscount: 65 },
-  { value: 'asia_higher', label: 'Asia (Higher Income)', defaultDiscount: 0 },
+  { value: 'africa', label: 'Africa', defaultDiscount: 65, currency: 'USD', symbol: '$' },
+  { value: 'african_euros', label: 'Africa (Francophone/Lusophone)', defaultDiscount: 65, currency: 'EUR', symbol: '€' },
+  { value: 'south_america', label: 'South America', defaultDiscount: 65, currency: 'USD', symbol: '$' },
+  { value: 'usa_canada', label: 'USA & Canada', defaultDiscount: 0, currency: 'USD', symbol: '$' },
+  { value: 'uk', label: 'UK', defaultDiscount: 20.2, currency: 'GBP', symbol: '£' },
+  { value: 'north_west_europe', label: 'North West Europe', defaultDiscount: 14.14, currency: 'EUR', symbol: '€' },
+  { value: 'east_south_europe', label: 'East & South Europe', defaultDiscount: 30.3, currency: 'EUR', symbol: '€' },
+  { value: 'asia_lower', label: 'Asia (Lower Income)', defaultDiscount: 65, currency: 'USD', symbol: '$' },
+  { value: 'asia_higher', label: 'Asia (Higher Income)', defaultDiscount: 0, currency: 'USD', symbol: '$' },
 ];
 
 // Automation Tags Editor Component
@@ -607,6 +607,7 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
   const [courseId, setCourseId] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [regionalPrices, setRegionalPrices] = useState<Record<string, number>>({});
+  const [fixedPrices, setFixedPrices] = useState<Record<string, string>>({});
   const [purchaseTagId, setPurchaseTagId] = useState('');
   const [refundRemoveTag, setRefundRemoveTag] = useState(true);
   const [expertAttributions, setExpertAttributions] = useState<ExpertAttribution[]>([]);
@@ -675,11 +676,16 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
 
   useEffect(() => {
     if (existingRegionalPricing) {
-      const prices: Record<string, number> = {};
-      existingRegionalPricing.forEach(p => {
-        prices[p.region] = p.discount_percentage;
+      const discounts: Record<string, number> = {};
+      const fixed: Record<string, string> = {};
+      existingRegionalPricing.forEach((p: any) => {
+        discounts[p.region] = p.discount_percentage;
+        if (p.fixed_price !== null && p.fixed_price !== undefined) {
+          fixed[p.region] = p.fixed_price.toString();
+        }
       });
-      setRegionalPrices(prices);
+      setRegionalPrices(discounts);
+      setFixedPrices(fixed);
     }
   }, [existingRegionalPricing]);
 
@@ -750,19 +756,22 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
         .eq('product_id', product.id);
       
       const getCurrency = (region: string) => {
-        if (region === 'uk') return 'GBP';
-        if (region.includes('europe') || region === 'african_euros') return 'EUR';
-        return 'USD';
+        const regionConfig = REGIONS.find(r => r.value === region);
+        return regionConfig?.currency || 'USD';
       };
       
-      const inserts = Object.entries(regionalPrices)
-        .filter(([_, discount]) => discount > 0)
-        .map(([region, discount]) => ({
-          product_id: product.id,
-          region: region as any,
-          discount_percentage: discount,
-          currency: getCurrency(region),
-        }));
+      // Include regions that have either a discount > 0 OR a fixed price set
+      const regionsToSave = REGIONS.filter(r => 
+        (regionalPrices[r.value] > 0) || (fixedPrices[r.value] && parseFloat(fixedPrices[r.value]) > 0)
+      );
+      
+      const inserts = regionsToSave.map(region => ({
+        product_id: product.id,
+        region: region.value as any,
+        discount_percentage: regionalPrices[region.value] || 0,
+        currency: getCurrency(region.value),
+        fixed_price: fixedPrices[region.value] ? parseFloat(fixedPrices[region.value]) : null,
+      }));
       
       if (inserts.length > 0) {
         const { error } = await supabase.from('product_regional_pricing').insert(inserts);
@@ -958,29 +967,58 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
           
           <TabsContent value="pricing">
             <div className="space-y-4 pt-4">
-              <p className="text-sm text-muted-foreground">Set discount percentages for different regions. Base price: ${basePrice || '0'}</p>
+              <p className="text-sm text-muted-foreground">
+                Set regional pricing using percentages (calculates from base ${basePrice || '0'}) or exact fixed prices. Fixed prices override percentage discounts.
+              </p>
               
               <div className="space-y-3">
-                {REGIONS.map((region) => (
-                  <div key={region.value} className="flex items-center gap-4 p-3 rounded-lg border">
-                    <div className="flex-1">
-                      <p className="font-medium">{region.label}</p>
-                      <p className="text-sm text-muted-foreground">Final: ${calculateRegionalPrice(regionalPrices[region.value] || 0).toFixed(2)}</p>
+                {REGIONS.map((region) => {
+                  const hasFixedPrice = fixedPrices[region.value] && parseFloat(fixedPrices[region.value]) > 0;
+                  const finalPrice = hasFixedPrice 
+                    ? parseFloat(fixedPrices[region.value]) 
+                    : calculateRegionalPrice(regionalPrices[region.value] || 0);
+                  
+                  return (
+                    <div key={region.value} className="p-3 rounded-lg border space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{region.label}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Final: {region.symbol}{finalPrice.toFixed(2)} {region.currency}
+                            {hasFixedPrice && <span className="text-xs ml-1">(fixed)</span>}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            className="w-full"
+                            value={regionalPrices[region.value] || ''}
+                            onChange={(e) => setRegionalPrices({ ...regionalPrices, [region.value]: parseInt(e.target.value) || 0 })}
+                            placeholder={region.defaultDiscount.toString()}
+                            disabled={hasFixedPrice}
+                          />
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">% off</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{region.symbol}</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="w-full"
+                            value={fixedPrices[region.value] || ''}
+                            onChange={(e) => setFixedPrices({ ...fixedPrices, [region.value]: e.target.value })}
+                            placeholder="Exact price"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="w-20"
-                        value={regionalPrices[region.value] || ''}
-                        onChange={(e) => setRegionalPrices({ ...regionalPrices, [region.value]: parseInt(e.target.value) || 0 })}
-                        placeholder={region.defaultDiscount.toString()}
-                      />
-                      <span className="text-sm text-muted-foreground">% off</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               <Button onClick={() => saveRegionalPricingMutation.mutate()} disabled={saveRegionalPricingMutation.isPending} className="w-full">

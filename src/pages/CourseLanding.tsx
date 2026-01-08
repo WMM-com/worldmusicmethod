@@ -825,7 +825,7 @@ export default function CourseLanding() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('product_regional_pricing')
-        .select('region, discount_percentage, currency')
+        .select('region, discount_percentage, currency, fixed_price')
         .eq('product_id', product!.id);
       if (error) throw error;
       return data || [];
