@@ -60,6 +60,10 @@ interface Product {
   is_active: boolean;
   purchase_tag_id: string | null;
   refund_remove_tag: boolean | null;
+  pwyf_enabled?: boolean | null;
+  pwyf_min_price_usd?: number | null;
+  pwyf_max_price_usd?: number | null;
+  pwyf_suggested_price_usd?: number | null;
 }
 
 interface EmailTag {
@@ -679,10 +683,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
       setRefundRemoveTag(product.refund_remove_tag ?? true);
       
       // Load PWYF settings
-      setPwyfEnabled((product as any).pwyf_enabled || false);
-      setPwyfMinPrice((product as any).pwyf_min_price_usd?.toString() || '');
-      setPwyfMaxPrice((product as any).pwyf_max_price_usd?.toString() || '');
-      setPwyfSuggestedPrice((product as any).pwyf_suggested_price_usd?.toString() || '');
+      setPwyfEnabled(product.pwyf_enabled || false);
+      setPwyfMinPrice(product.pwyf_min_price_usd?.toString() || '');
+      setPwyfMaxPrice(product.pwyf_max_price_usd?.toString() || '');
+      setPwyfSuggestedPrice(product.pwyf_suggested_price_usd?.toString() || '');
     }
   }, [product]);
 
@@ -842,9 +846,12 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
     updateMutation.mutate();
   };
 
-  const calculateRegionalPrice = (discount: number) => {
+  const calculateRegionalPrice = (discount: number, region: typeof REGIONS[0]) => {
     const base = parseFloat(basePrice) || 0;
-    return base * (1 - discount / 100);
+    const discountedUsd = base * (1 - discount / 100);
+    // Apply exchange rate approximation for display
+    const exchangeRates: Record<string, number> = { USD: 1, GBP: 0.79, EUR: 0.92 };
+    return discountedUsd * (exchangeRates[region.currency] || 1);
   };
 
   const addExpertAttribution = () => {
@@ -1044,7 +1051,7 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
                   const hasFixedPrice = fixedPrices[region.value] && parseFloat(fixedPrices[region.value]) > 0;
                   const finalPrice = hasFixedPrice 
                     ? parseFloat(fixedPrices[region.value]) 
-                    : calculateRegionalPrice(regionalPrices[region.value] || 0);
+                    : calculateRegionalPrice(regionalPrices[region.value] || 0, region);
                   
                   return (
                     <div key={region.value} className="p-3 rounded-lg border space-y-2">
