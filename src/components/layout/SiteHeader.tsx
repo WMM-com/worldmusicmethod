@@ -18,7 +18,7 @@ const siteLogo = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/04/o3
 
 export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, loading } = useAuth();
   const { getItemCount } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
@@ -189,7 +189,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                 </DropdownMenuContent>
               </DropdownMenu>
               </>
-            ) : (
+            ) : !loading ? (
               <>
                 {/* Cart button for non-logged in users */}
                 <Button 
@@ -212,7 +212,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                   Sign Up
                 </Button>
               </>
-            )}
+            ) : null}
             {rightAddon ? <div className="ml-2 flex items-center">{rightAddon}</div> : null}
           </div>
 
@@ -282,7 +282,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                     Sign out
                   </Button>
                 </>
-              ) : (
+              ) : !loading ? (
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" className="flex-1" onClick={() => navigate('/auth?mode=login')}>
                     Login
@@ -291,7 +291,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                     Sign Up
                   </Button>
                 </div>
-              )}
+              ) : null}
             </nav>
           </div>
         )}
