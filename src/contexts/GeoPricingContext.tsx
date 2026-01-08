@@ -23,6 +23,7 @@ interface ProductRegionalPricing {
   region: string;
   discount_percentage: number;
   currency: string;
+  fixed_price?: number | null;
 }
 
 interface GeoPricingContextType {
@@ -243,6 +244,14 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
     if (productRegionalPricing && productRegionalPricing.length > 0) {
       const productPricing = productRegionalPricing.find(p => p.region === region);
       if (productPricing) {
+        // Use fixed_price if set, otherwise calculate from discount percentage
+        if (productPricing.fixed_price !== null && productPricing.fixed_price !== undefined && productPricing.fixed_price > 0) {
+          return {
+            price: Math.round(productPricing.fixed_price),
+            currency: productPricing.currency,
+            discount_percentage: productPricing.discount_percentage,
+          };
+        }
         const discountedPrice = basePriceUsd * (1 - productPricing.discount_percentage / 100);
         return {
           price: Math.round(discountedPrice),

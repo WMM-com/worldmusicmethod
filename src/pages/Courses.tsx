@@ -40,7 +40,7 @@ export default function Courses() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('product_regional_pricing')
-        .select('product_id, region, discount_percentage, currency');
+        .select('product_id, region, discount_percentage, currency, fixed_price');
       if (error) throw error;
       return data || [];
     },

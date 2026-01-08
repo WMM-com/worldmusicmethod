@@ -47,7 +47,7 @@ export default function Membership() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('product_regional_pricing')
-        .select('region, discount_percentage, currency')
+        .select('region, discount_percentage, currency, fixed_price')
         .eq('product_id', MEMBERSHIP_PRODUCT_ID);
       if (error) throw error;
       return data || [];
