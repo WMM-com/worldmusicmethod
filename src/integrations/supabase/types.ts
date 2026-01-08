@@ -3140,6 +3140,10 @@ export type Database = {
           name: string
           product_type: string
           purchase_tag_id: string | null
+          pwyf_enabled: boolean | null
+          pwyf_max_price_usd: number | null
+          pwyf_min_price_usd: number | null
+          pwyf_suggested_price_usd: number | null
           refund_remove_tag: boolean | null
           sale_ends_at: string | null
           sale_price_usd: number | null
@@ -3160,6 +3164,10 @@ export type Database = {
           name: string
           product_type?: string
           purchase_tag_id?: string | null
+          pwyf_enabled?: boolean | null
+          pwyf_max_price_usd?: number | null
+          pwyf_min_price_usd?: number | null
+          pwyf_suggested_price_usd?: number | null
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
@@ -3180,6 +3188,10 @@ export type Database = {
           name?: string
           product_type?: string
           purchase_tag_id?: string | null
+          pwyf_enabled?: boolean | null
+          pwyf_max_price_usd?: number | null
+          pwyf_min_price_usd?: number | null
+          pwyf_suggested_price_usd?: number | null
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null

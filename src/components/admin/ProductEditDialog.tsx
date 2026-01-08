@@ -611,6 +611,12 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
   const [purchaseTagId, setPurchaseTagId] = useState('');
   const [refundRemoveTag, setRefundRemoveTag] = useState(true);
   const [expertAttributions, setExpertAttributions] = useState<ExpertAttribution[]>([]);
+  
+  // Pay What You Feel pricing
+  const [pwyfEnabled, setPwyfEnabled] = useState(false);
+  const [pwyfMinPrice, setPwyfMinPrice] = useState('');
+  const [pwyfMaxPrice, setPwyfMaxPrice] = useState('');
+  const [pwyfSuggestedPrice, setPwyfSuggestedPrice] = useState('');
 
   const { data: courses } = useQuery({
     queryKey: ['admin-courses-for-products'],
@@ -671,6 +677,12 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
       setIsActive(product.is_active);
       setPurchaseTagId(product.purchase_tag_id || '');
       setRefundRemoveTag(product.refund_remove_tag ?? true);
+      
+      // Load PWYF settings
+      setPwyfEnabled((product as any).pwyf_enabled || false);
+      setPwyfMinPrice((product as any).pwyf_min_price_usd?.toString() || '');
+      setPwyfMaxPrice((product as any).pwyf_max_price_usd?.toString() || '');
+      setPwyfSuggestedPrice((product as any).pwyf_suggested_price_usd?.toString() || '');
     }
   }, [product]);
 
@@ -716,6 +728,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
           is_active: isActive,
           purchase_tag_id: purchaseTagId || null,
           refund_remove_tag: refundRemoveTag,
+          pwyf_enabled: pwyfEnabled,
+          pwyf_min_price_usd: pwyfEnabled ? (parseFloat(pwyfMinPrice) || null) : null,
+          pwyf_max_price_usd: pwyfEnabled ? (parseFloat(pwyfMaxPrice) || null) : null,
+          pwyf_suggested_price_usd: pwyfEnabled ? (parseFloat(pwyfSuggestedPrice) || null) : null,
         })
         .eq('id', product.id);
       if (error) throw error;
@@ -930,6 +946,58 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
                     <Badge variant="destructive" className="text-xs">
                       {Math.round((1 - parseFloat(salePrice) / parseFloat(basePrice)) * 100)}% OFF
                     </Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Pay What You Feel Pricing */}
+              <div className="space-y-4 p-4 rounded-lg border bg-primary/5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="pwyfEnabled" className="font-medium">Pay What You Feel</Label>
+                    <p className="text-xs text-muted-foreground">Let customers choose their price</p>
+                  </div>
+                  <Switch id="pwyfEnabled" checked={pwyfEnabled} onCheckedChange={setPwyfEnabled} />
+                </div>
+                
+                {pwyfEnabled && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pwyfMin">Min Price (USD)</Label>
+                      <Input 
+                        id="pwyfMin" 
+                        type="number" 
+                        min="0" 
+                        step="1" 
+                        value={pwyfMinPrice} 
+                        onChange={(e) => setPwyfMinPrice(e.target.value)} 
+                        placeholder="5"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pwyfSuggested">Suggested (USD)</Label>
+                      <Input 
+                        id="pwyfSuggested" 
+                        type="number" 
+                        min="0" 
+                        step="1" 
+                        value={pwyfSuggestedPrice} 
+                        onChange={(e) => setPwyfSuggestedPrice(e.target.value)} 
+                        placeholder="10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pwyfMax">Max Price (USD)</Label>
+                      <Input 
+                        id="pwyfMax" 
+                        type="number" 
+                        min="0" 
+                        step="1" 
+                        value={pwyfMaxPrice} 
+                        onChange={(e) => setPwyfMaxPrice(e.target.value)} 
+                        placeholder="100"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

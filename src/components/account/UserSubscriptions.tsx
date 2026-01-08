@@ -1,16 +1,11 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,21 +17,32 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { format } from 'date-fns';
-import { Loader2, RefreshCw, X, RotateCcw, Calendar } from 'lucide-react';
+import { Loader2, RefreshCw, X, RotateCcw, Calendar, DollarSign } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 export function UserSubscriptions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
+  const [newPrice, setNewPrice] = useState<number>(0);
 
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['user-subscriptions', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*, products(name, product_type)')
+        .select('*, products(name, product_type, pwyf_enabled, pwyf_min_price_usd, pwyf_max_price_usd, pwyf_suggested_price_usd)')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
       
@@ -84,9 +90,33 @@ export function UserSubscriptions() {
     },
   });
 
+  const updatePriceMutation = useMutation({
+    mutationFn: async ({ subscriptionId, amount }: { subscriptionId: string; amount: number }) => {
+      const { data, error } = await supabase.functions.invoke('manage-subscription', {
+        body: { action: 'update_price', subscriptionId, data: { newAmount: amount } }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] });
+      toast.success('Subscription price updated');
+      setPriceDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update price');
+    },
+  });
+
   const formatPrice = (amount: number, currency: string = 'USD') => {
     const symbols: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
     return `${symbols[currency] || currency}${(amount || 0).toFixed(2)}`;
+  };
+
+  const openPriceDialog = (sub: any) => {
+    setSelectedSubscription(sub);
+    setNewPrice(Number(sub.amount) || 0);
+    setPriceDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -177,7 +207,19 @@ export function UserSubscriptions() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Change Price button - only for PWYF subscriptions */}
+                        {sub.status === 'active' && sub.products?.pwyf_enabled && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openPriceDialog(sub)}
+                          >
+                            <DollarSign className="h-4 w-4 mr-1" />
+                            Change Price
+                          </Button>
+                        )}
+
                         {sub.status === 'active' && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -234,6 +276,77 @@ export function UserSubscriptions() {
           </div>
         )}
       </CardContent>
+
+      {/* Price Change Dialog */}
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Subscription Price</DialogTitle>
+            <DialogDescription>
+              Adjust how much you pay for this subscription. Changes take effect on your next billing date.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedSubscription && (
+            <div className="space-y-6 py-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">New price</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg font-medium">
+                      {formatPrice(0, selectedSubscription.currency).charAt(0)}
+                    </span>
+                    <Input
+                      type="number"
+                      value={newPrice}
+                      onChange={(e) => setNewPrice(Math.max(
+                        selectedSubscription.products?.pwyf_min_price_usd || 1,
+                        Math.min(
+                          selectedSubscription.products?.pwyf_max_price_usd || 1000,
+                          parseInt(e.target.value) || 0
+                        )
+                      ))}
+                      className="w-24 h-9 text-center font-semibold"
+                    />
+                    <span className="text-sm text-muted-foreground">/{selectedSubscription.interval}</span>
+                  </div>
+                </div>
+
+                <Slider
+                  value={[newPrice]}
+                  onValueChange={(vals) => setNewPrice(vals[0])}
+                  min={selectedSubscription.products?.pwyf_min_price_usd || 1}
+                  max={selectedSubscription.products?.pwyf_max_price_usd || 100}
+                  step={1}
+                />
+
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Min: {formatPrice(selectedSubscription.products?.pwyf_min_price_usd || 1, selectedSubscription.currency)}</span>
+                  <span>Max: {formatPrice(selectedSubscription.products?.pwyf_max_price_usd || 100, selectedSubscription.currency)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPriceDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => selectedSubscription && updatePriceMutation.mutate({ 
+                subscriptionId: selectedSubscription.id, 
+                amount: newPrice 
+              })}
+              disabled={updatePriceMutation.isPending}
+            >
+              {updatePriceMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Update Price
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
