@@ -819,6 +819,20 @@ export default function CourseLanding() {
     enabled: !!courseId,
   });
 
+  // Fetch product-specific regional pricing
+  const { data: productRegionalPricing } = useQuery({
+    queryKey: ['product-regional-pricing', product?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_regional_pricing')
+        .select('region, discount_percentage, currency')
+        .eq('product_id', product!.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!product?.id,
+  });
+
   // Check if user is enrolled
   const { data: isEnrolled } = useQuery({
     queryKey: ['user-enrollment', courseId, user?.id],
@@ -861,7 +875,7 @@ export default function CourseLanding() {
   const totalDuration = course.modules?.reduce((acc, m) => 
     acc + (m.lessons?.reduce((a, l) => a + (l.duration_seconds || 0), 0) || 0), 0) || 0;
 
-  const priceInfo = product ? calculatePrice(product.base_price_usd) : null;
+  const priceInfo = product ? calculatePrice(product.base_price_usd, productRegionalPricing || []) : null;
   const { addToCart } = useCart();
 
   const handleStartCourse = () => {

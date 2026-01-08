@@ -13,10 +13,16 @@ export type PricingRegion =
   | 'asia_higher' 
   | 'default';
 
-interface RegionalPrice {
+export interface RegionalPrice {
   price: number;
   currency: string;
   discount_percentage: number;
+}
+
+interface ProductRegionalPricing {
+  region: string;
+  discount_percentage: number;
+  currency: string;
 }
 
 interface GeoPricingContextType {
@@ -25,7 +31,7 @@ interface GeoPricingContextType {
   countryName: string;
   isLoading: boolean;
   error: string | null;
-  calculatePrice: (basePriceUsd: number) => RegionalPrice | null;
+  calculatePrice: (basePriceUsd: number, productRegionalPricing?: ProductRegionalPricing[]) => RegionalPrice | null;
 }
 
 const GeoPricingContext = createContext<GeoPricingContextType | undefined>(undefined);
@@ -229,10 +235,24 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
     detectRegion();
   }, []);
 
-  const calculatePrice = (basePriceUsd: number): RegionalPrice | null => {
+  const calculatePrice = (basePriceUsd: number, productRegionalPricing?: ProductRegionalPricing[]): RegionalPrice | null => {
     // Return null if still loading to prevent showing wrong prices
     if (isLoading) return null;
     
+    // Check for product-specific regional pricing first
+    if (productRegionalPricing && productRegionalPricing.length > 0) {
+      const productPricing = productRegionalPricing.find(p => p.region === region);
+      if (productPricing) {
+        const discountedPrice = basePriceUsd * (1 - productPricing.discount_percentage / 100);
+        return {
+          price: Math.round(discountedPrice),
+          currency: productPricing.currency,
+          discount_percentage: productPricing.discount_percentage,
+        };
+      }
+    }
+    
+    // Fall back to global region pricing
     const pricing = regionPricing[region];
     const discountedPrice = basePriceUsd * (1 - pricing.discount / 100);
     

@@ -34,6 +34,18 @@ export default function Courses() {
     },
   });
 
+  // Fetch all product regional pricing for courses
+  const { data: allRegionalPricing } = useQuery({
+    queryKey: ['all-product-regional-pricing'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_regional_pricing')
+        .select('product_id, region, discount_percentage, currency');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Check if user is admin
   const { data: isAdmin } = useQuery({
     queryKey: ['is-admin', user?.id],
@@ -66,7 +78,9 @@ export default function Courses() {
     const product = products?.find(p => p.course_id === courseId);
     if (!product) return null;
     const basePrice = product.sale_price_usd || product.base_price_usd;
-    return calculatePrice(basePrice);
+    // Get product-specific regional pricing
+    const productRegionalPricing = allRegionalPricing?.filter(p => p.product_id === product.id) || [];
+    return calculatePrice(basePrice, productRegionalPricing);
   };
 
   if (isLoading) {

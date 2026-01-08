@@ -41,7 +41,20 @@ export default function Membership() {
     },
   });
 
-  const priceInfo = product ? calculatePrice(product.base_price_usd) : null;
+  // Fetch product-specific regional pricing
+  const { data: productRegionalPricing } = useQuery({
+    queryKey: ['product-regional-pricing', MEMBERSHIP_PRODUCT_ID],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_regional_pricing')
+        .select('region, discount_percentage, currency')
+        .eq('product_id', MEMBERSHIP_PRODUCT_ID);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const priceInfo = product ? calculatePrice(product.base_price_usd, productRegionalPricing || []) : null;
   const isLoading = productLoading || geoLoading;
 
   const handleStartTrial = () => {
