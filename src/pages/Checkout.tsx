@@ -338,6 +338,26 @@ function CheckoutContent() {
 
   const isCartMode = !productId && cartItems.length > 0;
 
+  // Find subscription/membership items in cart for subscription details display
+  const subscriptionCartItem = cartItems.find(item => 
+    item.productType === 'subscription' || item.productType === 'membership'
+  );
+
+  // Fetch subscription product details when in cart mode with a subscription
+  const { data: cartSubscriptionProduct } = useQuery({
+    queryKey: ['cart-subscription-product', subscriptionCartItem?.productId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, billing_interval, trial_enabled, trial_length_days, trial_price_usd, base_price_usd')
+        .eq('id', subscriptionCartItem!.productId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!subscriptionCartItem?.productId,
+  });
+
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
     setIsValidatingCoupon(true);
@@ -766,23 +786,37 @@ function CheckoutContent() {
                 </div>
                 
                 {/* Subscription Details - shown for subscription/membership products */}
-                {!isCartMode && product && (product.product_type === 'subscription' || product.product_type === 'membership') && (
-                  <SubscriptionDetails
-                    productName={product.name}
-                    price={basePrice}
-                    currency={currency}
-                    interval={product.billing_interval || 'monthly'}
-                    trialEnabled={product.trial_enabled || false}
-                    trialLengthDays={product.trial_length_days || 0}
-                    trialPrice={
-                      product.trial_price_usd 
-                        ? (productPriceInfo 
-                            ? (product.trial_price_usd * productPriceInfo.price / product.base_price_usd)
-                            : product.trial_price_usd)
-                        : 0
-                    }
-                  />
-                )}
+                {(() => {
+                  // Determine which product data to use for subscription details
+                  const subProduct = isCartMode ? cartSubscriptionProduct : product;
+                  const showDetails = subProduct && (
+                    (isCartMode && subscriptionCartItem) || 
+                    (!isCartMode && (product?.product_type === 'subscription' || product?.product_type === 'membership'))
+                  );
+                  
+                  if (!showDetails || !subProduct) return null;
+                  
+                  // Calculate trial price with regional pricing
+                  const trialPriceCalculated = subProduct.trial_price_usd 
+                    ? (isCartMode && subscriptionCartItem
+                        ? (subProduct.trial_price_usd * subscriptionCartItem.price / subProduct.base_price_usd)
+                        : (productPriceInfo 
+                            ? (subProduct.trial_price_usd * productPriceInfo.price / subProduct.base_price_usd)
+                            : subProduct.trial_price_usd))
+                    : 0;
+                  
+                  return (
+                    <SubscriptionDetails
+                      productName={subProduct.name}
+                      price={isCartMode && subscriptionCartItem ? subscriptionCartItem.price : basePrice}
+                      currency={currency}
+                      interval={subProduct.billing_interval || 'monthly'}
+                      trialEnabled={subProduct.trial_enabled || false}
+                      trialLengthDays={subProduct.trial_length_days || 0}
+                      trialPrice={trialPriceCalculated}
+                    />
+                  );
+                })()}
 
                 {/* Coupon discount row - shown when coupon applied */}
                 {appliedCoupon && couponDiscount > 0 && (
