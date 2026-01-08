@@ -285,20 +285,52 @@ serve(async (req) => {
             
             if (pm.customer === customerId) {
               paymentMethodId = pmId;
-              logStep("Payment method already attached", { pmId });
+              logStep("Payment method already attached to this customer", { pmId });
             } else if (!pm.customer) {
               await stripe.paymentMethods.attach(pmId, { customer: customerId });
               paymentMethodId = pmId;
               logStep("Payment method attached", { pmId });
+            } else {
+              // Payment method attached to different customer - detach and reattach
+              logStep("Payment method attached to different customer, detaching", { pmId, oldCustomer: pm.customer });
+              try {
+                await stripe.paymentMethods.detach(pmId);
+                await stripe.paymentMethods.attach(pmId, { customer: customerId });
+                paymentMethodId = pmId;
+                logStep("Payment method reattached to correct customer", { pmId });
+              } catch (detachErr: any) {
+                logStep("Could not reattach payment method", { error: detachErr.message });
+              }
             }
             
             if (paymentMethodId) {
               await stripe.customers.update(customerId, {
                 invoice_settings: { default_payment_method: paymentMethodId },
               });
+              logStep("Set default payment method on customer", { customerId, paymentMethodId });
             }
           } catch (pmErr: any) {
             logStep("Payment method handling note", { message: pmErr.message });
+          }
+        }
+        
+        // If no payment method from payment intent, list customer's payment methods
+        if (!paymentMethodId) {
+          try {
+            const customerPMs = await stripe.paymentMethods.list({
+              customer: customerId,
+              type: 'card',
+              limit: 1,
+            });
+            if (customerPMs.data.length > 0) {
+              paymentMethodId = customerPMs.data[0].id;
+              await stripe.customers.update(customerId, {
+                invoice_settings: { default_payment_method: paymentMethodId },
+              });
+              logStep("Found existing payment method on customer", { paymentMethodId });
+            }
+          } catch (e) {
+            logStep("Could not list customer payment methods");
           }
         }
         
