@@ -234,8 +234,8 @@ export function AdminSales() {
         .eq('subscription_id', subscriptionId);
       
       if (updateError) {
-        console.error('Failed to unlink orders:', updateError);
-        // Continue anyway, the main delete might still work
+        // Throw error to prevent delete if we can't unlink orders
+        throw new Error(`Cannot unlink orders: ${updateError.message}`);
       }
       
       // Now delete the subscription

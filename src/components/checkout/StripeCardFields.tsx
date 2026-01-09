@@ -193,8 +193,9 @@ export function StripeCardFields({
         if (completeData?.isNewUser && completeData?.email && password) {
           console.log('[StripeCardFields] New user created, signing in automatically...');
           
-          // Wait a bit longer to ensure the profile has been updated with email_verified
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // Wait longer to ensure the backend has fully completed setting email_verified
+          // Backend waits 2000ms + retries, so we wait 4000ms to be safe
+          await new Promise(resolve => setTimeout(resolve, 4000));
           
           try {
             // Use signInWithPassword directly to avoid the email verification check in AuthContext
@@ -211,7 +212,7 @@ export function StripeCardFields({
             } else {
               console.log('[StripeCardFields] Auto sign-in successful');
               // Wait for session to be established
-              await new Promise(resolve => setTimeout(resolve, 500));
+              await new Promise(resolve => setTimeout(resolve, 1000));
             }
           } catch (signInErr) {
             console.error('[StripeCardFields] Auto sign-in error:', signInErr);
