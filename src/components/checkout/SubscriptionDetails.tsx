@@ -10,6 +10,7 @@ interface SubscriptionDetailsProps {
   trialEnabled?: boolean;
   trialLengthDays?: number;
   trialPrice?: number;
+  paymentMethodDiscount?: number; // Amount saved with card payment
 }
 
 export function SubscriptionDetails({
@@ -20,6 +21,7 @@ export function SubscriptionDetails({
   trialEnabled,
   trialLengthDays,
   trialPrice,
+  paymentMethodDiscount = 0,
 }: SubscriptionDetailsProps) {
   const today = new Date();
   
@@ -42,7 +44,10 @@ export function SubscriptionDetails({
   const nextPaymentDate = getNextPaymentDate();
   const hasTrial = trialEnabled && trialLengthDays && trialLengthDays > 0;
   const isFreeTrial = hasTrial && (!trialPrice || trialPrice === 0);
-  const todayCharge = hasTrial ? (trialPrice || 0) : price;
+  
+  // Apply payment method discount to prices
+  const effectivePrice = price - paymentMethodDiscount;
+  const effectiveTrialPrice = trialPrice ? trialPrice - (trialPrice * (paymentMethodDiscount / price)) : 0;
 
   return (
     <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border space-y-2">
@@ -54,17 +59,17 @@ export function SubscriptionDetails({
               <p className="font-medium text-foreground">
                 {isFreeTrial 
                   ? `${trialLengthDays}-day free trial` 
-                  : `${trialLengthDays}-day trial for ${formatPrice(trialPrice || 0, currency)}`
+                  : `${trialLengthDays}-day trial for ${formatPrice(effectiveTrialPrice, currency)}`
                 }
               </p>
               <p className="text-muted-foreground">
-                Then {formatPrice(price, currency)}/{intervalLabel} from {format(nextPaymentDate, 'MMM d, yyyy')}
+                Then {formatPrice(effectivePrice, currency)}/{intervalLabel} from {format(nextPaymentDate, 'MMM d, yyyy')}
               </p>
             </>
           ) : (
             <>
               <p className="font-medium text-foreground">
-                {formatPrice(price, currency)}/{intervalLabel}
+                {formatPrice(effectivePrice, currency)}/{intervalLabel}
               </p>
               <p className="text-muted-foreground">
                 Next payment: {format(nextPaymentDate, 'MMM d, yyyy')}

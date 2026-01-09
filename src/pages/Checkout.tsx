@@ -796,7 +796,12 @@ function CheckoutContent() {
                   
                   if (!showDetails || !subProduct) return null;
                   
-                  // Calculate trial price with regional pricing
+                  // Get the current price (with payment method discount if card selected)
+                  const currentBasePrice = isCartMode && subscriptionCartItem ? subscriptionCartItem.price : basePrice;
+                  const currentPriceAfterCoupon = currentBasePrice - (appliedCoupon ? couponDiscount : 0);
+                  const paymentDiscount = paymentMethod === 'card' ? currentPriceAfterCoupon * 0.02 : 0;
+                  
+                  // Calculate trial price with regional pricing and payment method discount
                   const trialPriceCalculated = subProduct.trial_price_usd 
                     ? (isCartMode && subscriptionCartItem
                         ? (subProduct.trial_price_usd * subscriptionCartItem.price / subProduct.base_price_usd)
@@ -808,12 +813,13 @@ function CheckoutContent() {
                   return (
                     <SubscriptionDetails
                       productName={subProduct.name}
-                      price={isCartMode && subscriptionCartItem ? subscriptionCartItem.price : basePrice}
+                      price={currentPriceAfterCoupon}
                       currency={currency}
                       interval={subProduct.billing_interval || 'monthly'}
                       trialEnabled={subProduct.trial_enabled || false}
                       trialLengthDays={subProduct.trial_length_days || 0}
                       trialPrice={trialPriceCalculated}
+                      paymentMethodDiscount={paymentDiscount}
                     />
                   );
                 })()}
