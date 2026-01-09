@@ -33,7 +33,8 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Shield, Users, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Shield, Users, Pencil, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +66,12 @@ export function AdminUsers() {
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
+  
+  // WordPress import state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importJsonData, setImportJsonData] = useState('');
+  const [importPreview, setImportPreview] = useState<any>(null);
+  const [importing, setImporting] = useState(false);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', searchQuery],
@@ -348,6 +355,78 @@ export function AdminUsers() {
 
   const selectedCount = selectedCourseIds.length + selectedGroupIds.length;
 
+  const handlePreviewImport = async () => {
+    if (!importJsonData.trim()) {
+      toast.error('Please paste the WordPress users JSON data');
+      return;
+    }
+
+    try {
+      let users;
+      try {
+        users = JSON.parse(importJsonData);
+        if (!Array.isArray(users)) {
+          users = [users];
+        }
+      } catch (e) {
+        toast.error('Invalid JSON format');
+        return;
+      }
+
+      setImporting(true);
+      const { data, error } = await supabase.functions.invoke('import-wordpress-users', {
+        body: { users, mode: 'preview' }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setImportPreview(data.results);
+      toast.success(data.message);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to preview import');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importJsonData.trim()) {
+      toast.error('Please paste the WordPress users JSON data');
+      return;
+    }
+
+    try {
+      let users;
+      try {
+        users = JSON.parse(importJsonData);
+        if (!Array.isArray(users)) {
+          users = [users];
+        }
+      } catch (e) {
+        toast.error('Invalid JSON format');
+        return;
+      }
+
+      setImporting(true);
+      const { data, error } = await supabase.functions.invoke('import-wordpress-users', {
+        body: { users, mode: 'import' }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      setImportDialogOpen(false);
+      setImportJsonData('');
+      setImportPreview(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to import users');
+    } finally {
+      setImporting(false);
+    }
+  };
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -428,6 +507,92 @@ export function AdminUsers() {
                 <Button onClick={handleCreateUser} className="w-full">
                   Create User
                 </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          {/* WordPress Import Dialog */}
+          <Dialog open={importDialogOpen} onOpenChange={(open) => {
+            setImportDialogOpen(open);
+            if (!open) {
+              setImportJsonData('');
+              setImportPreview(null);
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Import WP Users
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Import WordPress Users</DialogTitle>
+                <DialogDescription>
+                  Paste WordPress user data as JSON. Users will be created with random passwords and marked as email-verified.
+                  WordPress password hashes are stored for reference but users will need to reset their passwords.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>User JSON Data</Label>
+                  <Textarea
+                    placeholder={`[
+  {"email": "user@example.com", "display_name": "John Doe", "user_pass": "$P$..."},
+  ...
+]`}
+                    value={importJsonData}
+                    onChange={(e) => setImportJsonData(e.target.value)}
+                    className="font-mono text-xs min-h-[200px]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Expected fields: email/user_email, display_name/name, user_pass/password_hash (optional)
+                  </p>
+                </div>
+                
+                {importPreview && (
+                  <div className="border rounded-lg p-4 max-h-[200px] overflow-auto">
+                    <h4 className="font-medium mb-2">Preview Results</h4>
+                    <div className="space-y-1 text-sm">
+                      {importPreview.preview?.map((user: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Badge variant={user.status === 'will_create' ? 'default' : 'outline'}>
+                            {user.status}
+                          </Badge>
+                          <span>{user.email}</span>
+                          <span className="text-muted-foreground">({user.name})</span>
+                        </div>
+                      ))}
+                    </div>
+                    {importPreview.errors?.length > 0 && (
+                      <div className="mt-2 text-destructive">
+                        {importPreview.errors.map((e: any, i: number) => (
+                          <div key={i} className="text-xs">{e.email}: {e.error}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handlePreviewImport} 
+                    disabled={importing || !importJsonData.trim()}
+                    className="flex-1"
+                  >
+                    {importing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Preview
+                  </Button>
+                  <Button 
+                    onClick={handleConfirmImport} 
+                    disabled={importing || !importJsonData.trim()}
+                    className="flex-1"
+                  >
+                    {importing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Import Users
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>

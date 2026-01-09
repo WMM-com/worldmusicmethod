@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.send-renewal-email]
 verify_jwt = false
+
+[functions.import-wordpress-users]
+verify_jwt = true

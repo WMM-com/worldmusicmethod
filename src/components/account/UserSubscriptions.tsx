@@ -252,44 +252,10 @@ export function UserSubscriptions() {
     },
   });
 
-  // PayPal payment update - redirects to PayPal
-  const updatePaypalMutation = useMutation({
-    mutationFn: async (subscriptionId: string) => {
-      const { data, error } = await supabase.functions.invoke('manage-subscription', {
-        body: { 
-          action: 'update_paypal_payment', 
-          subscriptionId,
-          data: { returnUrl: window.location.href }
-        }
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data?.url) {
-        window.location.href = data.url;
-      } else {
-        toast.info('Please update your payment method in PayPal settings');
-      }
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update PayPal payment');
-    },
-  });
-
   const openPaymentDialog = (sub: any) => {
     setSelectedSubscription(sub);
     setPaymentMethod(sub.payment_provider === 'paypal' ? 'paypal' : 'stripe');
     setPaymentDialogOpen(true);
-  };
-
-  const handlePaymentUpdate = () => {
-    if (!selectedSubscription) return;
-    
-    if (paymentMethod === 'paypal') {
-      updatePaypalMutation.mutate(selectedSubscription.id);
-    }
-    // Stripe is handled by the form
   };
 
   const formatPrice = (amount: number, currency: string = 'USD') => {
@@ -566,7 +532,6 @@ export function UserSubscriptions() {
                 >
                   <CreditCard className="h-4 w-4 mr-2" />
                   Card
-                  <Badge variant="secondary" className="ml-2 text-xs">2% off</Badge>
                 </Button>
                 <Button
                   type="button"
@@ -599,24 +564,26 @@ export function UserSubscriptions() {
               {paymentMethod === 'paypal' && (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    You'll be redirected to PayPal to update your payment method.
+                    To update your PayPal payment method, you'll need to manage it through your PayPal account. Click below to open PayPal in a new window.
                   </p>
                   <div className="flex gap-2 justify-end">
                     <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
                       Cancel
                     </Button>
                     <Button 
-                      onClick={handlePaymentUpdate}
-                      disabled={updatePaypalMutation.isPending}
+                      onClick={() => {
+                        // Open PayPal subscription management in new window
+                        const paypalSubId = selectedSubscription?.provider_subscription_id;
+                        if (paypalSubId) {
+                          window.open(`https://www.paypal.com/myaccount/autopay/connect/${paypalSubId}`, '_blank', 'width=600,height=700');
+                          toast.info('PayPal opened in a new window. Update your payment method there.');
+                          setPaymentDialogOpen(false);
+                        } else {
+                          toast.error('Unable to find PayPal subscription details');
+                        }
+                      }}
                     >
-                      {updatePaypalMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Redirecting...
-                        </>
-                      ) : (
-                        'Continue to PayPal'
-                      )}
+                      Open PayPal Settings
                     </Button>
                   </div>
                 </div>
