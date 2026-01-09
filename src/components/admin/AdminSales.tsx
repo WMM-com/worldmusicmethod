@@ -28,7 +28,8 @@ import {
   TrendingDown,
   Undo2,
   RotateCcw,
-  CloudDownload
+  CloudDownload,
+  Trash2
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -73,6 +74,8 @@ export function AdminSales() {
   const [couponDiscount, setCouponDiscount] = useState('');
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
+  const [deleteOrderDialog, setDeleteOrderDialog] = useState<{ open: boolean; order: any }>({ open: false, order: null });
+  const [deleteSubDialog, setDeleteSubDialog] = useState<{ open: boolean; subscription: any }>({ open: false, subscription: null });
 
   const PAGE_SIZE = 30;
 
@@ -198,6 +201,46 @@ export function AdminSales() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to process refund');
+    },
+  });
+
+  // Delete order mutation
+  const deleteOrder = useMutation({
+    mutationFn: async (orderId: string) => {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales-stats'] });
+      toast.success('Order deleted');
+      setDeleteOrderDialog({ open: false, order: null });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete order');
+    },
+  });
+
+  // Delete subscription mutation
+  const deleteSubscription = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { error } = await supabase
+        .from('subscriptions')
+        .delete()
+        .eq('id', subscriptionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales-stats'] });
+      toast.success('Subscription deleted');
+      setDeleteSubDialog({ open: false, subscription: null });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete subscription');
     },
   });
 
@@ -545,17 +588,28 @@ export function AdminSales() {
                             {getStatusBadge(order.status)}
                           </TableCell>
                           <TableCell className="py-2 px-3">
-                            {order.status === 'completed' && (
+                            <div className="flex items-center justify-end gap-1">
+                              {order.status === 'completed' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleRefund(order)}
+                                  title="Refund"
+                                >
+                                  <Undo2 className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleRefund(order)}
-                                title="Refund"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => setDeleteOrderDialog({ open: true, order })}
+                                title="Delete"
                               >
-                                <Undo2 className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                            )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -759,6 +813,15 @@ export function AdminSales() {
                                 </Button>
                               </>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteSubDialog({ open: true, subscription: sub })}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                         </TableRow>
@@ -917,6 +980,78 @@ export function AdminSales() {
             >
               {processRefund.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Process Refund
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Order Dialog */}
+      <Dialog open={deleteOrderDialog.open} onOpenChange={(open) => setDeleteOrderDialog({ open, order: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Order</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this order? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">
+              <strong>Customer:</strong> {deleteOrderDialog.order?.customer_name || deleteOrderDialog.order?.email}
+            </p>
+            <p className="text-sm">
+              <strong>Amount:</strong> {deleteOrderDialog.order?.amount?.toFixed(2)} {deleteOrderDialog.order?.currency}
+            </p>
+            <p className="text-sm">
+              <strong>Product:</strong> {deleteOrderDialog.order?.products?.name}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOrderDialog({ open: false, order: null })}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => deleteOrder.mutate(deleteOrderDialog.order?.id)} 
+              disabled={deleteOrder.isPending}
+            >
+              {deleteOrder.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Delete Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Subscription Dialog */}
+      <Dialog open={deleteSubDialog.open} onOpenChange={(open) => setDeleteSubDialog({ open, subscription: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Subscription</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this subscription record? This only removes it from the database and does not cancel any active payment provider subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm">
+              <strong>Customer:</strong> {deleteSubDialog.subscription?.customer_name || deleteSubDialog.subscription?.customer_email}
+            </p>
+            <p className="text-sm">
+              <strong>Amount:</strong> {deleteSubDialog.subscription?.amount?.toFixed(2)} {deleteSubDialog.subscription?.currency}/{deleteSubDialog.subscription?.interval}
+            </p>
+            <p className="text-sm">
+              <strong>Product:</strong> {deleteSubDialog.subscription?.products?.name}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteSubDialog({ open: false, subscription: null })}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => deleteSubscription.mutate(deleteSubDialog.subscription?.id)} 
+              disabled={deleteSubscription.isPending}
+            >
+              {deleteSubscription.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Delete Subscription
             </Button>
           </DialogFooter>
         </DialogContent>
