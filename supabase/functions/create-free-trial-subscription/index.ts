@@ -56,10 +56,23 @@ serve(async (req) => {
     const { data: existingUsers } = await supabaseClient.auth.admin.listUsers();
     let user = existingUsers?.users?.find(u => u.email === email);
     let userId: string;
+    let isNewUser = false;
 
     if (user) {
       userId = user.id;
       logStep("Existing user found", { userId });
+      
+      // Set email_verified for existing user
+      const { error: verifyError } = await supabaseClient
+        .from("profiles")
+        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+        .eq("id", userId);
+      
+      if (verifyError) {
+        logStep("Warning: Could not set email_verified for existing user", { error: verifyError });
+      } else {
+        logStep("Email verified set for existing user", { userId });
+      }
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -74,7 +87,58 @@ serve(async (req) => {
       }
 
       userId = newUser.user.id;
+      isNewUser = true;
       logStep("New user created", { userId });
+      
+      // Wait for profile trigger to create the profile row
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Set email_verified with retries
+      let verifySuccess = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { error: verifyError, data: verifyData } = await supabaseClient
+          .from("profiles")
+          .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+          .eq("id", userId)
+          .select('email_verified');
+        
+        if (!verifyError && verifyData && verifyData.length > 0) {
+          verifySuccess = true;
+          logStep("Email verified set for new user", { userId, attempt });
+          break;
+        }
+        
+        logStep("Profile update retry", { attempt, error: verifyError, data: verifyData });
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // If still failed, try upsert as fallback
+      if (!verifySuccess) {
+        logStep("Attempting upsert for email_verified", { userId });
+        const { error: upsertError } = await supabaseClient
+          .from("profiles")
+          .upsert({ 
+            id: userId, 
+            email: email.toLowerCase(),
+            email_verified: true, 
+            email_verified_at: new Date().toISOString() 
+          }, { onConflict: 'id' });
+        
+        if (!upsertError) {
+          logStep("Email verified set via upsert", { userId });
+        } else {
+          logStep("CRITICAL: Could not set email_verified for new user", { userId, error: upsertError });
+        }
+      }
+      
+      // Verify the update actually worked
+      const { data: checkProfile } = await supabaseClient
+        .from("profiles")
+        .select('email_verified')
+        .eq("id", userId)
+        .single();
+      
+      logStep("Final email_verified state", { userId, email_verified: checkProfile?.email_verified });
     }
 
     // Initialize Stripe

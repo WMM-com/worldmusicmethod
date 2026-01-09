@@ -130,7 +130,7 @@ export function StripeCardFields({
           }
         }
         
-        // Create free trial subscription
+        // Create free trial subscription - pass geo pricing currency and amount
         const { data: trialData, error: trialError } = await supabase.functions.invoke('create-free-trial-subscription', {
           body: {
             productId: intentData.productId,
@@ -139,17 +139,30 @@ export function StripeCardFields({
             password,
             paymentMethodId,
             couponCode,
+            currency,  // Pass geo-adjusted currency
+            amount: amounts[0], // Pass geo-adjusted amount
           },
         });
         
         if (trialError) throw trialError;
         
-        // Sign in the user if new
+        // Sign in the user if new - wait for email_verified to be set
         if (trialData?.userId && password) {
+          // Wait for backend to set email_verified
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
           try {
-            await supabase.auth.signInWithPassword({ email, password });
+            const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+            if (signInError) {
+              console.error('[StripeCardFields] Free trial auto sign-in failed:', signInError);
+              toast.info('Please sign in to access your trial');
+            } else {
+              console.log('[StripeCardFields] Free trial auto sign-in successful');
+              // Wait for session to establish before redirect
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           } catch {
-            // Non-fatal
+            toast.info('Please sign in to access your trial');
           }
         }
         

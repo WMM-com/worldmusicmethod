@@ -136,18 +136,43 @@ serve(async (req) => {
       console.log("[CAPTURE-PAYPAL-ORDER] New user created", { userId });
       
       // Wait for profile trigger to create the profile row
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mark email as verified for new users
-      const { error: verifyError } = await supabaseClient
-        .from("profiles")
-        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
-        .eq("id", userId);
+      // Mark email as verified with retries
+      let verifySuccess = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { error: verifyError, data: verifyData } = await supabaseClient
+          .from("profiles")
+          .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+          .eq("id", userId)
+          .select('email_verified');
+        
+        if (!verifyError && verifyData && verifyData.length > 0) {
+          verifySuccess = true;
+          console.log("[CAPTURE-PAYPAL-ORDER] Profile email_verified set to true", { userId, attempt });
+          break;
+        }
+        
+        console.log("[CAPTURE-PAYPAL-ORDER] Profile update retry", { attempt, error: verifyError });
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       
-      if (verifyError) {
-        console.log("[CAPTURE-PAYPAL-ORDER] Profile verification update failed for new user", { error: verifyError });
-      } else {
-        console.log("[CAPTURE-PAYPAL-ORDER] Profile email_verified set to true", { userId });
+      // If still failed, try upsert as fallback
+      if (!verifySuccess) {
+        const { error: upsertError } = await supabaseClient
+          .from("profiles")
+          .upsert({ 
+            id: userId,
+            email: email.toLowerCase(),
+            email_verified: true, 
+            email_verified_at: new Date().toISOString() 
+          }, { onConflict: 'id' });
+        
+        if (!upsertError) {
+          console.log("[CAPTURE-PAYPAL-ORDER] Profile email_verified set via upsert", { userId });
+        } else {
+          console.log("[CAPTURE-PAYPAL-ORDER] CRITICAL: Could not set email_verified", { userId, error: upsertError });
+        }
       }
     }
 

@@ -152,14 +152,48 @@ serve(async (req) => {
       if (createError) throw new Error(`Failed to create user: ${createError.message}`);
       userId = newUser.user.id;
       logStep("User created", { userId });
+      
+      // Wait for profile trigger to create the profile row
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    // If we have a userId, mark profile as verified (matches Stripe flow)
+    // If we have a userId, mark profile as verified with retries
     if (userId) {
-      await supabaseClient
-        .from("profiles")
-        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
-        .eq("id", userId);
+      let verifySuccess = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { error: verifyError, data: verifyData } = await supabaseClient
+          .from("profiles")
+          .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+          .eq("id", userId)
+          .select('email_verified');
+        
+        if (!verifyError && verifyData && verifyData.length > 0) {
+          verifySuccess = true;
+          logStep("Email verified set", { userId, attempt });
+          break;
+        }
+        
+        logStep("Email verify retry", { attempt, error: verifyError });
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // If still failed, try upsert as fallback
+      if (!verifySuccess) {
+        const { error: upsertError } = await supabaseClient
+          .from("profiles")
+          .upsert({ 
+            id: userId,
+            email: email.toLowerCase(),
+            email_verified: true, 
+            email_verified_at: new Date().toISOString() 
+          }, { onConflict: 'id' });
+        
+        if (!upsertError) {
+          logStep("Email verified set via upsert", { userId });
+        } else {
+          logStep("CRITICAL: Could not set email_verified", { userId, error: upsertError });
+        }
+      }
     }
 
     // Compute period start/end
