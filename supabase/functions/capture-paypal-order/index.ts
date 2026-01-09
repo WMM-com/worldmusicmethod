@@ -109,6 +109,16 @@ serve(async (req) => {
     if (user) {
       userId = user.id;
       console.log("[CAPTURE-PAYPAL-ORDER] Existing user found", { userId });
+      
+      // Mark email as verified for existing users
+      const { error: verifyError } = await supabaseClient
+        .from("profiles")
+        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+        .eq("id", userId);
+      
+      if (verifyError) {
+        console.log("[CAPTURE-PAYPAL-ORDER] Profile verification update failed", { error: verifyError });
+      }
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -124,6 +134,21 @@ serve(async (req) => {
 
       userId = newUser.user.id;
       console.log("[CAPTURE-PAYPAL-ORDER] New user created", { userId });
+      
+      // Wait for profile trigger to create the profile row
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mark email as verified for new users
+      const { error: verifyError } = await supabaseClient
+        .from("profiles")
+        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+        .eq("id", userId);
+      
+      if (verifyError) {
+        console.log("[CAPTURE-PAYPAL-ORDER] Profile verification update failed for new user", { error: verifyError });
+      } else {
+        console.log("[CAPTURE-PAYPAL-ORDER] Profile email_verified set to true", { userId });
+      }
     }
 
     // Get all product details

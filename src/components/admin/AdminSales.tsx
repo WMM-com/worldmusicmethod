@@ -227,6 +227,18 @@ export function AdminSales() {
   // Delete subscription mutation
   const deleteSubscription = useMutation({
     mutationFn: async (subscriptionId: string) => {
+      // First, set subscription_id to NULL on any related orders to avoid FK constraint
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ subscription_id: null })
+        .eq('subscription_id', subscriptionId);
+      
+      if (updateError) {
+        console.error('Failed to unlink orders:', updateError);
+        // Continue anyway, the main delete might still work
+      }
+      
+      // Now delete the subscription
       const { error } = await supabase
         .from('subscriptions')
         .delete()
@@ -235,6 +247,7 @@ export function AdminSales() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       queryClient.invalidateQueries({ queryKey: ['admin-sales-stats'] });
       toast.success('Subscription deleted');
       setDeleteSubDialog({ open: false, subscription: null });
