@@ -13,32 +13,43 @@ export default function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+
+  const storedPayPal = (() => {
+    try {
+      const raw = sessionStorage.getItem('paypal_return_params_v1');
+      return raw ? (JSON.parse(raw) as any) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const courseId = searchParams.get('course_id');
-  const method = searchParams.get('method');
-  const type = searchParams.get('type'); // 'subscription' for PayPal subscriptions
-  const paypalToken = searchParams.get('token'); // PayPal adds this to return URL
-  const paypalPayerId = searchParams.get('PayerID'); // PayPal adds this when approved
-  
+  const method = searchParams.get('method') || storedPayPal?.method;
+  const paypalFlow = searchParams.get('paypalFlow') || searchParams.get('type') || storedPayPal?.paypalFlow;
+  const paypalToken = searchParams.get('token') || storedPayPal?.token;
+  const paypalPayerId = searchParams.get('PayerID') || storedPayPal?.payerId;
+  const paypalSubscriptionId = searchParams.get('subscription_id') || storedPayPal?.subscriptionId;
+
   const [isProcessingPaypal, setIsProcessingPaypal] = useState(false);
   const [paypalProcessed, setPaypalProcessed] = useState(false);
 
   useEffect(() => {
-    // Check if this is a PayPal subscription return (either popup or direct)
-    // PayPal returns subscription_id in the URL after approval
-    const paypalSubscriptionId = searchParams.get('subscription_id');
-    
-    if (method === 'paypal' && type === 'subscription' && paypalSubscriptionId && window.opener) {
+    // PayPal approval returns in a separate window; we pull params from URL or from sessionStorage
+    // (captured before app boot) to avoid auth/session collisions.
+    if (method === 'paypal' && paypalFlow === 'subscription' && paypalSubscriptionId && window.opener) {
       // Send message to parent window with the subscription ID
-      window.opener.postMessage({ 
-        type: 'paypal_success', 
+      window.opener.postMessage({
+        type: 'paypal_success',
         subscriptionId: paypalSubscriptionId,
       }, window.location.origin);
-      
+
       // Store in sessionStorage as backup
-      sessionStorage.setItem('paypal_success', JSON.stringify({ 
+      sessionStorage.setItem('paypal_success', JSON.stringify({
         subscriptionId: paypalSubscriptionId,
       }));
-      
+
+      sessionStorage.removeItem('paypal_return_params_v1');
+
       // Close this popup window
       window.close();
       return;
@@ -47,18 +58,20 @@ export default function PaymentSuccess() {
     // Check if this is a PayPal one-time payment popup return
     if (method === 'paypal' && paypalToken && window.opener) {
       // Send message to parent window with the token (order ID)
-      window.opener.postMessage({ 
-        type: 'paypal_success', 
+      window.opener.postMessage({
+        type: 'paypal_success',
         orderId: paypalToken,
-        payerId: paypalPayerId 
+        payerId: paypalPayerId,
       }, window.location.origin);
-      
+
       // Store in sessionStorage as backup
-      sessionStorage.setItem('paypal_success', JSON.stringify({ 
+      sessionStorage.setItem('paypal_success', JSON.stringify({
         orderId: paypalToken,
-        payerId: paypalPayerId 
+        payerId: paypalPayerId,
       }));
-      
+
+      sessionStorage.removeItem('paypal_return_params_v1');
+
       // Close this popup window
       window.close();
       return;
@@ -68,13 +81,14 @@ export default function PaymentSuccess() {
     // OR if this is the main window after PayPal approval, process the capture
     if (method === 'paypal' && paypalToken && !window.opener && !paypalProcessed) {
       setIsProcessingPaypal(true);
-      
+
       // Capture the PayPal order directly
       supabase.functions.invoke('capture-paypal-order', {
-        body: { orderId: paypalToken }
+        body: { orderId: paypalToken },
       }).then(({ error }) => {
         setIsProcessingPaypal(false);
         setPaypalProcessed(true);
+        sessionStorage.removeItem('paypal_return_params_v1');
         if (error) {
           console.error('PayPal capture failed:', error);
         } else {
@@ -82,7 +96,7 @@ export default function PaymentSuccess() {
           confetti({
             particleCount: 100,
             spread: 70,
-            origin: { y: 0.6 }
+            origin: { y: 0.6 },
           });
         }
       });
@@ -97,7 +111,7 @@ export default function PaymentSuccess() {
         origin: { y: 0.6 }
       });
     }
-  }, [method, type, paypalToken, paypalPayerId, searchParams, paypalProcessed, isProcessingPaypal]);
+  }, [method, paypalFlow, paypalToken, paypalPayerId, paypalSubscriptionId, paypalProcessed, isProcessingPaypal]);
 
   // Show loading state while processing PayPal
   if (isProcessingPaypal) {
