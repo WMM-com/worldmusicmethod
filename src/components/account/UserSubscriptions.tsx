@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,13 +30,156 @@ import { format } from 'date-fns';
 import { Loader2, RefreshCw, X, RotateCcw, Calendar, DollarSign, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Stripe Element styles
+const CARD_ELEMENT_STYLE = {
+  base: {
+    fontSize: '16px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    color: '#1a1a1a',
+    '::placeholder': {
+      color: '#6b7280',
+    },
+  },
+  invalid: {
+    color: '#dc2626',
+  },
+};
+
+// Payment Method Update Form Component (inside Elements)
+function UpdatePaymentForm({ 
+  subscriptionId, 
+  onSuccess, 
+  onCancel 
+}: { 
+  subscriptionId: string; 
+  onSuccess: () => void; 
+  onCancel: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!stripe || !elements) {
+      toast.error('Payment system not ready');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const cardNumberElement = elements.getElement(CardNumberElement);
+      if (!cardNumberElement) {
+        throw new Error('Card input not found');
+      }
+
+      // Create payment method
+      const { paymentMethod, error: pmError } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardNumberElement,
+      });
+
+      if (pmError) {
+        throw new Error(pmError.message);
+      }
+
+      // Update subscription payment method
+      const { error: updateError } = await supabase.functions.invoke('manage-subscription', {
+        body: {
+          action: 'update_payment_method',
+          subscriptionId,
+          data: { paymentMethodId: paymentMethod.id }
+        }
+      });
+
+      if (updateError) throw updateError;
+
+      toast.success('Payment method updated successfully');
+      onSuccess();
+    } catch (err: any) {
+      console.error('Update payment error:', err);
+      setError(err.message);
+      toast.error(err.message || 'Failed to update payment method');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Card details</Label>
+        <div className="flex rounded-md border border-input bg-background overflow-hidden">
+          <div className="flex-1 min-h-[44px] px-3 py-3 border-r border-input">
+            <CardNumberElement options={{ style: CARD_ELEMENT_STYLE }} />
+          </div>
+          <div className="w-24 min-h-[44px] px-3 py-3 border-r border-input">
+            <CardExpiryElement options={{ style: CARD_ELEMENT_STYLE }} />
+          </div>
+          <div className="w-16 min-h-[44px] px-3 py-3">
+            <CardCvcElement options={{ style: CARD_ELEMENT_STYLE }} />
+          </div>
+        </div>
+      </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isProcessing || !stripe}>
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Updating...
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-4 w-4 mr-2" />
+              Update Card
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 export function UserSubscriptions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
   const [newPrice, setNewPrice] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
+  const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+
+  // Fetch Stripe publishable key
+  const { data: stripeKeyData } = useQuery({
+    queryKey: ['stripe-key'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('get-stripe-publishable-key');
+      if (error) throw error;
+      return data;
+    },
+    staleTime: Infinity,
+  });
+
+  // Initialize Stripe
+  useState(() => {
+    if (stripeKeyData?.publishableKey) {
+      setStripePromise(loadStripe(stripeKeyData.publishableKey));
+    }
+  });
 
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['user-subscriptions', user?.id],
@@ -108,13 +252,14 @@ export function UserSubscriptions() {
     },
   });
 
-  const updatePaymentMutation = useMutation({
+  // PayPal payment update - redirects to PayPal
+  const updatePaypalMutation = useMutation({
     mutationFn: async (subscriptionId: string) => {
       const { data, error } = await supabase.functions.invoke('manage-subscription', {
         body: { 
-          action: 'update_payment_method', 
+          action: 'update_paypal_payment', 
           subscriptionId,
-          data: { returnUrl: window.location.origin }
+          data: { returnUrl: window.location.href }
         }
       });
       if (error) throw error;
@@ -122,13 +267,30 @@ export function UserSubscriptions() {
     },
     onSuccess: (data) => {
       if (data?.url) {
-        window.open(data.url, '_blank');
+        window.location.href = data.url;
+      } else {
+        toast.info('Please update your payment method in PayPal settings');
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to open payment settings');
+      toast.error(error.message || 'Failed to update PayPal payment');
     },
   });
+
+  const openPaymentDialog = (sub: any) => {
+    setSelectedSubscription(sub);
+    setPaymentMethod(sub.payment_provider === 'paypal' ? 'paypal' : 'stripe');
+    setPaymentDialogOpen(true);
+  };
+
+  const handlePaymentUpdate = () => {
+    if (!selectedSubscription) return;
+    
+    if (paymentMethod === 'paypal') {
+      updatePaypalMutation.mutate(selectedSubscription.id);
+    }
+    // Stripe is handled by the form
+  };
 
   const formatPrice = (amount: number, currency: string = 'USD') => {
     const symbols: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
@@ -242,19 +404,14 @@ export function UserSubscriptions() {
                           </Button>
                         )}
 
-                        {/* Update Payment Method button - for Stripe subscriptions */}
-                        {(sub.status === 'active' || sub.status === 'past_due') && sub.payment_provider === 'stripe' && (
+                        {/* Update Payment Method button - for active/past_due subscriptions */}
+                        {(sub.status === 'active' || sub.status === 'past_due') && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => updatePaymentMutation.mutate(sub.id)}
-                            disabled={updatePaymentMutation.isPending}
+                            onClick={() => openPaymentDialog(sub)}
                           >
-                            {updatePaymentMutation.isPending ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                            ) : (
-                              <CreditCard className="h-4 w-4 mr-1" />
-                            )}
+                            <CreditCard className="h-4 w-4 mr-1" />
                             Update Payment
                           </Button>
                         )}
@@ -384,6 +541,88 @@ export function UserSubscriptions() {
               Update Price
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Payment Method Dialog */}
+      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Payment Method</DialogTitle>
+            <DialogDescription>
+              Choose how you'd like to pay for your subscription going forward.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSubscription && (
+            <div className="space-y-4 py-2">
+              {/* Payment method selector */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={paymentMethod === 'stripe' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setPaymentMethod('stripe')}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Card
+                  <Badge variant="secondary" className="ml-2 text-xs">2% off</Badge>
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === 'paypal' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => setPaymentMethod('paypal')}
+                >
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.77.77 0 0 1 .757-.644h6.756c2.332 0 4.018.603 5.018 1.794.466.556.78 1.186.945 1.87.167.692.188 1.518.062 2.455l-.013.088v.612l.478.244c.411.21.736.451.979.724.306.345.514.77.623 1.265.112.505.13 1.104.053 1.786-.09.794-.275 1.487-.551 2.06-.26.537-.603.984-1.019 1.326-.399.328-.88.577-1.43.738a6.906 6.906 0 0 1-1.874.248H14.69a.95.95 0 0 0-.938.802l-.038.217-.64 4.063-.03.155a.95.95 0 0 1-.938.802H7.076z"/>
+                  </svg>
+                  PayPal
+                </Button>
+              </div>
+
+              {/* Stripe card form */}
+              {paymentMethod === 'stripe' && stripeKeyData?.publishableKey && (
+                <Elements stripe={loadStripe(stripeKeyData.publishableKey)}>
+                  <UpdatePaymentForm
+                    subscriptionId={selectedSubscription.id}
+                    onSuccess={() => {
+                      setPaymentDialogOpen(false);
+                      queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] });
+                    }}
+                    onCancel={() => setPaymentDialogOpen(false)}
+                  />
+                </Elements>
+              )}
+
+              {/* PayPal option */}
+              {paymentMethod === 'paypal' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    You'll be redirected to PayPal to update your payment method.
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handlePaymentUpdate}
+                      disabled={updatePaypalMutation.isPending}
+                    >
+                      {updatePaypalMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Redirecting...
+                        </>
+                      ) : (
+                        'Continue to PayPal'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
