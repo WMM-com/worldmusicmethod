@@ -99,28 +99,52 @@ serve(async (req) => {
         logStep("Payment method attached", { paymentMethodId });
       }
 
-      // Create or get price
-      const priceAmount = Math.round((product.base_price_usd || 0) * 100);
-      
-      // Search for existing price
-      const prices = await stripe.prices.list({
-        lookup_keys: [`subscription_${productId}_${stripeInterval}`],
-        limit: 1,
-      });
+      // Use geo-adjusted currency and amount passed from frontend
+      const geoCurrency = (currency || 'USD').toLowerCase();
+      const geoAmount = (typeof amount === 'number' && isFinite(amount))
+        ? amount
+        : (product.base_price_usd || 0);
+      const priceAmount = Math.round(geoAmount * 100);
 
-      let priceId: string;
-      
-      if (prices.data.length > 0) {
-        priceId = prices.data[0].id;
-      } else {
-        // Create product in Stripe if needed
-        const stripeProducts = await stripe.products.list({ limit: 1 });
-        let stripeProductId: string;
-        
-        const existingProduct = stripeProducts.data.find((p: any) => 
+      // IMPORTANT: Stripe Prices are immutable.
+      // We use a lookup key that includes the exact unit amount to ensure correct pricing.
+      const lookupKeyV2 = `sub_${productId}_${stripeInterval}_${geoCurrency}_${priceAmount}`;
+      const legacyLookupKey = `subscription_${productId}_${stripeInterval}`;
+
+      // Prefer v2 lookup key that bakes in the unit amount
+      const v2Prices = await stripe.prices.list({ lookup_keys: [lookupKeyV2], limit: 1 });
+      let priceId: string | null = v2Prices.data.length > 0 ? v2Prices.data[0].id : null;
+
+      if (priceId) {
+        logStep("Existing Stripe price found (v2)", { priceId, currency: geoCurrency, unitAmount: priceAmount });
+      }
+
+      // Backward-compat: if we only have a legacy key, only reuse it if it matches the desired amount
+      if (!priceId) {
+        const legacyPrices = await stripe.prices.list({ lookup_keys: [legacyLookupKey], limit: 1 });
+        const legacy = legacyPrices.data[0];
+
+        if (legacy && legacy.unit_amount === priceAmount && legacy.currency === geoCurrency) {
+          priceId = legacy.id;
+          logStep("Existing Stripe price found (legacy, matches)", { priceId, currency: geoCurrency, unitAmount: priceAmount });
+        } else if (legacy) {
+          logStep("Legacy Stripe price mismatch; will create a new price", {
+            legacyPriceId: legacy.id,
+            legacyUnitAmount: legacy.unit_amount,
+            desiredUnitAmount: priceAmount,
+            currency: geoCurrency,
+          });
+        }
+      }
+
+      if (!priceId) {
+        // Find or create Stripe product
+        const stripeProducts = await stripe.products.list({ limit: 100 });
+        const existingProduct = stripeProducts.data.find((p: any) =>
           p.metadata?.supabase_product_id === productId
         );
-        
+
+        let stripeProductId: string;
         if (existingProduct) {
           stripeProductId = existingProduct.id;
         } else {
@@ -129,19 +153,21 @@ serve(async (req) => {
             metadata: { supabase_product_id: productId },
           });
           stripeProductId = newProduct.id;
+          logStep("Created Stripe product", { stripeProductId });
         }
 
         const newPrice = await stripe.prices.create({
           product: stripeProductId,
           unit_amount: priceAmount,
-          currency: 'usd',
+          currency: geoCurrency,
           recurring: { interval: stripeInterval },
-          lookup_key: `subscription_${productId}_${stripeInterval}`,
+          lookup_key: lookupKeyV2,
         });
         priceId = newPrice.id;
+        logStep("Created Stripe price", { priceId, interval: stripeInterval, currency: geoCurrency, unitAmount: priceAmount });
       }
 
-      logStep("Price ready", { priceId, amount: priceAmount });
+      logStep("Price ready", { priceId, amount: priceAmount, currency: geoCurrency });
 
       // Create subscription
       const subscriptionParams: Stripe.SubscriptionCreateParams = {
@@ -170,64 +196,12 @@ serve(async (req) => {
         }
       }
 
-      // Handle coupon for recurring subscription discount
+      // IMPORTANT: Do NOT apply Stripe coupon here!
+      // The 'amount' passed from frontend already includes coupon discount + 2% card discount.
+      // If we also attach a Stripe coupon, the discount gets applied TWICE.
+      // We only store coupon_code in DB for record-keeping.
       if (couponCode) {
-        try {
-          // Look up coupon in our database
-          const { data: dbCoupon } = await supabaseClient
-            .from('coupons')
-            .select('*')
-            .eq('code', couponCode.toUpperCase())
-            .eq('is_active', true)
-            .single();
-
-          if (dbCoupon) {
-            logStep("Found coupon in database", { 
-              code: dbCoupon.code, 
-              duration: dbCoupon.duration,
-              percentOff: dbCoupon.percent_off,
-              amountOff: dbCoupon.amount_off
-            });
-
-            // Try to find or create Stripe coupon
-            let stripeCouponId = dbCoupon.stripe_coupon_id;
-            
-            if (!stripeCouponId) {
-              // Create coupon in Stripe
-              const stripeCouponParams: Stripe.CouponCreateParams = {
-                name: dbCoupon.name || dbCoupon.code,
-                duration: dbCoupon.duration as 'once' | 'repeating' | 'forever',
-              };
-
-              if (dbCoupon.duration === 'repeating' && dbCoupon.duration_in_months) {
-                stripeCouponParams.duration_in_months = dbCoupon.duration_in_months;
-              }
-
-              if (dbCoupon.discount_type === 'percentage' && dbCoupon.percent_off) {
-                stripeCouponParams.percent_off = dbCoupon.percent_off;
-              } else if (dbCoupon.discount_type === 'fixed' && dbCoupon.amount_off) {
-                stripeCouponParams.amount_off = Math.round(dbCoupon.amount_off * 100); // Convert to cents
-                stripeCouponParams.currency = dbCoupon.currency?.toLowerCase() || 'usd';
-              }
-
-              const stripeCoupon = await stripe.coupons.create(stripeCouponParams);
-              stripeCouponId = stripeCoupon.id;
-              logStep("Created Stripe coupon", { stripeCouponId });
-
-              // Save Stripe coupon ID back to database
-              await supabaseClient
-                .from('coupons')
-                .update({ stripe_coupon_id: stripeCouponId })
-                .eq('id', dbCoupon.id);
-            }
-
-            // Apply coupon to subscription (Stripe basil uses discounts[] instead of coupon)
-            subscriptionParams.discounts = [{ coupon: stripeCouponId }];
-            logStep("Applied coupon to subscription", { stripeCouponId, duration: dbCoupon.duration });
-          }
-        } catch (couponError) {
-          logStep("Coupon lookup/creation failed, continuing without", { error: String(couponError) });
-        }
+        logStep("Coupon recorded (discount already in price)", { code: couponCode });
       }
 
       const subscription = await stripe.subscriptions.create(subscriptionParams);
@@ -395,28 +369,44 @@ serve(async (req) => {
         body: JSON.stringify(planPayload),
       });
 
-      const plan = await planResponse.json();
-      logStep("PayPal plan created", { planId: plan.id });
+      if (!planResponse.ok) {
+        const planErrorText = await planResponse.text();
+        logStep("PayPal plan creation failed", { status: planResponse.status, error: planErrorText });
+        throw new Error(`PayPal plan creation failed: ${planErrorText}`);
+      }
 
-      // Create subscription
+      const plan = await planResponse.json();
+      
+      if (!plan || !plan.id) {
+        logStep("ERROR: PayPal plan response missing id", { plan });
+        throw new Error("PayPal plan creation returned invalid response - missing plan ID");
+      }
+      
+      logStep("PayPal plan created", { planId: plan.id, status: plan.status });
+
+      // Create subscription with validated plan_id
+      const subscriptionPayload = {
+        plan_id: plan.id,
+        subscriber: {
+          name: { given_name: fullName.split(' ')[0], surname: fullName.split(' ').slice(1).join(' ') || '' },
+          email_address: email,
+        },
+        application_context: {
+          brand_name: "World Music Method",
+          return_url: returnUrl || `${Deno.env.get("SUPABASE_URL")?.replace('supabase.co', 'supabase.co')}/payment-success`,
+          cancel_url: returnUrl?.replace('success', 'cancelled') || `${Deno.env.get("SUPABASE_URL")}/payment-cancelled`,
+        },
+      };
+      
+      logStep("Creating PayPal subscription", { plan_id: plan.id, subscriber_email: email });
+
       const subscriptionResponse = await fetch("https://api-m.paypal.com/v1/billing/subscriptions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          plan_id: plan.id,
-          subscriber: {
-            name: { given_name: fullName.split(' ')[0], surname: fullName.split(' ').slice(1).join(' ') || '' },
-            email_address: email,
-          },
-          application_context: {
-            brand_name: "World Music Method",
-            return_url: returnUrl || `${Deno.env.get("SUPABASE_URL")?.replace('supabase.co', 'supabase.co')}/payment-success`,
-            cancel_url: returnUrl?.replace('success', 'cancelled') || `${Deno.env.get("SUPABASE_URL")}/payment-cancelled`,
-          },
-        }),
+        body: JSON.stringify(subscriptionPayload),
       });
 
       if (!subscriptionResponse.ok) {
@@ -426,6 +416,12 @@ serve(async (req) => {
       }
 
       const paypalSubscription = await subscriptionResponse.json();
+      
+      if (!paypalSubscription || !paypalSubscription.id) {
+        logStep("ERROR: PayPal subscription response missing id", { response: paypalSubscription });
+        throw new Error("PayPal subscription creation returned invalid response");
+      }
+      
       logStep("PayPal subscription created", { 
         subscriptionId: paypalSubscription.id, 
         status: paypalSubscription.status,

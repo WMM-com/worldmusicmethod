@@ -280,51 +280,12 @@ serve(async (req) => {
       subscriptionParams.default_payment_method = paymentMethodId;
     }
 
-    // Handle coupon if provided
+    // IMPORTANT: Do NOT apply Stripe coupon here!
+    // The 'amount' passed from frontend already includes coupon discount + 2% card discount.
+    // If we also attach a Stripe coupon, the discount gets applied TWICE.
+    // We only store coupon_code in DB for record-keeping.
     if (couponCode) {
-      try {
-        const { data: dbCoupon } = await supabaseClient
-          .from('coupons')
-          .select('*')
-          .ilike('code', couponCode.trim())
-          .eq('is_active', true)
-          .single();
-
-        if (dbCoupon && dbCoupon.applies_to_subscriptions) {
-          let stripeCouponId = dbCoupon.stripe_coupon_id;
-
-          if (!stripeCouponId) {
-            const stripeCouponParams: Stripe.CouponCreateParams = {
-              name: dbCoupon.name || dbCoupon.code,
-              duration: dbCoupon.duration as 'once' | 'repeating' | 'forever',
-            };
-
-            if (dbCoupon.duration === 'repeating' && dbCoupon.duration_in_months) {
-              stripeCouponParams.duration_in_months = dbCoupon.duration_in_months;
-            }
-
-            if (dbCoupon.discount_type === 'percentage' && dbCoupon.percent_off) {
-              stripeCouponParams.percent_off = dbCoupon.percent_off;
-            } else if (dbCoupon.discount_type === 'fixed' && dbCoupon.amount_off) {
-              stripeCouponParams.amount_off = Math.round(dbCoupon.amount_off * 100);
-              stripeCouponParams.currency = (dbCoupon.currency || 'USD').toLowerCase();
-            }
-
-            const stripeCoupon = await stripe.coupons.create(stripeCouponParams);
-            stripeCouponId = stripeCoupon.id;
-
-            await supabaseClient
-              .from('coupons')
-              .update({ stripe_coupon_id: stripeCouponId })
-              .eq('id', dbCoupon.id);
-          }
-
-          subscriptionParams.discounts = [{ coupon: stripeCouponId }];
-          logStep("Coupon applied to subscription", { code: dbCoupon.code, stripeCouponId });
-        }
-      } catch (couponError) {
-        logStep("Coupon handling note", { error: String(couponError) });
-      }
+      logStep("Coupon recorded (discount already in price)", { code: couponCode, priceAmount });
     }
 
     const stripeSubscription = await stripe.subscriptions.create(subscriptionParams);
