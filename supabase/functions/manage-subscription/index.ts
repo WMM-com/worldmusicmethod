@@ -482,6 +482,30 @@ serve(async (req) => {
           break;
         }
 
+        case 'update_paypal_payment': {
+          // This action is for PayPal subscriptions but was called on a Stripe subscription
+          // Redirect to update_payment_method logic
+          const stripeSub = await stripe.subscriptions.retrieve(
+            subscription.provider_subscription_id
+          );
+          
+          const customerId = stripeSub.customer as string;
+          const origin = data?.returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+          
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${origin}/account`,
+            flow_data: {
+              type: 'payment_method_update',
+            },
+          });
+          
+          return new Response(
+            JSON.stringify({ success: true, url: portalSession.url }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         default:
           throw new Error(`Unknown action: ${action}`);
       }
