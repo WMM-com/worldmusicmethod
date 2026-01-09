@@ -430,6 +430,28 @@ serve(async (req) => {
           break;
         }
 
+        case 'update_payment_method': {
+          // Create a Stripe Customer Portal session for updating payment method
+          const stripeSub = await stripe.subscriptions.retrieve(
+            subscription.provider_subscription_id
+          );
+          
+          const customerId = stripeSub.customer as string;
+          const origin = data?.returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+          
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${origin}/account`,
+            flow_data: {
+              type: 'payment_method_update',
+            },
+          });
+          
+          result = { url: portalSession.url };
+          logStep('Customer portal session created for payment method update', { url: portalSession.url });
+          break;
+        }
+
         default:
           throw new Error(`Unknown action: ${action}`);
       }

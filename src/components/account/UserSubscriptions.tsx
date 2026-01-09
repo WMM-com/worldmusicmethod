@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { format } from 'date-fns';
-import { Loader2, RefreshCw, X, RotateCcw, Calendar, DollarSign } from 'lucide-react';
+import { Loader2, RefreshCw, X, RotateCcw, Calendar, DollarSign, CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -105,6 +105,28 @@ export function UserSubscriptions() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update price');
+    },
+  });
+
+  const updatePaymentMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { data, error } = await supabase.functions.invoke('manage-subscription', {
+        body: { 
+          action: 'update_payment_method', 
+          subscriptionId,
+          data: { returnUrl: window.location.origin }
+        }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to open payment settings');
     },
   });
 
@@ -217,6 +239,23 @@ export function UserSubscriptions() {
                           >
                             <DollarSign className="h-4 w-4 mr-1" />
                             Change Price
+                          </Button>
+                        )}
+
+                        {/* Update Payment Method button - for Stripe subscriptions */}
+                        {(sub.status === 'active' || sub.status === 'past_due') && sub.payment_provider === 'stripe' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => updatePaymentMutation.mutate(sub.id)}
+                            disabled={updatePaymentMutation.isPending}
+                          >
+                            {updatePaymentMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : (
+                              <CreditCard className="h-4 w-4 mr-1" />
+                            )}
+                            Update Payment
                           </Button>
                         )}
 
