@@ -241,7 +241,8 @@ serve(async (req) => {
         const { error: upsertError } = await supabaseClient
           .from("profiles")
           .upsert({ 
-            id: userId, 
+            id: userId,
+            email: email.toLowerCase(),
             email_verified: true, 
             email_verified_at: new Date().toISOString() 
           }, { onConflict: 'id' });
@@ -253,6 +254,15 @@ serve(async (req) => {
           logStep("CRITICAL: Could not set email_verified for new user", { userId, error: upsertError });
         }
       }
+      
+      // Verify the update actually worked
+      const { data: checkProfile } = await supabaseClient
+        .from("profiles")
+        .select('email_verified')
+        .eq("id", userId)
+        .single();
+      
+      logStep("Final email_verified state for new user", { userId, email_verified: checkProfile?.email_verified });
     }
 
     // Create course enrollments for ALL products that are courses

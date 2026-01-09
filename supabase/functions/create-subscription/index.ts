@@ -419,17 +419,28 @@ serve(async (req) => {
         }),
       });
 
-      const paypalSubscription = await subscriptionResponse.json();
-      logStep("PayPal subscription created", { subscriptionId: paypalSubscription.id, status: paypalSubscription.status });
-
-      // Get the approve URL and append the subscription_id for our callback
-      let approveUrl = paypalSubscription.links?.find((l: any) => l.rel === "approve")?.href;
-      
-      // PayPal's approve URL already has query params, so we need to append with &
-      if (approveUrl && paypalSubscription.id) {
-        // The subscription ID will be passed back via PayPal's redirect
-        logStep("Approve URL generated", { approveUrl });
+      if (!subscriptionResponse.ok) {
+        const errorText = await subscriptionResponse.text();
+        logStep("PayPal subscription creation failed", { status: subscriptionResponse.status, error: errorText });
+        throw new Error(`PayPal subscription creation failed: ${errorText}`);
       }
+
+      const paypalSubscription = await subscriptionResponse.json();
+      logStep("PayPal subscription created", { 
+        subscriptionId: paypalSubscription.id, 
+        status: paypalSubscription.status,
+        linksCount: paypalSubscription.links?.length 
+      });
+
+      // Get the approve URL
+      const approveUrl = paypalSubscription.links?.find((l: any) => l.rel === "approve")?.href;
+      
+      if (!approveUrl) {
+        logStep("ERROR: No approve URL found in PayPal response", { links: paypalSubscription.links });
+        throw new Error("PayPal did not return an approval URL");
+      }
+      
+      logStep("Approve URL generated", { approveUrl });
 
       // IMPORTANT: Always store the base price (before discount) as the amount.
       // The coupon_discount field stores the discount value, and the UI calculates the effective price.
