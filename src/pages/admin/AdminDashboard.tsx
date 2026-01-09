@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -19,10 +18,31 @@ import { AdminReports } from '@/components/admin/AdminReports';
 import { AdminSales } from '@/components/admin/AdminSales';
 import { AdminCoupons } from '@/components/admin/AdminCoupons';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+
+const menuItems = [
+  { id: 'users', label: 'Users', icon: Users },
+  { id: 'courses', label: 'Courses', icon: BookOpen },
+  { id: 'products', label: 'Products', icon: Package },
+  { id: 'sales', label: 'Sales', icon: DollarSign },
+  { id: 'coupons', label: 'Coupons', icon: Tag },
+  { id: 'media', label: 'Media Library', icon: Image },
+  { id: 'streaming', label: 'Streaming', icon: Music },
+  { id: 'groups', label: 'Course Groups', icon: FolderOpen },
+  { id: 'import', label: 'Import', icon: Upload },
+  { id: 'landing', label: 'Landing Pages', icon: FileText },
+  { id: 'email-crm', label: 'Email CRM', icon: Mail },
+  { id: 'reports', label: 'Reports', icon: Flag },
+];
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [activeTab, setActiveTab] = useState('users');
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [stats, setStats] = useState({
     users: 0,
     courses: 0,
@@ -71,6 +91,56 @@ export default function AdminDashboard() {
     checkAdminAndLoadStats();
   }, [user, navigate]);
 
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setMobileOpen(false);
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'users': return <AdminUsers />;
+      case 'courses': return <AdminCourses />;
+      case 'products': return <AdminProducts />;
+      case 'sales': return <AdminSales />;
+      case 'coupons': return <AdminCoupons />;
+      case 'media': return <AdminMedia />;
+      case 'streaming': return <AdminStreaming />;
+      case 'groups': return <AdminCourseGroups />;
+      case 'import': return <ImportCourseData />;
+      case 'landing': return <LandingPageEditor />;
+      case 'email-crm': return <AdminEmailCRM />;
+      case 'reports': return <AdminReports />;
+      default: return <AdminUsers />;
+    }
+  };
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-semibold">Admin</span>
+        </div>
+      </div>
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        {menuItems.map((item) => (
+          <Button
+            key={item.id}
+            variant="ghost"
+            className={cn(
+              'w-full justify-start gap-3 h-10',
+              activeTab === item.id && 'bg-muted text-primary font-medium'
+            )}
+            onClick={() => handleTabChange(item.id)}
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </Button>
+        ))}
+      </nav>
+    </div>
+  );
+
   if (isAdmin === null) {
     return (
       <>
@@ -114,170 +184,99 @@ export default function AdminDashboard() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="border-b border-border bg-card">
-          <div className="w-full max-w-6xl mx-auto px-6 py-8">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Shield className="h-5 w-5 text-primary" />
-              </div>
+      <div className="min-h-screen bg-background flex">
+        {/* Desktop Sidebar */}
+        <aside className="hidden lg:flex w-56 flex-col border-r border-border bg-card">
+          <SidebarContent />
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header */}
+          <header className="border-b border-border bg-card px-6 py-4">
+            <div className="flex items-center gap-4">
+              {/* Mobile menu trigger */}
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild className="lg:hidden">
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-56 p-0">
+                  <SidebarContent />
+                </SheetContent>
+              </Sheet>
+
               <div>
-                <h1 className="text-3xl">Admin Dashboard</h1>
-                <p className="text-muted-foreground">Manage users, courses, and products</p>
+                <h1 className="text-xl font-semibold capitalize">{menuItems.find(m => m.id === activeTab)?.label || 'Admin'}</h1>
+                <p className="text-sm text-muted-foreground">Manage users, courses, and products</p>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="w-full max-w-6xl mx-auto px-6 py-8">
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{stats.users}</p>
-                    <p className="text-sm text-muted-foreground">Users</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-secondary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{stats.courses}</p>
-                    <p className="text-sm text-muted-foreground">Courses</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{stats.enrollments}</p>
-                    <p className="text-sm text-muted-foreground">Enrollments</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <Package className="h-6 w-6 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{stats.products}</p>
-                    <p className="text-sm text-muted-foreground">Products</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <main className="flex-1 p-6 overflow-auto">
+            {/* Stats - only show on users tab */}
+            {activeTab === 'users' && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{stats.users}</p>
+                        <p className="text-sm text-muted-foreground">Users</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center">
+                        <BookOpen className="h-6 w-6 text-secondary" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{stats.courses}</p>
+                        <p className="text-sm text-muted-foreground">Courses</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{stats.enrollments}</p>
+                        <p className="text-sm text-muted-foreground">Enrollments</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center">
+                        <Package className="h-6 w-6 text-accent-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold">{stats.products}</p>
+                        <p className="text-sm text-muted-foreground">Products</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-          {/* Tabs */}
-          <Tabs defaultValue="users" className="space-y-6">
-            <TabsList className="flex-wrap">
-              <TabsTrigger value="users" className="gap-2">
-                <Users className="h-4 w-4" />
-                Users
-              </TabsTrigger>
-              <TabsTrigger value="courses" className="gap-2">
-                <BookOpen className="h-4 w-4" />
-                Courses
-              </TabsTrigger>
-              <TabsTrigger value="products" className="gap-2">
-                <Package className="h-4 w-4" />
-                Products
-              </TabsTrigger>
-              <TabsTrigger value="sales" className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Sales
-              </TabsTrigger>
-              <TabsTrigger value="coupons" className="gap-2">
-                <Tag className="h-4 w-4" />
-                Coupons
-              </TabsTrigger>
-              <TabsTrigger value="media" className="gap-2">
-                <Image className="h-4 w-4" />
-                Media Library
-              </TabsTrigger>
-              <TabsTrigger value="streaming" className="gap-2">
-                <Music className="h-4 w-4" />
-                Streaming
-              </TabsTrigger>
-              <TabsTrigger value="groups" className="gap-2">
-                <FolderOpen className="h-4 w-4" />
-                Course Groups
-              </TabsTrigger>
-              <TabsTrigger value="import" className="gap-2">
-                <Upload className="h-4 w-4" />
-                Import
-              </TabsTrigger>
-              <TabsTrigger value="landing" className="gap-2">
-                <FileText className="h-4 w-4" />
-                Landing Pages
-              </TabsTrigger>
-              <TabsTrigger value="email-crm" className="gap-2">
-                <Mail className="h-4 w-4" />
-                Email CRM
-              </TabsTrigger>
-              <TabsTrigger value="reports" className="gap-2">
-                <Flag className="h-4 w-4" />
-                Reports
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="users">
-              <AdminUsers />
-            </TabsContent>
-            <TabsContent value="courses">
-              <AdminCourses />
-            </TabsContent>
-            <TabsContent value="products">
-              <AdminProducts />
-            </TabsContent>
-            <TabsContent value="sales">
-              <AdminSales />
-            </TabsContent>
-            <TabsContent value="coupons">
-              <AdminCoupons />
-            </TabsContent>
-            <TabsContent value="media">
-              <AdminMedia />
-            </TabsContent>
-            <TabsContent value="streaming">
-              <AdminStreaming />
-            </TabsContent>
-            <TabsContent value="groups">
-              <AdminCourseGroups />
-            </TabsContent>
-            <TabsContent value="import">
-              <ImportCourseData />
-            </TabsContent>
-            <TabsContent value="landing">
-              <LandingPageEditor />
-            </TabsContent>
-            <TabsContent value="email-crm">
-              <AdminEmailCRM />
-            </TabsContent>
-            <TabsContent value="reports">
-              <AdminReports />
-            </TabsContent>
-          </Tabs>
-        </main>
+            {/* Tab Content */}
+            {renderContent()}
+          </main>
+        </div>
       </div>
     </>
   );
