@@ -192,7 +192,13 @@ export function StripeCardFields({
         // If new user was created, sign them in automatically
         if (completeData?.isNewUser && completeData?.email && password) {
           console.log('[StripeCardFields] New user created, signing in automatically...');
+          
+          // Wait a bit longer to ensure the profile has been updated with email_verified
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
           try {
+            // Use signInWithPassword directly to avoid the email verification check in AuthContext
+            // The complete-stripe-payment function has already set email_verified = true
             const { error: signInError } = await supabase.auth.signInWithPassword({
               email: completeData.email,
               password,
@@ -200,14 +206,16 @@ export function StripeCardFields({
             
             if (signInError) {
               console.error('[StripeCardFields] Auto sign-in failed:', signInError);
-              // Don't fail the whole flow, just log the error
+              // Don't fail the whole flow, user can sign in manually
+              toast.info('Please sign in to access your purchase');
             } else {
               console.log('[StripeCardFields] Auto sign-in successful');
-              // Wait a moment to ensure session is established
-              await new Promise(resolve => setTimeout(resolve, 100));
+              // Wait for session to be established
+              await new Promise(resolve => setTimeout(resolve, 500));
             }
           } catch (signInErr) {
             console.error('[StripeCardFields] Auto sign-in error:', signInErr);
+            toast.info('Please sign in to access your purchase');
           }
         }
 

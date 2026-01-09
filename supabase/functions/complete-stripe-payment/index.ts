@@ -176,10 +176,16 @@ serve(async (req) => {
       userId = user.id;
       logStep("Existing user found", { userId });
       
-      await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from("profiles")
         .update({ email_verified: true, email_verified_at: new Date().toISOString() })
         .eq("id", userId);
+      
+      if (updateError) {
+        logStep("Profile update error for existing user", { error: updateError });
+      } else {
+        logStep("Profile email_verified set to true for existing user", { userId });
+      }
     } else {
       // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
@@ -197,12 +203,30 @@ serve(async (req) => {
       isNewUser = true;
       logStep("New user created", { userId });
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for profile trigger to create the profile row
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      await supabaseClient
-        .from("profiles")
-        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
-        .eq("id", userId);
+      // Ensure email_verified is set - retry if needed
+      let verifySuccess = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error: updateError } = await supabaseClient
+          .from("profiles")
+          .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+          .eq("id", userId);
+        
+        if (!updateError) {
+          verifySuccess = true;
+          logStep("Profile email_verified set to true for new user", { userId, attempt });
+          break;
+        }
+        
+        logStep("Profile update retry", { attempt, error: updateError });
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      if (!verifySuccess) {
+        logStep("WARNING: Could not set email_verified for new user", { userId });
+      }
     }
 
     // Create course enrollments for ALL products that are courses

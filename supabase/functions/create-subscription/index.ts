@@ -236,6 +236,11 @@ serve(async (req) => {
       const invoice = subscription.latest_invoice as Stripe.Invoice;
       const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent;
 
+      // Use passed currency (from geo pricing) or default to USD
+      const subscriptionCurrency = (typeof currency === 'string' && currency.trim()) 
+        ? currency.trim().toUpperCase() 
+        : 'USD';
+
       // Save to database
       const { data: dbSubscription, error: dbError } = await supabaseClient
         .from('subscriptions')
@@ -248,8 +253,8 @@ serve(async (req) => {
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           customer_name: fullName,
           customer_email: email,
-          amount: product.base_price_usd,
-          currency: 'USD',
+          amount: typeof amount === 'number' && isFinite(amount) ? amount : product.base_price_usd,
+          currency: subscriptionCurrency,
           interval: product.billing_interval,
           trial_ends_at: subscription.trial_end 
             ? new Date(subscription.trial_end * 1000).toISOString() 
