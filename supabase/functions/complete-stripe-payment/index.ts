@@ -176,15 +176,26 @@ serve(async (req) => {
       userId = user.id;
       logStep("Existing user found", { userId });
       
-      const { error: updateError } = await supabaseClient
-        .from("profiles")
-        .update({ email_verified: true, email_verified_at: new Date().toISOString() })
-        .eq("id", userId);
+      // Retry email verification for existing user
+      let verifySuccess = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error: updateError } = await supabaseClient
+          .from("profiles")
+          .update({ email_verified: true, email_verified_at: new Date().toISOString() })
+          .eq("id", userId);
+        
+        if (!updateError) {
+          verifySuccess = true;
+          logStep("Profile email_verified set to true for existing user", { userId, attempt });
+          break;
+        }
+        
+        logStep("Profile update retry for existing user", { attempt, error: updateError });
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
       
-      if (updateError) {
-        logStep("Profile update error for existing user", { error: updateError });
-      } else {
-        logStep("Profile email_verified set to true for existing user", { userId });
+      if (!verifySuccess) {
+        logStep("WARNING: Could not set email_verified for existing user", { userId });
       }
     } else {
       // Create new user
@@ -203,12 +214,12 @@ serve(async (req) => {
       isNewUser = true;
       logStep("New user created", { userId });
 
-      // Wait for profile trigger to create the profile row
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait longer for profile trigger to create the profile row
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Ensure email_verified is set - retry if needed
+      // Ensure email_verified is set - retry more times
       let verifySuccess = false;
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 5; attempt++) {
         const { error: updateError } = await supabaseClient
           .from("profiles")
           .update({ email_verified: true, email_verified_at: new Date().toISOString() })
@@ -220,12 +231,27 @@ serve(async (req) => {
           break;
         }
         
-        logStep("Profile update retry", { attempt, error: updateError });
+        logStep("Profile update retry for new user", { attempt, error: updateError });
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
+      // If still failed, try upsert as last resort
       if (!verifySuccess) {
-        logStep("WARNING: Could not set email_verified for new user", { userId });
+        logStep("Attempting upsert for email_verified", { userId });
+        const { error: upsertError } = await supabaseClient
+          .from("profiles")
+          .upsert({ 
+            id: userId, 
+            email_verified: true, 
+            email_verified_at: new Date().toISOString() 
+          }, { onConflict: 'id' });
+        
+        if (!upsertError) {
+          verifySuccess = true;
+          logStep("Profile email_verified set via upsert for new user", { userId });
+        } else {
+          logStep("CRITICAL: Could not set email_verified for new user", { userId, error: upsertError });
+        }
       }
     }
 
@@ -358,16 +384,18 @@ serve(async (req) => {
           }
         }
         
-        // Create or get recurring price in Stripe
-        const priceAmount = Math.round((productInfo.base_price_usd || 0) * 100);
-        const lookupKey = `sub_${detail.id}_${stripeInterval}`;
+        // Create or get recurring price in Stripe using the geo-pricing currency
+        // detail.amount is already the geo-adjusted price
+        const geoCurrency = paymentCurrency.toLowerCase();
+        const priceAmount = Math.round((detail.amount || productInfo.base_price_usd || 0) * 100);
+        const lookupKey = `sub_${detail.id}_${stripeInterval}_${geoCurrency}`;
         
         const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
         let priceId: string;
         
         if (prices.data.length > 0) {
           priceId = prices.data[0].id;
-          logStep("Existing Stripe price found", { priceId });
+          logStep("Existing Stripe price found", { priceId, currency: geoCurrency });
         } else {
           // Find or create Stripe product
           const stripeProducts = await stripe.products.list({ limit: 100 });
@@ -390,12 +418,12 @@ serve(async (req) => {
           const newPrice = await stripe.prices.create({
             product: stripeProductId,
             unit_amount: priceAmount,
-            currency: 'usd',
+            currency: geoCurrency,
             recurring: { interval: stripeInterval },
             lookup_key: lookupKey,
           });
           priceId = newPrice.id;
-          logStep("Created Stripe price", { priceId, interval: stripeInterval });
+          logStep("Created Stripe price", { priceId, interval: stripeInterval, currency: geoCurrency, amount: priceAmount });
         }
         
         // Create subscription with a future billing date.
@@ -504,7 +532,8 @@ serve(async (req) => {
           ? new Date(stripeSubscription.trial_end * 1000) 
           : null;
 
-        // Create the subscription record
+        // Create the subscription record - use geo-adjusted amount, not base_price_usd
+        const geoAdjustedAmount = detail.amount || productInfo.base_price_usd;
         const { data: subscription, error: subError } = await supabaseClient
           .from('subscriptions')
           .insert({
@@ -516,7 +545,7 @@ serve(async (req) => {
             status: stripeSubscription.status === 'trialing' ? 'active' : stripeSubscription.status,
             payment_provider: 'stripe',
             provider_subscription_id: stripeSubscription.id,
-            amount: productInfo.base_price_usd,
+            amount: geoAdjustedAmount,
             currency: paymentCurrency,
             interval: billingInterval,
             current_period_start: periodStart.toISOString(),

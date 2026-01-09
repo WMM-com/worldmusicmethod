@@ -17,9 +17,9 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, email, fullName, password, paymentMethodId, couponCode } = await req.json();
+    const { productId, email, fullName, password, paymentMethodId, couponCode, currency, amount } = await req.json();
 
-    logStep("Starting free trial subscription", { productId, email, fullName });
+    logStep("Starting free trial subscription", { productId, email, fullName, currency, amount });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -126,16 +126,18 @@ serve(async (req) => {
       }
     }
 
-    // Create or get recurring price in Stripe
-    const priceAmount = Math.round((product.base_price_usd || 0) * 100);
-    const lookupKey = `sub_${productId}_${stripeInterval}`;
+    // Create or get recurring price in Stripe using geo-adjusted currency
+    const geoCurrency = (currency || 'USD').toLowerCase();
+    const geoAmount = amount || product.base_price_usd || 0;
+    const priceAmount = Math.round(geoAmount * 100);
+    const lookupKey = `sub_${productId}_${stripeInterval}_${geoCurrency}`;
 
     const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
     let priceId: string;
 
     if (prices.data.length > 0) {
       priceId = prices.data[0].id;
-      logStep("Existing Stripe price found", { priceId });
+      logStep("Existing Stripe price found", { priceId, currency: geoCurrency });
     } else {
       // Find or create Stripe product
       const stripeProducts = await stripe.products.list({ limit: 100 });
@@ -158,12 +160,12 @@ serve(async (req) => {
       const newPrice = await stripe.prices.create({
         product: stripeProductId,
         unit_amount: priceAmount,
-        currency: 'usd',
+        currency: geoCurrency,
         recurring: { interval: stripeInterval },
         lookup_key: lookupKey,
       });
       priceId = newPrice.id;
-      logStep("Created Stripe price", { priceId, interval: stripeInterval });
+      logStep("Created Stripe price", { priceId, interval: stripeInterval, currency: geoCurrency });
     }
 
     // Create subscription with trial_period_days (NO upfront charge)
@@ -248,7 +250,7 @@ serve(async (req) => {
       ? new Date(stripeSubscription.trial_end * 1000)
       : new Date(Date.now() + (product.trial_length_days * 24 * 60 * 60 * 1000));
 
-    // Create subscription record in database
+    // Create subscription record in database with geo-adjusted amount and currency
     const { data: dbSubscription, error: subError } = await supabaseClient
       .from('subscriptions')
       .insert({
@@ -260,8 +262,8 @@ serve(async (req) => {
         status: 'active', // Free trial is considered active
         payment_provider: 'stripe',
         provider_subscription_id: stripeSubscription.id,
-        amount: product.base_price_usd,
-        currency: 'USD',
+        amount: geoAmount,
+        currency: geoCurrency.toUpperCase(),
         interval: billingInterval,
         current_period_start: periodStart.toISOString(),
         current_period_end: trialEndDate.toISOString(),
