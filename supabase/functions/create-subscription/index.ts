@@ -27,7 +27,8 @@ serve(async (req) => {
       couponDiscount,
       amount,
       currency,
-      returnUrl 
+      returnUrl,
+      trialAmount, // Geo-priced trial amount (optional)
     } = await req.json();
 
     logStep("Starting subscription creation", { productId, email, fullName, paymentMethod });
@@ -341,6 +342,12 @@ serve(async (req) => {
 
       // Add trial if enabled
       if (product.trial_enabled && product.trial_length_days) {
+        // Calculate trial amount in the correct currency
+        // If geo-pricing is in effect, use trialAmount from request, otherwise use product's trial price
+        const trialAmountValue = typeof trialAmount === 'number' && isFinite(trialAmount)
+          ? trialAmount
+          : (product.trial_price_usd || 0);
+          
         planPayload.billing_cycles.unshift({
           frequency: {
             interval_unit: "DAY",
@@ -351,8 +358,8 @@ serve(async (req) => {
           total_cycles: 1,
           pricing_scheme: {
             fixed_price: {
-              value: (product.trial_price_usd || 0).toFixed(2),
-              currency_code: "USD",
+              value: trialAmountValue.toFixed(2),
+              currency_code: currencyCode, // Must match the regular cycle currency
             },
           },
         });
