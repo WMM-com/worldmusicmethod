@@ -20,6 +20,48 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Marcellus+SC&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+      // Prevent payment provider return params (e.g. PayPal token/type) from being misread as auth params.
+      // This runs before the app bundle loads, so it can't accidentally clear an existing login session.
+      (function () {
+        try {
+          var url = new URL(window.location.href);
+          if (url.pathname !== '/payment-success' && url.pathname !== '/payment-cancelled') return;
+
+          var sp = url.searchParams;
+          var isPayPalReturn =
+            sp.get('method') === 'paypal' ||
+            sp.has('subscription_id') ||
+            sp.has('ba_token') ||
+            sp.has('PayerID') ||
+            sp.has('token');
+
+          if (!isPayPalReturn) return;
+
+          var payload = {
+            method: sp.get('method'),
+            paypalFlow: sp.get('paypalFlow') || sp.get('type'), // legacy fallback
+            token: sp.get('token'),
+            payerId: sp.get('PayerID'),
+            subscriptionId: sp.get('subscription_id'),
+            baToken: sp.get('ba_token'),
+          };
+
+          sessionStorage.setItem('paypal_return_params_v1', JSON.stringify(payload));
+
+          // Remove params that can collide with auth flows (e.g. token/type).
+          ['token', 'PayerID', 'subscription_id', 'ba_token', 'type'].forEach(function (k) {
+            if (sp.has(k)) sp.delete(k);
+          });
+
+          var cleaned = url.pathname + (sp.toString() ? '?' + sp.toString() : '') + url.hash;
+          window.history.replaceState({}, document.title, cleaned);
+        } catch (e) {
+          // ignore
+        }
+      })();
+    </script>
   </head>
 
   <body>

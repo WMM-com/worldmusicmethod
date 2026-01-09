@@ -73,7 +73,7 @@ const PayPalButton = ({
             amount,
             currency,
             trialAmount, // Geo-priced trial amount for PayPal plan consistency
-            returnUrl: `${window.location.origin}/payment-success?method=paypal&type=subscription`,
+            returnUrl: `${window.location.origin}/payment-success?method=paypal&paypalFlow=subscription`,
           },
         });
 
