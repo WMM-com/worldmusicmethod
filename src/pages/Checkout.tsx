@@ -31,6 +31,7 @@ const PayPalButton = ({
   amount,
   currency,
   productType,
+  trialAmount,
   onSuccess,
   disabled,
 }: {
@@ -43,6 +44,7 @@ const PayPalButton = ({
   amount: number;
   currency: string;
   productType?: string;
+  trialAmount?: number;
   onSuccess: () => void;
   disabled: boolean;
 }) => {
@@ -70,6 +72,7 @@ const PayPalButton = ({
             couponDiscount: couponDiscount || 0,
             amount,
             currency,
+            trialAmount, // Geo-priced trial amount for PayPal plan consistency
             returnUrl: `${window.location.origin}/payment-success?method=paypal&type=subscription`,
           },
         });
@@ -547,6 +550,21 @@ function CheckoutContent() {
     : product?.product_type === 'course';
   const fullName = `${firstName} ${lastName}`.trim();
 
+  // Calculate geo-priced trial amount for subscriptions
+  const geoTrialAmount = useMemo(() => {
+    const subProduct = isCartMode ? cartSubscriptionProduct : product;
+    if (!subProduct?.trial_enabled || !subProduct?.trial_price_usd) return undefined;
+    
+    // Calculate the ratio from geo pricing
+    if (isCartMode && subscriptionCartItem && subProduct.base_price_usd) {
+      return subProduct.trial_price_usd * subscriptionCartItem.price / subProduct.base_price_usd;
+    }
+    if (productPriceInfo && subProduct.base_price_usd) {
+      return subProduct.trial_price_usd * productPriceInfo.price / subProduct.base_price_usd;
+    }
+    return subProduct.trial_price_usd;
+  }, [isCartMode, cartSubscriptionProduct, product, subscriptionCartItem, productPriceInfo]);
+
   const debugEnabled =
     typeof window !== 'undefined' &&
     (import.meta.env.DEV ||
@@ -979,6 +997,7 @@ function CheckoutContent() {
                         amount={priceAfterCoupon}
                         currency={currency}
                         productType={product?.product_type || cartItems[0]?.productType}
+                        trialAmount={geoTrialAmount}
                         onSuccess={handleSuccess}
                         disabled={!user && (!email || !password || password.length < 8)}
                       />
