@@ -942,14 +942,17 @@ function CheckoutContent() {
                     <StripeCardFields
                       productIds={isCartMode ? cartItems.map(item => item.productId) : [productId || '']}
                       amounts={
-                        // Pass coupon-discounted amounts to the backend
+                        // Pass coupon-discounted AND card-discounted amounts to the backend
+                        // The 2% card discount must be included so Stripe charges the correct amount
                         isCartMode 
                           ? cartItems.map(item => {
                               // Apply proportional coupon discount to each item
                               const itemRatio = item.price / basePrice;
-                              return item.price - (couponDiscount * itemRatio);
+                              const afterCoupon = item.price - (couponDiscount * itemRatio);
+                              // Apply 2% card discount
+                              return afterCoupon - (afterCoupon * 0.02);
                             }) 
-                          : [priceAfterCoupon]
+                          : [cardPrice]  // cardPrice already includes coupon + 2% card discount
                       }
                       email={user?.email || email}
                       fullName={fullName || user?.email || email}
