@@ -431,24 +431,54 @@ serve(async (req) => {
         }
 
         case 'update_payment_method': {
-          // Create a Stripe Customer Portal session for updating payment method
           const stripeSub = await stripe.subscriptions.retrieve(
             subscription.provider_subscription_id
           );
           
           const customerId = stripeSub.customer as string;
-          const origin = data?.returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
           
-          const portalSession = await stripe.billingPortal.sessions.create({
-            customer: customerId,
-            return_url: `${origin}/account`,
-            flow_data: {
-              type: 'payment_method_update',
-            },
-          });
-          
-          result = { url: portalSession.url };
-          logStep('Customer portal session created for payment method update', { url: portalSession.url });
+          // If a payment method ID is provided, attach it and set as default
+          if (data?.paymentMethodId) {
+            // Attach payment method to customer
+            await stripe.paymentMethods.attach(data.paymentMethodId, {
+              customer: customerId,
+            });
+            
+            // Set as default payment method for subscription
+            await stripe.subscriptions.update(subscription.provider_subscription_id, {
+              default_payment_method: data.paymentMethodId,
+            });
+            
+            // Also update customer's default for future invoices
+            await stripe.customers.update(customerId, {
+              invoice_settings: {
+                default_payment_method: data.paymentMethodId,
+              },
+            });
+            
+            // Update local subscription record to reflect Stripe provider
+            await supabaseClient
+              .from('subscriptions')
+              .update({ payment_provider: 'stripe' })
+              .eq('id', subscriptionId);
+            
+            result = { success: true, paymentMethodUpdated: true };
+            logStep('Payment method updated directly', { paymentMethodId: data.paymentMethodId });
+          } else {
+            // Fallback to portal session
+            const origin = data?.returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+            
+            const portalSession = await stripe.billingPortal.sessions.create({
+              customer: customerId,
+              return_url: `${origin}/account`,
+              flow_data: {
+                type: 'payment_method_update',
+              },
+            });
+            
+            result = { url: portalSession.url };
+            logStep('Customer portal session created for payment method update', { url: portalSession.url });
+          }
           break;
         }
 
@@ -736,6 +766,24 @@ serve(async (req) => {
 
           result = { couponRemoved: true };
           logStep("PayPal coupon removed from database");
+          break;
+        }
+
+        case 'update_payment_method':
+        case 'update_paypal_payment': {
+          // PayPal doesn't support updating payment methods via API directly
+          // User needs to manage this through PayPal account
+          // We can provide a link to PayPal subscription management
+          const paypalSubId = subscription.provider_subscription_id;
+          
+          // PayPal subscription management URL
+          const paypalManageUrl = `https://www.paypal.com/myaccount/autopay/connect/${paypalSubId}`;
+          
+          result = { 
+            url: paypalManageUrl,
+            message: 'Please update your payment method in your PayPal account'
+          };
+          logStep("PayPal payment update - redirecting to PayPal", { url: paypalManageUrl });
           break;
         }
 
