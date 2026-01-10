@@ -58,6 +58,11 @@ const PayPalButton = ({
 
     setIsLoading(true);
     try {
+      // Store credentials for auto sign-in after PayPal return (non-popup fallback)
+      if (email && password) {
+        sessionStorage.setItem('paypal_auth_credentials', JSON.stringify({ email, password }));
+      }
+      
       const isSubscription = productType === 'subscription' || productType === 'membership';
       
       if (isSubscription) {
@@ -112,6 +117,22 @@ const PayPalButton = ({
                     },
                   });
                   if (activateError) throw activateError;
+                  
+                  // Auto sign-in the user after successful PayPal subscription
+                  if (email && password) {
+                    // Small delay to ensure profile is ready
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                      email,
+                      password,
+                    });
+                    if (signInError) {
+                      console.warn('[PayPal] Auto sign-in failed:', signInError.message);
+                    } else {
+                      console.log('[PayPal] Auto sign-in successful');
+                    }
+                  }
+                  
                   toast.success('Subscription activated!');
                   onSuccess();
                 } catch (activateErr: any) {
@@ -179,6 +200,22 @@ const PayPalButton = ({
                     body: { orderId: captureOrderId, password },
                   });
                   if (captureError) throw captureError;
+                  
+                  // Auto sign-in the user after successful PayPal payment
+                  if (email && password) {
+                    // Small delay to ensure profile is ready
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                      email,
+                      password,
+                    });
+                    if (signInError) {
+                      console.warn('[PayPal] Auto sign-in failed:', signInError.message);
+                    } else {
+                      console.log('[PayPal] Auto sign-in successful');
+                    }
+                  }
+                  
                   toast.success('Payment successful!');
                   onSuccess();
                 } catch (captureErr: any) {
