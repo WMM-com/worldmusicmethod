@@ -509,6 +509,286 @@ serve(async (req) => {
           );
         }
 
+        case 'switch_to_paypal': {
+          // Switch from Stripe to PayPal subscription
+          // 1. Cancel the Stripe subscription at period end
+          // 2. Return a PayPal plan approval URL for the user to confirm
+          const { returnUrl } = data || {};
+          
+          logStep("Switching from Stripe to PayPal", { subscriptionId });
+          
+          // Get product info
+          const { data: product } = await supabaseClient
+            .from('products')
+            .select('*')
+            .eq('id', subscription.product_id)
+            .single();
+          
+          if (!product) {
+            throw new Error('Product not found');
+          }
+          
+          // Get PayPal access token
+          const ppClientId = Deno.env.get("PAYPAL_CLIENT_ID");
+          const ppClientSecret = Deno.env.get("PAYPAL_SECRET");
+          
+          if (!ppClientId || !ppClientSecret) {
+            throw new Error('PayPal is not configured');
+          }
+          
+          const ppAuth = btoa(`${ppClientId}:${ppClientSecret}`);
+          const ppTokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+            method: "POST",
+            headers: {
+              "Authorization": `Basic ${ppAuth}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: "grant_type=client_credentials",
+          });
+          
+          const { access_token: ppAccessToken } = await ppTokenResponse.json();
+          
+          // Create PayPal product
+          const ppProductResponse = await fetch("https://api-m.paypal.com/v1/catalogs/products", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${ppAccessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: product.name,
+              type: "SERVICE",
+              category: "EDUCATIONAL_AND_TEXTBOOKS",
+            }),
+          });
+          
+          const ppProduct = await ppProductResponse.json();
+          logStep("PayPal product created", { productId: ppProduct.id });
+          
+          // Map interval to PayPal
+          const paypalIntervalMap: Record<string, { interval_unit: string; interval_count: number }> = {
+            'daily': { interval_unit: 'DAY', interval_count: 1 },
+            'weekly': { interval_unit: 'WEEK', interval_count: 1 },
+            'monthly': { interval_unit: 'MONTH', interval_count: 1 },
+            'annual': { interval_unit: 'YEAR', interval_count: 1 },
+            'yearly': { interval_unit: 'YEAR', interval_count: 1 },
+          };
+          const ppInterval = paypalIntervalMap[subscription.interval || 'monthly'];
+          
+          const currencyCode = (subscription.currency || 'USD').toUpperCase();
+          const amount = subscription.amount || product.base_price_usd || 0;
+          
+          // Create billing plan
+          const planPayload: any = {
+            product_id: ppProduct.id,
+            name: `${product.name} - ${subscription.interval || 'monthly'}`,
+            billing_cycles: [
+              {
+                frequency: {
+                  interval_unit: ppInterval.interval_unit,
+                  interval_count: ppInterval.interval_count,
+                },
+                tenure_type: "REGULAR",
+                sequence: 1,
+                total_cycles: 0,
+                pricing_scheme: {
+                  fixed_price: {
+                    value: amount.toFixed(2),
+                    currency_code: currencyCode,
+                  },
+                },
+              },
+            ],
+            payment_preferences: {
+              auto_bill_outstanding: true,
+              payment_failure_threshold: 3,
+            },
+          };
+          
+          const planResponse = await fetch("https://api-m.paypal.com/v1/billing/plans", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${ppAccessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(planPayload),
+          });
+          
+          if (!planResponse.ok) {
+            const planError = await planResponse.text();
+            logStep("PayPal plan creation failed", { error: planError });
+            throw new Error(`PayPal plan creation failed: ${planError}`);
+          }
+          
+          const plan = await planResponse.json();
+          logStep("PayPal plan created", { planId: plan.id });
+          
+          // Get user info
+          const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', subscription.user_id)
+            .single();
+          
+          const email = profile?.email || subscription.customer_email;
+          const fullName = profile?.full_name || subscription.customer_name || '';
+          
+          // Create PayPal subscription
+          const origin = returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+          
+          const ppSubscriptionPayload = {
+            plan_id: plan.id,
+            subscriber: {
+              name: { 
+                given_name: fullName.split(' ')[0] || '', 
+                surname: fullName.split(' ').slice(1).join(' ') || '' 
+              },
+              email_address: email,
+            },
+            application_context: {
+              brand_name: "World Music Method",
+              return_url: `${origin}/account?paypal_switch=success&sub_id=${subscriptionId}`,
+              cancel_url: `${origin}/account?paypal_switch=cancelled`,
+            },
+          };
+          
+          const ppSubResponse = await fetch("https://api-m.paypal.com/v1/billing/subscriptions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${ppAccessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(ppSubscriptionPayload),
+          });
+          
+          if (!ppSubResponse.ok) {
+            const subError = await ppSubResponse.text();
+            logStep("PayPal subscription creation failed", { error: subError });
+            throw new Error(`PayPal subscription creation failed: ${subError}`);
+          }
+          
+          const ppSubscription = await ppSubResponse.json();
+          const approveUrl = ppSubscription.links?.find((l: any) => l.rel === "approve")?.href;
+          
+          if (!approveUrl) {
+            throw new Error("PayPal did not return an approval URL");
+          }
+          
+          logStep("PayPal subscription created, awaiting approval", { 
+            ppSubId: ppSubscription.id, 
+            approveUrl 
+          });
+          
+          // Store the pending PayPal subscription ID for later activation
+          // We'll complete the switch when the user returns from PayPal
+          await supabaseClient
+            .from('subscriptions')
+            .update({ 
+              pending_paypal_subscription_id: ppSubscription.id 
+            })
+            .eq('id', subscriptionId);
+          
+          result = { 
+            success: true,
+            requiresApproval: true,
+            approveUrl,
+            pendingPayPalSubscriptionId: ppSubscription.id,
+          };
+          break;
+        }
+
+        case 'confirm_paypal_switch': {
+          // Confirm the switch from Stripe to PayPal after user approves in PayPal
+          const { pendingPayPalSubscriptionId } = data || {};
+          const ppSubIdToActivate = pendingPayPalSubscriptionId || subscription.pending_paypal_subscription_id;
+          
+          if (!ppSubIdToActivate) {
+            throw new Error('No pending PayPal subscription found');
+          }
+          
+          logStep("Confirming Stripe to PayPal switch", { ppSubIdToActivate });
+          
+          // Get PayPal access token
+          const ppClientId = Deno.env.get("PAYPAL_CLIENT_ID");
+          const ppClientSecret = Deno.env.get("PAYPAL_SECRET");
+          const ppAuth = btoa(`${ppClientId}:${ppClientSecret}`);
+          
+          const ppTokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+            method: "POST",
+            headers: {
+              "Authorization": `Basic ${ppAuth}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: "grant_type=client_credentials",
+          });
+          
+          const { access_token: ppAccessToken } = await ppTokenResponse.json();
+          
+          // Check PayPal subscription status
+          const ppSubResponse = await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${ppSubIdToActivate}`,
+            {
+              headers: {
+                "Authorization": `Bearer ${ppAccessToken}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          
+          const ppSub = await ppSubResponse.json();
+          logStep("PayPal subscription status", { status: ppSub.status });
+          
+          if (ppSub.status !== 'ACTIVE' && ppSub.status !== 'APPROVAL_PENDING') {
+            throw new Error(`PayPal subscription not ready: ${ppSub.status}`);
+          }
+          
+          // If still pending approval, user hasn't completed PayPal flow
+          if (ppSub.status === 'APPROVAL_PENDING') {
+            const approveUrl = ppSub.links?.find((l: any) => l.rel === "approve")?.href;
+            result = { 
+              success: false,
+              requiresApproval: true,
+              approveUrl,
+              message: 'Please complete the PayPal approval first'
+            };
+            break;
+          }
+          
+          // PayPal subscription is active - cancel Stripe and update DB
+          // Cancel Stripe subscription
+          await stripe.subscriptions.cancel(subscription.provider_subscription_id);
+          logStep("Stripe subscription cancelled");
+          
+          // Get billing info from PayPal subscription
+          const billingInfo = ppSub.billing_info;
+          const nextBilling = billingInfo?.next_billing_time 
+            ? new Date(billingInfo.next_billing_time).toISOString() 
+            : null;
+          
+          // Update subscription record
+          await supabaseClient
+            .from('subscriptions')
+            .update({
+              payment_provider: 'paypal',
+              provider_subscription_id: ppSubIdToActivate,
+              status: 'active',
+              pending_paypal_subscription_id: null,
+              current_period_end: nextBilling || subscription.current_period_end,
+              cancels_at: null,
+              paused_at: null,
+            })
+            .eq('id', subscriptionId);
+          
+          result = { 
+            success: true, 
+            switched: true, 
+            newProvider: 'paypal',
+            paypalSubscriptionId: ppSubIdToActivate 
+          };
+          logStep("Switch to PayPal confirmed", { ppSubId: ppSubIdToActivate });
+          break;
+        }
+
         default:
           throw new Error(`Unknown action: ${action}`);
       }
