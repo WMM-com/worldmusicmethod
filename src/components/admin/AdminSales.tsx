@@ -275,15 +275,28 @@ export function AdminSales() {
     }
   };
 
-  const handlePriceUpdate = () => {
+  const handlePriceUpdate = async () => {
     if (!newPrice || isNaN(parseFloat(newPrice))) {
       toast.error('Please enter a valid price');
       return;
     }
+    const subscription = editPriceDialog.subscription;
     manageSub.mutate({ 
       action: 'update_price', 
-      subscriptionId: editPriceDialog.subscription.id,
-      data: { newAmount: parseFloat(newPrice) }
+      subscriptionId: subscription.id,
+      data: { 
+        newAmount: parseFloat(newPrice),
+        currency: subscription.currency || 'USD',
+        interval: subscription.interval || 'monthly'
+      }
+    }, {
+      onSuccess: (data: any) => {
+        if (data?.approvalUrl) {
+          // PayPal revision requires customer approval
+          toast.info('Customer must approve the price change via PayPal. Opening approval link...');
+          window.open(data.approvalUrl, '_blank');
+        }
+      }
     });
     setEditPriceDialog({ open: false, subscription: null });
   };
@@ -880,10 +893,15 @@ export function AdminSales() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Subscription Price</DialogTitle>
+            <DialogDescription>
+              {editPriceDialog.subscription?.payment_provider === 'paypal' 
+                ? 'This will create a new billing plan and may require customer approval via PayPal.'
+                : 'Price change will take effect on the next billing cycle.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>New Price (USD)</Label>
+              <Label>New Price ({editPriceDialog.subscription?.currency || 'USD'})</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -891,6 +909,9 @@ export function AdminSales() {
                 onChange={(e) => setNewPrice(e.target.value)}
                 placeholder="99.00"
               />
+              <p className="text-xs text-muted-foreground">
+                Current price: {editPriceDialog.subscription?.amount?.toFixed(2)} {editPriceDialog.subscription?.currency || 'USD'}/{editPriceDialog.subscription?.interval}
+              </p>
             </div>
           </div>
           <DialogFooter>

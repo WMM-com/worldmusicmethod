@@ -252,7 +252,7 @@ serve(async (req) => {
         }
 
         case 'update_price': {
-          const { newAmount } = data;
+          const { newAmount, currency, interval } = data;
           
           // Get current subscription
           const stripeSub = await stripe.subscriptions.retrieve(
@@ -262,6 +262,9 @@ serve(async (req) => {
           const currentItem = stripeSub.items.data[0];
           const currentPrice = await stripe.prices.retrieve(currentItem.price.id);
           
+          // Use subscription's currency, fallback to current price currency, then USD
+          const subscriptionCurrency = (currency || subscription.currency || currentPrice.currency || 'usd').toLowerCase();
+          
           // Map database interval to Stripe interval
           const intervalMap: Record<string, 'day' | 'week' | 'month' | 'year'> = {
             'daily': 'day',
@@ -270,14 +273,14 @@ serve(async (req) => {
             'yearly': 'year',
             'annual': 'year',
           };
-          const dbInterval = subscription.interval || 'monthly';
+          const dbInterval = interval || subscription.interval || 'monthly';
           const stripeInterval = intervalMap[dbInterval] || currentPrice.recurring?.interval || 'month';
           
-          // Create new price with correct interval from subscription
+          // Create new price with correct currency and interval
           const newPrice = await stripe.prices.create({
             product: currentPrice.product as string,
             unit_amount: Math.round(newAmount * 100),
-            currency: 'usd',
+            currency: subscriptionCurrency,
             recurring: { interval: stripeInterval },
           });
 
@@ -298,8 +301,8 @@ serve(async (req) => {
             .update({ amount: newAmount })
             .eq('id', subscriptionId);
 
-          result = { newAmount };
-          logStep("Price updated", { newAmount, interval: stripeInterval });
+          result = { newAmount, currency: subscriptionCurrency, interval: stripeInterval };
+          logStep("Stripe price updated", { newAmount, currency: subscriptionCurrency, interval: stripeInterval });
           break;
         }
 
@@ -702,17 +705,155 @@ serve(async (req) => {
         }
 
         case 'update_price': {
-          // PayPal requires creating a new plan to change price
-          // For now, just update in database and note that next billing will use new amount
-          const { newAmount } = data;
+          // PayPal requires creating a new plan with the new price and revising the subscription
+          const { newAmount, currency, interval } = data;
+          const subscriptionCurrency = (currency || subscription.currency || 'USD').toUpperCase();
           
+          // First, get the current subscription to find the product_id from the plan
+          const subDetailsResponse = await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${access_token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          
+          if (!subDetailsResponse.ok) {
+            throw new Error("Failed to get PayPal subscription details");
+          }
+          
+          const subDetails = await subDetailsResponse.json();
+          const currentPlanId = subDetails.plan_id;
+          
+          // Get the current plan to find the product_id
+          const planDetailsResponse = await fetch(
+            `https://api-m.paypal.com/v1/billing/plans/${currentPlanId}`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${access_token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          
+          if (!planDetailsResponse.ok) {
+            throw new Error("Failed to get PayPal plan details");
+          }
+          
+          const planDetails = await planDetailsResponse.json();
+          const productId = planDetails.product_id;
+          
+          logStep("PayPal current plan details", { currentPlanId, productId, planDetails });
+          
+          // Map interval to PayPal format
+          const paypalIntervalMap: Record<string, { interval_unit: string; interval_count: number }> = {
+            'daily': { interval_unit: 'DAY', interval_count: 1 },
+            'weekly': { interval_unit: 'WEEK', interval_count: 1 },
+            'monthly': { interval_unit: 'MONTH', interval_count: 1 },
+            'annual': { interval_unit: 'YEAR', interval_count: 1 },
+            'yearly': { interval_unit: 'YEAR', interval_count: 1 },
+          };
+          
+          const paypalInterval = paypalIntervalMap[interval || subscription.interval || 'monthly'] || { interval_unit: 'MONTH', interval_count: 1 };
+          
+          // Create a new plan with the updated price
+          const newPlanPayload = {
+            product_id: productId,
+            name: `${subscription.product_name || 'Subscription'} - Updated ${new Date().toISOString().split('T')[0]}`,
+            billing_cycles: [
+              {
+                frequency: {
+                  interval_unit: paypalInterval.interval_unit,
+                  interval_count: paypalInterval.interval_count,
+                },
+                tenure_type: "REGULAR",
+                sequence: 1,
+                total_cycles: 0, // Infinite
+                pricing_scheme: {
+                  fixed_price: {
+                    value: newAmount.toFixed(2),
+                    currency_code: subscriptionCurrency,
+                  },
+                },
+              },
+            ],
+            payment_preferences: {
+              auto_bill_outstanding: true,
+              payment_failure_threshold: 3,
+            },
+          };
+          
+          const newPlanResponse = await fetch("https://api-m.paypal.com/v1/billing/plans", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(newPlanPayload),
+          });
+          
+          if (!newPlanResponse.ok) {
+            const errorText = await newPlanResponse.text();
+            logStep("PayPal new plan creation failed", { error: errorText });
+            throw new Error(`Failed to create new PayPal plan: ${errorText}`);
+          }
+          
+          const newPlan = await newPlanResponse.json();
+          logStep("PayPal new plan created", { newPlanId: newPlan.id });
+          
+          // Revise the subscription to use the new plan
+          const reviseResponse = await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/revise`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                plan_id: newPlan.id,
+              }),
+            }
+          );
+          
+          if (!reviseResponse.ok) {
+            const errorText = await reviseResponse.text();
+            logStep("PayPal subscription revision failed", { error: errorText });
+            throw new Error(`Failed to revise PayPal subscription: ${errorText}`);
+          }
+          
+          const reviseResult = await reviseResponse.json();
+          logStep("PayPal subscription revised", { reviseResult });
+          
+          // Check if customer approval is needed (for PayPal wallet payments)
+          const approveLink = reviseResult.links?.find((link: any) => link.rel === 'approve');
+          
+          // Update database with new amount
           await supabaseClient
             .from('subscriptions')
             .update({ amount: newAmount })
             .eq('id', subscriptionId);
-
-          result = { newAmount, note: 'Price updated in database. PayPal billing will reflect this on next renewal.' };
-          logStep("PayPal subscription price updated in database", { newAmount });
+          
+          if (approveLink) {
+            result = { 
+              newAmount, 
+              currency: subscriptionCurrency,
+              approvalUrl: approveLink.href,
+              note: 'Customer must approve the price change via PayPal.' 
+            };
+            logStep("PayPal revision requires customer approval", { approvalUrl: approveLink.href });
+          } else {
+            result = { 
+              newAmount, 
+              currency: subscriptionCurrency,
+              note: 'Price updated successfully. Will take effect on next billing cycle.' 
+            };
+            logStep("PayPal subscription price updated directly", { newAmount, currency: subscriptionCurrency });
+          }
           break;
         }
 
