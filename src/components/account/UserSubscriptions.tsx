@@ -93,7 +93,7 @@ function UpdatePaymentForm({
       }
 
       if (isPayPalSubscription) {
-        // Switching from PayPal to Stripe - need to cancel PayPal and create new Stripe subscription
+        // Switching from PayPal to Stripe with 3DS/SCA support
         const { data, error: switchError } = await supabase.functions.invoke('manage-subscription', {
           body: {
             action: 'switch_to_stripe',
@@ -105,7 +105,42 @@ function UpdatePaymentForm({
         if (switchError) throw switchError;
         if (data?.error) throw new Error(data.error);
 
-        toast.success('Payment method switched to card. Your PayPal subscription has been cancelled.');
+        // Check if 3DS confirmation is required
+        if (data?.requiresConfirmation && data?.clientSecret) {
+          toast.info('Confirming your card with 3D Secure...');
+          
+          const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
+          
+          if (confirmError) {
+            // If 3DS fails, we should clean up the pending Stripe subscription
+            // For now, throw the error - the subscription stays incomplete and will be cleaned up by Stripe
+            throw new Error(confirmError.message || '3D Secure verification failed');
+          }
+          
+          if (paymentIntent?.status === 'succeeded') {
+            // 3DS succeeded - now confirm the switch on the backend
+            const { data: confirmData, error: confirmSwitchError } = await supabase.functions.invoke('manage-subscription', {
+              body: {
+                action: 'switch_to_stripe',
+                subscriptionId: subscription.id,
+                data: { 
+                  confirmSwitch: true, 
+                  stripeSubscriptionId: data.stripeSubscriptionId 
+                }
+              }
+            });
+            
+            if (confirmSwitchError) throw confirmSwitchError;
+            if (confirmData?.error) throw new Error(confirmData.error);
+            
+            toast.success('Payment method switched to card successfully!');
+          } else {
+            throw new Error(`Payment not completed: ${paymentIntent?.status}`);
+          }
+        } else if (data?.switched) {
+          // No 3DS needed, switch completed immediately
+          toast.success('Payment method switched to card. Your PayPal subscription has been cancelled.');
+        }
       } else {
         // Just update the Stripe payment method
         const { data, error: updateError } = await supabase.functions.invoke('manage-subscription', {
