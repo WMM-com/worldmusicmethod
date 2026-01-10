@@ -33,14 +33,14 @@ import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardNumberElement, CardExpiryElement, CardCvcElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-// Stripe Element styles
+// Stripe Element styles - using light colors for visibility on any background
 const CARD_ELEMENT_STYLE = {
   base: {
     fontSize: '16px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    color: '#1a1a1a',
+    color: '#374151',
     '::placeholder': {
-      color: '#6b7280',
+      color: '#9ca3af',
     },
   },
   invalid: {
@@ -50,11 +50,11 @@ const CARD_ELEMENT_STYLE = {
 
 // Payment Method Update Form Component (inside Elements)
 function UpdatePaymentForm({ 
-  subscriptionId, 
+  subscription, 
   onSuccess, 
   onCancel 
 }: { 
-  subscriptionId: string; 
+  subscription: any;
   onSuccess: () => void; 
   onCancel: () => void;
 }) {
@@ -62,6 +62,8 @@ function UpdatePaymentForm({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isPayPalSubscription = subscription.payment_provider === 'paypal';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,18 +92,36 @@ function UpdatePaymentForm({
         throw new Error(pmError.message);
       }
 
-      // Update subscription payment method
-      const { error: updateError } = await supabase.functions.invoke('manage-subscription', {
-        body: {
-          action: 'update_payment_method',
-          subscriptionId,
-          data: { paymentMethodId: paymentMethod.id }
-        }
-      });
+      if (isPayPalSubscription) {
+        // Switching from PayPal to Stripe - need to cancel PayPal and create new Stripe subscription
+        const { data, error: switchError } = await supabase.functions.invoke('manage-subscription', {
+          body: {
+            action: 'switch_to_stripe',
+            subscriptionId: subscription.id,
+            data: { paymentMethodId: paymentMethod.id }
+          }
+        });
 
-      if (updateError) throw updateError;
+        if (switchError) throw switchError;
+        if (data?.error) throw new Error(data.error);
 
-      toast.success('Payment method updated successfully');
+        toast.success('Payment method switched to card. Your PayPal subscription has been cancelled.');
+      } else {
+        // Just update the Stripe payment method
+        const { data, error: updateError } = await supabase.functions.invoke('manage-subscription', {
+          body: {
+            action: 'update_payment_method',
+            subscriptionId: subscription.id,
+            data: { paymentMethodId: paymentMethod.id }
+          }
+        });
+
+        if (updateError) throw updateError;
+        if (data?.error) throw new Error(data.error);
+
+        toast.success('Payment method updated successfully');
+      }
+      
       onSuccess();
     } catch (err: any) {
       console.error('Update payment error:', err);
@@ -114,9 +134,14 @@ function UpdatePaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {isPayPalSubscription && (
+        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md text-sm text-amber-800 dark:text-amber-200">
+          <strong>Note:</strong> Switching from PayPal to card will cancel your PayPal subscription and create a new subscription charged to this card.
+        </div>
+      )}
       <div className="space-y-2">
         <Label>Card details</Label>
-        <div className="flex rounded-md border border-input bg-background overflow-hidden">
+        <div className="flex rounded-md border border-input bg-white overflow-hidden">
           <div className="flex-1 min-h-[44px] px-3 py-3 border-r border-input">
             <CardNumberElement options={{ style: CARD_ELEMENT_STYLE }} />
           </div>
@@ -139,12 +164,12 @@ function UpdatePaymentForm({
           {isProcessing ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Updating...
+              {isPayPalSubscription ? 'Switching...' : 'Updating...'}
             </>
           ) : (
             <>
               <CreditCard className="h-4 w-4 mr-2" />
-              Update Card
+              {isPayPalSubscription ? 'Switch to Card' : 'Update Card'}
             </>
           )}
         </Button>
@@ -378,7 +403,7 @@ export function UserSubscriptions() {
                             onClick={() => openPaymentDialog(sub)}
                           >
                             <CreditCard className="h-4 w-4 mr-1" />
-                            Update Payment
+                            Update Payment Method
                           </Button>
                         )}
 
@@ -550,7 +575,7 @@ export function UserSubscriptions() {
               {paymentMethod === 'stripe' && stripeKeyData?.publishableKey && (
                 <Elements stripe={loadStripe(stripeKeyData.publishableKey)}>
                   <UpdatePaymentForm
-                    subscriptionId={selectedSubscription.id}
+                    subscription={selectedSubscription}
                     onSuccess={() => {
                       setPaymentDialogOpen(false);
                       queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] });
