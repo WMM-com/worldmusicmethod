@@ -953,11 +953,76 @@ serve(async (req) => {
         }
 
         case 'switch_to_stripe': {
-          // Switch from PayPal to Stripe subscription
-          // 1. Cancel the PayPal subscription
-          // 2. Create a new Stripe subscription with the provided payment method
+          // Switch from PayPal to Stripe subscription with proper 3DS/SCA handling
+          // 1. Create Stripe subscription with incomplete status for 3DS
+          // 2. Return client_secret for frontend confirmation
+          // 3. Only cancel PayPal after frontend confirms successful payment
 
-          const { paymentMethodId } = data || {};
+          const { paymentMethodId, confirmSwitch, stripeSubscriptionId: pendingStripeSubId } = data || {};
+          
+          // Phase 2: Confirm the switch after 3DS is complete
+          if (confirmSwitch && pendingStripeSubId) {
+            logStep("Confirming PayPal to Stripe switch", { pendingStripeSubId });
+            
+            const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+              apiVersion: "2025-08-27.basil",
+            });
+            
+            // Verify the Stripe subscription is now active
+            const stripeSub = await stripe.subscriptions.retrieve(pendingStripeSubId);
+            
+            if (stripeSub.status !== 'active' && stripeSub.status !== 'trialing') {
+              throw new Error(`Stripe subscription not active: ${stripeSub.status}`);
+            }
+            
+            // Now cancel the PayPal subscription
+            const cancelResponse = await fetch(
+              `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ reason: "Switched to card payment" }),
+              }
+            );
+
+            if (!cancelResponse.ok) {
+              const cancelError = await cancelResponse.text();
+              logStep("Failed to cancel PayPal subscription (non-blocking)", { error: cancelError });
+            } else {
+              logStep("PayPal subscription cancelled successfully");
+            }
+
+            // Update the subscription record
+            const currentPeriodEnd = unixSecondsToIso(stripeSub.current_period_end);
+            const currentPeriodStart = unixSecondsToIso(stripeSub.current_period_start);
+
+            await supabaseClient
+              .from('subscriptions')
+              .update({
+                payment_provider: 'stripe',
+                provider_subscription_id: pendingStripeSubId,
+                status: stripeSub.status === 'active' || stripeSub.status === 'trialing' ? 'active' : stripeSub.status,
+                current_period_start: currentPeriodStart,
+                current_period_end: currentPeriodEnd,
+                cancels_at: null,
+                paused_at: null,
+              })
+              .eq('id', subscriptionId);
+
+            result = { 
+              success: true, 
+              switched: true, 
+              newProvider: 'stripe',
+              stripeSubscriptionId: pendingStripeSubId 
+            };
+            logStep("Switch confirmed", { stripeSubId: pendingStripeSubId });
+            break;
+          }
+          
+          // Phase 1: Create the Stripe subscription for 3DS confirmation
           if (!paymentMethodId) {
             throw new Error('Payment method ID is required for switching to Stripe');
           }
@@ -988,27 +1053,6 @@ serve(async (req) => {
             apiVersion: "2025-08-27.basil",
           });
 
-          // Cancel the PayPal subscription immediately
-          const cancelResponse = await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
-            {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${access_token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ reason: "Switching to card payment" }),
-            }
-          );
-
-          if (!cancelResponse.ok) {
-            const cancelError = await cancelResponse.text();
-            logStep("Failed to cancel PayPal subscription", { error: cancelError });
-            // Continue anyway - we'll create the Stripe sub
-          }
-
-          logStep("PayPal subscription cancelled for switch to Stripe");
-
           // Find or create Stripe customer
           const customers = await stripe.customers.list({ email: profile.email, limit: 1 });
           let customerId: string;
@@ -1035,7 +1079,7 @@ serve(async (req) => {
             },
           });
 
-          // Create or find Stripe price dynamically (same logic as create-subscription)
+          // Create or find Stripe price dynamically
           const subCurrency = (subscription.currency || 'USD').toLowerCase();
           const subAmount = subscription.amount || 0;
           const priceAmount = Math.round(subAmount * 100);
@@ -1091,39 +1135,87 @@ serve(async (req) => {
             logStep("Created Stripe price", { priceId, amount: priceAmount, currency: subCurrency });
           }
 
-          // Create new Stripe subscription
+          // Create Stripe subscription with payment_behavior: 'default_incomplete'
+          // This allows 3DS/SCA authentication before the subscription becomes active
           const newStripeSub = await stripe.subscriptions.create({
             customer: customerId,
             items: [{ price: priceId }],
             default_payment_method: paymentMethodId,
-            payment_behavior: 'error_if_incomplete',
-            proration_behavior: 'none',
+            payment_behavior: 'default_incomplete',
+            payment_settings: {
+              save_default_payment_method: 'on_subscription',
+            },
+            expand: ['latest_invoice.payment_intent'],
           });
 
-          // Update the existing subscription record with new Stripe details
-          const currentPeriodEnd = unixSecondsToIso(newStripeSub.current_period_end);
-          const currentPeriodStart = unixSecondsToIso(newStripeSub.current_period_start);
+          logStep("Created Stripe subscription for 3DS", { 
+            subId: newStripeSub.id, 
+            status: newStripeSub.status 
+          });
 
-          await supabaseClient
-            .from('subscriptions')
-            .update({
-              payment_provider: 'stripe',
-              provider_subscription_id: newStripeSub.id,
-              status: newStripeSub.status === 'active' ? 'active' : newStripeSub.status,
-              current_period_start: currentPeriodStart,
-              current_period_end: currentPeriodEnd,
-              cancels_at: null,
-              paused_at: null,
-            })
-            .eq('id', subscriptionId);
+          // Extract client_secret for 3DS confirmation
+          const latestInvoice = newStripeSub.latest_invoice as any;
+          const paymentIntent = latestInvoice?.payment_intent as any;
+          const clientSecret = paymentIntent?.client_secret;
+          
+          // If subscription is already active (no 3DS needed), complete the switch immediately
+          if (newStripeSub.status === 'active') {
+            logStep("Subscription active immediately, completing switch");
+            
+            // Cancel PayPal subscription
+            const cancelResponse = await fetch(
+              `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+              {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ reason: "Switched to card payment" }),
+              }
+            );
 
-          result = { 
-            success: true, 
-            switched: true, 
-            newProvider: 'stripe',
-            stripeSubscriptionId: newStripeSub.id 
-          };
-          logStep("Switched from PayPal to Stripe", { stripeSubId: newStripeSub.id });
+            if (!cancelResponse.ok) {
+              logStep("Failed to cancel PayPal (non-blocking)", { error: await cancelResponse.text() });
+            }
+
+            // Update subscription record
+            const currentPeriodEnd = unixSecondsToIso(newStripeSub.current_period_end);
+            const currentPeriodStart = unixSecondsToIso(newStripeSub.current_period_start);
+
+            await supabaseClient
+              .from('subscriptions')
+              .update({
+                payment_provider: 'stripe',
+                provider_subscription_id: newStripeSub.id,
+                status: 'active',
+                current_period_start: currentPeriodStart,
+                current_period_end: currentPeriodEnd,
+                cancels_at: null,
+                paused_at: null,
+              })
+              .eq('id', subscriptionId);
+
+            result = { 
+              success: true, 
+              switched: true, 
+              newProvider: 'stripe',
+              stripeSubscriptionId: newStripeSub.id 
+            };
+          } else {
+            // Subscription requires 3DS confirmation
+            result = { 
+              success: true,
+              requiresConfirmation: true,
+              clientSecret: clientSecret,
+              stripeSubscriptionId: newStripeSub.id,
+              paymentIntentStatus: paymentIntent?.status,
+            };
+            logStep("3DS confirmation required", { 
+              stripeSubId: newStripeSub.id,
+              paymentIntentStatus: paymentIntent?.status 
+            });
+          }
           break;
         }
 

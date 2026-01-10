@@ -289,11 +289,41 @@ serve(async (req) => {
 
       if (error) throw error;
 
-      logStep("Subscriptions fetched", { count, returned: subscriptions?.length });
+      // Fetch profiles separately for user_ids that exist (same as orders)
+      const userIds = [...new Set((subscriptions || []).map(s => s.user_id).filter(Boolean))];
+      let profilesMap: Record<string, { full_name: string | null; first_name: string | null; last_name: string | null }> = {};
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+          .from('profiles')
+          .select('id, full_name, first_name, last_name')
+          .in('id', userIds);
+        
+        (profiles || []).forEach(p => {
+          profilesMap[p.id] = { full_name: p.full_name, first_name: p.first_name, last_name: p.last_name };
+        });
+      }
+
+      // Enrich subscriptions with customer names from profiles
+      const enrichedSubscriptions = (subscriptions || []).map(sub => {
+        let customerName = sub.customer_name;
+        const profile = sub.user_id ? profilesMap[sub.user_id] : null;
+        if (profile) {
+          const fromFullName = (profile.full_name || '').trim();
+          const fromParts = `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+          const bestName = fromFullName || fromParts;
+          if (bestName) {
+            customerName = bestName;
+          }
+        }
+        return { ...sub, customer_name: customerName };
+      });
+
+      logStep("Subscriptions fetched", { count, returned: enrichedSubscriptions.length });
 
       return new Response(
         JSON.stringify({ 
-          data: subscriptions, 
+          data: enrichedSubscriptions, 
           total: count,
           page,
           totalPages: Math.ceil((count || 0) / limit)
