@@ -952,6 +952,125 @@ serve(async (req) => {
           break;
         }
 
+        case 'switch_to_stripe': {
+          // Switch from PayPal to Stripe subscription
+          // 1. Cancel the PayPal subscription
+          // 2. Create a new Stripe subscription with the provided payment method
+
+          const { paymentMethodId } = data || {};
+          if (!paymentMethodId) {
+            throw new Error('Payment method ID is required for switching to Stripe');
+          }
+
+          // Get the product info to create new Stripe subscription
+          const { data: product } = await supabaseClient
+            .from('products')
+            .select('stripe_price_id, name')
+            .eq('id', subscription.product_id)
+            .single();
+
+          if (!product?.stripe_price_id) {
+            throw new Error('Product does not have a Stripe price configured');
+          }
+
+          // Get user info
+          const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', subscription.user_id)
+            .single();
+
+          if (!profile?.email) {
+            throw new Error('User email not found');
+          }
+
+          const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+            apiVersion: "2025-08-27.basil",
+          });
+
+          // Cancel the PayPal subscription immediately
+          const cancelResponse = await fetch(
+            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${access_token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ reason: "Switching to card payment" }),
+            }
+          );
+
+          if (!cancelResponse.ok) {
+            const cancelError = await cancelResponse.text();
+            logStep("Failed to cancel PayPal subscription", { error: cancelError });
+            // Continue anyway - we'll create the Stripe sub
+          }
+
+          logStep("PayPal subscription cancelled for switch to Stripe");
+
+          // Find or create Stripe customer
+          const customers = await stripe.customers.list({ email: profile.email, limit: 1 });
+          let customerId: string;
+          
+          if (customers.data.length > 0) {
+            customerId = customers.data[0].id;
+          } else {
+            const customer = await stripe.customers.create({
+              email: profile.email,
+              name: profile.full_name || undefined,
+            });
+            customerId = customer.id;
+          }
+
+          // Attach payment method to customer
+          await stripe.paymentMethods.attach(paymentMethodId, {
+            customer: customerId,
+          });
+
+          // Set as default payment method
+          await stripe.customers.update(customerId, {
+            invoice_settings: {
+              default_payment_method: paymentMethodId,
+            },
+          });
+
+          // Create new Stripe subscription
+          const newStripeSub = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{ price: product.stripe_price_id }],
+            default_payment_method: paymentMethodId,
+            payment_behavior: 'error_if_incomplete',
+            proration_behavior: 'none',
+          });
+
+          // Update the existing subscription record with new Stripe details
+          const currentPeriodEnd = unixSecondsToIso(newStripeSub.current_period_end);
+          const currentPeriodStart = unixSecondsToIso(newStripeSub.current_period_start);
+
+          await supabaseClient
+            .from('subscriptions')
+            .update({
+              payment_provider: 'stripe',
+              provider_subscription_id: newStripeSub.id,
+              status: newStripeSub.status === 'active' ? 'active' : newStripeSub.status,
+              current_period_start: currentPeriodStart,
+              current_period_end: currentPeriodEnd,
+              cancels_at: null,
+              paused_at: null,
+            })
+            .eq('id', subscriptionId);
+
+          result = { 
+            success: true, 
+            switched: true, 
+            newProvider: 'stripe',
+            stripeSubscriptionId: newStripeSub.id 
+          };
+          logStep("Switched from PayPal to Stripe", { stripeSubId: newStripeSub.id });
+          break;
+        }
+
         default:
           throw new Error(`Unknown action: ${action}`);
       }
