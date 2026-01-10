@@ -11,6 +11,16 @@ const logStep = (step: string, details?: any) => {
   console.log(`[MANAGE-SUBSCRIPTION] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// PayPal API base URL - use sandbox for testing, production for live
+// Check if PAYPAL_SANDBOX env var is set, or infer from Stripe key prefix
+const getPayPalBaseUrl = () => {
+  const useSandbox = Deno.env.get("PAYPAL_SANDBOX") === "true" || 
+    Deno.env.get("STRIPE_SECRET_KEY")?.startsWith("sk_test_");
+  return useSandbox 
+    ? "https://api-m.sandbox.paypal.com" 
+    : "https://api-m.paypal.com";
+};
+
 const unixSecondsToIso = (unixSeconds: unknown): string | null => {
   const n = Number(unixSeconds);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -537,7 +547,7 @@ serve(async (req) => {
           }
           
           const ppAuth = btoa(`${ppClientId}:${ppClientSecret}`);
-          const ppTokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+          const ppTokenResponse = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
             method: "POST",
             headers: {
               "Authorization": `Basic ${ppAuth}`,
@@ -549,7 +559,7 @@ serve(async (req) => {
           const { access_token: ppAccessToken } = await ppTokenResponse.json();
           
           // Create PayPal product
-          const ppProductResponse = await fetch("https://api-m.paypal.com/v1/catalogs/products", {
+          const ppProductResponse = await fetch(`${getPayPalBaseUrl()}/v1/catalogs/products`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${ppAccessToken}`,
@@ -605,7 +615,7 @@ serve(async (req) => {
             },
           };
           
-          const planResponse = await fetch("https://api-m.paypal.com/v1/billing/plans", {
+          const planResponse = await fetch(`${getPayPalBaseUrl()}/v1/billing/plans`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${ppAccessToken}`,
@@ -652,7 +662,7 @@ serve(async (req) => {
             },
           };
           
-          const ppSubResponse = await fetch("https://api-m.paypal.com/v1/billing/subscriptions", {
+          const ppSubResponse = await fetch(`${getPayPalBaseUrl()}/v1/billing/subscriptions`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${ppAccessToken}`,
@@ -713,7 +723,7 @@ serve(async (req) => {
           const ppClientSecret = Deno.env.get("PAYPAL_SECRET");
           const ppAuth = btoa(`${ppClientId}:${ppClientSecret}`);
           
-          const ppTokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+          const ppTokenResponse = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
             method: "POST",
             headers: {
               "Authorization": `Basic ${ppAuth}`,
@@ -726,7 +736,7 @@ serve(async (req) => {
           
           // Check PayPal subscription status
           const ppSubResponse = await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${ppSubIdToActivate}`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${ppSubIdToActivate}`,
             {
               headers: {
                 "Authorization": `Bearer ${ppAccessToken}`,
@@ -803,7 +813,7 @@ serve(async (req) => {
       const clientSecret = Deno.env.get("PAYPAL_SECRET");
       const auth = btoa(`${clientId}:${clientSecret}`);
 
-      const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+      const tokenResponse = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
         method: "POST",
         headers: {
           "Authorization": `Basic ${auth}`,
@@ -821,7 +831,7 @@ serve(async (req) => {
           // For PayPal, we'll cancel immediately but track it as pending
           // PayPal doesn't have native "cancel at period end"
           await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
             {
               method: "POST",
               headers: {
@@ -863,7 +873,7 @@ serve(async (req) => {
 
         case 'pause': {
           await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/suspend`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/suspend`,
             {
               method: "POST",
               headers: {
@@ -889,7 +899,7 @@ serve(async (req) => {
 
         case 'resume': {
           await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/activate`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/activate`,
             {
               method: "POST",
               headers: {
@@ -915,7 +925,7 @@ serve(async (req) => {
 
         case 'cancel_immediately': {
           await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
             {
               method: "POST",
               headers: {
@@ -960,7 +970,7 @@ serve(async (req) => {
           // PayPal doesn't support reactivating cancelled subscriptions
           // But we can reactivate suspended ones
           await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/activate`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/activate`,
             {
               method: "POST",
               headers: {
@@ -991,7 +1001,7 @@ serve(async (req) => {
           
           // First, get the current subscription to find the product_id from the plan
           const subDetailsResponse = await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}`,
             {
               method: "GET",
               headers: {
@@ -1010,7 +1020,7 @@ serve(async (req) => {
           
           // Get the current plan to find the product_id
           const planDetailsResponse = await fetch(
-            `https://api-m.paypal.com/v1/billing/plans/${currentPlanId}`,
+            `${getPayPalBaseUrl()}/v1/billing/plans/${currentPlanId}`,
             {
               method: "GET",
               headers: {
@@ -1067,7 +1077,7 @@ serve(async (req) => {
             },
           };
           
-          const newPlanResponse = await fetch("https://api-m.paypal.com/v1/billing/plans", {
+          const newPlanResponse = await fetch(`${getPayPalBaseUrl()}/v1/billing/plans`, {
             method: "POST",
             headers: {
               "Authorization": `Bearer ${access_token}`,
@@ -1087,7 +1097,7 @@ serve(async (req) => {
           
           // Revise the subscription to use the new plan
           const reviseResponse = await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/revise`,
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/revise`,
             {
               method: "POST",
               headers: {
@@ -1309,7 +1319,7 @@ serve(async (req) => {
             
             // Now cancel the PayPal subscription
             const cancelResponse = await fetch(
-              `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+              `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
               {
                 method: "POST",
                 headers: {
@@ -1501,7 +1511,7 @@ serve(async (req) => {
             
             // Cancel PayPal subscription
             const cancelResponse = await fetch(
-              `https://api-m.paypal.com/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
+              `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscription.provider_subscription_id}/cancel`,
               {
                 method: "POST",
                 headers: {

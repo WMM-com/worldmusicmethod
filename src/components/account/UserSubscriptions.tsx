@@ -95,6 +95,8 @@ function UpdatePaymentForm({
 
       if (isPayPalSubscription) {
         // Switching from PayPal to Stripe with 3DS/SCA support
+        toast.info('Attempting to update payment method...');
+        
         const { data, error: switchError } = await supabase.functions.invoke('manage-subscription', {
           body: {
             action: 'switch_to_stripe',
@@ -472,11 +474,38 @@ export function UserSubscriptions() {
                   <CardContent className="p-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-semibold">
                             {sub.products?.name || sub.product_name || 'Subscription'}
                           </h4>
                           {getStatusBadge(sub.status)}
+                          {/* Payment Provider Badge */}
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              sub.payment_provider === 'stripe' 
+                                ? 'text-purple-600 border-purple-300 bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30'
+                                : sub.payment_provider === 'paypal'
+                                ? 'text-blue-600 border-blue-300 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30'
+                                : ''
+                            }
+                          >
+                            {sub.payment_provider === 'stripe' ? (
+                              <>
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Card
+                              </>
+                            ) : sub.payment_provider === 'paypal' ? (
+                              <>
+                                <svg className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.77.77 0 0 1 .757-.644h6.756c2.332 0 4.018.603 5.018 1.794.466.556.78 1.186.945 1.87.167.692.188 1.518.062 2.455l-.013.088v.612l.478.244c.411.21.736.451.979.724.306.345.514.77.623 1.265.112.505.13 1.104.053 1.786-.09.794-.275 1.487-.551 2.06-.26.537-.603.984-1.019 1.326-.399.328-.88.577-1.43.738a6.906 6.906 0 0 1-1.874.248H14.69a.95.95 0 0 0-.938.802l-.038.217-.64 4.063-.03.155a.95.95 0 0 1-.938.802H7.076z"/>
+                                </svg>
+                                PayPal
+                              </>
+                            ) : (
+                              sub.payment_provider || 'Unknown'
+                            )}
+                          </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-4">
                           <span className="font-medium">

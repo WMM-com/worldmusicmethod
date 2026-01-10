@@ -11,6 +11,15 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-SUBSCRIPTION] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// PayPal API base URL - use sandbox for testing, production for live
+const getPayPalBaseUrl = () => {
+  const useSandbox = Deno.env.get("PAYPAL_SANDBOX") === "true" || 
+    Deno.env.get("STRIPE_SECRET_KEY")?.startsWith("sk_test_");
+  return useSandbox 
+    ? "https://api-m.sandbox.paypal.com" 
+    : "https://api-m.paypal.com";
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -262,7 +271,7 @@ serve(async (req) => {
       const auth = btoa(`${clientId}:${clientSecret}`);
 
       // Get access token
-      const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+      const tokenResponse = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
         method: "POST",
         headers: {
           "Authorization": `Basic ${auth}`,
@@ -289,7 +298,7 @@ serve(async (req) => {
       const paypalInterval = paypalIntervalMap[product.billing_interval || 'monthly'];
 
       // Create product in PayPal
-      const productResponse = await fetch("https://api-m.paypal.com/v1/catalogs/products", {
+      const productResponse = await fetch(`${getPayPalBaseUrl()}/v1/catalogs/products`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -367,7 +376,7 @@ serve(async (req) => {
         planPayload.billing_cycles[1].sequence = 2;
       }
 
-      const planResponse = await fetch("https://api-m.paypal.com/v1/billing/plans", {
+      const planResponse = await fetch(`${getPayPalBaseUrl()}/v1/billing/plans`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -407,7 +416,7 @@ serve(async (req) => {
       
       logStep("Creating PayPal subscription", { plan_id: plan.id, subscriber_email: email });
 
-      const subscriptionResponse = await fetch("https://api-m.paypal.com/v1/billing/subscriptions", {
+      const subscriptionResponse = await fetch(`${getPayPalBaseUrl()}/v1/billing/subscriptions`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,

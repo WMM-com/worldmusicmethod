@@ -10,6 +10,15 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ACTIVATE-PAYPAL-SUBSCRIPTION] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// PayPal API base URL - use sandbox for testing, production for live
+const getPayPalBaseUrl = () => {
+  const useSandbox = Deno.env.get("PAYPAL_SANDBOX") === "true" || 
+    Deno.env.get("STRIPE_SECRET_KEY")?.startsWith("sk_test_");
+  return useSandbox 
+    ? "https://api-m.sandbox.paypal.com" 
+    : "https://api-m.paypal.com";
+};
+
 type SubscriptionItem = {
   item_id: string;
   item_type: string;
@@ -53,7 +62,7 @@ serve(async (req) => {
     if (!clientId || !clientSecret) throw new Error("PayPal credentials not configured");
 
     const auth = btoa(`${clientId}:${clientSecret}`);
-    const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+    const tokenResponse = await fetch(`${getPayPalBaseUrl()}/v1/oauth2/token`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${auth}`,
@@ -72,7 +81,7 @@ serve(async (req) => {
 
     // Fetch subscription from PayPal
     const paypalSubRes = await fetch(
-      `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}`,
+      `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscriptionId}`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -359,7 +368,7 @@ serve(async (req) => {
           const txEnd = new Date();
 
           const txRes = await fetch(
-            `https://api-m.paypal.com/v1/billing/subscriptions/${subscriptionId}/transactions?start_time=${encodeURIComponent(
+            `${getPayPalBaseUrl()}/v1/billing/subscriptions/${subscriptionId}/transactions?start_time=${encodeURIComponent(
               txStart.toISOString()
             )}&end_time=${encodeURIComponent(txEnd.toISOString())}`,
             {
