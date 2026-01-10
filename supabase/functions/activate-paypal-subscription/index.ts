@@ -407,20 +407,53 @@ serve(async (req) => {
 
     await fetchPayPalTransactionDetails();
 
+    // Determine the actual amount charged for this order
+    // For trials, check if billing_info shows a trial payment
+    const billingInfo = paypalSub?.billing_info;
+    let actualAmountCharged = dbSub.amount; // Default to subscription amount
+    let actualCurrency = dbSub.currency || 'USD';
+    
+    // If we have transaction data, use that as the source of truth
+    if (netAmount !== null && paypalFee !== null) {
+      // Calculate from net + fee = gross
+      actualAmountCharged = (netAmount || 0) + (paypalFee || 0);
+      logStep("Using transaction amount", { actualAmountCharged, netAmount, paypalFee });
+    } else if (billingInfo?.last_payment) {
+      // Use last_payment from billing_info as fallback
+      const lastPaymentAmount = parseFloat(billingInfo.last_payment.amount?.value || "0");
+      if (lastPaymentAmount > 0) {
+        actualAmountCharged = lastPaymentAmount;
+        actualCurrency = billingInfo.last_payment.amount?.currency_code || actualCurrency;
+        logStep("Using billing_info.last_payment amount", { actualAmountCharged, actualCurrency });
+      }
+    }
+    
+    // For trial subscriptions, the first payment might be the trial amount, not the full amount
+    // Calculate coupon discount proportionally if applicable
+    const baseAmount = dbSub.amount || 0;
+    const couponDiscountValue = dbSub.coupon_discount || 0;
+    let orderCouponDiscount = 0;
+    
+    if (couponDiscountValue > 0 && baseAmount > 0) {
+      // Proportional discount based on what was actually charged
+      const discountRatio = couponDiscountValue / baseAmount;
+      orderCouponDiscount = actualAmountCharged * discountRatio;
+    }
+
     if (!existingOrder) {
       const { error: orderError } = await supabaseClient.from("orders").insert({
         user_id: userId,
         email,
         product_id: dbSub.product_id,
-        amount: dbSub.amount,
-        currency: dbSub.currency,
+        amount: actualAmountCharged,
+        currency: actualCurrency.toUpperCase(),
         payment_provider: "paypal",
         provider_payment_id: providerPaymentIdForOrder,
         status: "completed",
         customer_name: customerName,
         subscription_id: dbSub.id,
         coupon_code: dbSub.coupon_code,
-        coupon_discount: dbSub.coupon_discount,
+        coupon_discount: orderCouponDiscount > 0 ? orderCouponDiscount : null,
         paypal_fee: paypalFee,
         net_amount: netAmount,
       });

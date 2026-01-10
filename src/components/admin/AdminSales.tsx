@@ -734,7 +734,7 @@ export function AdminSales() {
                       return (
                         <TableRow key={sub.id}>
                           <TableCell className="text-sm whitespace-nowrap">
-                            {format(new Date(sub.created_at), 'MMM d, yyyy')}
+                            {format(new Date(sub.created_at), 'MMM d, yyyy HH:mm')}
                           </TableCell>
                           <TableCell>
                             <div>
@@ -774,9 +774,9 @@ export function AdminSales() {
                               </div>
                             ) : '-'}
                           </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-sm whitespace-nowrap">
                           {sub.current_period_end
-                            ? format(new Date(sub.current_period_end), 'MMM d, yyyy')
+                            ? format(new Date(sub.current_period_end), 'MMM d, yyyy HH:mm')
                             : '-'}
                         </TableCell>
                         <TableCell>
