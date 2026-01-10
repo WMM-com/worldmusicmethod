@@ -965,12 +965,12 @@ serve(async (req) => {
           // Get the product info to create new Stripe subscription
           const { data: product } = await supabaseClient
             .from('products')
-            .select('stripe_price_id, name')
+            .select('name, billing_interval')
             .eq('id', subscription.product_id)
             .single();
 
-          if (!product?.stripe_price_id) {
-            throw new Error('Product does not have a Stripe price configured');
+          if (!product) {
+            throw new Error('Product not found');
           }
 
           // Get user info
@@ -1035,10 +1035,66 @@ serve(async (req) => {
             },
           });
 
+          // Create or find Stripe price dynamically (same logic as create-subscription)
+          const subCurrency = (subscription.currency || 'USD').toLowerCase();
+          const subAmount = subscription.amount || 0;
+          const priceAmount = Math.round(subAmount * 100);
+          
+          // Map interval
+          const intervalMap: Record<string, 'day' | 'week' | 'month' | 'year'> = {
+            'daily': 'day',
+            'weekly': 'week',
+            'monthly': 'month',
+            'annual': 'year',
+            'yearly': 'year',
+          };
+          const stripeInterval = intervalMap[subscription.interval || product.billing_interval || 'monthly'] || 'month';
+          
+          // Build lookup key
+          const lookupKey = `sub_${subscription.product_id}_${stripeInterval}_${subCurrency}_${priceAmount}`;
+          
+          // Try to find existing price
+          let priceId: string | null = null;
+          const existingPrices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
+          
+          if (existingPrices.data.length > 0) {
+            priceId = existingPrices.data[0].id;
+            logStep("Found existing Stripe price", { priceId });
+          } else {
+            // Find or create Stripe product
+            const stripeProducts = await stripe.products.list({ limit: 100 });
+            const existingStripeProduct = stripeProducts.data.find((p: any) =>
+              p.metadata?.supabase_product_id === subscription.product_id
+            );
+
+            let stripeProductId: string;
+            if (existingStripeProduct) {
+              stripeProductId = existingStripeProduct.id;
+            } else {
+              const newProduct = await stripe.products.create({
+                name: product.name,
+                metadata: { supabase_product_id: subscription.product_id },
+              });
+              stripeProductId = newProduct.id;
+              logStep("Created Stripe product", { stripeProductId });
+            }
+
+            // Create price
+            const newPrice = await stripe.prices.create({
+              product: stripeProductId,
+              unit_amount: priceAmount,
+              currency: subCurrency,
+              recurring: { interval: stripeInterval },
+              lookup_key: lookupKey,
+            });
+            priceId = newPrice.id;
+            logStep("Created Stripe price", { priceId, amount: priceAmount, currency: subCurrency });
+          }
+
           // Create new Stripe subscription
           const newStripeSub = await stripe.subscriptions.create({
             customer: customerId,
-            items: [{ price: product.stripe_price_id }],
+            items: [{ price: priceId }],
             default_payment_method: paymentMethodId,
             payment_behavior: 'error_if_incomplete',
             proration_behavior: 'none',
