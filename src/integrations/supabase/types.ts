@@ -3748,6 +3748,7 @@ export type Database = {
           interval: string | null
           paused_at: string | null
           payment_provider: string
+          pending_paypal_subscription_id: string | null
           product_id: string
           product_name: string | null
           provider_subscription_id: string | null
@@ -3773,6 +3774,7 @@ export type Database = {
           interval?: string | null
           paused_at?: string | null
           payment_provider: string
+          pending_paypal_subscription_id?: string | null
           product_id: string
           product_name?: string | null
           provider_subscription_id?: string | null
@@ -3798,6 +3800,7 @@ export type Database = {
           interval?: string | null
           paused_at?: string | null
           payment_provider?: string
+          pending_paypal_subscription_id?: string | null
           product_id?: string
           product_name?: string | null
           provider_subscription_id?: string | null

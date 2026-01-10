@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { format } from 'date-fns';
-import { Loader2, RefreshCw, X, RotateCcw, Calendar, DollarSign, CreditCard } from 'lucide-react';
+import { Loader2, RefreshCw, X, RotateCcw, Calendar, DollarSign, CreditCard, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { loadStripe } from '@stripe/stripe-js';
@@ -216,12 +217,14 @@ function UpdatePaymentForm({
 export function UserSubscriptions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [priceDialogOpen, setPriceDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
   const [newPrice, setNewPrice] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null);
+  const [isSwitchingToPaypal, setIsSwitchingToPaypal] = useState(false);
 
   // Fetch Stripe publishable key
   const { data: stripeKeyData } = useQuery({
@@ -235,11 +238,59 @@ export function UserSubscriptions() {
   });
 
   // Initialize Stripe
-  useState(() => {
+  useEffect(() => {
     if (stripeKeyData?.publishableKey) {
       setStripePromise(loadStripe(stripeKeyData.publishableKey));
     }
-  });
+  }, [stripeKeyData?.publishableKey]);
+
+  // Handle PayPal switch return
+  useEffect(() => {
+    const paypalSwitch = searchParams.get('paypal_switch');
+    const subId = searchParams.get('sub_id');
+    
+    if (paypalSwitch === 'success' && subId) {
+      // Confirm the switch
+      const confirmSwitch = async () => {
+        try {
+          toast.info('Confirming payment method switch...');
+          const { data, error } = await supabase.functions.invoke('manage-subscription', {
+            body: {
+              action: 'confirm_paypal_switch',
+              subscriptionId: subId,
+            }
+          });
+          
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          
+          if (data?.switched) {
+            toast.success('Payment method switched to PayPal successfully!');
+            queryClient.invalidateQueries({ queryKey: ['user-subscriptions'] });
+          } else if (data?.requiresApproval) {
+            toast.error('Please complete the PayPal approval first');
+            if (data.approveUrl) {
+              window.open(data.approveUrl, '_blank');
+            }
+          }
+        } catch (err: any) {
+          console.error('PayPal switch confirmation error:', err);
+          toast.error(err.message || 'Failed to confirm payment method switch');
+        }
+        
+        // Clear URL params
+        searchParams.delete('paypal_switch');
+        searchParams.delete('sub_id');
+        setSearchParams(searchParams);
+      };
+      
+      confirmSwitch();
+    } else if (paypalSwitch === 'cancelled') {
+      toast.info('PayPal switch was cancelled');
+      searchParams.delete('paypal_switch');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams, queryClient]);
 
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['user-subscriptions', user?.id],
@@ -314,7 +365,8 @@ export function UserSubscriptions() {
 
   const openPaymentDialog = (sub: any) => {
     setSelectedSubscription(sub);
-    setPaymentMethod(sub.payment_provider === 'paypal' ? 'paypal' : 'stripe');
+    // Default to showing card option (for switching from PayPal or updating card)
+    setPaymentMethod('stripe');
     setPaymentDialogOpen(true);
   };
 
@@ -623,29 +675,88 @@ export function UserSubscriptions() {
               {/* PayPal option */}
               {paymentMethod === 'paypal' && (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    To update your PayPal payment method, you'll need to manage it through your PayPal account. Click below to open PayPal in a new window.
-                  </p>
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      onClick={() => {
-                        // Open PayPal subscription management in new window
-                        const paypalSubId = selectedSubscription?.provider_subscription_id;
-                        if (paypalSubId) {
-                          window.open(`https://www.paypal.com/myaccount/autopay/connect/${paypalSubId}`, '_blank', 'width=600,height=700');
-                          toast.info('PayPal opened in a new window. Update your payment method there.');
-                          setPaymentDialogOpen(false);
-                        } else {
-                          toast.error('Unable to find PayPal subscription details');
-                        }
-                      }}
-                    >
-                      Open PayPal Settings
-                    </Button>
-                  </div>
+                  {selectedSubscription?.payment_provider === 'stripe' ? (
+                    // Switching from Stripe to PayPal
+                    <>
+                      <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md text-sm text-amber-800 dark:text-amber-200">
+                        <strong>Note:</strong> Switching to PayPal will cancel your card subscription and create a new PayPal subscription. You'll be redirected to PayPal to authorize the new payment method.
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          disabled={isSwitchingToPaypal}
+                          onClick={async () => {
+                            setIsSwitchingToPaypal(true);
+                            try {
+                              const { data, error } = await supabase.functions.invoke('manage-subscription', {
+                                body: {
+                                  action: 'switch_to_paypal',
+                                  subscriptionId: selectedSubscription.id,
+                                  data: { returnUrl: window.location.origin }
+                                }
+                              });
+                              
+                              if (error) throw error;
+                              if (data?.error) throw new Error(data.error);
+                              
+                              if (data?.approveUrl) {
+                                toast.info('Redirecting to PayPal for authorization...');
+                                setPaymentDialogOpen(false);
+                                window.location.href = data.approveUrl;
+                              } else {
+                                throw new Error('No PayPal approval URL received');
+                              }
+                            } catch (err: any) {
+                              console.error('Switch to PayPal error:', err);
+                              toast.error(err.message || 'Failed to switch to PayPal');
+                            } finally {
+                              setIsSwitchingToPaypal(false);
+                            }
+                          }}
+                        >
+                          {isSwitchingToPaypal ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Preparing...
+                            </>
+                          ) : (
+                            <>
+                              <ArrowRightLeft className="h-4 w-4 mr-2" />
+                              Switch to PayPal
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    // Already on PayPal - update payment method
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        To update your PayPal payment method, you'll need to manage it through your PayPal account. Click below to open PayPal in a new window.
+                      </p>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            const paypalSubId = selectedSubscription?.provider_subscription_id;
+                            if (paypalSubId) {
+                              window.open(`https://www.paypal.com/myaccount/autopay/connect/${paypalSubId}`, '_blank', 'width=600,height=700');
+                              toast.info('PayPal opened in a new window. Update your payment method there.');
+                              setPaymentDialogOpen(false);
+                            } else {
+                              toast.error('Unable to find PayPal subscription details');
+                            }
+                          }}
+                        >
+                          Open PayPal Settings
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
