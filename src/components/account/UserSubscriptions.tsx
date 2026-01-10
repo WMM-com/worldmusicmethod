@@ -113,28 +113,63 @@ function UpdatePaymentForm({
           const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
           
           if (confirmError) {
-            // If 3DS fails, we should clean up the pending Stripe subscription
-            // For now, throw the error - the subscription stays incomplete and will be cleaned up by Stripe
+            // If 3DS fails, the subscription stays incomplete and will be cleaned up by Stripe
             throw new Error(confirmError.message || '3D Secure verification failed');
           }
           
-          if (paymentIntent?.status === 'succeeded') {
-            // 3DS succeeded - now confirm the switch on the backend
-            const { data: confirmData, error: confirmSwitchError } = await supabase.functions.invoke('manage-subscription', {
-              body: {
-                action: 'switch_to_stripe',
-                subscriptionId: subscription.id,
-                data: { 
-                  confirmSwitch: true, 
-                  stripeSubscriptionId: data.stripeSubscriptionId 
+          // After 3DS, payment intent status can be 'succeeded' or 'requires_capture'
+          // For subscriptions, it typically succeeds immediately
+          if (paymentIntent?.status === 'succeeded' || paymentIntent?.status === 'requires_capture') {
+            // 3DS succeeded - now confirm the switch on the backend with retry logic
+            let confirmData = null;
+            let confirmSwitchError = null;
+            const maxRetries = 3;
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+              try {
+                const response = await supabase.functions.invoke('manage-subscription', {
+                  body: {
+                    action: 'switch_to_stripe',
+                    subscriptionId: subscription.id,
+                    data: { 
+                      confirmSwitch: true, 
+                      stripeSubscriptionId: data.stripeSubscriptionId 
+                    }
+                  }
+                });
+                
+                if (!response.error && !response.data?.error) {
+                  confirmData = response.data;
+                  confirmSwitchError = null;
+                  break;
+                }
+                
+                confirmSwitchError = response.error || new Error(response.data?.error);
+                console.warn(`[UserSubscriptions] Confirm switch attempt ${attempt + 1} failed:`, confirmSwitchError);
+                
+                if (attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+                }
+              } catch (err) {
+                confirmSwitchError = err;
+                if (attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
                 }
               }
-            });
+            }
             
-            if (confirmSwitchError) throw confirmSwitchError;
-            if (confirmData?.error) throw new Error(confirmData.error);
+            if (confirmSwitchError) {
+              console.error('[UserSubscriptions] Confirm switch failed after retries:', confirmSwitchError);
+              // Payment succeeded, but confirmation failed - show softer error
+              toast.warning('Card verified! Please refresh if your subscription doesn\'t update.');
+              onSuccess();
+              return;
+            }
             
             toast.success('Payment method switched to card successfully!');
+          } else if (paymentIntent?.status === 'requires_action') {
+            // Shouldn't happen after confirmCardPayment, but handle it
+            throw new Error('Additional authentication required. Please try again.');
           } else {
             throw new Error(`Payment not completed: ${paymentIntent?.status}`);
           }

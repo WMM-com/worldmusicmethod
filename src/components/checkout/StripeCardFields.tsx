@@ -196,11 +196,48 @@ export function StripeCardFields({
 
       if (paymentIntent?.status === 'succeeded') {
         console.log('[StripeCardFields] Payment succeeded, completing...');
-        const { data: completeData, error: completeError } = await supabase.functions.invoke('complete-stripe-payment', {
-          body: { paymentIntentId: paymentIntent.id, password },
-        });
+        
+        // Retry complete-stripe-payment with exponential backoff
+        let completeData = null;
+        let completeError = null;
+        const maxRetries = 3;
+        
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          try {
+            const { data, error } = await supabase.functions.invoke('complete-stripe-payment', {
+              body: { paymentIntentId: paymentIntent.id, password },
+            });
+            
+            if (!error) {
+              completeData = data;
+              completeError = null;
+              break;
+            }
+            
+            completeError = error;
+            console.warn(`[StripeCardFields] complete-stripe-payment attempt ${attempt + 1} failed:`, error);
+            
+            // Wait before retry (1s, 2s, 4s)
+            if (attempt < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            }
+          } catch (err) {
+            completeError = err;
+            console.warn(`[StripeCardFields] complete-stripe-payment attempt ${attempt + 1} exception:`, err);
+            if (attempt < maxRetries - 1) {
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            }
+          }
+        }
 
-        if (completeError) throw completeError;
+        if (completeError) {
+          // Payment succeeded in Stripe, but our backend processing failed
+          // Show a softer error - the payment went through
+          console.error('[StripeCardFields] complete-stripe-payment failed after retries:', completeError);
+          toast.warning('Payment successful! Please refresh or contact support if your purchase doesn\'t appear.');
+          onSuccess();
+          return;
+        }
 
         // If new user was created, sign them in automatically
         if (completeData?.isNewUser && completeData?.email && password) {
@@ -235,6 +272,10 @@ export function StripeCardFields({
 
         toast.success('Payment successful!');
         onSuccess();
+      } else if (paymentIntent?.status === 'requires_action') {
+        // This shouldn't happen after confirmCardPayment, but handle it
+        console.warn('[StripeCardFields] Payment still requires action after confirmation');
+        throw new Error('Additional authentication required. Please try again.');
       }
     } catch (err: any) {
       console.error('[StripeCardFields] Payment error:', err);
