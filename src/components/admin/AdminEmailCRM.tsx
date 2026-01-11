@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tag, Mail, FileText, FormInput, ShoppingCart, ListIcon, Send } from 'lucide-react';
+import { Tag, Mail, FileText, FormInput, ShoppingCart, ListIcon, Send, ScrollText } from 'lucide-react';
 import { AdminTags } from './email-crm/AdminTags';
 import { AdminEmailTemplates } from './email-crm/AdminEmailTemplates';
 import { AdminSequences } from './email-crm/AdminSequences';
@@ -7,6 +7,7 @@ import { AdminOptinForms } from './email-crm/AdminOptinForms';
 import { AdminCartAbandonment } from './email-crm/AdminCartAbandonment';
 import { AdminLists } from './email-crm/AdminLists';
 import { AdminCampaigns } from './email-crm/AdminCampaigns';
+import { AdminEmailLogs } from './email-crm/AdminEmailLogs';
 
 export function AdminEmailCRM() {
   return (
@@ -41,6 +42,10 @@ export function AdminEmailCRM() {
             <ShoppingCart className="h-4 w-4" />
             Cart Abandonment
           </TabsTrigger>
+          <TabsTrigger value="logs" className="gap-2">
+            <ScrollText className="h-4 w-4" />
+            Email Logs
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns">
@@ -63,6 +68,9 @@ export function AdminEmailCRM() {
         </TabsContent>
         <TabsContent value="cart">
           <AdminCartAbandonment />
+        </TabsContent>
+        <TabsContent value="logs">
+          <AdminEmailLogs />
         </TabsContent>
       </Tabs>
     </div>

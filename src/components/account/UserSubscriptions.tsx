@@ -176,8 +176,11 @@ function UpdatePaymentForm({
             throw new Error(`Payment not completed: ${paymentIntent?.status}`);
           }
         } else if (data?.switched) {
-          // No 3DS needed, switch completed immediately
-          toast.success('Payment method switched to card. Your PayPal subscription has been cancelled.');
+          // No 3DS needed, switch completed immediately (e.g., during trial)
+          const statusMsg = data.status === 'trialing' 
+            ? 'Payment method switched to card. Your trial continues and PayPal subscription has been cancelled.'
+            : 'Payment method switched to card. Your PayPal subscription has been cancelled.';
+          toast.success(statusMsg);
         }
       } else {
         // Just update the Stripe payment method
