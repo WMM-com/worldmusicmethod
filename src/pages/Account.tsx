@@ -21,16 +21,16 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CalendarSettings } from '@/components/settings/CalendarSettings';
+
 import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
 import { 
-  User, Bell, ShoppingBag, Calendar, Lock, AlertTriangle, Trash2, 
-  AtSign, Eye, Settings, ChevronRight
+  User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
+  AtSign, Eye, EyeOff, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type Section = 'profile' | 'orders' | 'notifications' | 'calendar' | 'security';
+type Section = 'profile' | 'orders' | 'notifications' | 'security';
 
 export default function Account() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -47,6 +47,7 @@ export default function Account() {
     username: '',
     email: '',
     display_name_preference: 'full_name',
+    is_public: false,
   });
 
   // Password form
@@ -98,6 +99,7 @@ export default function Account() {
         username: (profile as any).username || '',
         email: profile.email || '',
         display_name_preference: (profile as any).display_name_preference || 'full_name',
+        is_public: (profile as any).is_public ?? false,
       });
       setMessagePrivacy(profile.message_privacy || 'community');
       setNotifications({
@@ -121,6 +123,7 @@ export default function Account() {
       full_name: `${form.first_name} ${form.last_name}`.trim(),
       username: form.username || null,
       display_name_preference: form.display_name_preference,
+      is_public: form.is_public,
     } as any);
     
     if (error) {
@@ -233,7 +236,6 @@ export default function Account() {
     { id: 'profile', label: 'Profile & Display', icon: User },
     { id: 'orders', label: 'Orders & Subscriptions', icon: ShoppingBag },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'calendar', label: 'Calendar Sync', icon: Calendar },
     { id: 'security', label: 'Security', icon: Lock },
   ];
 
@@ -304,15 +306,15 @@ export default function Account() {
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <AtSign className="h-4 w-4" />
-                          Username
+                          Username / Display Name
                         </Label>
                         <Input 
                           value={form.username} 
-                          onChange={(e) => setForm({...form, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})} 
-                          placeholder="your_username"
+                          onChange={(e) => setForm({...form, username: e.target.value})} 
+                          placeholder="Your username or band name"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Letters, numbers, and underscores only. Used for @mentions.
+                          Can include capitals, spaces, and special characters. Used for @mentions.
                         </p>
                       </div>
                     </CardContent>
@@ -358,6 +360,35 @@ export default function Account() {
                       
                       <Button onClick={handleSaveProfile} disabled={saving}>
                         {saving ? 'Saving...' : 'Save Profile'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {form.is_public ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                        Profile Visibility
+                      </CardTitle>
+                      <CardDescription>Control who can see your profile</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label>Make Profile Public</Label>
+                          <p className="text-sm text-muted-foreground">
+                            {form.is_public 
+                              ? 'Your profile is visible to other community members' 
+                              : 'Your profile is hidden from other community members'}
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={form.is_public} 
+                          onCheckedChange={(v) => setForm({...form, is_public: v})}
+                        />
+                      </div>
+                      <Button onClick={handleSaveProfile} disabled={saving} variant="outline">
+                        {saving ? 'Saving...' : 'Save Visibility'}
                       </Button>
                     </CardContent>
                   </Card>
@@ -517,10 +548,7 @@ export default function Account() {
                 </Card>
               )}
 
-              {/* Calendar Section */}
-              {currentSection === 'calendar' && (
-                <CalendarSettings />
-              )}
+              {/* Security Section */}
 
               {/* Security Section */}
               {currentSection === 'security' && (

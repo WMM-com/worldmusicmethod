@@ -17,7 +17,7 @@ import Events from "./pages/Events";
 import Invoices from "./pages/Invoices";
 import Finances from "./pages/Finances";
 import Expenses from "./pages/Expenses";
-import Settings from "./pages/Settings";
+
 import LeftBrainSettings from "./pages/LeftBrainSettings";
 import SharedWithMe from "./pages/SharedWithMe";
 

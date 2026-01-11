@@ -168,9 +168,9 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                     <BookOpen className="mr-2 h-4 w-4" />
                     My Courses
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  <DropdownMenuItem onClick={() => navigate('/account')}>
                     <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    My Account
                   </DropdownMenuItem>
                   {hasAdminAccess && (
                     <>
