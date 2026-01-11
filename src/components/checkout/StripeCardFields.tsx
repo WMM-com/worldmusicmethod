@@ -62,6 +62,9 @@ export function StripeCardFields({
 
   // Debug state
   const [mounted, setMounted] = useState({ number: false, expiry: false, cvc: false });
+  
+  // Card validation state - track if elements are complete and error-free
+  const [cardComplete, setCardComplete] = useState({ number: false, expiry: false, cvc: false });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,7 +289,9 @@ export function StripeCardFields({
     }
   };
 
-  const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8));
+  // Form is valid when: Stripe ready + email valid + (logged in OR password valid) + all card fields complete
+  const isCardValid = cardComplete.number && cardComplete.expiry && cardComplete.cvc;
+  const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8)) && isCardValid;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -322,6 +327,7 @@ export function StripeCardFields({
                 console.log('[StripeCardFields] CardNumberElement ready');
                 setMounted((prev) => ({ ...prev, number: true }));
               }}
+              onChange={(e) => setCardComplete((prev) => ({ ...prev, number: e.complete && !e.error }))}
             />
           </div>
           {/* Expiry */}
@@ -335,6 +341,7 @@ export function StripeCardFields({
                 console.log('[StripeCardFields] CardExpiryElement ready');
                 setMounted((prev) => ({ ...prev, expiry: true }));
               }}
+              onChange={(e) => setCardComplete((prev) => ({ ...prev, expiry: e.complete && !e.error }))}
             />
           </div>
           {/* CVC */}
@@ -348,6 +355,7 @@ export function StripeCardFields({
                 console.log('[StripeCardFields] CardCvcElement ready');
                 setMounted((prev) => ({ ...prev, cvc: true }));
               }}
+              onChange={(e) => setCardComplete((prev) => ({ ...prev, cvc: e.complete && !e.error }))}
             />
           </div>
         </div>

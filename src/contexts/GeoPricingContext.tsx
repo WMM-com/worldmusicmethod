@@ -106,13 +106,14 @@ const regionPricing: Record<PricingRegion, { discount: number; currency: string 
 };
 
 const CACHE_KEY = 'geo_pricing_cache';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_DURATION = 60 * 60 * 1000; // 1 hour (reduced from 24h for more responsive VPN changes)
 
 interface CachedGeoData {
   region: PricingRegion;
   countryCode: string;
   countryName: string;
   timestamp: number;
+  ipHash?: string; // Store hash of IP-based data to detect changes
 }
 
 function getCachedGeoData(): CachedGeoData | null {
@@ -123,7 +124,7 @@ function getCachedGeoData(): CachedGeoData | null {
     const data: CachedGeoData = JSON.parse(cached);
     const now = Date.now();
     
-    // Check if cache is still valid (24 hours)
+    // Check if cache is still valid (1 hour)
     if (now - data.timestamp < CACHE_DURATION) {
       return data;
     }
@@ -133,6 +134,15 @@ function getCachedGeoData(): CachedGeoData | null {
     return null;
   } catch {
     return null;
+  }
+}
+
+// Clear geo cache - useful when user wants to refresh location
+export function clearGeoPricingCache(): void {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // Ignore storage errors
   }
 }
 
@@ -158,25 +168,31 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If we already have cached data, skip the API call entirely
-    if (cachedData) {
-      console.log('[GeoPricing] Using cached data:', cachedData.countryCode, cachedData.region);
-      return;
-    }
-
     const detectRegion = async () => {
       const locale = navigator.language || 'en-US';
+      
+      // Even if we have cache, do a background check to detect IP changes (VPN)
+      // But don't show loading state if we have cached data
       
       // Try to detect country from IP using a free geo API
       try {
         const response = await fetch('https://ipapi.co/json/', { 
-          signal: AbortSignal.timeout(2000) // Reduced timeout
+          signal: AbortSignal.timeout(3000)
         });
         if (response.ok) {
           const data = await response.json();
           const code = data.country_code;
           const name = data.country_name || code;
-          console.log('[GeoPricing] Detected country:', code, name);
+          
+          // Check if IP location differs from cache (VPN changed)
+          if (cachedData && cachedData.countryCode !== code) {
+            console.log('[GeoPricing] IP location changed from', cachedData.countryCode, 'to', code);
+          } else if (cachedData) {
+            console.log('[GeoPricing] IP matches cache:', code);
+            return; // No change needed
+          } else {
+            console.log('[GeoPricing] Detected country:', code, name);
+          }
           
           // Use local fallback first (instant), then update from DB if different
           let detectedRegion: PricingRegion = countryToRegion[code] || 'default';
@@ -186,7 +202,7 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
           setRegion(detectedRegion);
           setIsLoading(false);
           
-          // Cache immediately with local mapping
+          // Cache with new data
           setCachedGeoData({
             region: detectedRegion,
             countryCode: code,
@@ -217,17 +233,19 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
         console.warn('[GeoPricing] IP detection failed, using locale fallback:', err);
       }
       
-      // Fallback to locale-based detection
-      const localeCountry = locale.split('-')[1]?.toUpperCase();
-      if (localeCountry && countryToRegion[localeCountry]) {
-        console.log('[GeoPricing] Using locale fallback:', localeCountry);
-        setCountryCode(localeCountry);
-        setRegion(countryToRegion[localeCountry]);
-        setCachedGeoData({
-          region: countryToRegion[localeCountry],
-          countryCode: localeCountry,
-          countryName: localeCountry,
-        });
+      // Only use locale fallback if no cached data
+      if (!cachedData) {
+        const localeCountry = locale.split('-')[1]?.toUpperCase();
+        if (localeCountry && countryToRegion[localeCountry]) {
+          console.log('[GeoPricing] Using locale fallback:', localeCountry);
+          setCountryCode(localeCountry);
+          setRegion(countryToRegion[localeCountry]);
+          setCachedGeoData({
+            region: countryToRegion[localeCountry],
+            countryCode: localeCountry,
+            countryName: localeCountry,
+          });
+        }
       }
       
       setIsLoading(false);
