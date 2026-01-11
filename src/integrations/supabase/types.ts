@@ -3364,6 +3364,7 @@ export type Database = {
           default_currency: string | null
           default_late_payment_message_id: string | null
           default_thank_you_message_id: string | null
+          display_name_preference: string | null
           email: string
           email_verified: boolean | null
           email_verified_at: string | null
@@ -3412,6 +3413,7 @@ export type Database = {
           default_currency?: string | null
           default_late_payment_message_id?: string | null
           default_thank_you_message_id?: string | null
+          display_name_preference?: string | null
           email: string
           email_verified?: boolean | null
           email_verified_at?: string | null
@@ -3460,6 +3462,7 @@ export type Database = {
           default_currency?: string | null
           default_late_payment_message_id?: string | null
           default_thank_you_message_id?: string | null
+          display_name_preference?: string | null
           email?: string
           email_verified?: boolean | null
           email_verified_at?: string | null

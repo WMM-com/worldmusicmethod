@@ -103,7 +103,7 @@ function AppContent() {
         <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
         <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/settings" element={<Navigate to="/account" replace />} />
         <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
         <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
