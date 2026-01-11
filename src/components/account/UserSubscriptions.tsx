@@ -538,7 +538,7 @@ export function UserSubscriptions() {
 
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* Change Price button - only for PWYF subscriptions */}
-                        {sub.status === 'active' && sub.products?.pwyf_enabled && (
+                        {(sub.status === 'active' || sub.status === 'trialing') && sub.products?.pwyf_enabled && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -549,8 +549,8 @@ export function UserSubscriptions() {
                           </Button>
                         )}
 
-                        {/* Update Payment Method button - for active/past_due subscriptions */}
-                        {(sub.status === 'active' || sub.status === 'past_due') && (
+                        {/* Update Payment Method button - for active/trialing/past_due subscriptions */}
+                        {(sub.status === 'active' || sub.status === 'trialing' || sub.status === 'past_due') && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -561,7 +561,7 @@ export function UserSubscriptions() {
                           </Button>
                         )}
 
-                        {sub.status === 'active' && (
+                        {(sub.status === 'active' || sub.status === 'trialing') && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">
@@ -573,8 +573,10 @@ export function UserSubscriptions() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Your subscription will remain active until the end of your current billing period.
-                                  After that, you will lose access to the included content.
+                                  {sub.status === 'trialing' 
+                                    ? 'Your trial will end immediately and you will lose access to the included content.'
+                                    : 'Your subscription will remain active until the end of your current billing period. After that, you will lose access to the included content.'
+                                  }
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

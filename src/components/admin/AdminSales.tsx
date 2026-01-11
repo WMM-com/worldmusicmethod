@@ -799,7 +799,7 @@ export function AdminSales() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
-                            {sub.status === 'active' && (
+                            {(sub.status === 'active' || sub.status === 'trialing') && (
                               <>
                                 <Button
                                   variant="ghost"
