@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Shield, Users, Pencil, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Users, Pencil, RefreshCw, Trash2, Upload, Tag, X, Plus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
@@ -46,6 +46,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type AppRole = 'user' | 'admin';
 
@@ -72,6 +78,12 @@ export function AdminUsers() {
   const [importJsonData, setImportJsonData] = useState('');
   const [importPreview, setImportPreview] = useState<any>(null);
   const [importing, setImporting] = useState(false);
+
+  // Tags management state
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [tagsUserId, setTagsUserId] = useState<string | null>(null);
+  const [tagsUserEmail, setTagsUserEmail] = useState<string>('');
+  const [tagSearch, setTagSearch] = useState('');
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', searchQuery],
@@ -104,7 +116,7 @@ export function AdminUsers() {
   const { data: courses } = useQuery({
     queryKey: ['admin-courses-list'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('courses').select('id, title').order('title');
+      const { data, error } = await supabase.from('courses').select('id, title, tags').order('title');
       if (error) throw error;
       return data;
     },
@@ -127,6 +139,31 @@ export function AdminUsers() {
       const { data, error } = await supabase
         .from('course_enrollments')
         .select('user_id, course_id, courses(title)');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch all available tags
+  const { data: allTags } = useQuery({
+    queryKey: ['admin-email-tags'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('email_tags')
+        .select('*')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch user tags
+  const { data: userTags } = useQuery({
+    queryKey: ['admin-user-tags'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_tags')
+        .select('*, email_tags(id, name)');
       if (error) throw error;
       return data;
     },
@@ -208,6 +245,49 @@ export function AdminUsers() {
     },
   });
 
+  // Add tag to user mutation
+  const addTagMutation = useMutation({
+    mutationFn: async ({ userId, email, tagId }: { userId: string; email: string; tagId: string }) => {
+      const { error } = await supabase.from('user_tags').insert({
+        user_id: userId,
+        email: email,
+        tag_id: tagId,
+        source: 'admin',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user-tags'] });
+      toast.success('Tag added');
+    },
+    onError: (error: any) => {
+      if (error.message?.includes('duplicate') || error.code === '23505') {
+        toast.error('Tag already assigned to this user');
+      } else {
+        toast.error(error.message || 'Failed to add tag');
+      }
+    },
+  });
+
+  // Remove tag from user mutation
+  const removeTagMutation = useMutation({
+    mutationFn: async ({ userId, tagId }: { userId: string; tagId: string }) => {
+      const { error } = await supabase
+        .from('user_tags')
+        .delete()
+        .eq('user_id', userId)
+        .eq('tag_id', tagId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user-tags'] });
+      toast.success('Tag removed');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to remove tag');
+    },
+  });
+
   const getUserRole = (userId: string): AppRole => {
     const role = userRoles?.find(r => r.user_id === userId);
     return (role?.role as AppRole) || 'user';
@@ -215,6 +295,10 @@ export function AdminUsers() {
 
   const getUserEnrollments = (userId: string) => {
     return enrollments?.filter(e => e.user_id === userId) || [];
+  };
+
+  const getUserTags = (userId: string) => {
+    return userTags?.filter(ut => ut.user_id === userId) || [];
   };
 
   const toggleCourse = (courseId: string) => {
@@ -418,6 +502,8 @@ export function AdminUsers() {
 
       toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-tags'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
       setImportDialogOpen(false);
       setImportJsonData('');
       setImportPreview(null);
@@ -427,6 +513,15 @@ export function AdminUsers() {
       setImporting(false);
     }
   };
+
+  // Get filtered tags for the tags dialog
+  const filteredTags = allTags?.filter(tag => 
+    tag.name.toLowerCase().includes(tagSearch.toLowerCase())
+  ) || [];
+
+  const currentUserTags = tagsUserId ? getUserTags(tagsUserId) : [];
+  const currentUserTagIds = currentUserTags.map(ut => ut.tag_id);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -529,8 +624,8 @@ export function AdminUsers() {
               <DialogHeader>
                 <DialogTitle>Import WordPress Users</DialogTitle>
                 <DialogDescription>
-                  Paste WordPress user data as JSON. Users will be created with random passwords and marked as email-verified.
-                  WordPress password hashes are stored for reference but users will need to reset their passwords.
+                  Paste WordPress user data as JSON. Users will be created with random passwords, marked as private, and email-verified.
+                  Include tags array to auto-assign tags and enroll in matching courses.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
@@ -538,7 +633,12 @@ export function AdminUsers() {
                   <Label>User JSON Data</Label>
                   <Textarea
                     placeholder={`[
-  {"email": "user@example.com", "display_name": "John Doe", "user_pass": "$P$..."},
+  {
+    "email": "user@example.com", 
+    "display_name": "John Doe", 
+    "user_pass": "$P$...",
+    "tags": ["DGO", "Student", "Guitarist"]
+  },
   ...
 ]`}
                     value={importJsonData}
@@ -546,7 +646,7 @@ export function AdminUsers() {
                     className="font-mono text-xs min-h-[200px]"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Expected fields: email/user_email, display_name/name, user_pass/password_hash (optional)
+                    Expected fields: email/user_email, display_name/name, user_pass/password_hash (optional), tags (optional array)
                   </p>
                 </div>
                 
@@ -561,6 +661,16 @@ export function AdminUsers() {
                           </Badge>
                           <span>{user.email}</span>
                           <span className="text-muted-foreground">({user.name})</span>
+                          {user.tags?.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              +{user.tags.length} tags
+                            </span>
+                          )}
+                          {user.enrollments?.length > 0 && (
+                            <span className="text-xs text-primary">
+                              +{user.enrollments.length} courses
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -604,6 +714,7 @@ export function AdminUsers() {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Tags</TableHead>
               <TableHead>Enrolled Courses</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead>Actions</TableHead>
@@ -612,13 +723,13 @@ export function AdminUsers() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : users?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
@@ -626,6 +737,7 @@ export function AdminUsers() {
               users?.map((user) => {
                 const role = getUserRole(user.id);
                 const userEnrollments = getUserEnrollments(user.id);
+                const tags = getUserTags(user.id);
                 
                 return (
                   <TableRow key={user.id}>
@@ -650,6 +762,86 @@ export function AdminUsers() {
                           <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1 items-center">
+                        {tags.slice(0, 3).map((ut: any) => (
+                          <Badge 
+                            key={ut.id} 
+                            variant="secondary" 
+                            className="text-xs flex items-center gap-1"
+                          >
+                            {ut.email_tags?.name || 'Unknown'}
+                            <button
+                              onClick={() => removeTagMutation.mutate({ userId: user.id, tagId: ut.tag_id })}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        {tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{tags.length - 3} more
+                          </Badge>
+                        )}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setTagsUserId(user.id);
+                                setTagsUserEmail(user.email);
+                                setTagSearch('');
+                              }}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-2" align="start">
+                            <div className="space-y-2">
+                              <Input
+                                placeholder="Search tags..."
+                                value={tagSearch}
+                                onChange={(e) => setTagSearch(e.target.value)}
+                                className="h-8"
+                              />
+                              <ScrollArea className="h-48">
+                                <div className="space-y-1">
+                                  {filteredTags.map(tag => {
+                                    const isAssigned = tags.some((ut: any) => ut.tag_id === tag.id);
+                                    return (
+                                      <Button
+                                        key={tag.id}
+                                        variant={isAssigned ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="w-full justify-start text-xs h-7"
+                                        disabled={isAssigned || addTagMutation.isPending}
+                                        onClick={() => addTagMutation.mutate({ 
+                                          userId: user.id, 
+                                          email: user.email,
+                                          tagId: tag.id 
+                                        })}
+                                      >
+                                        <Tag className="h-3 w-3 mr-2" />
+                                        {tag.name}
+                                        {isAssigned && <span className="ml-auto text-muted-foreground">✓</span>}
+                                      </Button>
+                                    );
+                                  })}
+                                  {filteredTags.length === 0 && (
+                                    <p className="text-xs text-muted-foreground text-center py-2">
+                                      No tags found
+                                    </p>
+                                  )}
+                                </div>
+                              </ScrollArea>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {userEnrollments.length > 0 ? (

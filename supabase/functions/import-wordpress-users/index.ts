@@ -57,23 +57,82 @@ serve(async (req) => {
 
     logStep('Processing import request', { userCount: users.length, mode });
 
+    // Fetch all tags for matching
+    const { data: allTags } = await supabaseAdmin
+      .from('email_tags')
+      .select('id, name');
+    
+    const tagNameToId = new Map<string, string>();
+    allTags?.forEach(tag => {
+      tagNameToId.set(tag.name.toLowerCase(), tag.id);
+    });
+
+    // Fetch all courses with their tags for enrollment matching
+    const { data: allCourses } = await supabaseAdmin
+      .from('courses')
+      .select('id, title, tags');
+    
+    // Map course tags to course IDs
+    const tagToCourseId = new Map<string, string>();
+    allCourses?.forEach(course => {
+      if (course.tags && Array.isArray(course.tags)) {
+        course.tags.forEach((tag: string) => {
+          tagToCourseId.set(tag.toLowerCase(), course.id);
+        });
+      }
+    });
+
+    logStep('Loaded reference data', { 
+      tagsCount: tagNameToId.size, 
+      coursesCount: allCourses?.length,
+      courseTagMappings: tagToCourseId.size 
+    });
+
     const results = {
       total: users.length,
       created: 0,
       skipped: 0,
+      tagsAdded: 0,
+      enrollmentsAdded: 0,
       errors: [] as { email: string; error: string }[],
-      preview: [] as { email: string; name: string; status: string }[],
+      preview: [] as { email: string; name: string; status: string; tags?: string[]; enrollments?: string[] }[],
     };
 
     for (const wpUser of users) {
       const email = (wpUser.email || wpUser.user_email || '').toLowerCase().trim();
       const fullName = wpUser.display_name || wpUser.name || wpUser.user_nicename || email.split('@')[0];
       const wpPasswordHash = wpUser.user_pass || wpUser.password_hash;
+      const userTags: string[] = wpUser.tags || [];
 
       if (!email) {
         results.errors.push({ email: 'unknown', error: 'Missing email address' });
         continue;
       }
+
+      // Find matching tag IDs
+      const matchedTagIds: string[] = [];
+      const matchedTagNames: string[] = [];
+      userTags.forEach(tagName => {
+        const tagId = tagNameToId.get(tagName.toLowerCase().trim());
+        if (tagId) {
+          matchedTagIds.push(tagId);
+          matchedTagNames.push(tagName);
+        }
+      });
+
+      // Find courses to enroll based on tags
+      const courseIdsToEnroll: string[] = [];
+      const courseNamesToEnroll: string[] = [];
+      userTags.forEach(tagName => {
+        const courseId = tagToCourseId.get(tagName.toLowerCase().trim());
+        if (courseId) {
+          const course = allCourses?.find(c => c.id === courseId);
+          if (course && !courseIdsToEnroll.includes(courseId)) {
+            courseIdsToEnroll.push(courseId);
+            courseNamesToEnroll.push(course.title);
+          }
+        }
+      });
 
       // Check if user already exists in profiles
       const { data: existingProfile } = await supabaseAdmin
@@ -84,24 +143,32 @@ serve(async (req) => {
 
       if (existingProfile) {
         results.skipped++;
-        results.preview.push({ email, name: fullName, status: 'exists' });
+        results.preview.push({ 
+          email, 
+          name: fullName, 
+          status: 'exists',
+          tags: matchedTagNames,
+          enrollments: courseNamesToEnroll 
+        });
         logStep('User already exists', { email });
         continue;
       }
 
       if (mode === 'preview') {
-        results.preview.push({ email, name: fullName, status: 'will_create' });
+        results.preview.push({ 
+          email, 
+          name: fullName, 
+          status: 'will_create',
+          tags: matchedTagNames,
+          enrollments: courseNamesToEnroll
+        });
         continue;
       }
 
       // Import mode - create the user
       try {
         // WordPress uses PHPass which Supabase doesn't support natively
-        // We have two options:
-        // 1. Create user with a random password and send password reset email
-        // 2. Create user with a known temporary password that must be changed
-        
-        // Option 1 is more secure - create with random password
+        // Create user with a random password
         const tempPassword = crypto.randomUUID() + 'Aa1!'; // Ensure it meets password requirements
         
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -111,7 +178,7 @@ serve(async (req) => {
           user_metadata: {
             full_name: fullName,
             imported_from: 'wordpress',
-            wp_password_hash: wpPasswordHash ? 'stored' : 'none', // Don't store actual hash
+            wp_password_hash: wpPasswordHash ? 'stored' : 'none',
           },
         });
 
@@ -127,13 +194,15 @@ serve(async (req) => {
 
         logStep('User created', { email, userId: newUser.user.id });
 
-        // Mark email as verified in profiles
+        // Update profile: set as private, mark email verified, store WP hash
         const { error: profileUpdateError } = await supabaseAdmin
           .from('profiles')
           .update({ 
             full_name: fullName,
             email_verified: true, 
-            email_verified_at: new Date().toISOString() 
+            email_verified_at: new Date().toISOString(),
+            is_public: false, // Set imported users as private by default
+            wp_password_hash: wpPasswordHash || null,
           })
           .eq('id', newUser.user.id);
 
@@ -141,19 +210,56 @@ serve(async (req) => {
           logStep('Profile update error', { email, error: profileUpdateError.message });
         }
 
-        // Store WordPress password hash for potential future migration/verification
-        // This could be used with a custom verify function if needed
-        if (wpPasswordHash) {
-          await supabaseAdmin
-            .from('profiles')
-            .update({ 
-              wp_password_hash: wpPasswordHash 
-            })
-            .eq('id', newUser.user.id);
+        // Assign tags to the user
+        if (matchedTagIds.length > 0) {
+          const tagInserts = matchedTagIds.map(tagId => ({
+            user_id: newUser.user.id,
+            email: email,
+            tag_id: tagId,
+            source: 'import',
+          }));
+
+          const { error: tagError } = await supabaseAdmin
+            .from('user_tags')
+            .insert(tagInserts);
+
+          if (tagError) {
+            logStep('Tag assignment error', { email, error: tagError.message });
+          } else {
+            results.tagsAdded += matchedTagIds.length;
+            logStep('Tags assigned', { email, count: matchedTagIds.length });
+          }
+        }
+
+        // Enroll in courses based on matching tags
+        if (courseIdsToEnroll.length > 0) {
+          const enrollmentInserts = courseIdsToEnroll.map(courseId => ({
+            user_id: newUser.user.id,
+            course_id: courseId,
+            enrollment_type: 'import',
+            enrolled_by: requestingUser.id,
+          }));
+
+          const { error: enrollError } = await supabaseAdmin
+            .from('course_enrollments')
+            .insert(enrollmentInserts);
+
+          if (enrollError) {
+            logStep('Enrollment error', { email, error: enrollError.message });
+          } else {
+            results.enrollmentsAdded += courseIdsToEnroll.length;
+            logStep('Enrolled in courses', { email, count: courseIdsToEnroll.length });
+          }
         }
 
         results.created++;
-        results.preview.push({ email, name: fullName, status: 'created' });
+        results.preview.push({ 
+          email, 
+          name: fullName, 
+          status: 'created',
+          tags: matchedTagNames,
+          enrollments: courseNamesToEnroll
+        });
 
       } catch (userError: any) {
         logStep('Error creating user', { email, error: userError.message });
@@ -164,6 +270,8 @@ serve(async (req) => {
     logStep('Import complete', { 
       created: results.created, 
       skipped: results.skipped, 
+      tagsAdded: results.tagsAdded,
+      enrollmentsAdded: results.enrollmentsAdded,
       errors: results.errors.length 
     });
 
@@ -173,7 +281,7 @@ serve(async (req) => {
         results,
         message: mode === 'preview' 
           ? `Preview: ${results.preview.filter(p => p.status === 'will_create').length} users will be created, ${results.skipped} already exist`
-          : `Created ${results.created} users, skipped ${results.skipped} existing users, ${results.errors.length} errors`
+          : `Created ${results.created} users (${results.tagsAdded} tags, ${results.enrollmentsAdded} enrollments), skipped ${results.skipped} existing, ${results.errors.length} errors`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
