@@ -276,8 +276,14 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    { auth: { persistSession: false } }
+  );
+
   try {
-    const { email, firstName, orderItems, totalAmount, currency, isSubscription } = await req.json();
+    const { email, firstName, orderItems, totalAmount, currency, isSubscription, orderId } = await req.json();
     
     if (!email || !orderItems || !totalAmount) {
       return new Response(
@@ -294,6 +300,15 @@ Deno.serve(async (req) => {
 
     if (!accessKeyId || !secretAccessKey) {
       logStep("ERROR: Missing AWS SES credentials");
+      
+      // Log the failed attempt
+      await supabase.from('email_send_log').insert({
+        email,
+        subject: 'Order Confirmed - World Music Method',
+        status: 'failed',
+        error_message: 'AWS SES credentials not configured',
+      });
+      
       return new Response(
         JSON.stringify({ error: 'Email service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -301,10 +316,11 @@ Deno.serve(async (req) => {
     }
 
     const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const subject = 'Order Confirmed - World Music Method';
 
     const result = await sendEmailViaSES(
       [email],
-      'Order Confirmed - World Music Method',
+      subject,
       getOrderConfirmationHtml(firstName || '', orderItems, totalAmount, currency || 'usd', isSubscription || false),
       fromAddress,
       accessKeyId,
@@ -314,6 +330,15 @@ Deno.serve(async (req) => {
 
     if (!result.success) {
       logStep("ERROR: Failed to send email", { error: result.error });
+      
+      // Log the failed send
+      await supabase.from('email_send_log').insert({
+        email,
+        subject,
+        status: 'failed',
+        error_message: result.error || 'Unknown error',
+      });
+      
       return new Response(
         JSON.stringify({ error: result.error }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -321,6 +346,13 @@ Deno.serve(async (req) => {
     }
 
     logStep("Order confirmation email sent", { messageId: result.messageId });
+    
+    // Log successful send to email_send_log
+    await supabase.from('email_send_log').insert({
+      email,
+      subject,
+      status: 'sent',
+    });
 
     return new Response(
       JSON.stringify({ success: true }),
