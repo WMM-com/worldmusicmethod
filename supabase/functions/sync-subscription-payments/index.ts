@@ -150,15 +150,14 @@ serve(async (req) => {
           if (invoice.status !== 'paid') continue;
           if (!invoice.amount_paid || invoice.amount_paid === 0) continue;
           
-          // Check if order already exists
-          const { data: existingOrder } = await supabaseClient
+          // Check if order already exists - use .limit(1) to avoid errors with duplicates
+          const { data: existingOrders } = await supabaseClient
             .from("orders")
             .select("id")
             .eq("provider_payment_id", invoice.payment_intent || invoice.id)
-            .eq("product_id", dbSub.product_id)
-            .maybeSingle();
+            .limit(1);
 
-          if (existingOrder) continue;
+          if (existingOrders && existingOrders.length > 0) continue;
 
           // Get charge details for fee
           let stripeFee = 0;
@@ -353,13 +352,14 @@ serve(async (req) => {
                 const txId = tx.id;
                 if (!txId) continue;
 
-                // Check if order exists
-                const { data: existingOrder } = await supabaseClient
+                // Check if order exists - use .limit(1) to avoid errors with duplicates
+                const { data: existingOrders } = await supabaseClient
                   .from("orders")
                   .select("id")
                   .eq("provider_payment_id", txId)
-                  .eq("product_id", dbSub.product_id)
-                  .maybeSingle();
+                  .limit(1);
+                
+                const existingOrder = existingOrders && existingOrders.length > 0 ? existingOrders[0] : null;
 
                 if (existingOrder) continue;
 
