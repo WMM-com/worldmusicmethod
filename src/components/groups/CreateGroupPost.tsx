@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Image, Video, Music, X, Upload, Loader2, Send } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateGroupPost } from '@/hooks/useGroups';
 import { useR2Upload } from '@/hooks/useR2Upload';
+import { MentionInput } from '@/components/ui/mention-input';
 
 type MediaType = 'image' | 'video' | 'audio' | null;
 
@@ -107,10 +107,10 @@ export function CreateGroupPost({ groupId, channelId, allowImages = true, allowA
     <Card>
       <CardContent className="pt-4">
         <div className="space-y-3">
-          <Textarea
+          <MentionInput
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share something with the group..."
+            onChange={setContent}
+            placeholder="Share something with the group... Use @ to mention someone"
             rows={3}
             className="resize-none"
           />

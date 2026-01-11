@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -19,6 +18,7 @@ import { useCreatePost } from '@/hooks/useSocial';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { MentionInput } from '@/components/ui/mention-input';
 
 type MediaType = 'image' | 'video' | 'audio' | null;
 type PostType = 'statement' | 'update' | 'recommendation' | 'practice';
@@ -191,10 +191,10 @@ export function CreatePost() {
           </Avatar>
           
           <div className="flex-1 space-y-3">
-            <Textarea
+            <MentionInput
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Share something with your network..."
+              onChange={setContent}
+              placeholder="Share something with your network... Use @ to mention someone"
               rows={3}
               className="resize-none"
             />

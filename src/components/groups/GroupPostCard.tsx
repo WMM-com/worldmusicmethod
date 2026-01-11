@@ -36,6 +36,7 @@ import { useGroupPostComments, useCreateGroupPostComment, useDeleteGroupPost, us
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 import { UserHoverCard } from '@/components/social/UserHoverCard';
+import { MentionInput, renderMentionText } from '@/components/ui/mention-input';
 
 interface GroupPostCardProps {
   post: GroupPost;
@@ -206,7 +207,7 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
                 </div>
               </div>
             ) : (
-              <p className="mt-2 whitespace-pre-wrap">{post.content}</p>
+              <p className="mt-2 whitespace-pre-wrap">{renderMentionText(post.content)}</p>
             )}
             
             {post.media_url && (
@@ -256,11 +257,10 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
                 
                 {/* Add Comment */}
                 <div className="flex gap-2 pt-2 border-t">
-                  <Textarea
-                    placeholder="Write a comment... (Enter to post)"
+                  <MentionInput
+                    placeholder="Write a comment... Use @ to mention"
                     value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={handleKeyDown}
+                    onChange={setNewComment}
                     rows={2}
                     className="flex-1"
                   />
@@ -427,7 +427,7 @@ function CommentItem({ comment, getInitials, groupId }: { comment: GroupPostComm
             </div>
           </div>
         ) : (
-          <p className="text-sm mt-1">{comment.content}</p>
+          <p className="text-sm mt-1">{renderMentionText(comment.content)}</p>
         )}
       </div>
     </div>

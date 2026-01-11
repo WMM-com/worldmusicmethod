@@ -36,6 +36,7 @@ import { useR2Upload } from '@/hooks/useR2Upload';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { UserHoverCard } from './UserHoverCard';
+import { MentionInput, renderMentionText } from '@/components/ui/mention-input';
 
 // Global video manager to ensure only one video plays at a time
 const videoRegistry = new Set<HTMLVideoElement>();
@@ -417,7 +418,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
         </CardHeader>
         
         <CardContent className="pb-3">
-          <p className="whitespace-pre-wrap">{post.content}</p>
+          <p className="whitespace-pre-wrap">{renderMentionText(post.content)}</p>
 {post.image_url && (
             <div className="mt-3">
               {displayMediaType === 'video' ? (
@@ -580,13 +581,12 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <Textarea
+                  <MentionInput
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onKeyDown={handleCommentKeyDown}
-                    placeholder={replyingTo ? "Write a reply... (Enter to post)" : "Write a comment... (Enter to post)"}
+                    onChange={setCommentText}
+                    placeholder={replyingTo ? "Write a reply... Use @ to mention" : "Write a comment... Use @ to mention"}
                     rows={1}
-                    className="min-h-[40px] resize-none flex-1"
+                    className="min-h-[40px] flex-1"
                   />
                   <Button
                     onClick={handleComment}
