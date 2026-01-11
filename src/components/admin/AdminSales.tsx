@@ -706,6 +706,7 @@ export function AdminSales() {
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Interval</TableHead>
                     <TableHead>Coupon</TableHead>
+                    <TableHead>Payment</TableHead>
                     <TableHead>Next Billing</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -714,13 +715,13 @@ export function AdminSales() {
                 <TableBody>
                   {subsLoading ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8">
+                      <TableCell colSpan={10} className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                       </TableCell>
                     </TableRow>
                   ) : subsData?.data?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                         No subscriptions found
                       </TableCell>
                     </TableRow>
@@ -773,6 +774,20 @@ export function AdminSales() {
                                 )}
                               </div>
                             ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant="outline" 
+                              className={
+                                sub.payment_provider === 'stripe' 
+                                  ? 'text-purple-600 border-purple-300 bg-purple-50'
+                                  : sub.payment_provider === 'paypal'
+                                  ? 'text-blue-600 border-blue-300 bg-blue-50'
+                                  : ''
+                              }
+                            >
+                              {sub.payment_provider === 'stripe' ? 'Card' : sub.payment_provider === 'paypal' ? 'PayPal' : sub.payment_provider || '-'}
+                            </Badge>
                           </TableCell>
                         <TableCell className="text-sm whitespace-nowrap">
                           {sub.current_period_end

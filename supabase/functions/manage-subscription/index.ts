@@ -1340,11 +1340,10 @@ serve(async (req) => {
             // Update the subscription record
             const currentPeriodEnd = unixSecondsToIso(stripeSub.current_period_end);
             const currentPeriodStart = unixSecondsToIso(stripeSub.current_period_start);
+            const trialEndsAt = stripeSub.trial_end ? unixSecondsToIso(stripeSub.trial_end) : null;
 
-            // Use 'active' status if subscription is active/trialing, or if payment succeeded
-            const newStatus = (stripeSub.status === 'active' || stripeSub.status === 'trialing') 
-              ? 'active' 
-              : 'active'; // Force active since we've verified payment
+            // Set status based on Stripe subscription status
+            const newStatus = stripeSub.status === 'trialing' ? 'trialing' : 'active';
 
             await supabaseClient
               .from('subscriptions')
@@ -1354,6 +1353,7 @@ serve(async (req) => {
                 status: newStatus,
                 current_period_start: currentPeriodStart,
                 current_period_end: currentPeriodEnd,
+                trial_ends_at: trialEndsAt,
                 cancels_at: null,
                 paused_at: null,
               })
@@ -1363,7 +1363,8 @@ serve(async (req) => {
               success: true, 
               switched: true, 
               newProvider: 'stripe',
-              stripeSubscriptionId: pendingStripeSubId 
+              stripeSubscriptionId: pendingStripeSubId,
+              status: newStatus,
             };
             logStep("Switch confirmed", { stripeSubId: pendingStripeSubId, finalStatus: stripeSub.status });
             break;
@@ -1482,32 +1483,51 @@ serve(async (req) => {
             logStep("Created Stripe price", { priceId, amount: priceAmount, currency: subCurrency });
           }
 
-          // Create Stripe subscription with payment_behavior: 'default_incomplete'
-          // This allows 3DS/SCA authentication before the subscription becomes active
-          const newStripeSub = await stripe.subscriptions.create({
+          // Check if the original subscription has remaining trial days
+          const originalTrialEnd = subscription.trial_ends_at ? new Date(subscription.trial_ends_at) : null;
+          const now = new Date();
+          const hasActiveTrial = originalTrialEnd && originalTrialEnd > now;
+          const remainingTrialDays = hasActiveTrial ? Math.ceil((originalTrialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          
+          logStep("Trial check", { hasActiveTrial, remainingTrialDays, originalTrialEnd: subscription.trial_ends_at });
+
+          // Create Stripe subscription 
+          // If there's an active trial, add trial_end to avoid immediate charge
+          const subCreateParams: any = {
             customer: customerId,
             items: [{ price: priceId }],
             default_payment_method: paymentMethodId,
-            payment_behavior: 'default_incomplete',
             payment_settings: {
               save_default_payment_method: 'on_subscription',
             },
             expand: ['latest_invoice.payment_intent'],
-          });
+          };
 
-          logStep("Created Stripe subscription for 3DS", { 
+          // If there's remaining trial time, preserve it
+          if (hasActiveTrial && remainingTrialDays > 0) {
+            subCreateParams.trial_end = Math.floor(originalTrialEnd.getTime() / 1000);
+            logStep("Preserving trial period", { trial_end: originalTrialEnd.toISOString() });
+          } else {
+            // No trial - use default_incomplete for 3DS
+            subCreateParams.payment_behavior = 'default_incomplete';
+          }
+
+          const newStripeSub = await stripe.subscriptions.create(subCreateParams);
+
+          logStep("Created Stripe subscription", { 
             subId: newStripeSub.id, 
-            status: newStripeSub.status 
+            status: newStripeSub.status,
+            trialEnd: newStripeSub.trial_end 
           });
 
-          // Extract client_secret for 3DS confirmation
+          // Extract client_secret for 3DS confirmation (may be null during trial)
           const latestInvoice = newStripeSub.latest_invoice as any;
           const paymentIntent = latestInvoice?.payment_intent as any;
           const clientSecret = paymentIntent?.client_secret;
           
-          // If subscription is already active (no 3DS needed), complete the switch immediately
-          if (newStripeSub.status === 'active') {
-            logStep("Subscription active immediately, completing switch");
+          // If subscription is already active or trialing, complete the switch immediately
+          if (newStripeSub.status === 'active' || newStripeSub.status === 'trialing') {
+            logStep("Subscription active/trialing immediately, completing switch", { status: newStripeSub.status });
             
             // Cancel PayPal subscription
             const cancelResponse = await fetch(
@@ -1524,20 +1544,24 @@ serve(async (req) => {
 
             if (!cancelResponse.ok) {
               logStep("Failed to cancel PayPal (non-blocking)", { error: await cancelResponse.text() });
+            } else {
+              logStep("PayPal subscription cancelled successfully");
             }
 
             // Update subscription record
             const currentPeriodEnd = unixSecondsToIso(newStripeSub.current_period_end);
             const currentPeriodStart = unixSecondsToIso(newStripeSub.current_period_start);
+            const trialEndsAt = newStripeSub.trial_end ? unixSecondsToIso(newStripeSub.trial_end) : null;
 
             await supabaseClient
               .from('subscriptions')
               .update({
                 payment_provider: 'stripe',
                 provider_subscription_id: newStripeSub.id,
-                status: 'active',
+                status: newStripeSub.status === 'trialing' ? 'trialing' : 'active',
                 current_period_start: currentPeriodStart,
                 current_period_end: currentPeriodEnd,
+                trial_ends_at: trialEndsAt,
                 cancels_at: null,
                 paused_at: null,
               })
@@ -1547,9 +1571,10 @@ serve(async (req) => {
               success: true, 
               switched: true, 
               newProvider: 'stripe',
-              stripeSubscriptionId: newStripeSub.id 
+              stripeSubscriptionId: newStripeSub.id,
+              status: newStripeSub.status,
             };
-          } else {
+          } else if (clientSecret) {
             // Subscription requires 3DS confirmation
             result = { 
               success: true,
@@ -1562,6 +1587,10 @@ serve(async (req) => {
               stripeSubId: newStripeSub.id,
               paymentIntentStatus: paymentIntent?.status 
             });
+          } else {
+            // No client secret and not active/trialing - unusual case
+            logStep("Unusual state: no client secret and subscription not active", { status: newStripeSub.status });
+            throw new Error(`Subscription creation failed with status: ${newStripeSub.status}`);
           }
           break;
         }
