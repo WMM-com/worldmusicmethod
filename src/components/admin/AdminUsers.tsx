@@ -82,6 +82,7 @@ export function AdminUsers() {
   const [csvImportPreview, setCsvImportPreview] = useState<any>(null);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvStudents, setCsvStudents] = useState<any[]>([]);
+  const [repairingTags, setRepairingTags] = useState(false);
 
   // Tags management state
   const [tagsUserId, setTagsUserId] = useState<string | null>(null);
@@ -696,6 +697,44 @@ export function AdminUsers() {
     }
   };
 
+  // Repair tags from CSV - fetches student-contacts.csv and syncs to user_tags
+  const handleRepairTags = async () => {
+    if (repairingTags) return;
+    
+    setRepairingTags(true);
+    try {
+      toast.info('Fetching student contacts CSV...');
+      
+      // Fetch the CSV file from public assets
+      const response = await fetch('/assets/data/student-contacts.csv');
+      if (!response.ok) {
+        throw new Error('Failed to fetch student contacts CSV');
+      }
+      const csvContent = await response.text();
+      
+      toast.info(`Loaded CSV, sending to repair function...`);
+      
+      const { data, error } = await supabase.functions.invoke('repair-tags-from-csv', {
+        body: { csvContent }
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success(
+        `Tag repair complete: ${data.matched_profiles} matched, ${data.user_tags_created} tags created, ${data.unmatched_count} unmatched`
+      );
+      
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['user-tags'] });
+    } catch (error: any) {
+      console.error('Repair tags error:', error);
+      toast.error(error.message || 'Failed to repair tags');
+    } finally {
+      setRepairingTags(false);
+    }
+  };
+
   // Get filtered tags for the tags dialog
   const filteredTags = allTags?.filter(tag => 
     tag.name.toLowerCase().includes(tagSearch.toLowerCase())
@@ -712,6 +751,10 @@ export function AdminUsers() {
           Users
         </CardTitle>
         <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleRepairTags} disabled={repairingTags}>
+            <Tag className={`h-4 w-4 mr-2 ${repairingTags ? 'animate-pulse' : ''}`} />
+            {repairingTags ? 'Repairing Tags...' : 'Repair Tags'}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleSyncEmails} disabled={syncing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
             Sync Emails
