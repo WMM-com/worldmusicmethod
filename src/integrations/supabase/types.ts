@@ -4164,6 +4164,7 @@ export type Database = {
         Args: { user1_id: string; user2_id: string }
         Returns: boolean
       }
+      bulk_import_student_tags: { Args: { student_data: Json }; Returns: Json }
       calculate_regional_price: {
         Args: {
           p_base_price_usd: number
