@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,8 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Mail, CheckCircle } from 'lucide-react';
+import { Mail, CheckCircle, AlertTriangle } from 'lucide-react';
 import wmmLogo from '@/assets/world-music-method-logo.png';
+import { HoneypotField, useHoneypotValidator } from '@/components/ui/honeypot-field';
+import { usePersistentRateLimiter } from '@/hooks/useRateLimiter';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -26,6 +28,9 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [signupNotice, setSignupNotice] = useState<{ email: string } | null>(null);
   const { signIn, signUp } = useAuth();
+  const formRef = useRef<HTMLFormElement>(null);
+  const { validateSubmission } = useHoneypotValidator();
+  const rateLimiter = usePersistentRateLimiter({ maxAttempts: 5, windowMs: 60000, blockDurationMs: 300000 });
 
   useEffect(() => {
     if (verified) {
@@ -49,6 +54,25 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check rate limit
+    const rateCheck = rateLimiter.checkRateLimit();
+    if (!rateCheck.allowed) {
+      toast.error(`Too many attempts. Please wait ${rateCheck.waitSeconds} seconds.`);
+      return;
+    }
+    
+    // Check honeypot (bot detection)
+    const honeypotCheck = validateSubmission(formRef.current);
+    if (honeypotCheck.isBot) {
+      console.warn('Bot detected:', honeypotCheck.reason);
+      // Silently fail for bots - don't give them feedback
+      return;
+    }
+    
+    // Record the attempt
+    rateLimiter.recordAttempt();
+    
     setLoading(true);
 
     try {
@@ -167,7 +191,8 @@ export default function Auth() {
             </div>
           ) : (
             <>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+                <HoneypotField />
                 {mode === 'signup' && (
                   <>
                     <div className="space-y-2">

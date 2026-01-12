@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
+// Declare EdgeRuntime type for Supabase Edge Functions
+declare const EdgeRuntime: {
+  waitUntil(promise: Promise<unknown>): void;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -343,12 +348,131 @@ serve(async (req) => {
       .update({ status: 'sending', total_recipients: finalRecipients.length })
       .eq("id", campaignId);
 
-    let sentCount = 0;
-
     // Use the production Lovable URL for unsubscribe links
     const baseUrl = 'https://worldmusicmethod.lovable.app';
 
-    // Send emails
+    // For large campaigns (>500 recipients), use background processing
+    // This prevents Edge Function timeout (150s limit)
+    const BATCH_SIZE = 500;
+    const isLargeCampaign = finalRecipients.length > BATCH_SIZE;
+
+    if (isLargeCampaign) {
+      logStep("Large campaign - using background processing", { total: finalRecipients.length });
+      
+      // Process in background using waitUntil
+      const backgroundSend = async () => {
+        let sentCount = 0;
+        let failedCount = 0;
+
+        for (let batchStart = 0; batchStart < finalRecipients.length; batchStart += BATCH_SIZE) {
+          const batch = finalRecipients.slice(batchStart, batchStart + BATCH_SIZE);
+          logStep("Processing batch", { start: batchStart, size: batch.length });
+
+          for (const recipient of batch) {
+            try {
+              // Create unsubscribe token
+              const { data: tokenData } = await supabase
+                .from("email_unsubscribe_tokens")
+                .insert({ email: recipient.email.toLowerCase() })
+                .select('token')
+                .single();
+
+              const unsubscribeUrl = `${baseUrl}/unsubscribe?token=${tokenData?.token || ''}&email=${encodeURIComponent(recipient.email)}`;
+
+              // Variable substitution
+              let htmlBody = campaign.body_html
+                .replace(/\{\{first_name\}\}/g, recipient.first_name || 'there')
+                .replace(/\{\{email\}\}/g, recipient.email)
+                .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
+
+              // Add unsubscribe footer if not already in the email
+              if (!htmlBody.includes('unsubscribe') && !htmlBody.includes('Unsubscribe')) {
+                htmlBody += `
+                  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666; text-align: center;">
+                    <p>If you no longer wish to receive these emails, you can <a href="${unsubscribeUrl}" style="color: #666;">unsubscribe here</a>.</p>
+                  </div>
+                `;
+              }
+
+              const success = await sendEmail(
+                recipient.email,
+                campaign.subject,
+                htmlBody,
+                accessKeyId,
+                secretAccessKey,
+                region
+              );
+
+              if (success) {
+                sentCount++;
+                await supabase.from("email_send_log").insert({
+                  email: recipient.email,
+                  subject: campaign.subject,
+                  status: "sent",
+                });
+              } else {
+                failedCount++;
+                await supabase.from("email_send_log").insert({
+                  email: recipient.email,
+                  subject: campaign.subject,
+                  status: "failed",
+                });
+              }
+
+              // Rate limiting
+              const delayMs = Math.floor(1000 / Math.min(emailsPerSecond, 50));
+              await new Promise(resolve => setTimeout(resolve, delayMs));
+
+            } catch (sendError) {
+              failedCount++;
+              logStep("Failed to send to recipient", { email: recipient.email, error: sendError instanceof Error ? sendError.message : String(sendError) });
+              await supabase.from("email_send_log").insert({
+                email: recipient.email,
+                subject: campaign.subject,
+                status: "failed",
+              });
+            }
+          }
+
+          // Update progress after each batch
+          await supabase
+            .from("email_campaigns")
+            .update({ sent_count: sentCount })
+            .eq("id", campaignId);
+          logStep("Batch progress update", { sent: sentCount, failed: failedCount, total: finalRecipients.length });
+        }
+
+        // Update campaign as sent
+        await supabase
+          .from("email_campaigns")
+          .update({ 
+            status: 'sent', 
+            sent_at: new Date().toISOString(),
+            sent_count: sentCount 
+          })
+          .eq("id", campaignId);
+
+        logStep("Campaign completed", { sentCount, failedCount, total: finalRecipients.length });
+      };
+
+      // Start background processing
+      EdgeRuntime.waitUntil(backgroundSend());
+
+      // Return immediately
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Campaign is being sent in background",
+        total: finalRecipients.length,
+        status: "processing"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // For smaller campaigns, process synchronously
+    let sentCount = 0;
+
     for (const recipient of finalRecipients) {
       try {
         // Create unsubscribe token
@@ -400,11 +524,10 @@ serve(async (req) => {
         }
 
         // Rate limiting: send emails at configured rate (default 14/sec)
-        // Calculate delay based on emailsPerSecond setting
-        const delayMs = Math.floor(1000 / Math.min(emailsPerSecond, 50)); // Cap at 50/sec
+        const delayMs = Math.floor(1000 / Math.min(emailsPerSecond, 50));
         await new Promise(resolve => setTimeout(resolve, delayMs));
 
-        // Update progress periodically for large campaigns
+        // Update progress periodically
         if (sentCount % 100 === 0) {
           await supabase
             .from("email_campaigns")
