@@ -98,6 +98,7 @@ serve(async (req) => {
     const results = {
       total: students.length,
       created: 0,
+      updated: 0,
       skipped: 0,
       enrollmentsAdded: 0,
       memberEnrollments: 0,
@@ -164,24 +165,95 @@ serve(async (req) => {
       // Check if user already exists in profiles
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
-        .select('id, email')
+        .select('id, email, tags')
         .eq('email', email)
         .maybeSingle();
 
       if (existingProfile) {
-        results.skipped++;
-        results.preview.push({ 
-          email, 
-          name: fullName, 
-          status: 'exists',
-          tags: userTags,
-          enrollments: courseNamesToEnroll,
-          isMember
-        });
-        logStep('User already exists', { email });
+        // USER EXISTS - Update their tags and enroll in missing courses
+        if (mode === 'preview') {
+          results.preview.push({ 
+            email, 
+            name: fullName, 
+            status: 'will_update',
+            tags: userTags,
+            enrollments: courseNamesToEnroll,
+            isMember
+          });
+          continue;
+        }
+
+        try {
+          // Update profile with tags and ensure private visibility
+          const { error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ 
+              tags: userTags,
+              is_public: false,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              email_verified: true,
+              email_verified_at: new Date().toISOString(),
+            })
+            .eq('id', existingProfile.id);
+
+          if (updateError) {
+            logStep('Profile update error', { email, error: updateError.message });
+          }
+
+          // Get existing enrollments for this user
+          const { data: existingEnrollments } = await supabaseAdmin
+            .from('course_enrollments')
+            .select('course_id')
+            .eq('user_id', existingProfile.id);
+
+          const existingCourseIds = new Set(existingEnrollments?.map(e => e.course_id) || []);
+
+          // Find courses to add (not already enrolled)
+          const newCourseIds = Array.from(courseIdsToEnroll).filter(id => !existingCourseIds.has(id));
+
+          if (newCourseIds.length > 0) {
+            const enrollmentInserts = newCourseIds.map(courseId => ({
+              user_id: existingProfile.id,
+              course_id: courseId,
+              enrollment_type: isMember && accessAllCourseIds.includes(courseId) ? 'member' : 'import',
+              enrolled_by: requestingUser.id,
+            }));
+
+            const { error: enrollError } = await supabaseAdmin
+              .from('course_enrollments')
+              .insert(enrollmentInserts);
+
+            if (enrollError) {
+              logStep('Enrollment error for existing user', { email, error: enrollError.message });
+            } else {
+              results.enrollmentsAdded += newCourseIds.length;
+              if (isMember) {
+                results.memberEnrollments += accessAllCourseIds.filter(id => newCourseIds.includes(id)).length;
+              }
+              logStep('Enrolled existing user in courses', { email, newEnrollments: newCourseIds.length });
+            }
+          }
+
+          results.updated++;
+          results.preview.push({ 
+            email, 
+            name: fullName, 
+            status: 'updated',
+            tags: userTags,
+            enrollments: courseNamesToEnroll,
+            isMember
+          });
+          logStep('Updated existing user', { email, newEnrollments: newCourseIds.length });
+
+        } catch (updateErr: any) {
+          logStep('Error updating existing user', { email, error: updateErr.message });
+          results.errors.push({ email, error: updateErr.message });
+        }
         continue;
       }
 
+      // NEW USER - Create account
       if (mode === 'preview') {
         results.preview.push({ 
           email, 
@@ -194,7 +266,6 @@ serve(async (req) => {
         continue;
       }
 
-      // Import mode - create the user
       try {
         // Create user with a random password (they'll use password reset)
         const tempPassword = crypto.randomUUID() + 'Aa1!';
@@ -221,11 +292,14 @@ serve(async (req) => {
 
         logStep('User created', { email, userId: newUser.user.id });
 
-        // Update profile: set as private, mark email verified, set name
+        // Update profile: set as private, mark email verified, set name and tags
         const { error: profileUpdateError } = await supabaseAdmin
           .from('profiles')
           .update({ 
             full_name: fullName,
+            first_name: firstName || null,
+            last_name: lastName || null,
+            tags: userTags,
             email_verified: true, 
             email_verified_at: new Date().toISOString(),
             is_public: false, // All imported users are private
@@ -279,6 +353,7 @@ serve(async (req) => {
 
     logStep('Import complete', { 
       created: results.created, 
+      updated: results.updated,
       skipped: results.skipped, 
       enrollmentsAdded: results.enrollmentsAdded,
       memberEnrollments: results.memberEnrollments,
@@ -290,8 +365,8 @@ serve(async (req) => {
         success: true, 
         results,
         message: mode === 'preview' 
-          ? `Preview: ${results.preview.filter(p => p.status === 'will_create').length} users will be created, ${results.skipped} already exist`
-          : `Created ${results.created} users with ${results.enrollmentsAdded} course enrollments (${results.memberEnrollments} from Member access), skipped ${results.skipped} existing, ${results.errors.length} errors`
+          ? `Preview: ${results.preview.filter(p => p.status === 'will_create').length} users will be created, ${results.preview.filter(p => p.status === 'will_update').length} will be updated`
+          : `Created ${results.created} users, updated ${results.updated} existing users, ${results.enrollmentsAdded} course enrollments added (${results.memberEnrollments} from Member access), ${results.errors.length} errors`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
