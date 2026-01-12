@@ -21,6 +21,7 @@ interface EmailCampaign {
   status: string;
   scheduled_at: string | null;
   sent_at: string | null;
+  send_to_all?: boolean | null;
   send_to_lists: string[];
   include_tags: string[];
   exclude_tags: string[];
@@ -77,121 +78,37 @@ export function AdminCampaigns() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [formData.send_to_lists, formData.include_tags, formData.exclude_tags]);
+  }, [formData.send_to_all, formData.send_to_lists, formData.include_tags, formData.exclude_tags]);
 
   async function calculateRecipientCount() {
     setLoadingPreview(true);
     try {
-      // Create a temporary campaign object for preview
-      const tempCampaign = {
-        send_to_lists: formData.send_to_lists,
-        include_tags: formData.include_tags,
-        exclude_tags: formData.exclude_tags,
-      };
+      const { data, error } = await supabase.functions.invoke('send-email-campaign', {
+        body: {
+          ...(editingCampaign?.id ? { campaignId: editingCampaign.id } : {}),
+          previewOnly: true,
+          audienceOverride: {
+            send_to_all: formData.send_to_all,
+            send_to_lists: formData.send_to_lists,
+            include_tags: formData.include_tags,
+            exclude_tags: formData.exclude_tags,
+          },
+        },
+      });
 
-      // If we have an existing campaign ID, use it, otherwise we need to save first
-      if (editingCampaign?.id) {
-        const { data, error } = await supabase.functions.invoke('send-email-campaign', {
-          body: { campaignId: editingCampaign.id, previewOnly: true }
-        });
+      if (error) throw error;
 
-        if (!error && data) {
-          setRecipientCount(data.recipientCount);
-        }
+      if (typeof data?.recipientCount === 'number') {
+        setRecipientCount(data.recipientCount);
       } else {
-        // For new campaigns, we need to calculate locally based on the selected tags
-        await calculateLocalRecipientCount();
+        setRecipientCount(null);
       }
     } catch (err) {
       console.error('Failed to calculate recipient count:', err);
+      setRecipientCount(null);
     } finally {
       setLoadingPreview(false);
     }
-  }
-
-  async function calculateLocalRecipientCount() {
-    const emails: string[] = [];
-
-    // If send_to_all, get all subscribed contacts from profiles
-    if (formData.send_to_all) {
-      const { data: allProfiles } = await supabase
-        .from('profiles')
-        .select('email')
-        .not('email', 'is', null);
-
-      if (allProfiles) {
-        for (const profile of allProfiles) {
-          if (profile.email && !emails.includes(profile.email)) {
-            // Check if unsubscribed
-            const { data: contact } = await supabase
-              .from('email_contacts')
-              .select('is_subscribed')
-              .eq('email', profile.email)
-              .maybeSingle();
-
-            if (!contact || contact.is_subscribed) {
-              emails.push(profile.email);
-            }
-          }
-        }
-      }
-    }
-
-    // Get contacts from lists
-    if (formData.send_to_lists.length > 0) {
-      const { data: listMembers } = await supabase
-        .from('email_list_members')
-        .select('contact:email_contacts(email, is_subscribed)')
-        .in('list_id', formData.send_to_lists);
-
-      if (listMembers) {
-        for (const member of listMembers) {
-          const contact = member.contact as any;
-          if (contact && contact.is_subscribed && !emails.includes(contact.email)) {
-            emails.push(contact.email);
-          }
-        }
-      }
-    }
-
-    // Get contacts with include tags
-    if (formData.include_tags.length > 0) {
-      const { data: taggedUsers } = await supabase
-        .from('user_tags')
-        .select('email')
-        .in('tag_id', formData.include_tags);
-
-      if (taggedUsers) {
-        for (const tagged of taggedUsers) {
-          if (tagged.email && !emails.includes(tagged.email)) {
-            // Check if unsubscribed
-            const { data: contact } = await supabase
-              .from('email_contacts')
-              .select('is_subscribed')
-              .eq('email', tagged.email)
-              .maybeSingle();
-
-            if (!contact || contact.is_subscribed) {
-              emails.push(tagged.email);
-            }
-          }
-        }
-      }
-    }
-
-    // Remove excluded tag emails
-    let finalEmails = emails;
-    if (formData.exclude_tags.length > 0) {
-      const { data: excludedUsers } = await supabase
-        .from('user_tags')
-        .select('email')
-        .in('tag_id', formData.exclude_tags);
-
-      const excludeSet = new Set((excludedUsers || []).map(e => e.email?.toLowerCase()).filter(Boolean));
-      finalEmails = emails.filter(e => !excludeSet.has(e.toLowerCase()));
-    }
-
-    setRecipientCount(finalEmails.length);
   }
 
   async function fetchData() {
@@ -289,6 +206,7 @@ export function AdminCampaigns() {
       subject: campaign.subject,
       body_html: campaign.body_html,
       body_text: campaign.body_text,
+      send_to_all: campaign.send_to_all || false,
       send_to_lists: campaign.send_to_lists || [],
       include_tags: campaign.include_tags || [],
       exclude_tags: campaign.exclude_tags || [],
@@ -333,7 +251,7 @@ export function AdminCampaigns() {
       include_tags: campaign.include_tags || [],
       exclude_tags: campaign.exclude_tags || [],
       scheduled_at: campaign.scheduled_at ? new Date(campaign.scheduled_at).toISOString().slice(0, 16) : '',
-      send_to_all: (campaign as any).send_to_all || false
+      send_to_all: campaign.send_to_all || false
     });
     setDialogOpen(true);
   }

@@ -177,32 +177,43 @@ serve(async (req) => {
       throw new Error("AWS SES credentials not configured");
     }
 
-    const { campaignId, previewOnly, emailsPerSecond = 14 } = await req.json();
-    logStep("Campaign ID", { campaignId, previewOnly, emailsPerSecond });
+    const { campaignId, previewOnly, emailsPerSecond = 14, audienceOverride } = await req.json();
+    logStep("Request", { campaignId, previewOnly, emailsPerSecond, hasAudienceOverride: !!audienceOverride });
 
-    if (!campaignId) {
+    // Fetch campaign when provided
+    let campaign: any = null;
+    if (campaignId) {
+      const { data: fetchedCampaign, error: campaignError } = await supabase
+        .from("email_campaigns")
+        .select("*")
+        .eq("id", campaignId)
+        .single();
+
+      if (campaignError || !fetchedCampaign) {
+        throw new Error("Campaign not found");
+      }
+
+      campaign = fetchedCampaign;
+      logStep("Campaign fetched", { name: campaign.name, status: campaign.status });
+    } else if (!previewOnly) {
       throw new Error("campaignId is required");
+    } else if (!audienceOverride) {
+      throw new Error("For preview without campaignId, audienceOverride is required");
     }
 
-    // Fetch campaign
-    const { data: campaign, error: campaignError } = await supabase
-      .from("email_campaigns")
-      .select("*")
-      .eq("id", campaignId)
-      .single();
-
-    if (campaignError || !campaign) {
-      throw new Error("Campaign not found");
-    }
-
-    logStep("Campaign fetched", { name: campaign.name, status: campaign.status });
+    const audience = {
+      send_to_all: Boolean(audienceOverride?.send_to_all ?? campaign?.send_to_all ?? false),
+      send_to_lists: (audienceOverride?.send_to_lists ?? campaign?.send_to_lists ?? []) as string[],
+      include_tags: (audienceOverride?.include_tags ?? campaign?.include_tags ?? []) as string[],
+      exclude_tags: (audienceOverride?.exclude_tags ?? campaign?.exclude_tags ?? []) as string[],
+    };
 
     // Build recipient list
     let recipients: { email: string; first_name: string | null }[] = [];
 
     // If send_to_all is true, get all subscribed users from profiles
-    if (campaign.send_to_all) {
-      logStep("Sending to all subscribed users");
+    if (audience.send_to_all) {
+      logStep("Sending to all (audience override aware)");
       const { data: allProfiles } = await supabase
         .from("profiles")
         .select("id, email, full_name")
@@ -220,9 +231,7 @@ serve(async (req) => {
             .maybeSingle();
 
           // If contact exists and is unsubscribed, skip
-          if (contact && !contact.is_subscribed) {
-            continue;
-          }
+          if (contact && !contact.is_subscribed) continue;
 
           const firstName = profile.full_name ? profile.full_name.split(' ')[0] : null;
           recipients.push({ email: profile.email, first_name: firstName });
@@ -232,11 +241,11 @@ serve(async (req) => {
     }
 
     // Get contacts from lists (only if not send_to_all)
-    if (!campaign.send_to_all && campaign.send_to_lists && campaign.send_to_lists.length > 0) {
+    if (!audience.send_to_all && audience.send_to_lists.length > 0) {
       const { data: listMembers } = await supabase
         .from("email_list_members")
         .select("contact:email_contacts(id, email, first_name, is_subscribed)")
-        .in("list_id", campaign.send_to_lists);
+        .in("list_id", audience.send_to_lists);
 
       if (listMembers) {
         for (const member of listMembers) {
@@ -250,27 +259,27 @@ serve(async (req) => {
     }
 
     // Get contacts with include tags (only if not send_to_all)
-    if (!campaign.send_to_all && campaign.include_tags && campaign.include_tags.length > 0) {
+    if (!audience.send_to_all && audience.include_tags.length > 0) {
       // Get emails from user_tags
       const { data: taggedUsers } = await supabase
         .from("user_tags")
         .select("email, user_id")
-        .in("tag_id", campaign.include_tags);
+        .in("tag_id", audience.include_tags);
 
       logStep("Tagged users found", { count: taggedUsers?.length || 0 });
 
       if (taggedUsers) {
         for (const tagged of taggedUsers) {
+          if (!tagged.email) continue;
+
           // Check if unsubscribed in email_contacts
           const { data: contact } = await supabase
             .from("email_contacts")
             .select("is_subscribed")
-            .eq("email", tagged.email)
+            .eq("email", tagged.email.toLowerCase())
             .maybeSingle();
 
-          // If contact exists and is unsubscribed, skip
           if (contact && !contact.is_subscribed) {
-            logStep("Skipping unsubscribed", { email: tagged.email });
             continue;
           }
 
@@ -282,15 +291,13 @@ serve(async (req) => {
               .select("full_name")
               .eq("id", tagged.user_id)
               .maybeSingle();
-            
+
             if (profile?.full_name) {
               firstName = profile.full_name.split(' ')[0];
             }
           }
 
-          if (tagged.email) {
-            recipients.push({ email: tagged.email, first_name: firstName });
-          }
+          recipients.push({ email: tagged.email, first_name: firstName });
         }
       }
     }
@@ -302,11 +309,11 @@ serve(async (req) => {
 
     // Exclude contacts with exclude tags
     let finalRecipients = uniqueRecipients;
-    if (campaign.exclude_tags && campaign.exclude_tags.length > 0) {
+    if (audience.exclude_tags.length > 0) {
       const { data: excludedEmails } = await supabase
         .from("user_tags")
         .select("email")
-        .in("tag_id", campaign.exclude_tags);
+        .in("tag_id", audience.exclude_tags);
 
       const excludeSet = new Set((excludedEmails || []).map(e => e.email?.toLowerCase()).filter(Boolean));
       finalRecipients = uniqueRecipients.filter(r => !excludeSet.has(r.email.toLowerCase()));
@@ -316,8 +323,8 @@ serve(async (req) => {
 
     // If preview only, just return the count (no emails for privacy/performance)
     if (previewOnly) {
-      return new Response(JSON.stringify({ 
-        success: true, 
+      return new Response(JSON.stringify({
+        success: true,
         recipientCount: finalRecipients.length
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
