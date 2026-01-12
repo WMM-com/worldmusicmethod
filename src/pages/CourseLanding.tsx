@@ -703,6 +703,9 @@ export default function CourseLanding() {
 
   // Track if mobile sidebar has been auto-opened this session
   const [hasAutoOpenedMobile, setHasAutoOpenedMobile] = useState(false);
+  
+  // Ref for tracking swipe on mobile sidebar
+  const mobileSidebarRef = useRef<HTMLDivElement>(null);
 
   // Auto-close sidebar on desktop after 5 seconds
   useEffect(() => {
@@ -783,10 +786,14 @@ export default function CourseLanding() {
       setShowStickyCTA(scrollY > 300);
       setShowNavWheel(scrollY > heroHeight - 100);
 
-      // Auto-open mobile sidebar when scrolling past hero (once per session)
-      if (isMobile && !hasAutoOpenedMobile && scrollY > heroHeight) {
-        setSidebarOpen(true);
-        setHasAutoOpenedMobile(true);
+      // Auto-open mobile sidebar when scrolling to second section (overview) - once per session
+      const overviewSection = sectionRefs.current['overview'];
+      if (isMobile && !hasAutoOpenedMobile && overviewSection) {
+        const overviewTop = overviewSection.getBoundingClientRect().top + window.scrollY;
+        if (scrollY > overviewTop - window.innerHeight * 0.5) {
+          setSidebarOpen(true);
+          setHasAutoOpenedMobile(true);
+        }
       }
 
       // Find active section
@@ -944,7 +951,7 @@ export default function CourseLanding() {
     <>
       <SiteHeader />
       <div className="min-h-screen bg-background">
-        {/* Mobile Sidebar Overlay */}
+        {/* Mobile Sidebar Overlay with Swipe-to-Close */}
         <AnimatePresence>
           {sidebarOpen && isMobile && (
             <>
@@ -956,22 +963,36 @@ export default function CourseLanding() {
                 className="fixed inset-0 bg-black/50 z-40"
                 onClick={() => setSidebarOpen(false)}
               />
-              {/* Drawer */}
+              {/* Drawer with swipe gesture */}
               <motion.aside
+                ref={mobileSidebarRef}
                 initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-50 overflow-y-auto overflow-x-hidden"
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={{ left: 0.3, right: 0 }}
+                onDragEnd={(_, info) => {
+                  // Close if swiped left more than 100px or with high velocity
+                  if (info.offset.x < -100 || info.velocity.x < -500) {
+                    setSidebarOpen(false);
+                  }
+                }}
+                className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-50 overflow-y-auto overflow-x-hidden touch-pan-y"
               >
-                <div className="p-4 border-b border-border flex items-center justify-between">
+                {/* Sticky Close Button - always visible */}
+                <button 
+                  onClick={() => setSidebarOpen(false)}
+                  className="fixed top-4 left-[calc(85vw-3rem)] max-w-[calc(24rem-1rem)] z-[60] w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors shadow-lg"
+                  style={{ left: 'min(calc(85vw - 3rem), calc(24rem - 1rem))' }}
+                >
+                  <X className="w-5 h-5 text-primary-foreground" />
+                </button>
+                
+                <div className="p-4 border-b border-border">
                   <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
-                  <button 
-                    onClick={() => setSidebarOpen(false)}
-                    className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
-                  >
-                    <X className="w-5 h-5 text-primary-foreground" />
-                  </button>
+                  <p className="text-xs text-muted-foreground mt-1">Swipe left to close</p>
                 </div>
                 
                 {/* Watch Preview button in sidebar */}
@@ -1178,11 +1199,16 @@ export default function CourseLanding() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
               >
-                {/* Mobile: Video thumbnail with play button */}
+                {/* Mobile: Course title first, then video */}
+                <h1 className="lg:hidden text-2xl font-bold mb-3 leading-tight">
+                  {course.title}
+                </h1>
+                
+                {/* Mobile: Video thumbnail with play button and white border */}
                 <div className="lg:hidden mb-4">
                   {courseConfig?.trailerVideo && (
                     <div 
-                      className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group"
+                      className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group border-2 border-white/80"
                       onClick={() => setShowVideoModal(true)}
                     >
                       {courseConfig?.courseImage || course.cover_image_url ? (
@@ -1208,7 +1234,8 @@ export default function CourseLanding() {
                   )}
                 </div>
 
-                <h1 className="text-2xl lg:text-5xl font-bold mb-2 lg:mb-4 leading-tight">
+                {/* Desktop: Course title */}
+                <h1 className="hidden lg:block text-5xl font-bold mb-4 leading-tight">
                   {course.title}
                 </h1>
 
