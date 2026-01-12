@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Users, Pencil, RefreshCw, Trash2, Upload, Tag, X, Plus, Mail, MailX } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Users, RefreshCw, Trash2, Upload, X, Plus, Mail, MailX, Tag, Pencil } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
@@ -52,6 +52,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UserDetailDialog } from './UserDetailDialog';
+import { format } from 'date-fns';
 
 type AppRole = 'user' | 'admin';
 
@@ -63,10 +65,6 @@ export function AdminUsers() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<{ id: string; full_name: string; email: string } | null>(null);
-  const [editPassword, setEditPassword] = useState('');
-  const [resettingPassword, setResettingPassword] = useState(false);
   // New user form state
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -80,10 +78,13 @@ export function AdminUsers() {
   const [importing, setImporting] = useState(false);
 
   // Tags management state
-  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [tagsUserId, setTagsUserId] = useState<string | null>(null);
   const [tagsUserEmail, setTagsUserEmail] = useState<string>('');
   const [tagSearch, setTagSearch] = useState('');
+
+  // User detail dialog state
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [detailUser, setDetailUser] = useState<any>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin-users', searchQuery],
@@ -238,24 +239,15 @@ export function AdminUsers() {
     },
   });
 
-  const updateUserMutation = useMutation({
-    mutationFn: async ({ userId, fullName, email }: { userId: string; fullName: string; email: string }) => {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ full_name: fullName, email })
-        .eq('id', userId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      toast.success('User updated successfully');
-      setEditDialogOpen(false);
-      setEditingUser(null);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update user');
-    },
-  });
+  // Handler for role change from detail dialog
+  const handleRoleChange = (userId: string, role: AppRole) => {
+    updateRoleMutation.mutate({ userId, role });
+  };
+
+  // Handler for subscription change from detail dialog
+  const handleSubscriptionChange = (email: string, isSubscribed: boolean) => {
+    updateSubscriptionMutation.mutate({ email, isSubscribed });
+  };
 
   // Add tag to user mutation
   const addTagMutation = useMutation({
@@ -769,13 +761,13 @@ export function AdminUsers() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Email Subscribed</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead>Enrolled Courses</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="w-[200px]">User</TableHead>
+              <TableHead className="w-[70px]">Role</TableHead>
+              <TableHead className="w-[50px]">Email</TableHead>
+              <TableHead className="w-[70px]">Tags</TableHead>
+              <TableHead className="w-[80px]">Courses</TableHead>
+              <TableHead className="w-[100px]">Joined</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -800,203 +792,55 @@ export function AdminUsers() {
                 const isSubscribed = emailSub?.is_subscribed !== false; // Default to subscribed if no record
                 
                 return (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{user.full_name || 'No name'}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <TableRow 
+                    key={user.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      setDetailUser(user);
+                      setDetailDialogOpen(true);
+                    }}
+                  >
+                    <TableCell className="py-2">
+                      <div className="max-w-[180px]">
+                        <p className="font-medium text-sm truncate">{user.full_name || 'No name'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Select
-                        value={role}
-                        onValueChange={(value: AppRole) => updateRoleMutation.mutate({ userId: user.id, role: value })}
-                      >
-                        <SelectTrigger className="w-28">
-                          <Badge variant={getRoleBadgeVariant(role)} className="pointer-events-none">
-                            {role}
-                          </Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                      <Badge variant={getRoleBadgeVariant(role)} className="text-xs">
+                        {role}
+                      </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`flex items-center gap-1 ${!isSubscribed ? 'text-destructive' : 'text-green-600'}`}
-                          >
-                            {isSubscribed ? (
-                              <>
-                                <Mail className="h-4 w-4" />
-                                <span>Subscribed</span>
-                              </>
-                            ) : (
-                              <>
-                                <MailX className="h-4 w-4" />
-                                <span>Unsubscribed</span>
-                              </>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-3" align="start">
-                          <div className="space-y-3">
-                            <div className="text-sm">
-                              <p className="font-medium">Email Subscription Status</p>
-                              <p className="text-muted-foreground text-xs">
-                                {isSubscribed 
-                                  ? 'User will receive email campaigns' 
-                                  : 'User has opted out of emails'}
-                              </p>
-                            </div>
-                            {emailSub?.unsubscribe_reason && (
-                              <div className="text-xs bg-muted p-2 rounded">
-                                <p className="font-medium">Reason:</p>
-                                <p className="text-muted-foreground">{emailSub.unsubscribe_reason}</p>
-                                {emailSub.unsubscribed_at && (
-                                  <p className="text-muted-foreground mt-1">
-                                    On: {new Date(emailSub.unsubscribed_at).toLocaleDateString()}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                            <Button
-                              size="sm"
-                              variant={isSubscribed ? "destructive" : "default"}
-                              className="w-full"
-                              disabled={updateSubscriptionMutation.isPending}
-                              onClick={() => updateSubscriptionMutation.mutate({ 
-                                email: user.email, 
-                                isSubscribed: !isSubscribed 
-                              })}
-                            >
-                              {updateSubscriptionMutation.isPending ? 'Updating...' : (
-                                isSubscribed ? 'Unsubscribe User' : 'Resubscribe User'
-                              )}
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 items-center">
-                        {tags.slice(0, 3).map((ut: any) => (
-                          <Badge 
-                            key={ut.id} 
-                            variant="secondary" 
-                            className="text-xs flex items-center gap-1"
-                          >
-                            {ut.email_tags?.name || 'Unknown'}
-                            <button
-                              onClick={() => removeTagMutation.mutate({ userId: user.id, tagId: ut.tag_id })}
-                              className="ml-1 hover:text-destructive"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))}
-                        {tags.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{tags.length - 3} more
-                          </Badge>
-                        )}
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => {
-                                setTagsUserId(user.id);
-                                setTagsUserEmail(user.email);
-                                setTagSearch('');
-                              }}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-64 p-2" align="start">
-                            <div className="space-y-2">
-                              <Input
-                                placeholder="Search tags..."
-                                value={tagSearch}
-                                onChange={(e) => setTagSearch(e.target.value)}
-                                className="h-8"
-                              />
-                              <ScrollArea className="h-48">
-                                <div className="space-y-1">
-                                  {filteredTags.map(tag => {
-                                    const isAssigned = tags.some((ut: any) => ut.tag_id === tag.id);
-                                    return (
-                                      <Button
-                                        key={tag.id}
-                                        variant={isAssigned ? "secondary" : "ghost"}
-                                        size="sm"
-                                        className="w-full justify-start text-xs h-7"
-                                        disabled={isAssigned || addTagMutation.isPending}
-                                        onClick={() => addTagMutation.mutate({ 
-                                          userId: user.id, 
-                                          email: user.email,
-                                          tagId: tag.id 
-                                        })}
-                                      >
-                                        <Tag className="h-3 w-3 mr-2" />
-                                        {tag.name}
-                                        {isAssigned && <span className="ml-auto text-muted-foreground">✓</span>}
-                                      </Button>
-                                    );
-                                  })}
-                                  {filteredTags.length === 0 && (
-                                    <p className="text-xs text-muted-foreground text-center py-2">
-                                      No tags found
-                                    </p>
-                                  )}
-                                </div>
-                              </ScrollArea>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {userEnrollments.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {userEnrollments.slice(0, 2).map((e: any, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {e.courses?.title}
-                            </Badge>
-                          ))}
-                          {userEnrollments.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{userEnrollments.length - 2} more
-                            </Badge>
-                          )}
-                        </div>
+                    <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
+                      {isSubscribed ? (
+                        <Mail className="h-4 w-4 text-green-600" />
                       ) : (
-                        <span className="text-sm text-muted-foreground">None</span>
+                        <MailX className="h-4 w-4 text-destructive" />
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(user.created_at).toLocaleDateString()}
+                    <TableCell className="py-2">
+                      {tags.length > 0 ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {tags.length} tag{tags.length !== 1 ? 's' : ''}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">None</span>
+                      )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
+                      {userEnrollments.length > 0 ? (
+                        <Badge variant="outline" className="text-xs">
+                          {userEnrollments.length} course{userEnrollments.length !== 1 ? 's' : ''}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap py-2">
+                      {format(new Date(user.created_at), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setEditingUser({ id: user.id, full_name: user.full_name || '', email: user.email });
-                            setEditDialogOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
                         <Dialog open={enrollDialogOpen && selectedUserId === user.id} onOpenChange={(open) => {
                           setEnrollDialogOpen(open);
                           if (!open) {
@@ -1137,95 +981,18 @@ export function AdminUsers() {
           </TableBody>
         </Table>
 
-        {/* Edit User Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-              <DialogDescription>
-                Update user information.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Full Name</Label>
-                <Input
-                  id="edit-name"
-                  value={editingUser?.full_name || ''}
-                  onChange={(e) => setEditingUser(prev => prev ? { ...prev, full_name: e.target.value } : null)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-email">Email</Label>
-                <Input
-                  id="edit-email"
-                  type="email"
-                  value={editingUser?.email || ''}
-                  onChange={(e) => setEditingUser(prev => prev ? { ...prev, email: e.target.value } : null)}
-                />
-              </div>
-              <Button
-                onClick={() => {
-                  if (editingUser) {
-                    updateUserMutation.mutate({
-                      userId: editingUser.id,
-                      fullName: editingUser.full_name,
-                      email: editingUser.email,
-                    });
-                  }
-                }}
-                disabled={updateUserMutation.isPending}
-                className="w-full"
-              >
-                {updateUserMutation.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
-              
-              <div className="border-t pt-4 mt-4">
-                <Label htmlFor="new-password" className="mb-2 block">Reset Password</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="new-password"
-                    type="password"
-                    placeholder="New password"
-                    value={editPassword}
-                    onChange={(e) => setEditPassword(e.target.value)}
-                  />
-                  <Button
-                    variant="outline"
-                    disabled={resettingPassword || !editPassword}
-                    onClick={async () => {
-                      if (!editingUser || !editPassword) return;
-                      setResettingPassword(true);
-                      try {
-                        const { data: { session } } = await supabase.auth.getSession();
-                        if (!session) {
-                          toast.error('You must be logged in');
-                          return;
-                        }
-
-                        const { data, error } = await supabase.functions.invoke('admin-reset-password', {
-                          body: { userId: editingUser.id, newPassword: editPassword },
-                        });
-
-                        if (error) throw error;
-                        if (data?.error) throw new Error(data.error);
-
-                        toast.success('Password reset successfully');
-                        setEditPassword('');
-                      } catch (err: any) {
-                        toast.error(err.message || 'Failed to reset password');
-                      } finally {
-                        setResettingPassword(false);
-                      }
-                    }}
-                  >
-                    {resettingPassword ? 'Resetting...' : 'Reset'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* User Detail Dialog */}
+        <UserDetailDialog
+          user={detailUser}
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          userRole={detailUser ? getUserRole(detailUser.id) : 'user'}
+          userEnrollments={detailUser ? getUserEnrollments(detailUser.id) : []}
+          userTags={detailUser ? getUserTags(detailUser.id) : []}
+          emailSubscription={detailUser ? getEmailSubscription(detailUser.email) : undefined}
+          onRoleChange={handleRoleChange}
+          onSubscriptionChange={handleSubscriptionChange}
+        />
       </CardContent>
     </Card>
   );
