@@ -161,10 +161,12 @@ export default function Profile() {
   };
 
   const handleTogglePublic = async () => {
+    const newVisibility = extendedProfile?.visibility === 'public' ? 'private' : 'public';
     await updateExtendedProfile.mutateAsync({ 
-      is_public: !extendedProfile?.is_public 
+      visibility: newVisibility,
+      is_public: newVisibility === 'public',
     });
-    toast.success(extendedProfile?.is_public ? 'Profile is now private' : 'Profile is now public');
+    toast.success(newVisibility === 'public' ? 'Profile is now public' : 'Profile is now private');
   };
 
   const handleAddSection = async (sectionType: string) => {
@@ -381,9 +383,13 @@ export default function Profile() {
                       <h1 className="text-2xl sm:text-3xl font-bold">
                         {profile.full_name || 'Anonymous'}
                       </h1>
-                      {extendedProfile?.is_public ? (
-                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0">
+                      {extendedProfile?.visibility === 'public' ? (
+                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-green-500/20 text-green-600 dark:text-green-400">
                           <Globe className="h-3 w-3 mr-1" /> Public
+                        </Badge>
+                      ) : extendedProfile?.visibility === 'members' ? (
+                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                          <Users className="h-3 w-3 mr-1" /> Members Only
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="w-fit mx-auto sm:mx-0">

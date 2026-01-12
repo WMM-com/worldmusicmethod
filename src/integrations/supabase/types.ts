@@ -3396,6 +3396,7 @@ export type Database = {
           updated_at: string
           username: string | null
           vat_number: string | null
+          visibility: Database["public"]["Enums"]["profile_visibility"] | null
           website_url: string | null
           wp_password_hash: string | null
           wp_user_id: number | null
@@ -3445,6 +3446,7 @@ export type Database = {
           updated_at?: string
           username?: string | null
           vat_number?: string | null
+          visibility?: Database["public"]["Enums"]["profile_visibility"] | null
           website_url?: string | null
           wp_password_hash?: string | null
           wp_user_id?: number | null
@@ -3494,6 +3496,7 @@ export type Database = {
           updated_at?: string
           username?: string | null
           vat_number?: string | null
+          visibility?: Database["public"]["Enums"]["profile_visibility"] | null
           website_url?: string | null
           wp_password_hash?: string | null
           wp_user_id?: number | null
@@ -4199,6 +4202,7 @@ export type Database = {
         | "asia_lower"
         | "asia_higher"
         | "default"
+      profile_visibility: "private" | "members" | "public"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4368,6 +4372,7 @@ export const Constants = {
         "asia_higher",
         "default",
       ],
+      profile_visibility: ["private", "members", "public"],
     },
   },
 } as const

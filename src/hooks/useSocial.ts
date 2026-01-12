@@ -128,7 +128,7 @@ export function useFeed() {
 
 export function useCreatePost() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   return useMutation({
     mutationFn: async ({ content, mediaUrl, mediaType, visibility, postType }: { 
@@ -140,15 +140,33 @@ export function useCreatePost() {
     }) => {
       if (!user) throw new Error('Not authenticated');
       
-      const { error } = await supabase.from('posts').insert({
+      const { data: post, error } = await supabase.from('posts').insert({
         user_id: user.id,
         content,
         image_url: mediaUrl || null,
         media_type: mediaType || null,
         visibility,
         post_type: postType || 'update',
-      });
+      }).select('id').single();
       if (error) throw error;
+      
+      // Extract and create mention notifications
+      const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+      let match;
+      while ((match = mentionRegex.exec(content)) !== null) {
+        const mentionedUserId = match[2];
+        if (mentionedUserId !== user.id) {
+          await createNotification({
+            userId: mentionedUserId,
+            type: 'mention',
+            title: 'You were mentioned',
+            message: `${profile?.full_name || 'Someone'} mentioned you in a post`,
+            referenceId: post.id,
+            referenceType: 'post',
+            fromUserId: user.id,
+          });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed'] });

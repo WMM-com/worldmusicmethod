@@ -58,6 +58,7 @@ export interface ExtendedProfile {
   business_name: string | null;
   username: string | null;
   is_public: boolean;
+  visibility: 'private' | 'members' | 'public';
   profile_type: string;
   website_url: string | null;
   paypal_email: string | null;
