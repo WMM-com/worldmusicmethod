@@ -54,12 +54,24 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserDetailDialog } from './UserDetailDialog';
 import { format } from 'date-fns';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 
 type AppRole = 'user' | 'admin';
+
+const USERS_PER_PAGE = 50;
 
 export function AdminUsers() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -93,20 +105,51 @@ export function AdminUsers() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailUser, setDetailUser] = useState<any>(null);
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ['admin-users', searchQuery],
+  // Reset to page 1 when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  // Fetch total count for pagination
+  const { data: totalCount } = useQuery({
+    queryKey: ['admin-users-count', searchQuery],
     queryFn: async () => {
       let query = supabase
         .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact', head: true });
 
       if (searchQuery) {
         const safeQuery = sanitizeSearchQuery(searchQuery);
         query = query.or(`email.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`);
       }
 
-      const { data, error } = await query.limit(50);
+      const { count, error } = await query;
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  const totalPages = Math.ceil((totalCount || 0) / USERS_PER_PAGE);
+
+  const { data: users, isLoading } = useQuery({
+    queryKey: ['admin-users', searchQuery, currentPage],
+    queryFn: async () => {
+      const from = (currentPage - 1) * USERS_PER_PAGE;
+      const to = from + USERS_PER_PAGE - 1;
+      
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (searchQuery) {
+        const safeQuery = sanitizeSearchQuery(searchQuery);
+        query = query.or(`email.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -141,15 +184,20 @@ export function AdminUsers() {
     },
   });
 
+  // Fetch enrollments for displayed users only (avoid 1000 row limit issue)
+  const userIds = users?.map(u => u.id) || [];
   const { data: enrollments } = useQuery({
-    queryKey: ['admin-enrollments'],
+    queryKey: ['admin-enrollments', userIds],
     queryFn: async () => {
+      if (userIds.length === 0) return [];
       const { data, error } = await supabase
         .from('course_enrollments')
-        .select('user_id, course_id, courses(title)');
+        .select('user_id, course_id, courses(title)')
+        .in('user_id', userIds);
       if (error) throw error;
       return data;
     },
+    enabled: userIds.length > 0,
   });
 
   // Fetch all available tags
@@ -166,7 +214,6 @@ export function AdminUsers() {
   });
 
   // Fetch user tags for displayed users only (avoid 1000 row limit issue)
-  const userIds = users?.map(u => u.id) || [];
   const { data: userTags } = useQuery({
     queryKey: ['admin-user-tags', userIds],
     queryFn: async () => {
@@ -768,7 +815,7 @@ export function AdminUsers() {
             <Input
               placeholder="Search users..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9"
             />
           </div>
@@ -1290,6 +1337,87 @@ export function AdminUsers() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <p className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * USERS_PER_PAGE) + 1} - {Math.min(currentPage * USERS_PER_PAGE, totalCount || 0)} of {totalCount} users
+            </p>
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+                
+                {/* First page */}
+                {currentPage > 2 && (
+                  <PaginationItem>
+                    <PaginationLink onClick={() => setCurrentPage(1)} className="cursor-pointer">
+                      1
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                {currentPage > 3 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                {/* Previous page */}
+                {currentPage > 1 && (
+                  <PaginationItem>
+                    <PaginationLink onClick={() => setCurrentPage(currentPage - 1)} className="cursor-pointer">
+                      {currentPage - 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                {/* Current page */}
+                <PaginationItem>
+                  <PaginationLink isActive className="cursor-pointer">
+                    {currentPage}
+                  </PaginationLink>
+                </PaginationItem>
+                
+                {/* Next page */}
+                {currentPage < totalPages && (
+                  <PaginationItem>
+                    <PaginationLink onClick={() => setCurrentPage(currentPage + 1)} className="cursor-pointer">
+                      {currentPage + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                {currentPage < totalPages - 2 && (
+                  <PaginationItem>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                )}
+                
+                {/* Last page */}
+                {currentPage < totalPages - 1 && (
+                  <PaginationItem>
+                    <PaginationLink onClick={() => setCurrentPage(totalPages)} className="cursor-pointer">
+                      {totalPages}
+                    </PaginationLink>
+                  </PaginationItem>
+                )}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
 
         {/* User Detail Dialog */}
         <UserDetailDialog
