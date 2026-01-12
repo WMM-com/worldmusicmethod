@@ -8,7 +8,6 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
-import { CoursePortalTransition } from '@/components/courses/CoursePortalTransition';
 import { useCourses } from '@/hooks/useCourses';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGeoPricing, formatPrice } from '@/contexts/GeoPricingContext';
@@ -151,71 +150,67 @@ export default function Courses() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
                 >
-                  <CoursePortalTransition 
-                    courseId={course.id} 
-                    imageUrl={course.cover_image_url || undefined}
+                  <Card
+                    className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
+                    onClick={() => navigate(`/courses/${course.id}`)}
                   >
-                    <Card
-                      className="group overflow-hidden hover:shadow-xl transition-all duration-300"
-                    >
-                      {/* Cover image */}
-                      <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
-                        {course.cover_image_url ? (
-                          <img
-                            src={course.cover_image_url}
-                            alt={course.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <BookOpen className="w-12 h-12 text-primary/30" />
-                          </div>
-                        )}
-                      </div>
+                    {/* Cover image */}
+                    <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
+                      {course.cover_image_url ? (
+                        <img
+                          src={course.cover_image_url}
+                          alt={course.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <BookOpen className="w-12 h-12 text-primary/30" />
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Content */}
-                      <div className="p-5">
-                        <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
-                          {course.title}
-                        </h3>
-                        
-                        {/* Tutor name */}
-                        {course.tutor_name && (
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {course.tutor_name}
-                          </p>
-                        )}
-                        
-                        {course.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                            {course.description}
-                          </p>
-                        )}
+                    {/* Content */}
+                    <div className="p-5">
+                      <h3 className="font-bold text-lg mb-2 group-hover:text-primary transition-colors">
+                        {course.title}
+                      </h3>
+                      
+                      {/* Tutor name */}
+                      {course.tutor_name && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {course.tutor_name}
+                        </p>
+                      )}
+                      
+                      {course.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                          {course.description}
+                        </p>
+                      )}
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <BookOpen className="w-4 h-4" />
-                              Course
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <BookOpen className="w-4 h-4" />
+                            Course
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* Price in yellow - only show when geo detection complete */}
+                          {!priceLoading && priceInfo && (
+                            <span className="font-bold text-yellow-500">
+                              {formatPrice(priceInfo.price, priceInfo.currency)}
                             </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            {/* Price in yellow - only show when geo detection complete */}
-                            {!priceLoading && priceInfo && (
-                              <span className="font-bold text-yellow-500">
-                                {formatPrice(priceInfo.price, priceInfo.currency)}
-                              </span>
-                            )}
-                            {priceLoading && priceInfo && (
-                              <span className="font-bold text-yellow-500 animate-pulse">...</span>
-                            )}
-                            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                          </div>
+                          )}
+                          {priceLoading && priceInfo && (
+                            <span className="font-bold text-yellow-500 animate-pulse">...</span>
+                          )}
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                         </div>
                       </div>
-                    </Card>
-                  </CoursePortalTransition>
+                    </div>
+                  </Card>
                 </motion.div>
               );
             })}
