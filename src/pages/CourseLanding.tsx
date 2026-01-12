@@ -1287,18 +1287,18 @@ export default function CourseLanding() {
                       viewport={{ once: true }}
                       transition={{ delay: i * 0.1 }}
                     >
-                      <Card className="p-6 h-full">
-                        <div className="flex items-start gap-4">
-                          <div className="p-3 bg-primary/10 rounded-lg shrink-0">
-                            <IconComponent className="w-6 h-6 text-primary" />
+                      <Card className="p-4 md:p-6 h-full">
+                        <div className="flex items-start gap-3 md:gap-4">
+                          <div className="p-2 md:p-3 bg-primary/10 rounded-lg shrink-0">
+                            <IconComponent className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                           </div>
-                          <div>
-                            <h3 className="font-semibold mb-3">{outcome.title}</h3>
-                            <ul className="space-y-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold mb-2 md:mb-3 text-sm md:text-base">{outcome.title}</h3>
+                            <ul className="space-y-1.5 md:space-y-2">
                               {outcome.items.map((item, j) => (
-                                <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                  <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
-                                  {item}
+                                <li key={j} className="flex items-start gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground">
+                                  <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5 text-primary" />
+                                  <span>{item}</span>
                                 </li>
                               ))}
                             </ul>
@@ -1364,7 +1364,7 @@ export default function CourseLanding() {
                     {/* Single vertical divider line */}
                     <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-border" />
                     
-                    <div className="grid md:grid-cols-2 gap-8">
+                    <div className="grid md:grid-cols-2 gap-12 md:gap-8">
                       {courseConfig.resources.map((resource, i) => (
                         <div key={i} className="flex flex-col md:flex-row gap-4 items-start">
                           <img 
@@ -1372,7 +1372,7 @@ export default function CourseLanding() {
                             alt={resource.title}
                             className="w-full md:w-72 h-auto object-contain rounded-lg shrink-0"
                           />
-                          <div>
+                          <div className="pb-4 md:pb-0">
                             <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
                             <p className="text-muted-foreground text-sm">{resource.description}</p>
                           </div>
