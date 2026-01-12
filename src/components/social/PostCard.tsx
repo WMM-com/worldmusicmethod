@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { UserHoverCard } from './UserHoverCard';
 import { MentionInput, renderMentionText } from '@/components/ui/mention-input';
+import { LazyImage } from '@/components/ui/lazy-image';
 
 // Global video manager to ensure only one video plays at a time
 const videoRegistry = new Set<HTMLVideoElement>();
@@ -172,7 +173,7 @@ function PostContentText({ content }: { content: string }) {
   );
 }
 
-// Facebook-style image gallery for multiple images
+// Facebook-style image gallery for multiple images with lazy loading
 function ImageGallery({ images }: { images: string[] }) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
@@ -185,10 +186,12 @@ function ImageGallery({ images }: { images: string[] }) {
           className="rounded-lg overflow-hidden cursor-pointer"
           onClick={() => setSelectedImage(images[0])}
         >
-          <img
+          <LazyImage
             src={images[0]}
             alt=""
             className="w-full max-h-[500px] object-contain bg-black/5"
+            showSkeleton={true}
+            skeletonClassName="aspect-video"
           />
         </div>
         {selectedImage && (
@@ -226,10 +229,12 @@ function ImageGallery({ images }: { images: string[] }) {
             )}
             onClick={() => setSelectedImage(img)}
           >
-            <img
+            <LazyImage
               src={img}
               alt=""
               className="w-full h-full object-cover aspect-square"
+              showSkeleton={true}
+              skeletonClassName="aspect-square"
             />
             {idx === 3 && images.length > 4 && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
