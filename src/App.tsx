@@ -45,6 +45,7 @@ import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import VerifyEmail from "./pages/VerifyEmail";
 import Membership from "./pages/Membership";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const queryClient = new QueryClient();
 
@@ -133,6 +134,7 @@ function AppContent() {
         <Route path="/media" element={<Media />} />
         <Route path="/media/playlist/:playlistId" element={<MediaPlaylist />} />
         <Route path="/membership" element={<Membership />} />
+        <Route path="/unsubscribe" element={<Unsubscribe />} />
         
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
