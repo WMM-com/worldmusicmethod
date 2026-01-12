@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.send-direct-email]
 verify_jwt = true
+
+[functions.import-student-contacts]
+verify_jwt = true
