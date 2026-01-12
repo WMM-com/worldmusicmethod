@@ -420,26 +420,24 @@ export function AdminCampaigns() {
                   </div>
 
                   {!formData.send_to_all && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>Send to Lists</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {lists.map(list => (
-                            <Badge
-                              key={list.id}
-                              variant={formData.send_to_lists.includes(list.id) ? 'default' : 'outline'}
-                              className="cursor-pointer"
-                              onClick={() => toggleList(list.id)}
-                            >
-                              {list.name}
-                            </Badge>
-                          ))}
-                          {lists.length === 0 && (
-                            <p className="text-sm text-muted-foreground">No lists created</p>
-                          )}
-                        </div>
+                    <div className="space-y-2">
+                      <Label>Send to Lists</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {lists.map(list => (
+                          <Badge
+                            key={list.id}
+                            variant={formData.send_to_lists.includes(list.id) ? 'default' : 'outline'}
+                            className="cursor-pointer"
+                            onClick={() => toggleList(list.id)}
+                          >
+                            {list.name}
+                          </Badge>
+                        ))}
+                        {lists.length === 0 && (
+                          <p className="text-sm text-muted-foreground">No lists created</p>
+                        )}
                       </div>
-                    </>
+                    </div>
                   )}
                   {!formData.send_to_all && (
                     <div className="space-y-2">
