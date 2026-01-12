@@ -693,6 +693,7 @@ export type Database = {
           id: string
           is_published: boolean | null
           region_theme: Json | null
+          slug: string | null
           tags: string[] | null
           title: string
           tutor_name: string | null
@@ -707,6 +708,7 @@ export type Database = {
           id?: string
           is_published?: boolean | null
           region_theme?: Json | null
+          slug?: string | null
           tags?: string[] | null
           title: string
           tutor_name?: string | null
@@ -721,6 +723,7 @@ export type Database = {
           id?: string
           is_published?: boolean | null
           region_theme?: Json | null
+          slug?: string | null
           tags?: string[] | null
           title?: string
           tutor_name?: string | null
@@ -2968,6 +2971,48 @@ export type Database = {
           notes?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      pages: {
+        Row: {
+          created_at: string
+          id: string
+          is_published: boolean | null
+          meta_description: string | null
+          meta_title: string | null
+          page_type: string
+          redirect_code: number | null
+          redirect_url: string | null
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
+          page_type?: string
+          redirect_code?: number | null
+          redirect_url?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_published?: boolean | null
+          meta_description?: string | null
+          meta_title?: string | null
+          page_type?: string
+          redirect_code?: number | null
+          redirect_url?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
