@@ -152,7 +152,7 @@ export default function Courses() {
                 >
                   <Card
                     className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
-                    onClick={() => navigate(`/courses/${course.id}`)}
+                    onClick={() => navigate(`/courses/${course.slug || course.id}`)}
                   >
                     {/* Cover image */}
                     <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">

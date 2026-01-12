@@ -4,6 +4,7 @@ export interface Course {
   title: string;
   description: string | null;
   country: string;
+  slug: string | null;
   region_theme: Record<string, any>;
   cover_image_url: string | null;
   is_published: boolean;

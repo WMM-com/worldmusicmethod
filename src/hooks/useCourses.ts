@@ -43,20 +43,31 @@ export function useCourses() {
   });
 }
 
-export function useCourse(courseId: string | undefined) {
+export function useCourse(courseIdOrSlug: string | undefined) {
   return useQuery({
-    queryKey: ['course', courseId],
+    queryKey: ['course', courseIdOrSlug],
     queryFn: async () => {
-      if (!courseId) return null;
+      if (!courseIdOrSlug) return null;
       
-      const { data: course, error: courseError } = await supabase
+      // Check if it's a UUID (id) or a slug
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseIdOrSlug);
+      
+      let query = supabase
         .from('courses')
-        .select('*')
-        .eq('id', courseId)
-        .single();
+        .select('*');
+      
+      if (isUuid) {
+        query = query.eq('id', courseIdOrSlug);
+      } else {
+        query = query.eq('slug', courseIdOrSlug);
+      }
+      
+      const { data: course, error: courseError } = await query.single();
       
       if (courseError) throw courseError;
 
+      const courseId = course.id;
+      
       const { data: modules, error: modulesError } = await supabase
         .from('course_modules')
         .select('*')
@@ -91,7 +102,7 @@ export function useCourse(courseId: string | undefined) {
         modules: modulesWithLessons
       } as CourseWithModules;
     },
-    enabled: !!courseId
+    enabled: !!courseIdOrSlug
   });
 }
 

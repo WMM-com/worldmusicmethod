@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2, Reply, ChevronDown, Paperclip, Image, Video, X, FileText, Flag, Ban } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, MoreHorizontal, Globe, Users, Pencil, Megaphone, RefreshCw, Star, Music2, Reply, ChevronDown, ChevronLeft, ChevronRight, Paperclip, Image, Video, X, FileText, Flag, Ban } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -195,16 +195,132 @@ function PostContentText({ content }: { content: string }) {
 
 // Facebook-style image gallery for multiple images with lazy loading
 function ImageGallery({ images }: { images: string[] }) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  
+  const minSwipeDistance = 50;
+  
+  // Keyboard navigation
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setSelectedIndex(prev => prev !== null ? Math.max(0, prev - 1) : null);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setSelectedIndex(prev => prev !== null ? Math.min(images.length - 1, prev + 1) : null);
+      } else if (e.key === 'Escape') {
+        setSelectedIndex(null);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIndex, images.length]);
+  
+  // Touch handlers for swipe
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe && selectedIndex !== null && selectedIndex < images.length - 1) {
+      setSelectedIndex(selectedIndex + 1);
+    } else if (isRightSwipe && selectedIndex !== null && selectedIndex > 0) {
+      setSelectedIndex(selectedIndex - 1);
+    }
+  };
+  
+  const goToPrevious = () => {
+    if (selectedIndex !== null && selectedIndex > 0) {
+      setSelectedIndex(selectedIndex - 1);
+    }
+  };
+  
+  const goToNext = () => {
+    if (selectedIndex !== null && selectedIndex < images.length - 1) {
+      setSelectedIndex(selectedIndex + 1);
+    }
+  };
   
   if (images.length === 0) return null;
+  
+  const renderLightbox = () => {
+    if (selectedIndex === null) return null;
+    
+    return (
+      <Dialog open={selectedIndex !== null} onOpenChange={() => setSelectedIndex(null)}>
+        <DialogContent 
+          className="max-w-4xl p-0 bg-black border-none"
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          <div className="relative">
+            <img
+              src={images[selectedIndex]}
+              alt=""
+              className="w-full h-auto max-h-[90vh] object-contain"
+            />
+            
+            {/* Navigation arrows */}
+            {images.length > 1 && (
+              <>
+                {/* Previous button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
+                  disabled={selectedIndex === 0}
+                  className={cn(
+                    "absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center transition-all",
+                    selectedIndex === 0 ? "opacity-30 cursor-not-allowed" : "opacity-100"
+                  )}
+                >
+                  <ChevronLeft className="w-6 h-6 text-white" />
+                </button>
+                
+                {/* Next button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); goToNext(); }}
+                  disabled={selectedIndex === images.length - 1}
+                  className={cn(
+                    "absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center transition-all",
+                    selectedIndex === images.length - 1 ? "opacity-30 cursor-not-allowed" : "opacity-100"
+                  )}
+                >
+                  <ChevronRight className="w-6 h-6 text-white" />
+                </button>
+                
+                {/* Image counter */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
+                  {selectedIndex + 1} / {images.length}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
   
   if (images.length === 1) {
     return (
       <>
         <div 
           className="rounded-lg overflow-hidden cursor-pointer"
-          onClick={() => setSelectedImage(images[0])}
+          onClick={() => setSelectedIndex(0)}
         >
           <LazyImage
             src={images[0]}
@@ -214,22 +330,12 @@ function ImageGallery({ images }: { images: string[] }) {
             skeletonClassName="aspect-video"
           />
         </div>
-        {selectedImage && (
-          <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-            <DialogContent className="max-w-4xl p-0 bg-black">
-              <img
-                src={selectedImage}
-                alt=""
-                className="w-full h-auto max-h-[90vh] object-contain"
-              />
-            </DialogContent>
-          </Dialog>
-        )}
+        {renderLightbox()}
       </>
     );
   }
   
-  // Multi-image layout (for future use when posts support multiple images)
+  // Multi-image layout
   const gridClass = images.length === 2 
     ? "grid-cols-2" 
     : images.length === 3 
@@ -247,7 +353,7 @@ function ImageGallery({ images }: { images: string[] }) {
               images.length === 3 && idx === 0 && "row-span-2",
               idx === 3 && images.length > 4 && "relative"
             )}
-            onClick={() => setSelectedImage(img)}
+            onClick={() => setSelectedIndex(idx)}
           >
             <LazyImage
               src={img}
@@ -264,17 +370,7 @@ function ImageGallery({ images }: { images: string[] }) {
           </div>
         ))}
       </div>
-      {selectedImage && (
-        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-          <DialogContent className="max-w-4xl p-0 bg-black">
-            <img
-              src={selectedImage}
-              alt=""
-              className="w-full h-auto max-h-[90vh] object-contain"
-            />
-          </DialogContent>
-        </Dialog>
-      )}
+      {renderLightbox()}
     </>
   );
 }

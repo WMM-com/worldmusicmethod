@@ -41,6 +41,7 @@ export default function MyCourses() {
           *,
           courses:course_id (
             id,
+            slug,
             title,
             description,
             country,
@@ -234,7 +235,7 @@ export default function MyCourses() {
       >
         <Card
           className="group cursor-pointer overflow-hidden hover:shadow-xl transition-all duration-300"
-          onClick={() => navigate(`/courses/${course.id}/learn`)}
+          onClick={() => navigate(`/courses/${course.slug || course.id}/learn`)}
         >
           {/* Course Image */}
           <div className="aspect-[16/10] bg-gradient-to-br from-primary/20 to-primary/5 relative overflow-hidden">
