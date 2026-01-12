@@ -4236,6 +4236,7 @@ export type Database = {
         Args: { p_group_id: string; p_user_id: string }
         Returns: boolean
       }
+      repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
       user_owns_course: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
