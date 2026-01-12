@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePortalTransitionEntry } from '@/components/courses/CoursePortalTransition';
 import { 
   Play, 
   BookOpen, 
@@ -693,11 +694,37 @@ export default function CourseLanding() {
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNavWheel, setShowNavWheel] = useState(false);
+  const [showEntryAnimation, setShowEntryAnimation] = useState(false);
+  
+  // Check if we came from portal transition
+  const { isFromPortal, portalData } = usePortalTransitionEntry();
 
   // Scroll to top on page load
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [courseId]);
+
+  // Handle portal entry animation and sidebar auto-close
+  useEffect(() => {
+    if (isFromPortal) {
+      setShowEntryAnimation(true);
+      // Fade out entry animation after it completes
+      const entryTimer = setTimeout(() => {
+        setShowEntryAnimation(false);
+      }, 1200);
+      return () => clearTimeout(entryTimer);
+    }
+  }, [isFromPortal]);
+
+  // Auto-close sidebar after 2 seconds
+  useEffect(() => {
+    if (sidebarOpen) {
+      const autoCloseTimer = setTimeout(() => {
+        setSidebarOpen(false);
+      }, 2000);
+      return () => clearTimeout(autoCloseTimer);
+    }
+  }, [sidebarOpen, courseId]);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -921,8 +948,67 @@ export default function CourseLanding() {
 
   return (
     <>
+      {/* Portal Entry Animation Overlay */}
+      <AnimatePresence>
+        {showEntryAnimation && (
+          <motion.div
+            className="fixed inset-0 z-[100] pointer-events-none"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, delay: 0.2 }}
+          >
+            {/* Background that fades away to reveal content */}
+            <motion.div 
+              className="absolute inset-0 bg-background"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+            />
+            
+            {/* Image that scales back and fades */}
+            {portalData?.imageUrl && (
+              <motion.div
+                className="absolute inset-0 overflow-hidden"
+                initial={{ scale: 1.2, opacity: 1 }}
+                animate={{ scale: 1, opacity: 0 }}
+                transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <img 
+                  src={portalData.imageUrl} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    background: 'radial-gradient(circle at center, transparent 0%, hsl(var(--background)) 70%)'
+                  }}
+                />
+              </motion.div>
+            )}
+            
+            {/* Particle/dust effect during transition */}
+            <motion.div
+              className="absolute inset-0"
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              style={{
+                background: `radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.2) 0%, transparent 50%)`
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       <SiteHeader />
-      <div className="min-h-screen bg-background">
+      <motion.div 
+        className="min-h-screen bg-background"
+        initial={isFromPortal ? { opacity: 0, scale: 0.98 } : false}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, delay: 0.3, ease: 'easeOut' }}
+      >
         {/* Left Sidebar - Course Curriculum */}
         <AnimatePresence>
           {sidebarOpen && (
@@ -1449,7 +1535,7 @@ export default function CourseLanding() {
             </div>
           </section>
         </main>
-      </div>
+      </motion.div>
 
       {/* Video Modal */}
       <Dialog open={showVideoModal} onOpenChange={setShowVideoModal}>
