@@ -629,12 +629,12 @@ function CheckoutContent() {
 
           <div className="grid lg:grid-cols-2 gap-4 sm:gap-8">
             {/* Billing Details */}
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 uppercase tracking-wide text-muted-foreground">
                 Billing Details
               </h2>
 
-              <Card className="p-4 sm:p-6">
+              <Card className="p-4 sm:p-6 overflow-hidden">
                 {user ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
@@ -786,12 +786,12 @@ function CheckoutContent() {
             </div>
 
             {/* Your Order */}
-            <div>
+            <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 uppercase tracking-wide text-muted-foreground">
                 Your Order
               </h2>
 
-              <Card className="p-4 sm:p-6">
+              <Card className="p-4 sm:p-6 overflow-hidden">
                 {/* Product rows */}
                 <div className="space-y-3 pb-4 border-b border-border">
                   {isCartMode ? (
