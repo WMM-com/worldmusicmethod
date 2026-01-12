@@ -18,7 +18,10 @@ import {
   X,
   FileText,
   HelpCircle,
-  Menu
+  Menu,
+  FolderOpen,
+  Disc3,
+  Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -36,6 +39,50 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import DOMPurify from 'dompurify';
+
+// Helper function to get smart module display - either extracted number or icon for special modules
+const getModuleDisplay = (title: string, index: number): { type: 'number' | 'icon'; value: number | React.ReactNode; IconComponent?: React.ComponentType<{ className?: string }> } => {
+  const lowerTitle = title.toLowerCase();
+  
+  // Check for special non-numbered module types
+  if (lowerTitle.includes('additional resources') || lowerTitle.includes('bonus') || lowerTitle.includes('resources')) {
+    return { type: 'icon', value: null, IconComponent: FolderOpen };
+  }
+  if (lowerTitle.includes('backing track') || lowerTitle.includes('play along') || lowerTitle.includes('play-along')) {
+    return { type: 'icon', value: null, IconComponent: Disc3 };
+  }
+  if (lowerTitle.includes('bonus') || lowerTitle.includes('extra')) {
+    return { type: 'icon', value: null, IconComponent: Gift };
+  }
+  
+  // Try to extract module number from title (e.g., "Module 1:", "Module One", "1.", etc.)
+  const numberWords: Record<string, number> = {
+    'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+    'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+    'eleven': 11, 'twelve': 12
+  };
+  
+  // Match "Module X" or "Module X:" patterns
+  const moduleNumMatch = title.match(/module\s+(\d+)/i);
+  if (moduleNumMatch) {
+    return { type: 'number', value: parseInt(moduleNumMatch[1], 10) };
+  }
+  
+  // Match "Module One", "Module Two", etc.
+  const moduleWordMatch = title.match(/module\s+(\w+)/i);
+  if (moduleWordMatch && numberWords[moduleWordMatch[1].toLowerCase()]) {
+    return { type: 'number', value: numberWords[moduleWordMatch[1].toLowerCase()] };
+  }
+  
+  // Match leading number like "1." or "1:"
+  const leadingNumMatch = title.match(/^(\d+)[.:\s]/);
+  if (leadingNumMatch) {
+    return { type: 'number', value: parseInt(leadingNumMatch[1], 10) };
+  }
+  
+  // Default to sequential index
+  return { type: 'number', value: index + 1 };
+};
 
 // Sticky CTA Button component that adjusts position based on audio player state
 interface StickyCTAButtonProps {
@@ -692,9 +739,21 @@ export default function CourseLanding() {
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNavWheel, setShowNavWheel] = useState(false);
   const isMobile = useIsMobile();
+  
+  // Initialize sidebar state: closed on mobile, open on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Track if desktop sidebar has had its initial auto-close
+  const [hasAutoClosedDesktop, setHasAutoClosedDesktop] = useState(false);
+  
+  // Initialize sidebar state based on device after mount
+  useEffect(() => {
+    if (!isMobile) {
+      setSidebarOpen(true);
+    }
+  }, []);
 
   // Scroll to top on page load
   useEffect(() => {
@@ -707,15 +766,16 @@ export default function CourseLanding() {
   // Ref for tracking swipe on mobile sidebar
   const mobileSidebarRef = useRef<HTMLDivElement>(null);
 
-  // Auto-close sidebar on desktop after 5 seconds
+  // Auto-close sidebar on desktop after 5 seconds - only on first load
   useEffect(() => {
-    if (!isMobile && sidebarOpen) {
+    if (!isMobile && sidebarOpen && !hasAutoClosedDesktop) {
       const timer = setTimeout(() => {
         setSidebarOpen(false);
+        setHasAutoClosedDesktop(true);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [isMobile, sidebarOpen]);
+  }, [isMobile, sidebarOpen, hasAutoClosedDesktop]);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -1013,12 +1073,20 @@ export default function CourseLanding() {
                 
                 <div className="p-2 pb-24">
                   <Accordion type="single" collapsible defaultValue={course.modules?.[0]?.id} className="space-y-1">
-                    {course.modules?.map((module, i) => (
+                    {course.modules?.map((module, i) => {
+                      const moduleDisplay = getModuleDisplay(module.title, i);
+                      return (
                       <AccordionItem key={module.id} value={module.id} className="border-none">
                         <AccordionTrigger className="hover:no-underline hover:bg-muted/50 px-3 py-2 rounded-md text-sm">
                           <div className="flex items-start gap-3 text-left">
                             <div className="w-7 h-7 bg-primary/10 rounded flex items-center justify-center shrink-0 text-xs font-bold text-primary">
-                              {i + 1}
+                              {moduleDisplay.type === 'number' ? (
+                                moduleDisplay.value
+                              ) : moduleDisplay.IconComponent ? (
+                                <moduleDisplay.IconComponent className="w-4 h-4" />
+                              ) : (
+                                i + 1
+                              )}
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="font-medium break-words whitespace-normal">{module.title}</p>
@@ -1042,7 +1110,9 @@ export default function CourseLanding() {
                           </div>
                         </AccordionContent>
                       </AccordionItem>
-                    ))}
+                    );
+                    })}
+
                   </Accordion>
                 </div>
               </motion.aside>
@@ -1085,12 +1155,20 @@ export default function CourseLanding() {
               
               <div className="p-2">
                 <Accordion type="single" collapsible defaultValue={course.modules?.[0]?.id} className="space-y-1">
-                  {course.modules?.map((module, i) => (
+                  {course.modules?.map((module, i) => {
+                    const moduleDisplay = getModuleDisplay(module.title, i);
+                    return (
                     <AccordionItem key={module.id} value={module.id} className="border-none">
                       <AccordionTrigger className="hover:no-underline hover:bg-muted/50 px-3 py-2 rounded-md text-sm">
                         <div className="flex items-start gap-3 text-left">
                           <div className="w-7 h-7 bg-primary/10 rounded flex items-center justify-center shrink-0 text-xs font-bold text-primary">
-                            {i + 1}
+                            {moduleDisplay.type === 'number' ? (
+                              moduleDisplay.value
+                            ) : moduleDisplay.IconComponent ? (
+                              <moduleDisplay.IconComponent className="w-4 h-4" />
+                            ) : (
+                              i + 1
+                            )}
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="font-medium break-words whitespace-normal">{module.title}</p>
@@ -1114,7 +1192,8 @@ export default function CourseLanding() {
                         </div>
                       </AccordionContent>
                     </AccordionItem>
-                  ))}
+                    );
+                  })}
                 </Accordion>
               </div>
               {/* Bottom close button */}
