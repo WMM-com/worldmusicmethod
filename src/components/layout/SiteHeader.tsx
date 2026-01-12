@@ -108,27 +108,21 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
 
   const renderDesktopNavItem = (item: MenuItem) => {
     const children = filterMenuItems('desktop', item.id);
-    const IconComponent = getIcon(item.icon);
 
     if (children.length > 0) {
       // Render as dropdown
       return (
         <DropdownMenu key={item.id}>
           <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            {IconComponent && <IconComponent className="h-4 w-4 mr-1" />}
             {item.label}
             <ChevronDown className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {children.map((child) => {
-              const ChildIcon = getIcon(child.icon);
-              return (
-                <DropdownMenuItem key={child.id} onClick={() => child.href && navigate(child.href)}>
-                  {ChildIcon && <ChildIcon className="mr-2 h-4 w-4" />}
-                  {child.label}
-                </DropdownMenuItem>
-              );
-            })}
+            {children.map((child) => (
+              <DropdownMenuItem key={child.id} onClick={() => child.href && navigate(child.href)}>
+                {child.label}
+              </DropdownMenuItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -139,9 +133,8 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
       <Link
         key={item.id}
         to={item.href || '#'}
-        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
-        {IconComponent && <IconComponent className="h-4 w-4" />}
         {item.label}
       </Link>
     );
