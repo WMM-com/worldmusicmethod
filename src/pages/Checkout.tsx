@@ -611,8 +611,8 @@ function CheckoutContent() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background py-8 sm:py-12 overflow-x-hidden">
-        <div className="w-full max-w-5xl mx-auto px-3 sm:px-6">
+      <div className="min-h-screen bg-background py-6 sm:py-12 overflow-x-hidden">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6">
           {/* Returning customer banner */}
           {!user && !isReturningCustomer && (
             <div className="mb-6 p-3 bg-muted/50 rounded-lg flex items-center gap-2">
@@ -627,7 +627,7 @@ function CheckoutContent() {
             </div>
           )}
 
-          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
+          <div className="grid lg:grid-cols-2 gap-4 sm:gap-8">
             {/* Billing Details */}
             <div>
               <h2 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 uppercase tracking-wide text-muted-foreground">
