@@ -127,7 +127,7 @@ async function sendEmail(
   region: string
 ): Promise<boolean> {
   const url = new URL(`https://email.${region}.amazonaws.com/`);
-  const from = 'World Music Method <noreply@worldmusicmethod.com>';
+  const from = 'World Music Method <info@worldmusicmethod.com>';
   
   const params = new URLSearchParams();
   params.append('Action', 'SendEmail');
@@ -177,8 +177,8 @@ serve(async (req) => {
       throw new Error("AWS SES credentials not configured");
     }
 
-    const { campaignId, previewOnly } = await req.json();
-    logStep("Campaign ID", { campaignId, previewOnly });
+    const { campaignId, previewOnly, emailsPerSecond = 14 } = await req.json();
+    logStep("Campaign ID", { campaignId, previewOnly, emailsPerSecond });
 
     if (!campaignId) {
       throw new Error("campaignId is required");
@@ -283,12 +283,11 @@ serve(async (req) => {
 
     logStep("Recipients calculated", { total: finalRecipients.length });
 
-    // If preview only, just return the count
+    // If preview only, just return the count (no emails for privacy/performance)
     if (previewOnly) {
       return new Response(JSON.stringify({ 
         success: true, 
-        recipientCount: finalRecipients.length,
-        recipients: finalRecipients.slice(0, 10).map(r => r.email) // First 10 for preview
+        recipientCount: finalRecipients.length
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -364,9 +363,18 @@ serve(async (req) => {
           });
         }
 
-        // Small delay to avoid throttling
-        if (sentCount % 10 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+        // Rate limiting: send emails at configured rate (default 14/sec)
+        // Calculate delay based on emailsPerSecond setting
+        const delayMs = Math.floor(1000 / Math.min(emailsPerSecond, 50)); // Cap at 50/sec
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+
+        // Update progress periodically for large campaigns
+        if (sentCount % 100 === 0) {
+          await supabase
+            .from("email_campaigns")
+            .update({ sent_count: sentCount })
+            .eq("id", campaignId);
+          logStep("Progress update", { sent: sentCount, total: finalRecipients.length });
         }
       } catch (sendError) {
         logStep("Failed to send to recipient", { email: recipient.email, error: sendError instanceof Error ? sendError.message : String(sendError) });

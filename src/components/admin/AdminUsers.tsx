@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Search, BookOpen, UserPlus, Users, Pencil, RefreshCw, Trash2, Upload, Tag, X, Plus } from 'lucide-react';
+import { Search, BookOpen, UserPlus, Users, Pencil, RefreshCw, Trash2, Upload, Tag, X, Plus, Mail, MailX } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
@@ -169,6 +169,18 @@ export function AdminUsers() {
     },
   });
 
+  // Fetch email contacts for subscription status
+  const { data: emailContacts } = useQuery({
+    queryKey: ['admin-email-contacts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('email_contacts')
+        .select('email, is_subscribed, unsubscribe_reason, unsubscribed_at');
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const enrollMutation = useMutation({
     mutationFn: async ({ userId, courseIds }: { userId: string; courseIds: string[] }) => {
       const currentUser = (await supabase.auth.getUser()).data.user;
@@ -288,6 +300,47 @@ export function AdminUsers() {
     },
   });
 
+  // Update email subscription mutation
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: async ({ email, isSubscribed }: { email: string; isSubscribed: boolean }) => {
+      // Check if contact exists
+      const { data: existing } = await supabase
+        .from('email_contacts')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('email_contacts')
+          .update({ 
+            is_subscribed: isSubscribed,
+            unsubscribed_at: isSubscribed ? null : new Date().toISOString(),
+            unsubscribe_reason: isSubscribed ? null : 'Admin action'
+          })
+          .eq('email', email.toLowerCase());
+        if (error) throw error;
+      } else {
+        // Create new contact
+        const { error } = await supabase
+          .from('email_contacts')
+          .insert({ 
+            email: email.toLowerCase(),
+            is_subscribed: isSubscribed,
+            source: 'admin'
+          });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-email-contacts'] });
+      toast.success('Email subscription updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update subscription');
+    },
+  });
+
   const getUserRole = (userId: string): AppRole => {
     const role = userRoles?.find(r => r.user_id === userId);
     return (role?.role as AppRole) || 'user';
@@ -299,6 +352,10 @@ export function AdminUsers() {
 
   const getUserTags = (userId: string) => {
     return userTags?.filter(ut => ut.user_id === userId) || [];
+  };
+
+  const getEmailSubscription = (email: string) => {
+    return emailContacts?.find(ec => ec.email?.toLowerCase() === email?.toLowerCase());
   };
 
   const toggleCourse = (courseId: string) => {
@@ -714,6 +771,7 @@ export function AdminUsers() {
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Email Subscribed</TableHead>
               <TableHead>Tags</TableHead>
               <TableHead>Enrolled Courses</TableHead>
               <TableHead>Joined</TableHead>
@@ -723,13 +781,13 @@ export function AdminUsers() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : users?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No users found
                 </TableCell>
               </TableRow>
@@ -738,6 +796,8 @@ export function AdminUsers() {
                 const role = getUserRole(user.id);
                 const userEnrollments = getUserEnrollments(user.id);
                 const tags = getUserTags(user.id);
+                const emailSub = getEmailSubscription(user.email);
+                const isSubscribed = emailSub?.is_subscribed !== false; // Default to subscribed if no record
                 
                 return (
                   <TableRow key={user.id}>
@@ -762,6 +822,66 @@ export function AdminUsers() {
                           <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`flex items-center gap-1 ${!isSubscribed ? 'text-destructive' : 'text-green-600'}`}
+                          >
+                            {isSubscribed ? (
+                              <>
+                                <Mail className="h-4 w-4" />
+                                <span>Subscribed</span>
+                              </>
+                            ) : (
+                              <>
+                                <MailX className="h-4 w-4" />
+                                <span>Unsubscribed</span>
+                              </>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-3" align="start">
+                          <div className="space-y-3">
+                            <div className="text-sm">
+                              <p className="font-medium">Email Subscription Status</p>
+                              <p className="text-muted-foreground text-xs">
+                                {isSubscribed 
+                                  ? 'User will receive email campaigns' 
+                                  : 'User has opted out of emails'}
+                              </p>
+                            </div>
+                            {emailSub?.unsubscribe_reason && (
+                              <div className="text-xs bg-muted p-2 rounded">
+                                <p className="font-medium">Reason:</p>
+                                <p className="text-muted-foreground">{emailSub.unsubscribe_reason}</p>
+                                {emailSub.unsubscribed_at && (
+                                  <p className="text-muted-foreground mt-1">
+                                    On: {new Date(emailSub.unsubscribed_at).toLocaleDateString()}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                            <Button
+                              size="sm"
+                              variant={isSubscribed ? "destructive" : "default"}
+                              className="w-full"
+                              disabled={updateSubscriptionMutation.isPending}
+                              onClick={() => updateSubscriptionMutation.mutate({ 
+                                email: user.email, 
+                                isSubscribed: !isSubscribed 
+                              })}
+                            >
+                              {updateSubscriptionMutation.isPending ? 'Updating...' : (
+                                isSubscribed ? 'Unsubscribe User' : 'Resubscribe User'
+                              )}
+                            </Button>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 items-center">

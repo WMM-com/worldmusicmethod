@@ -59,7 +59,6 @@ export function AdminCampaigns() {
 
   // Recipient count preview state
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
-  const [previewEmails, setPreviewEmails] = useState<string[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   useEffect(() => {
@@ -73,7 +72,6 @@ export function AdminCampaigns() {
         calculateRecipientCount();
       } else {
         setRecipientCount(null);
-        setPreviewEmails([]);
       }
     }, 500);
 
@@ -98,7 +96,6 @@ export function AdminCampaigns() {
 
         if (!error && data) {
           setRecipientCount(data.recipientCount);
-          setPreviewEmails(data.recipients || []);
         }
       } else {
         // For new campaigns, we need to calculate locally based on the selected tags
@@ -170,7 +167,6 @@ export function AdminCampaigns() {
     }
 
     setRecipientCount(finalEmails.length);
-    setPreviewEmails(finalEmails.slice(0, 10));
   }
 
   async function fetchData() {
@@ -297,7 +293,6 @@ export function AdminCampaigns() {
       scheduled_at: ''
     });
     setRecipientCount(null);
-    setPreviewEmails([]);
   }
 
   function openEdit(campaign: EmailCampaign) {
@@ -455,12 +450,6 @@ export function AdminCampaigns() {
                             `${recipientCount ?? 0} recipients will receive this email`
                           )}
                         </p>
-                        {previewEmails.length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Including: {previewEmails.slice(0, 3).join(', ')}
-                            {previewEmails.length > 3 && ` and ${recipientCount! - 3} more...`}
-                          </p>
-                        )}
                       </div>
                     </div>
                   )}
