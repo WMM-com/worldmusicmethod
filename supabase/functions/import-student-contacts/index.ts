@@ -1,16 +1,85 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const logStep = (step: string, details?: any) => {
-  console.log(`[IMPORT-STUDENTS] ${step}`, details ? JSON.stringify(details) : '');
+// Tag to Course ID mapping
+const TAG_TO_COURSE_ID: Record<string, string> = {
+  'TGP': 'f3305afb-c8c5-4632-bba0-5814e003fd25',
+  'AFG': '8dc01edc-2bbe-461d-bec2-252c30d6fe8b',
+  'PGS': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  'CGEde': 'ed4cbdcc-fcc4-4e41-aac2-370a61733ca7',
+  'CDRde': '80225521-5fd1-4e75-9464-0f358876d208',
+  'ABM4': '8a0c51a4-c862-4e3f-b5fa-ba6463c3af89',
+  'AEG': 'c5261489-2a98-4ca8-a35a-f03d5d5a7927',
+  'BTL': '9adf9995-c5c5-4ba4-8fd0-b3cb28cbd367',
+  'BDRde': 'ccea69af-df28-4cd6-ad30-2f4bea656754',
+  'BGT': 'ecb0f2a5-a7fa-4c32-9050-8daff5713390',
+  'CGM': '14760b07-88e7-4e3b-8f3b-451c695b8144',
+  'DGO': '75c95327-1d42-48ec-8d48-ba8c6e076984',
+  'FCR': 'e5a2e5b6-9f21-48fd-85e3-0cf194d3df74',
+  'FVM': '9c7a4bdd-24ca-467f-a63a-01a4fd9972e2',
+  'ABMde': 'f509397a-4af2-4a77-b64b-de4f30261355',
+  'CAG': '7b4e25dd-a236-4a18-99fe-1110847a9701',
+  'SDO': '42676454-d253-4d3f-995b-be7698caabb8',
+  'CMG': '3a1c7056-d1f4-49cc-8f5f-038e3fc3f375',
+  'WRE': '4f9afc85-b38a-46e2-afcb-b75b13c83f66',
+  'TBE': 'a102fd6e-0e93-49a7-b1bf-26ae2e53bbbc',
+  'TFG': 'c6de4f22-d1ca-430f-8119-c7a9543f4c6e',
+  'GTL': '0ed04b79-2af2-4140-97b0-d337c79792a6',
+  'TCBE': 'a9039d98-5cd9-4b7e-8234-5bfe50fad462',
+  'TMFG': '291bacb7-8ce0-4f2a-86f4-8b36668535a5',
+  'UFG': '08830ab4-a07f-43d0-a3c4-1398394acfe7',
+  'CGE': 'f0104c36-c1c6-404a-bdfd-2da421175ddc',
+  'KMG': '6b41a4b0-4aff-4ca5-8f87-984383fd5ec9',
+  'LAFGde': '3574447a-735d-4f67-9dc2-4278abc90f36',
+  'MGE': 'f55491ed-e6c8-49e6-abf4-10a5183e5e42',
+  'MGS': 'd48c003f-f51c-4cef-a5fb-4c724bf07682',
+  'SVM': '0d1edb46-42d5-4e8c-bfba-70d5a559695e',
+  'BTD': 'fdc4aba0-94e3-4952-9120-1d83bb47681f',
+  'HSG2': '8a0cc563-2bf3-4ce8-b548-32adadf0accc',
+  'CGE2': 'd7494813-8f40-4127-833d-63c9418ec46f',
+  'Tour Booking': '975553eb-bb5e-4c2b-b225-61fe14844b87',
+  'Tour Booking 2024': '975553eb-bb5e-4c2b-b225-61fe14844b87',
+  'HSGde': '8ffb9e1c-7d81-49b0-8929-170ddf1aa1f8',
+  'LAFG2': '1f24f046-9c95-46a2-90c7-a5e2bf29ce61',
+  'CDR': 'ef8c3c27-4256-4b31-a0fc-02da23734127',
+  'BDR2': 'e34a2803-5078-43a6-93ec-f21842ce7e90',
+  'ABM': 'a7aaa317-3ce0-4ece-8b38-d9e8ff8b7100',
+  'ABM2': '72ffca20-732e-43a8-8722-d020461376e3',
+  'BDR': '1a83516d-8277-4868-aa74-437c0483db03',
+  'ABM3': '548e8531-2efc-4e82-93f6-ec6b55e4d900',
+  'LAFG': 'eef4e114-ae30-4911-96b1-7152834aa57b',
+  'HSG': '3b9560cc-0d6a-48eb-b70d-b84b76c41995',
+  '100 Guitar Tips': 'a1b2c3d4-1111-4444-8888-000000000001',
+  'Guitar Tips: 101-150': 'a1b2c3d4-2222-4444-8888-000000000002',
+  'TAOP': 'a1b2c3d4-3333-4444-8888-000000000003',
 };
 
-serve(async (req) => {
+// Course IDs in "Access All Courses" group for Members
+const ACCESS_ALL_COURSES_IDS = [
+  'f509397a-4af2-4a77-b64b-de4f30261355', '8a0c51a4-c862-4e3f-b5fa-ba6463c3af89',
+  'c5261489-2a98-4ca8-a35a-f03d5d5a7927', '8dc01edc-2bbe-461d-bec2-252c30d6fe8b',
+  '9adf9995-c5c5-4ba4-8fd0-b3cb28cbd367', 'ccea69af-df28-4cd6-ad30-2f4bea656754',
+  'ecb0f2a5-a7fa-4c32-9050-8daff5713390', '7b4e25dd-a236-4a18-99fe-1110847a9701',
+  '14760b07-88e7-4e3b-8f3b-451c695b8144', '80225521-5fd1-4e75-9464-0f358876d208',
+  '6b41a4b0-4aff-4ca5-8f87-984383fd5ec9', '975553eb-bb5e-4c2b-b225-61fe14844b87',
+  'ed4cbdcc-fcc4-4e41-aac2-370a61733ca7', '3a1c7056-d1f4-49cc-8f5f-038e3fc3f375',
+  '75c95327-1d42-48ec-8d48-ba8c6e076984', 'e5a2e5b6-9f21-48fd-85e3-0cf194d3df74',
+  '9c7a4bdd-24ca-467f-a63a-01a4fd9972e2', '0ed04b79-2af2-4140-97b0-d337c79792a6',
+  '8ffb9e1c-7d81-49b0-8929-170ddf1aa1f8', '3574447a-735d-4f67-9dc2-4278abc90f36',
+  'f55491ed-e6c8-49e6-abf4-10a5183e5e42', '08830ab4-a07f-43d0-a3c4-1398394acfe7',
+  'a9039d98-5cd9-4b7e-8234-5bfe50fad462', 'f3305afb-c8c5-4632-bba0-5814e003fd25',
+  'c6de4f22-d1ca-430f-8119-c7a9543f4c6e', '291bacb7-8ce0-4f2a-86f4-8b36668535a5',
+  'a102fd6e-0e93-49a7-b1bf-26ae2e53bbbc', 'fdc4aba0-94e3-4952-9120-1d83bb47681f',
+  '0d1edb46-42d5-4e8c-bfba-70d5a559695e', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  'd48c003f-f51c-4cef-a5fb-4c724bf07682', '42676454-d253-4d3f-995b-be7698caabb8',
+  '4f9afc85-b38a-46e2-afcb-b75b13c83f66',
+];
+
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -18,363 +87,156 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const { students } = await req.json();
     
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Verify the requesting user is an admin
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !requestingUser) {
-      throw new Error('Invalid authorization');
-    }
-
-    // Check if requesting user is an admin
-    const { data: isAdmin } = await supabaseAdmin.rpc('has_role', {
-      _user_id: requestingUser.id,
-      _role: 'admin',
-    });
-
-    if (isAdmin !== true) {
-      throw new Error('Unauthorized: Admin access required');
-    }
-
-    const { students, mode = 'preview' } = await req.json();
-
     if (!students || !Array.isArray(students)) {
-      throw new Error('Missing required field: students (array)');
+      return new Response(
+        JSON.stringify({ error: 'Students array is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    logStep('Processing import request', { studentCount: students.length, mode });
+    console.log(`[IMPORT] Processing ${students.length} students`);
 
-    // Fetch all courses with their tags for enrollment matching
-    const { data: allCourses } = await supabaseAdmin
-      .from('courses')
-      .select('id, title, tags');
-    
-    // Map course tags to course IDs (case-insensitive)
-    const tagToCourseId = new Map<string, { id: string; title: string }>();
-    allCourses?.forEach(course => {
-      if (course.tags && Array.isArray(course.tags)) {
-        course.tags.forEach((tag: string) => {
-          tagToCourseId.set(tag.toLowerCase().trim(), { id: course.id, title: course.title });
-        });
+    // Get all profiles with emails
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, email');
+
+    if (profilesError) throw profilesError;
+
+    // Create email to profile ID map (case-insensitive)
+    const emailToProfileId: Record<string, string> = {};
+    for (const profile of profiles || []) {
+      if (profile.email) {
+        emailToProfileId[profile.email.toLowerCase()] = profile.id;
       }
-    });
-
-    // Fetch the "Access All Courses" group and its courses
-    const { data: accessAllGroup } = await supabaseAdmin
-      .from('course_groups')
-      .select('id, name')
-      .eq('name', 'Access All Courses')
-      .maybeSingle();
-
-    let accessAllCourseIds: string[] = [];
-    if (accessAllGroup) {
-      const { data: groupCourses } = await supabaseAdmin
-        .from('course_group_courses')
-        .select('course_id')
-        .eq('group_id', accessAllGroup.id);
-      
-      accessAllCourseIds = groupCourses?.map(gc => gc.course_id) || [];
     }
 
-    logStep('Loaded reference data', { 
-      coursesCount: allCourses?.length,
-      courseTagMappings: tagToCourseId.size,
-      accessAllCourseCount: accessAllCourseIds.length
-    });
+    console.log(`[IMPORT] Found ${Object.keys(emailToProfileId).length} profiles`);
 
-    const results = {
-      total: students.length,
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      enrollmentsAdded: 0,
-      memberEnrollments: 0,
-      errors: [] as { email: string; error: string }[],
-      preview: [] as { 
-        email: string; 
-        name: string; 
-        status: string; 
-        tags?: string[]; 
-        enrollments?: string[];
-        isMember?: boolean;
-      }[],
-    };
+    // Get ALL existing enrollments
+    const { data: existingEnrollments, error: enrollmentsError } = await supabase
+      .from('course_enrollments')
+      .select('user_id, course_id');
 
+    if (enrollmentsError) throw enrollmentsError;
+
+    const existingEnrollmentSet = new Set(
+      (existingEnrollments || []).map(e => `${e.user_id}|${e.course_id}`)
+    );
+
+    console.log(`[IMPORT] Found ${existingEnrollmentSet.size} existing enrollments`);
+
+    let updatedProfiles = 0;
+    let createdEnrollments = 0;
+    let skippedNoMatch = 0;
+    const errors: string[] = [];
+
+    // Process students
     for (const student of students) {
-      const firstName = (student.firstName || student.first_name || '').trim();
-      const lastName = (student.lastName || student.last_name || '').trim();
       const email = (student.email || '').toLowerCase().trim();
-      const tagsString = student.tags || '';
-      
-      // Parse tags - they're comma-separated
-      const userTags: string[] = tagsString
-        .split(',')
-        .map((t: string) => t.trim())
-        .filter((t: string) => t.length > 0);
-
       if (!email) {
-        results.errors.push({ email: 'unknown', error: 'Missing email address' });
+        skippedNoMatch++;
         continue;
       }
 
-      const fullName = [firstName, lastName].filter(Boolean).join(' ') || email.split('@')[0];
-      
-      // Check if user has Member tag (case-insensitive)
-      const isMember = userTags.some(tag => 
-        tag.toLowerCase() === 'member' || tag.toLowerCase() === 'lifetime member'
+      const profileId = emailToProfileId[email];
+      if (!profileId) {
+        skippedNoMatch++;
+        continue;
+      }
+
+      // Parse tags
+      const tagsString = student.tags || '';
+      const tags = tagsString.split(',').map((t: string) => t.trim()).filter(Boolean);
+
+      // Update profile with tags
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          tags,
+          is_public: false,
+          email_verified: true
+        })
+        .eq('id', profileId);
+
+      if (updateError) {
+        errors.push(`Update ${email}: ${updateError.message}`);
+        continue;
+      }
+
+      updatedProfiles++;
+
+      // Collect course IDs to enroll
+      const courseIdsToEnroll = new Set<string>();
+
+      // Check for Member tag - grant access to all courses
+      const isMember = tags.some((t: string) => 
+        t.toLowerCase() === 'member' || t.toLowerCase() === 'lifetime member'
       );
 
-      // Find courses to enroll based on tags
-      const courseIdsToEnroll = new Set<string>();
-      const courseNamesToEnroll: string[] = [];
-      
-      userTags.forEach(tagName => {
-        const courseInfo = tagToCourseId.get(tagName.toLowerCase().trim());
-        if (courseInfo && !courseIdsToEnroll.has(courseInfo.id)) {
-          courseIdsToEnroll.add(courseInfo.id);
-          courseNamesToEnroll.push(courseInfo.title);
+      if (isMember) {
+        for (const courseId of ACCESS_ALL_COURSES_IDS) {
+          courseIdsToEnroll.add(courseId);
         }
-      });
-
-      // If user is a Member, add all courses from "Access All Courses" group
-      if (isMember && accessAllCourseIds.length > 0) {
-        accessAllCourseIds.forEach(courseId => {
-          if (!courseIdsToEnroll.has(courseId)) {
-            courseIdsToEnroll.add(courseId);
-            const course = allCourses?.find(c => c.id === courseId);
-            if (course) {
-              courseNamesToEnroll.push(course.title + ' (Member)');
-            }
-          }
-        });
       }
 
-      // Check if user already exists in profiles
-      const { data: existingProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('id, email, tags')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (existingProfile) {
-        // USER EXISTS - Update their tags and enroll in missing courses
-        if (mode === 'preview') {
-          results.preview.push({ 
-            email, 
-            name: fullName, 
-            status: 'will_update',
-            tags: userTags,
-            enrollments: courseNamesToEnroll,
-            isMember
-          });
-          continue;
+      // Map individual tags to courses
+      for (const tag of tags) {
+        const courseId = TAG_TO_COURSE_ID[tag];
+        if (courseId) {
+          courseIdsToEnroll.add(courseId);
         }
-
-        try {
-          // Update profile with tags and ensure private visibility
-          const { error: updateError } = await supabaseAdmin
-            .from('profiles')
-            .update({ 
-              tags: userTags,
-              is_public: false,
-              first_name: firstName || null,
-              last_name: lastName || null,
-              email_verified: true,
-              email_verified_at: new Date().toISOString(),
-            })
-            .eq('id', existingProfile.id);
-
-          if (updateError) {
-            logStep('Profile update error', { email, error: updateError.message });
-          }
-
-          // Get existing enrollments for this user
-          const { data: existingEnrollments } = await supabaseAdmin
-            .from('course_enrollments')
-            .select('course_id')
-            .eq('user_id', existingProfile.id);
-
-          const existingCourseIds = new Set(existingEnrollments?.map(e => e.course_id) || []);
-
-          // Find courses to add (not already enrolled)
-          const newCourseIds = Array.from(courseIdsToEnroll).filter(id => !existingCourseIds.has(id));
-
-          if (newCourseIds.length > 0) {
-            const enrollmentInserts = newCourseIds.map(courseId => ({
-              user_id: existingProfile.id,
-              course_id: courseId,
-              enrollment_type: isMember && accessAllCourseIds.includes(courseId) ? 'member' : 'import',
-              enrolled_by: requestingUser.id,
-            }));
-
-            const { error: enrollError } = await supabaseAdmin
-              .from('course_enrollments')
-              .insert(enrollmentInserts);
-
-            if (enrollError) {
-              logStep('Enrollment error for existing user', { email, error: enrollError.message });
-            } else {
-              results.enrollmentsAdded += newCourseIds.length;
-              if (isMember) {
-                results.memberEnrollments += accessAllCourseIds.filter(id => newCourseIds.includes(id)).length;
-              }
-              logStep('Enrolled existing user in courses', { email, newEnrollments: newCourseIds.length });
-            }
-          }
-
-          results.updated++;
-          results.preview.push({ 
-            email, 
-            name: fullName, 
-            status: 'updated',
-            tags: userTags,
-            enrollments: courseNamesToEnroll,
-            isMember
-          });
-          logStep('Updated existing user', { email, newEnrollments: newCourseIds.length });
-
-        } catch (updateErr: any) {
-          logStep('Error updating existing user', { email, error: updateErr.message });
-          results.errors.push({ email, error: updateErr.message });
-        }
-        continue;
       }
 
-      // NEW USER - Create account
-      if (mode === 'preview') {
-        results.preview.push({ 
-          email, 
-          name: fullName, 
-          status: 'will_create',
-          tags: userTags,
-          enrollments: courseNamesToEnroll,
-          isMember
-        });
-        continue;
-      }
-
-      try {
-        // Create user with a random password (they'll use password reset)
-        const tempPassword = crypto.randomUUID() + 'Aa1!';
-        
-        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password: tempPassword,
-          email_confirm: true, // Auto-confirm email
-          user_metadata: {
-            full_name: fullName,
-            imported_from: 'student_contacts_csv',
-          },
-        });
-
-        if (createError) {
-          if (createError.message?.includes('already been registered') || createError.message?.includes('already exists')) {
-            results.skipped++;
-            results.preview.push({ email, name: fullName, status: 'exists_in_auth', isMember });
-          } else {
-            results.errors.push({ email, error: createError.message });
-          }
-          continue;
-        }
-
-        logStep('User created', { email, userId: newUser.user.id });
-
-        // Update profile: set as private, mark email verified, set name and tags
-        const { error: profileUpdateError } = await supabaseAdmin
-          .from('profiles')
-          .update({ 
-            full_name: fullName,
-            first_name: firstName || null,
-            last_name: lastName || null,
-            tags: userTags,
-            email_verified: true, 
-            email_verified_at: new Date().toISOString(),
-            is_public: false, // All imported users are private
-          })
-          .eq('id', newUser.user.id);
-
-        if (profileUpdateError) {
-          logStep('Profile update error', { email, error: profileUpdateError.message });
-        }
-
-        // Enroll in courses based on matching tags (and Member access)
-        const courseIdsArray = Array.from(courseIdsToEnroll);
-        if (courseIdsArray.length > 0) {
-          const enrollmentInserts = courseIdsArray.map(courseId => ({
-            user_id: newUser.user.id,
+      // Create enrollments for new courses only
+      const enrollmentsToCreate: Array<{user_id: string; course_id: string; enrollment_type: string; is_active: boolean}> = [];
+      for (const courseId of courseIdsToEnroll) {
+        const key = `${profileId}|${courseId}`;
+        if (!existingEnrollmentSet.has(key)) {
+          enrollmentsToCreate.push({
+            user_id: profileId,
             course_id: courseId,
-            enrollment_type: isMember && accessAllCourseIds.includes(courseId) ? 'member' : 'import',
-            enrolled_by: requestingUser.id,
-          }));
-
-          const { error: enrollError } = await supabaseAdmin
-            .from('course_enrollments')
-            .insert(enrollmentInserts);
-
-          if (enrollError) {
-            logStep('Enrollment error', { email, error: enrollError.message });
-          } else {
-            results.enrollmentsAdded += courseIdsArray.length;
-            if (isMember) {
-              results.memberEnrollments += accessAllCourseIds.filter(id => courseIdsToEnroll.has(id)).length;
-            }
-            logStep('Enrolled in courses', { email, count: courseIdsArray.length });
-          }
+            enrollment_type: 'import',
+            is_active: true,
+          });
+          existingEnrollmentSet.add(key);
         }
+      }
 
-        results.created++;
-        results.preview.push({ 
-          email, 
-          name: fullName, 
-          status: 'created',
-          tags: userTags,
-          enrollments: courseNamesToEnroll,
-          isMember
-        });
+      if (enrollmentsToCreate.length > 0) {
+        const { error: enrollError } = await supabase
+          .from('course_enrollments')
+          .insert(enrollmentsToCreate);
 
-      } catch (userError: any) {
-        logStep('Error creating user', { email, error: userError.message });
-        results.errors.push({ email, error: userError.message });
+        if (enrollError) {
+          errors.push(`Enroll ${email}: ${enrollError.message}`);
+        } else {
+          createdEnrollments += enrollmentsToCreate.length;
+        }
       }
     }
 
-    logStep('Import complete', { 
-      created: results.created, 
-      updated: results.updated,
-      skipped: results.skipped, 
-      enrollmentsAdded: results.enrollmentsAdded,
-      memberEnrollments: results.memberEnrollments,
-      errors: results.errors.length 
-    });
+    console.log(`[IMPORT] Complete: ${updatedProfiles} profiles updated, ${createdEnrollments} enrollments created`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        results,
-        message: mode === 'preview' 
-          ? `Preview: ${results.preview.filter(p => p.status === 'will_create').length} users will be created, ${results.preview.filter(p => p.status === 'will_update').length} will be updated`
-          : `Created ${results.created} users, updated ${results.updated} existing users, ${results.enrollmentsAdded} course enrollments added (${results.memberEnrollments} from Member access), ${results.errors.length} errors`
+      JSON.stringify({
+        success: true,
+        updatedProfiles,
+        createdEnrollments,
+        skippedNoMatch,
+        errors: errors.slice(0, 20),
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    logStep('ERROR', { message: error.message });
+    console.error('[IMPORT] Error:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
