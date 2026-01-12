@@ -106,13 +106,29 @@ export function useCourse(courseIdOrSlug: string | undefined) {
   });
 }
 
-export function useUserCourseProgress(courseId: string | undefined) {
+export function useUserCourseProgress(courseIdOrSlug: string | undefined) {
   const { user } = useAuth();
   
   return useQuery({
-    queryKey: ['course-progress', courseId, user?.id],
+    queryKey: ['course-progress', courseIdOrSlug, user?.id],
     queryFn: async () => {
-      if (!courseId || !user) return [];
+      if (!courseIdOrSlug || !user) return [];
+      
+      // First, resolve the course ID if we got a slug
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseIdOrSlug);
+      let courseId = courseIdOrSlug;
+      
+      if (!isUuid) {
+        // Look up the UUID from the slug
+        const { data: course, error: courseError } = await supabase
+          .from('courses')
+          .select('id')
+          .eq('slug', courseIdOrSlug)
+          .single();
+        
+        if (courseError || !course) return [];
+        courseId = course.id;
+      }
       
       // Get all lesson IDs for this course
       const { data: modules } = await supabase
@@ -142,7 +158,7 @@ export function useUserCourseProgress(courseId: string | undefined) {
       if (error) throw error;
       return progress as UserLessonProgress[];
     },
-    enabled: !!courseId && !!user
+    enabled: !!courseIdOrSlug && !!user
   });
 }
 
