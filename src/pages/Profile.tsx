@@ -160,16 +160,7 @@ export default function Profile() {
     navigate('/messages', { state: { conversationId } });
   };
 
-  const handleCycleVisibility = async () => {
-    // Cycle: public -> members -> private -> public
-    let newVisibility: 'public' | 'members' | 'private';
-    if (extendedProfile?.visibility === 'public') {
-      newVisibility = 'members';
-    } else if (extendedProfile?.visibility === 'members') {
-      newVisibility = 'private';
-    } else {
-      newVisibility = 'public';
-    }
+  const handleVisibilityChange = async (newVisibility: 'public' | 'members' | 'private') => {
     await updateExtendedProfile.mutateAsync({ 
       visibility: newVisibility,
       is_public: newVisibility === 'public',
@@ -511,20 +502,52 @@ export default function Profile() {
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleCycleVisibility}
-                        className="gap-2"
-                      >
-                        {extendedProfile?.visibility === 'public' ? (
-                          <><Globe className="h-4 w-4 text-green-500" /> Public</>
-                        ) : extendedProfile?.visibility === 'members' ? (
-                          <><Users className="h-4 w-4 text-blue-500" /> Members Only</>
-                        ) : (
-                          <><Lock className="h-4 w-4" /> Private</>
-                        )}
-                      </Button>
+                      {/* Visibility Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            {extendedProfile?.visibility === 'public' ? (
+                              <><Globe className="h-4 w-4 text-green-500" /> Public</>
+                            ) : extendedProfile?.visibility === 'members' ? (
+                              <><Users className="h-4 w-4 text-blue-500" /> Members Only</>
+                            ) : (
+                              <><Lock className="h-4 w-4" /> Private</>
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem 
+                            onClick={() => handleVisibilityChange('public')}
+                            className={extendedProfile?.visibility === 'public' ? 'bg-accent' : ''}
+                          >
+                            <Globe className="h-4 w-4 mr-2 text-green-500" />
+                            <div>
+                              <div className="font-medium">Public</div>
+                              <div className="text-xs text-muted-foreground">Anyone can view your profile</div>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleVisibilityChange('members')}
+                            className={extendedProfile?.visibility === 'members' ? 'bg-accent' : ''}
+                          >
+                            <Users className="h-4 w-4 mr-2 text-blue-500" />
+                            <div>
+                              <div className="font-medium">Members Only</div>
+                              <div className="text-xs text-muted-foreground">Only logged-in members can view</div>
+                            </div>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleVisibilityChange('private')}
+                            className={extendedProfile?.visibility === 'private' ? 'bg-accent' : ''}
+                          >
+                            <Lock className="h-4 w-4 mr-2" />
+                            <div>
+                              <div className="font-medium">Private</div>
+                              <div className="text-xs text-muted-foreground">Hidden from everyone (can't post or comment)</div>
+                            </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

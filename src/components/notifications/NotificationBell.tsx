@@ -34,9 +34,9 @@ export function NotificationBell() {
       markRead.mutate(notification.id);
     }
 
-    // Navigate based on notification type
+    // Navigate based on notification type - add timestamp to force scroll even if already on feed
     if (notification.reference_type === 'post' && notification.reference_id) {
-      navigate(`/community?tab=feed&postId=${notification.reference_id}`);
+      navigate(`/community?tab=feed&postId=${notification.reference_id}&t=${Date.now()}`);
     } else if (notification.reference_type === 'friendship') {
       navigate('/community');
     } else if (notification.reference_type === 'conversation') {
