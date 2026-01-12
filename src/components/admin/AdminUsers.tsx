@@ -656,14 +656,34 @@ export function AdminUsers() {
 
     setCsvImporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('import-student-contacts', {
-        body: { students: csvStudents, mode: 'import' }
-      });
+      // Process in batches for large imports
+      const batchSize = 200;
+      let totalUpdated = 0;
+      let totalEnrolled = 0;
+      let totalSkipped = 0;
+      
+      const batches = [];
+      for (let i = 0; i < csvStudents.length; i += batchSize) {
+        batches.push(csvStudents.slice(i, i + batchSize));
+      }
+      
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        toast.info(`Processing batch ${i + 1} of ${batches.length}...`);
+        
+        const { data, error } = await supabase.functions.invoke('import-student-contacts', {
+          body: { students: batch, mode: 'import' }
+        });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        
+        totalUpdated += data.updatedProfiles || 0;
+        totalEnrolled += data.createdEnrollments || 0;
+        totalSkipped += data.skippedNoMatch || 0;
+      }
 
-      toast.success(data.message);
+      toast.success(`Import complete: ${totalUpdated} profiles updated, ${totalEnrolled} enrollments created, ${totalSkipped} not found`);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
       setCsvImportDialogOpen(false);

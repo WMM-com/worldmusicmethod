@@ -120,9 +120,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const body = await req.json();
+    const mode = body.mode || 'import'; // 'preview' or 'import'
     
     // Support both students array and csvContent string
-    let students: Array<{email: string; tags: string}>;
+    let students: Array<{email?: string; tags?: string; firstName?: string; lastName?: string}>;
     
     if (body.csvContent) {
       students = parseCSV(body.csvContent);
@@ -136,21 +137,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[IMPORT] Processing ${students.length} students`);
+    console.log(`[IMPORT] Processing ${students.length} students in ${mode} mode`);
 
-    // Get all profiles with emails
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, email');
-
-    if (profilesError) throw profilesError;
-
-    // Create email to profile ID map (case-insensitive)
+    // Get all profiles with emails (paginated to get all)
     const emailToProfileId: Record<string, string> = {};
-    for (const profile of profiles || []) {
-      if (profile.email) {
-        emailToProfileId[profile.email.toLowerCase()] = profile.id;
+    let offset = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .range(offset, offset + pageSize - 1);
+
+      if (profilesError) throw profilesError;
+      
+      if (!profiles || profiles.length === 0) break;
+      
+      for (const profile of profiles) {
+        if (profile.email) {
+          emailToProfileId[profile.email.toLowerCase()] = profile.id;
+        }
       }
+      
+      if (profiles.length < pageSize) break;
+      offset += pageSize;
     }
 
     console.log(`[IMPORT] Found ${Object.keys(emailToProfileId).length} profiles`);
@@ -260,13 +271,20 @@ Deno.serve(async (req) => {
 
     console.log(`[IMPORT] Complete: ${updatedProfiles} profiles updated, ${createdEnrollments} enrollments created`);
 
+    const message = mode === 'preview' 
+      ? `Preview: ${students.length} students will be processed. ${skippedNoMatch} not found in database.`
+      : `Import complete: ${updatedProfiles} profiles updated, ${createdEnrollments} enrollments created.`;
+
     return new Response(
       JSON.stringify({
         success: true,
+        message,
         updatedProfiles,
         createdEnrollments,
         skippedNoMatch,
+        totalProcessed: students.length,
         errors: errors.slice(0, 20),
+        results: mode === 'preview' ? { wouldUpdate: updatedProfiles, wouldEnroll: createdEnrollments } : undefined,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
