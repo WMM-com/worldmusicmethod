@@ -23,8 +23,8 @@ export function GroupsList() {
   const categories = Object.entries(CATEGORY_LABELS) as [GroupCategory, string][];
   
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
+    <div className="space-y-4 overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -44,11 +44,12 @@ export function GroupsList() {
         </TabsList>
         
         <TabsContent value="discover" className="mt-4">
-          <div className="flex gap-2 flex-wrap mb-4">
+          <div className="flex gap-2 flex-wrap mb-4 overflow-x-auto pb-2 -mx-1 px-1">
             <Button
               size="sm"
               variant={!selectedCategory ? 'default' : 'outline'}
               onClick={() => setSelectedCategory(undefined)}
+              className="shrink-0"
             >
               All
             </Button>
@@ -58,6 +59,7 @@ export function GroupsList() {
                 size="sm"
                 variant={selectedCategory === key ? 'default' : 'outline'}
                 onClick={() => setSelectedCategory(key)}
+                className="shrink-0"
               >
                 {label}
               </Button>

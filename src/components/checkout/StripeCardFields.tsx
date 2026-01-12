@@ -312,10 +312,55 @@ export function StripeCardFields({
         </div>
       )}
 
-      {/* Card details - single row layout */}
+      {/* Card details - responsive layout */}
       <div className="space-y-2">
         <Label htmlFor="card-number">Card details</Label>
-        <div className="flex rounded-md border border-gray-300 bg-white overflow-hidden">
+        {/* Mobile: stacked layout */}
+        <div className="flex flex-col sm:hidden gap-2">
+          <div
+            id="card-number-mobile"
+            className="min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white"
+          >
+            <CardNumberElement
+              options={{ style: CARD_ELEMENT_STYLE }}
+              onReady={() => {
+                console.log('[StripeCardFields] CardNumberElement ready');
+                setMounted((prev) => ({ ...prev, number: true }));
+              }}
+              onChange={(e) => setCardComplete((prev) => ({ ...prev, number: e.complete && !e.error }))}
+            />
+          </div>
+          <div className="flex gap-2">
+            <div
+              id="card-expiry-mobile"
+              className="flex-1 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white"
+            >
+              <CardExpiryElement
+                options={{ style: CARD_ELEMENT_STYLE }}
+                onReady={() => {
+                  console.log('[StripeCardFields] CardExpiryElement ready');
+                  setMounted((prev) => ({ ...prev, expiry: true }));
+                }}
+                onChange={(e) => setCardComplete((prev) => ({ ...prev, expiry: e.complete && !e.error }))}
+              />
+            </div>
+            <div
+              id="card-cvc-mobile"
+              className="w-24 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white"
+            >
+              <CardCvcElement
+                options={{ style: CARD_ELEMENT_STYLE }}
+                onReady={() => {
+                  console.log('[StripeCardFields] CardCvcElement ready');
+                  setMounted((prev) => ({ ...prev, cvc: true }));
+                }}
+                onChange={(e) => setCardComplete((prev) => ({ ...prev, cvc: e.complete && !e.error }))}
+              />
+            </div>
+          </div>
+        </div>
+        {/* Desktop: single row layout */}
+        <div className="hidden sm:flex rounded-md border border-gray-300 bg-white overflow-hidden">
           {/* Card number - takes up more space */}
           <div
             id="card-number"

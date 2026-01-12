@@ -611,8 +611,8 @@ function CheckoutContent() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background py-12">
-        <div className="max-w-5xl mx-auto px-6">
+      <div className="min-h-screen bg-background py-12 overflow-x-hidden">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
           {/* Returning customer banner */}
           {!user && !isReturningCustomer && (
             <div className="mb-6 p-3 bg-muted/50 rounded-lg flex items-center gap-2">

@@ -157,6 +157,8 @@ export default function Membership() {
               src={MEMBERSHIP_VIDEO_URL}
               className="w-full h-full object-cover"
               controls={isVideoPlaying}
+              controlsList="nodownload noplaybackrate"
+              disablePictureInPicture
               playsInline
               onEnded={() => setIsVideoPlaying(false)}
             />
@@ -194,17 +196,17 @@ export default function Membership() {
             </p>
             
             {isLoading ? (
-              <Skeleton className="h-14 w-72 mx-auto rounded-lg" />
+              <Skeleton className="h-14 w-72 max-w-full mx-auto rounded-lg" />
             ) : priceInfo ? (
               <Button
                 size="lg"
                 onClick={handleStartTrial}
-                className="text-lg px-8 py-6 h-auto"
+                className="text-base sm:text-lg px-4 sm:px-8 py-6 h-auto max-w-full whitespace-normal"
               >
                 Start Free Trial – then {formatPrice(priceInfo.price, priceInfo.currency)}/month
               </Button>
             ) : (
-              <Button size="lg" onClick={handleStartTrial} className="text-lg px-8 py-6 h-auto">
+              <Button size="lg" onClick={handleStartTrial} className="text-base sm:text-lg px-4 sm:px-8 py-6 h-auto max-w-full whitespace-normal">
                 Start Your Free Trial
               </Button>
             )}
