@@ -77,6 +77,12 @@ export function AdminUsers() {
   const [importPreview, setImportPreview] = useState<any>(null);
   const [importing, setImporting] = useState(false);
 
+  // CSV import state
+  const [csvImportDialogOpen, setCsvImportDialogOpen] = useState(false);
+  const [csvImportPreview, setCsvImportPreview] = useState<any>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvStudents, setCsvStudents] = useState<any[]>([]);
+
   // Tags management state
   const [tagsUserId, setTagsUserId] = useState<string | null>(null);
   const [tagsUserEmail, setTagsUserEmail] = useState<string>('');
@@ -563,6 +569,113 @@ export function AdminUsers() {
     }
   };
 
+  // CSV Import handlers
+  const handleCsvFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+      
+      const students: any[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Parse CSV line handling quoted values
+        const values: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim());
+        
+        const row: any = {};
+        headers.forEach((header, idx) => {
+          row[header] = values[idx] || '';
+        });
+        
+        students.push({
+          firstName: row['first name'] || row['firstname'] || '',
+          lastName: row['last name'] || row['lastname'] || '',
+          email: row['email'] || '',
+          tags: row['tags'] || '',
+        });
+      }
+      
+      setCsvStudents(students);
+      setCsvImportDialogOpen(true);
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    event.target.value = '';
+  };
+
+  const handleCsvPreviewImport = async () => {
+    if (csvStudents.length === 0) {
+      toast.error('No students loaded');
+      return;
+    }
+
+    setCsvImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('import-student-contacts', {
+        body: { students: csvStudents, mode: 'preview' }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setCsvImportPreview(data.results);
+      toast.success(data.message);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to preview import');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
+  const handleCsvConfirmImport = async () => {
+    if (csvStudents.length === 0) {
+      toast.error('No students loaded');
+      return;
+    }
+
+    setCsvImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('import-student-contacts', {
+        body: { students: csvStudents, mode: 'import' }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
+      setCsvImportDialogOpen(false);
+      setCsvStudents([]);
+      setCsvImportPreview(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to import students');
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
   // Get filtered tags for the tags dialog
   const filteredTags = allTags?.filter(tag => 
     tag.name.toLowerCase().includes(tagSearch.toLowerCase())
@@ -750,6 +863,136 @@ export function AdminUsers() {
                   >
                     {importing ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                     Import Users
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* CSV Import Button */}
+          <div className="relative">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleCsvFileUpload}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+            />
+            <Button variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
+          </div>
+
+          {/* CSV Import Dialog */}
+          <Dialog open={csvImportDialogOpen} onOpenChange={(open) => {
+            setCsvImportDialogOpen(open);
+            if (!open) {
+              setCsvStudents([]);
+              setCsvImportPreview(null);
+            }
+          }}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Import Students from CSV</DialogTitle>
+                <DialogDescription>
+                  Import students with course enrollments. Users with "Member" tag get access to all courses in "Access All Courses" group.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4 flex-1 overflow-hidden flex flex-col">
+                <div className="text-sm">
+                  <strong>{csvStudents.length}</strong> students loaded from CSV
+                </div>
+                
+                {csvImportPreview ? (
+                  <ScrollArea className="flex-1 border rounded-lg">
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium">Preview Results</h4>
+                        <div className="text-sm text-muted-foreground">
+                          {csvImportPreview.preview?.filter((p: any) => p.status === 'will_create').length || 0} new • 
+                          {csvImportPreview.preview?.filter((p: any) => p.status === 'exists').length || 0} existing • 
+                          {csvImportPreview.preview?.filter((p: any) => p.isMember).length || 0} members
+                        </div>
+                      </div>
+                      <div className="space-y-1 text-sm">
+                        {csvImportPreview.preview?.slice(0, 100).map((user: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 py-1 border-b border-border/50">
+                            <Badge variant={user.status === 'will_create' ? 'default' : 'outline'} className="text-xs shrink-0">
+                              {user.status === 'will_create' ? 'new' : user.status}
+                            </Badge>
+                            {user.isMember && (
+                              <Badge variant="secondary" className="text-xs shrink-0">Member</Badge>
+                            )}
+                            <span className="truncate flex-1">{user.email}</span>
+                            <span className="text-muted-foreground text-xs shrink-0">({user.name})</span>
+                            {user.enrollments?.length > 0 && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {user.enrollments.length} courses
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                        {csvImportPreview.preview?.length > 100 && (
+                          <div className="text-center text-muted-foreground py-2">
+                            ... and {csvImportPreview.preview.length - 100} more
+                          </div>
+                        )}
+                      </div>
+                      {csvImportPreview.errors?.length > 0 && (
+                        <div className="mt-4 p-2 bg-destructive/10 rounded text-destructive">
+                          <h5 className="font-medium mb-1">Errors ({csvImportPreview.errors.length})</h5>
+                          {csvImportPreview.errors.map((e: any, i: number) => (
+                            <div key={i} className="text-xs">{e.email}: {e.error}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <ScrollArea className="flex-1 border rounded-lg">
+                    <div className="p-4">
+                      <h4 className="font-medium mb-2">Students to Import (first 50)</h4>
+                      <div className="space-y-1 text-sm">
+                        {csvStudents.slice(0, 50).map((student, i) => (
+                          <div key={i} className="flex items-center gap-2 py-1 border-b border-border/50">
+                            <span className="truncate">{student.email}</span>
+                            <span className="text-muted-foreground text-xs">
+                              ({student.firstName} {student.lastName})
+                            </span>
+                            {student.tags && (
+                              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {student.tags}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                        {csvStudents.length > 50 && (
+                          <div className="text-center text-muted-foreground py-2">
+                            ... and {csvStudents.length - 50} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                )}
+                
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCsvPreviewImport} 
+                    disabled={csvImporting || csvStudents.length === 0}
+                    className="flex-1"
+                  >
+                    {csvImporting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Preview Import
+                  </Button>
+                  <Button 
+                    onClick={handleCsvConfirmImport} 
+                    disabled={csvImporting || csvStudents.length === 0 || !csvImportPreview}
+                    className="flex-1"
+                  >
+                    {csvImporting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    Import All Students
                   </Button>
                 </div>
               </div>
