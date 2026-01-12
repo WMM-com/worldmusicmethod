@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,28 +14,83 @@ interface YouTubeEmbedProps {
   isSidebar?: boolean;
 }
 
+// Global registry to track all YouTube iframes for pausing
+const youtubeIframeRegistry = new Set<HTMLIFrameElement>();
+
 export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete, isSidebar = false }: YouTubeEmbedProps) {
   const [editing, setEditing] = useState(false);
   const [videos, setVideos] = useState<string[]>(section.content?.videos || []);
   const [newUrl, setNewUrl] = useState('');
+  const iframeRefs = useRef<(HTMLIFrameElement | null)[]>([]);
 
   const getYouTubeEmbedUrl = (url: string) => {
-    // Already an embed URL
+    // Already an embed URL - add enablejsapi for pause control
     if (url.includes('youtube.com/embed/')) {
-      return url;
+      const hasParams = url.includes('?');
+      return `${url}${hasParams ? '&' : '?'}enablejsapi=1`;
     }
     // Extract video ID from various YouTube URL formats
     const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     if (match && match[2].length === 11) {
-      return `https://www.youtube.com/embed/${match[2]}`;
+      return `https://www.youtube.com/embed/${match[2]}?enablejsapi=1`;
     }
     // If no match but looks like a video ID
     if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
-      return `https://www.youtube.com/embed/${url.trim()}`;
+      return `https://www.youtube.com/embed/${url.trim()}?enablejsapi=1`;
     }
     return url;
   };
+
+  // Pause all other YouTube videos when one starts playing
+  const pauseOtherVideos = useCallback((currentIframe: HTMLIFrameElement) => {
+    // Pause other YouTube iframes in the registry
+    youtubeIframeRegistry.forEach(iframe => {
+      if (iframe !== currentIframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage(
+          JSON.stringify({ event: 'command', func: 'pauseVideo', args: '' }),
+          '*'
+        );
+      }
+    });
+    
+    // Pause the sticky audio player
+    window.dispatchEvent(new CustomEvent('pause-audio-player'));
+  }, []);
+
+  // Register/unregister iframes
+  useEffect(() => {
+    const currentRefs = iframeRefs.current.filter(Boolean) as HTMLIFrameElement[];
+    currentRefs.forEach(iframe => youtubeIframeRegistry.add(iframe));
+    
+    return () => {
+      currentRefs.forEach(iframe => youtubeIframeRegistry.delete(iframe));
+    };
+  }, [videos]);
+
+  // Listen for YouTube state changes
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        // YouTube sends state change events - state 1 means playing
+        if (data.event === 'onStateChange' && data.info === 1) {
+          // Find which iframe sent this message
+          const playingIframe = iframeRefs.current.find(
+            iframe => iframe?.contentWindow === event.source
+          );
+          if (playingIframe) {
+            pauseOtherVideos(playingIframe);
+          }
+        }
+      } catch {
+        // Not a JSON message or not from YouTube
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [pauseOtherVideos]);
 
   const handleAddVideo = () => {
     if (newUrl) {
@@ -117,6 +172,7 @@ export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete, isSidebar
             {section.content?.videos?.map((url: string, index: number) => (
               <div key={index} className="aspect-video">
                 <iframe
+                  ref={(el) => { iframeRefs.current[index] = el; }}
                   src={getYouTubeEmbedUrl(url)}
                   width="100%"
                   height="100%"
@@ -125,6 +181,10 @@ export function YouTubeEmbed({ section, isEditing, onUpdate, onDelete, isSidebar
                   allowFullScreen
                   loading="lazy"
                   className="rounded-lg"
+                  onLoad={(e) => {
+                    const iframe = e.currentTarget;
+                    youtubeIframeRegistry.add(iframe);
+                  }}
                 />
               </div>
             ))}

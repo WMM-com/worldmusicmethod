@@ -280,43 +280,43 @@ export default function Profile() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-screen bg-background pb-24 overflow-x-hidden">
         {/* Community Navigation */}
-        <div className="border-b border-border bg-card">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex justify-center">
+        <div className="border-b border-border bg-card overflow-x-hidden">
+          <div className="max-w-7xl mx-auto px-4 py-4 overflow-x-auto">
+            <div className="flex justify-center min-w-min">
               <div className="inline-flex items-center gap-1 rounded-lg bg-muted p-1">
                 <Link 
                   to="/community?tab=feed" 
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                  className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors whitespace-nowrap"
                 >
-                  <Newspaper className="h-4 w-4" />
-                  Feed
+                  <Newspaper className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Feed</span>
                 </Link>
                 <Link 
                   to="/community?tab=friends" 
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                  className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors whitespace-nowrap"
                 >
-                  <UserPlus className="h-4 w-4" />
-                  Friends
+                  <UserPlus className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Friends</span>
                 </Link>
                 <Link 
                   to="/community?tab=members" 
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                  className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors whitespace-nowrap"
                 >
-                  <UserSearch className="h-4 w-4" />
-                  Members
+                  <UserSearch className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Members</span>
                 </Link>
                 <Link 
                   to="/community?tab=groups" 
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                  className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-background transition-colors whitespace-nowrap"
                 >
-                  <UsersRound className="h-4 w-4" />
-                  Groups
+                  <UsersRound className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">Groups</span>
                 </Link>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-background text-foreground">
-                  <User className="h-4 w-4" />
-                  My Profile
+                <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium bg-background text-foreground whitespace-nowrap">
+                  <User className="h-4 w-4 shrink-0" />
+                  <span className="hidden sm:inline">My Profile</span>
                 </div>
               </div>
             </div>

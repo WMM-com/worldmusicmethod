@@ -701,12 +701,12 @@ export default function CourseLanding() {
     window.scrollTo(0, 0);
   }, [courseId]);
 
-  // Auto-close sidebar on desktop after 3 seconds
+  // Auto-close sidebar on desktop after 5 seconds
   useEffect(() => {
     if (!isMobile && sidebarOpen) {
       const timer = setTimeout(() => {
         setSidebarOpen(false);
-      }, 3000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isMobile]);
