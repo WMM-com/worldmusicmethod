@@ -43,18 +43,34 @@ import DOMPurify from 'dompurify';
 const getModuleDisplay = (title: string, index: number): { type: 'number' | 'icon'; value: number | React.ReactNode; IconComponent?: React.ComponentType<{ className?: string }> } => {
   const lowerTitle = title.toLowerCase();
   
-  // Check for special non-numbered module types
-  if (lowerTitle.includes('additional resources') || lowerTitle.includes('resources')) {
+  // Check for special non-numbered module types FIRST (these should NOT show numbers)
+  // Resource-type modules
+  if (lowerTitle.includes('additional resources') || 
+      (lowerTitle.includes('resources') && !lowerTitle.includes('module'))) {
     return { type: 'icon', value: null, IconComponent: FolderOpen };
   }
+  // Backing tracks / play-along modules
   if (lowerTitle.includes('backing track') || lowerTitle.includes('play along') || lowerTitle.includes('play-along')) {
     return { type: 'icon', value: null, IconComponent: Headphones };
   }
-  if (lowerTitle.includes('bonus') || lowerTitle.includes('extra')) {
+  // Bonus / extra modules
+  if ((lowerTitle.includes('bonus') || lowerTitle.includes('extra')) && !lowerTitle.includes('module')) {
     return { type: 'icon', value: null, IconComponent: Gift };
   }
+  // Ebook modules
+  if (lowerTitle.includes('ebook') || lowerTitle.includes('e-book') || lowerTitle.includes('book')) {
+    return { type: 'icon', value: null, IconComponent: BookOpen };
+  }
+  // Interview modules
+  if (lowerTitle.includes('interview') || lowerTitle.includes('conversation') || lowerTitle.includes('chat with')) {
+    return { type: 'icon', value: null, IconComponent: Users };
+  }
+  // Appendix / reference modules
+  if (lowerTitle.includes('appendix') || lowerTitle.includes('reference') || lowerTitle.includes('glossary')) {
+    return { type: 'icon', value: null, IconComponent: FileText };
+  }
   
-  // Try to extract module number from title (e.g., "Module 1:", "Module One", "1.", etc.)
+  // Only look for module numbers if the title explicitly contains "Module" followed by a number
   const numberWords: Record<string, number> = {
     'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
     'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
@@ -63,25 +79,25 @@ const getModuleDisplay = (title: string, index: number): { type: 'number' | 'ico
     'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23, 'twenty-four': 24, 'twenty-five': 25
   };
   
-  // Match "Module X" or "Module X:" patterns (numeric)
+  // Match "Module X" or "Module X:" patterns (numeric) - MUST have "Module" keyword
   const moduleNumMatch = title.match(/module\s+(\d+)/i);
   if (moduleNumMatch) {
     return { type: 'number', value: parseInt(moduleNumMatch[1], 10) };
   }
   
-  // Match "Module One", "Module Two", etc. (word numbers)
+  // Match "Module One", "Module Two", etc. (word numbers) - MUST have "Module" keyword
   const moduleWordMatch = title.match(/module\s+([\w-]+)/i);
   if (moduleWordMatch && numberWords[moduleWordMatch[1].toLowerCase()]) {
     return { type: 'number', value: numberWords[moduleWordMatch[1].toLowerCase()] };
   }
   
-  // Match leading number like "1." or "1:" or just "1 "
-  const leadingNumMatch = title.match(/^(\d+)[.:\s]/);
-  if (leadingNumMatch) {
-    return { type: 'number', value: parseInt(leadingNumMatch[1], 10) };
+  // If title doesn't contain "Module" and doesn't match special types, use a generic folder icon
+  // This handles things like "The Sound of Tribal Congo", "Sebene Heaven" that are neither modules nor resources
+  if (!lowerTitle.includes('module')) {
+    return { type: 'icon', value: null, IconComponent: Music };
   }
   
-  // Default to sequential index
+  // Fallback for unrecognized "Module X" patterns
   return { type: 'number', value: index + 1 };
 };
 
@@ -743,15 +759,25 @@ export default function CourseLanding() {
   const [showNavWheel, setShowNavWheel] = useState(false);
   const isMobile = useIsMobile();
   
-  // Initialize sidebar state: closed on mobile, open on desktop
+  // Initialize sidebar state: closed on mobile, will open on desktop after mount
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // Track if desktop sidebar has had its initial auto-close
+  // Track if desktop sidebar has had its initial auto-close (only happens ONCE on initial load)
   const [hasAutoClosedDesktop, setHasAutoClosedDesktop] = useState(false);
   
-  // Initialize sidebar state based on device after mount
+  // Track if user has manually interacted with the sidebar
+  const [userHasInteractedWithSidebar, setUserHasInteractedWithSidebar] = useState(false);
+  
+  // Wrapper to track manual sidebar interactions
+  const handleSidebarToggle = (open: boolean) => {
+    setUserHasInteractedWithSidebar(true);
+    setSidebarOpen(open);
+  };
+  
+  // Initialize sidebar state based on device after mount - desktop opens automatically
   useEffect(() => {
-    if (!isMobile) {
+    // Only open on desktop, not mobile
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
       setSidebarOpen(true);
     }
   }, []);
@@ -761,22 +787,27 @@ export default function CourseLanding() {
     window.scrollTo(0, 0);
   }, [courseId]);
 
-  // Track if mobile sidebar has been auto-opened this session
+  // Track if mobile sidebar has been auto-opened this session (when user scrolls past hero)
   const [hasAutoOpenedMobile, setHasAutoOpenedMobile] = useState(false);
   
   // Ref for tracking swipe on mobile sidebar
   const mobileSidebarRef = useRef<HTMLDivElement>(null);
 
-  // Auto-close sidebar on desktop after 5 seconds - only on first load
+  // Auto-close sidebar on desktop after 5 seconds - ONLY on initial load, NOT after manual interaction
   useEffect(() => {
-    if (!isMobile && sidebarOpen && !hasAutoClosedDesktop) {
+    // Only run this timer if:
+    // 1. We're on desktop
+    // 2. Sidebar is open
+    // 3. We haven't already done the auto-close
+    // 4. User hasn't manually interacted with the sidebar
+    if (!isMobile && sidebarOpen && !hasAutoClosedDesktop && !userHasInteractedWithSidebar) {
       const timer = setTimeout(() => {
         setSidebarOpen(false);
         setHasAutoClosedDesktop(true);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [isMobile, sidebarOpen, hasAutoClosedDesktop]);
+  }, [isMobile, sidebarOpen, hasAutoClosedDesktop, userHasInteractedWithSidebar]);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -1022,7 +1053,7 @@ export default function CourseLanding() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 bg-black/50 z-40"
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => handleSidebarToggle(false)}
               />
               {/* Drawer with swipe gesture */}
               <motion.aside
@@ -1037,14 +1068,14 @@ export default function CourseLanding() {
                 onDragEnd={(_, info) => {
                   // Close if swiped left more than 100px or with high velocity
                   if (info.offset.x < -100 || info.velocity.x < -500) {
-                    setSidebarOpen(false);
+                    handleSidebarToggle(false);
                   }
                 }}
                 className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-50 overflow-y-auto overflow-x-hidden touch-pan-y"
               >
                 {/* Sticky Close Button - always visible */}
                 <button 
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => handleSidebarToggle(false)}
                   className="fixed top-4 left-[calc(85vw-3rem)] max-w-[calc(24rem-1rem)] z-[60] w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors shadow-lg"
                   style={{ left: 'min(calc(85vw - 3rem), calc(24rem - 1rem))' }}
                 >
@@ -1060,7 +1091,7 @@ export default function CourseLanding() {
                 {courseConfig?.trailerVideo && (
                   <button
                     onClick={() => {
-                      setSidebarOpen(false);
+                      handleSidebarToggle(false);
                       setShowVideoModal(true);
                     }}
                     className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-primary hover:bg-muted/50 transition-colors border-b border-border"
@@ -1134,7 +1165,7 @@ export default function CourseLanding() {
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
                 <button 
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => handleSidebarToggle(false)}
                   className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
                 >
                   <X className="w-4 h-4 text-primary-foreground" />
@@ -1200,7 +1231,7 @@ export default function CourseLanding() {
               {/* Bottom close button */}
               <div className="p-4 border-t border-border flex justify-center">
                 <button 
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => handleSidebarToggle(false)}
                   className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
                 >
                   <X className="w-4 h-4 text-primary-foreground" />
@@ -1213,7 +1244,7 @@ export default function CourseLanding() {
         {/* Sidebar Toggle Button - Desktop (when closed) */}
         {!sidebarOpen && !isMobile && (
           <button
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => handleSidebarToggle(true)}
             className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg px-3 py-2 shadow-lg flex items-center gap-2 hover:bg-muted transition-colors"
           >
             <Menu className="w-4 h-4" />
@@ -1227,7 +1258,7 @@ export default function CourseLanding() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => handleSidebarToggle(true)}
             className="fixed left-4 bottom-20 z-40 bg-card border border-border rounded-full px-4 py-3 shadow-lg flex items-center gap-2 hover:bg-muted transition-colors"
           >
             <Menu className="w-4 h-4" />

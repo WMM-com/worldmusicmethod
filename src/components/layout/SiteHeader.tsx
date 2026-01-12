@@ -9,12 +9,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BookOpen, LogOut, User, Settings, Menu, X, Shield, ShoppingCart, ChevronDown } from 'lucide-react';
+import { BookOpen, LogOut, User, Settings, Menu, X, Shield, ShoppingCart, ChevronDown, Users, Brain, Home, Calendar, Music, Video, FileText, MessageSquare, Bell, Heart, Star, Folder, Image, Mail, Phone, MapPin } from 'lucide-react';
 import { useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { MessagesDropdown } from '@/components/messaging/MessagesDropdown';
+import { useQuery } from '@tanstack/react-query';
+
 const siteLogo = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/04/o35xPjFH-Site-Logo-White.png';
+
+// Icon mapping for menu items
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  BookOpen, Users, Brain, User, Settings, Shield, Home, Calendar, Music, Video, 
+  FileText, MessageSquare, Bell, Heart, Star, Folder, Image, Mail, Phone, MapPin
+};
+
+interface MenuItem {
+  id: string;
+  menu_type: 'desktop' | 'mobile' | 'profile';
+  label: string;
+  href: string | null;
+  icon: string | null;
+  parent_id: string | null;
+  order_index: number;
+  is_visible: boolean;
+  requires_auth: boolean;
+  requires_admin: boolean;
+}
 
 export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
   const navigate = useNavigate();
@@ -24,6 +45,21 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const cartItemCount = getItemCount();
 
+  // Fetch menu items from database
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['menu-items'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('is_visible', true)
+        .order('order_index');
+      if (error) throw error;
+      return (data || []) as MenuItem[];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
   useEffect(() => {
     async function checkAdminAccess() {
       if (!user) {
@@ -31,7 +67,6 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
         return;
       }
       
-      // Check if user has admin role
       const { data } = await supabase
         .from('user_roles')
         .select('role')
@@ -49,16 +84,114 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
     navigate('/');
   };
 
-  const learningHubLinks = [
-    { href: '/courses', label: 'Courses' },
-    { href: '/my-courses', label: 'My Courses' },
-  ];
+  // Filter menu items by type and auth requirements
+  const filterMenuItems = (type: 'desktop' | 'mobile' | 'profile', parentId: string | null = null) => {
+    return menuItems
+      .filter(item => {
+        if (item.menu_type !== type) return false;
+        if (item.parent_id !== parentId) return false;
+        if (item.requires_auth && !user) return false;
+        if (item.requires_admin && !hasAdminAccess) return false;
+        return true;
+      })
+      .sort((a, b) => a.order_index - b.order_index);
+  };
 
-  const navLinks = [
-    { href: '/membership', label: 'Membership' },
-    { href: '/community', label: 'Community' },
-    { href: '/dashboard', label: 'Left Brain' },
-  ];
+  const desktopItems = filterMenuItems('desktop');
+  const mobileItems = filterMenuItems('mobile');
+  const profileItems = filterMenuItems('profile');
+
+  const getIcon = (iconName: string | null) => {
+    if (!iconName) return null;
+    return ICON_MAP[iconName] || null;
+  };
+
+  const renderDesktopNavItem = (item: MenuItem) => {
+    const children = filterMenuItems('desktop', item.id);
+    const IconComponent = getIcon(item.icon);
+
+    if (children.length > 0) {
+      // Render as dropdown
+      return (
+        <DropdownMenu key={item.id}>
+          <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            {IconComponent && <IconComponent className="h-4 w-4 mr-1" />}
+            {item.label}
+            <ChevronDown className="h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {children.map((child) => {
+              const ChildIcon = getIcon(child.icon);
+              return (
+                <DropdownMenuItem key={child.id} onClick={() => child.href && navigate(child.href)}>
+                  {ChildIcon && <ChildIcon className="mr-2 h-4 w-4" />}
+                  {child.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+
+    // Render as link
+    return (
+      <Link
+        key={item.id}
+        to={item.href || '#'}
+        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+      >
+        {IconComponent && <IconComponent className="h-4 w-4" />}
+        {item.label}
+      </Link>
+    );
+  };
+
+  const renderMobileNavItem = (item: MenuItem) => {
+    const children = filterMenuItems('mobile', item.id);
+    const IconComponent = getIcon(item.icon);
+
+    if (children.length > 0) {
+      // Render as section with children
+      return (
+        <div key={item.id} className="px-2 py-2">
+          <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+            {IconComponent && <IconComponent className="h-4 w-4" />}
+            {item.label}
+          </span>
+          <div className="mt-2 ml-2 flex flex-col gap-1">
+            {children.map((child) => {
+              const ChildIcon = getIcon(child.icon);
+              return (
+                <Link
+                  key={child.id}
+                  to={child.href || '#'}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                >
+                  {ChildIcon && <ChildIcon className="h-4 w-4" />}
+                  {child.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // Render as link
+    return (
+      <Link
+        key={item.id}
+        to={item.href || '#'}
+        onClick={() => setMobileMenuOpen(false)}
+        className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+      >
+        {IconComponent && <IconComponent className="h-4 w-4" />}
+        {item.label}
+      </Link>
+    );
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -75,30 +208,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            {/* Learning Hub Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                Learning Hub
-                <ChevronDown className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {learningHubLinks.map((link) => (
-                  <DropdownMenuItem key={link.href} onClick={() => navigate(link.href)}>
-                    {link.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {desktopItems.map(item => renderDesktopNavItem(item))}
           </nav>
 
           {/* Right side - Auth buttons or User menu */}
@@ -160,27 +270,20 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/my-courses')}>
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    My Courses
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/account')}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    My Account
-                  </DropdownMenuItem>
-                  {hasAdminAccess && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate('/admin')}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        Admin Dashboard
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  {profileItems.map((item) => {
+                    const IconComponent = getIcon(item.icon);
+                    // Insert separator before admin items
+                    const showSeparator = item.requires_admin && profileItems.findIndex(p => p.id === item.id) > 0;
+                    return (
+                      <div key={item.id}>
+                        {showSeparator && <DropdownMenuSeparator />}
+                        <DropdownMenuItem onClick={() => item.href && navigate(item.href)}>
+                          {IconComponent && <IconComponent className="mr-2 h-4 w-4" />}
+                          {item.label}
+                        </DropdownMenuItem>
+                      </div>
+                    );
+                  })}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -231,33 +334,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <nav className="flex flex-col gap-2">
-              {/* Learning Hub Section */}
-              <div className="px-2 py-2">
-                <span className="text-sm font-semibold text-foreground">Learning Hub</span>
-                <div className="mt-2 ml-2 flex flex-col gap-1">
-                  {learningHubLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {mobileItems.map(item => renderMobileNavItem(item))}
               
               {user ? (
                 <>
