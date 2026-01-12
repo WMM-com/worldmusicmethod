@@ -54,7 +54,8 @@ export function AdminCampaigns() {
     send_to_lists: [] as string[],
     include_tags: [] as string[],
     exclude_tags: [] as string[],
-    scheduled_at: ''
+    scheduled_at: '',
+    send_to_all: false
   });
 
   // Recipient count preview state
@@ -68,7 +69,7 @@ export function AdminCampaigns() {
   // Debounced recipient count calculation
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (formData.send_to_lists.length > 0 || formData.include_tags.length > 0) {
+      if (formData.send_to_all || formData.send_to_lists.length > 0 || formData.include_tags.length > 0) {
         calculateRecipientCount();
       } else {
         setRecipientCount(null);
@@ -109,8 +110,32 @@ export function AdminCampaigns() {
   }
 
   async function calculateLocalRecipientCount() {
-    let count = 0;
     const emails: string[] = [];
+
+    // If send_to_all, get all subscribed contacts from profiles
+    if (formData.send_to_all) {
+      const { data: allProfiles } = await supabase
+        .from('profiles')
+        .select('email')
+        .not('email', 'is', null);
+
+      if (allProfiles) {
+        for (const profile of allProfiles) {
+          if (profile.email && !emails.includes(profile.email)) {
+            // Check if unsubscribed
+            const { data: contact } = await supabase
+              .from('email_contacts')
+              .select('is_subscribed')
+              .eq('email', profile.email)
+              .maybeSingle();
+
+            if (!contact || contact.is_subscribed) {
+              emails.push(profile.email);
+            }
+          }
+        }
+      }
+    }
 
     // Get contacts from lists
     if (formData.send_to_lists.length > 0) {
@@ -199,7 +224,8 @@ export function AdminCampaigns() {
       include_tags: formData.include_tags,
       exclude_tags: formData.exclude_tags,
       scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null,
-      status: formData.scheduled_at ? 'scheduled' : 'draft'
+      status: formData.scheduled_at ? 'scheduled' : 'draft',
+      send_to_all: formData.send_to_all
     };
 
     if (editingCampaign) {
@@ -290,7 +316,8 @@ export function AdminCampaigns() {
       send_to_lists: [],
       include_tags: [],
       exclude_tags: [],
-      scheduled_at: ''
+      scheduled_at: '',
+      send_to_all: false
     });
     setRecipientCount(null);
   }
@@ -305,7 +332,8 @@ export function AdminCampaigns() {
       send_to_lists: campaign.send_to_lists || [],
       include_tags: campaign.include_tags || [],
       exclude_tags: campaign.exclude_tags || [],
-      scheduled_at: campaign.scheduled_at ? new Date(campaign.scheduled_at).toISOString().slice(0, 16) : ''
+      scheduled_at: campaign.scheduled_at ? new Date(campaign.scheduled_at).toISOString().slice(0, 16) : '',
+      send_to_all: (campaign as any).send_to_all || false
     });
     setDialogOpen(true);
   }
@@ -436,7 +464,7 @@ export function AdminCampaigns() {
 
                 <TabsContent value="audience" className="space-y-4 py-4">
                   {/* Recipient count display */}
-                  {(formData.send_to_lists.length > 0 || formData.include_tags.length > 0) && (
+                  {(formData.send_to_all || formData.send_to_lists.length > 0 || formData.include_tags.length > 0) && (
                     <div className="bg-muted/50 rounded-lg p-4 flex items-center gap-3">
                       <Users className="h-5 w-5 text-primary" />
                       <div>
@@ -454,39 +482,64 @@ export function AdminCampaigns() {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label>Send to Lists</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {lists.map(list => (
-                        <Badge
-                          key={list.id}
-                          variant={formData.send_to_lists.includes(list.id) ? 'default' : 'outline'}
-                          className="cursor-pointer"
-                          onClick={() => toggleList(list.id)}
-                        >
-                          {list.name}
-                        </Badge>
-                      ))}
-                      {lists.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No lists created</p>
-                      )}
-                    </div>
+                  {/* Send to All option */}
+                  <div className="flex items-center space-x-2 p-3 border rounded-lg bg-primary/5">
+                    <input
+                      type="checkbox"
+                      id="send-to-all"
+                      checked={formData.send_to_all}
+                      onChange={(e) => setFormData(prev => ({ 
+                        ...prev, 
+                        send_to_all: e.target.checked,
+                        // Clear lists and tags when send to all is selected
+                        ...(e.target.checked ? { send_to_lists: [], include_tags: [] } : {})
+                      }))}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="send-to-all" className="cursor-pointer font-medium">
+                      Send to all subscribed users
+                    </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Include contacts with these tags (AND)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map(tag => (
-                        <Badge
-                          key={tag.id}
-                          variant={formData.include_tags.includes(tag.id) ? 'default' : 'outline'}
-                          className="cursor-pointer"
-                          onClick={() => toggleIncludeTag(tag.id)}
-                        >
-                          {tag.name}
-                        </Badge>
-                      ))}
+
+                  {!formData.send_to_all && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Send to Lists</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {lists.map(list => (
+                            <Badge
+                              key={list.id}
+                              variant={formData.send_to_lists.includes(list.id) ? 'default' : 'outline'}
+                              className="cursor-pointer"
+                              onClick={() => toggleList(list.id)}
+                            >
+                              {list.name}
+                            </Badge>
+                          ))}
+                          {lists.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No lists created</p>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {!formData.send_to_all && (
+                    <div className="space-y-2">
+                      <Label>Include contacts with these tags</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map(tag => (
+                          <Badge
+                            key={tag.id}
+                            variant={formData.include_tags.includes(tag.id) ? 'default' : 'outline'}
+                            className="cursor-pointer"
+                            onClick={() => toggleIncludeTag(tag.id)}
+                          >
+                            {tag.name}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Exclude contacts with these tags</Label>
                     <div className="flex flex-wrap gap-2">
@@ -503,7 +556,9 @@ export function AdminCampaigns() {
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Recipients = (All in selected lists OR have include tags) AND NOT have exclude tags AND are subscribed
+                    {formData.send_to_all 
+                      ? 'All subscribed users except those with excluded tags will receive this email'
+                      : 'Recipients = (All in selected lists OR have include tags) AND NOT have exclude tags AND are subscribed'}
                   </p>
                 </TabsContent>
 
