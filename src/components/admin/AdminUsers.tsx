@@ -165,16 +165,20 @@ export function AdminUsers() {
     },
   });
 
-  // Fetch user tags
+  // Fetch user tags for displayed users only (avoid 1000 row limit issue)
+  const userIds = users?.map(u => u.id) || [];
   const { data: userTags } = useQuery({
-    queryKey: ['admin-user-tags'],
+    queryKey: ['admin-user-tags', userIds],
     queryFn: async () => {
+      if (userIds.length === 0) return [];
       const { data, error } = await supabase
         .from('user_tags')
-        .select('*, email_tags(id, name)');
+        .select('*, email_tags(id, name)')
+        .in('user_id', userIds);
       if (error) throw error;
       return data;
     },
+    enabled: userIds.length > 0,
   });
 
   // Fetch email contacts for subscription status
