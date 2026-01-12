@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -18,6 +18,7 @@ import { AdminReports } from '@/components/admin/AdminReports';
 import { AdminSales } from '@/components/admin/AdminSales';
 import { AdminCoupons } from '@/components/admin/AdminCoupons';
 import { AdminMenuEditor } from '@/components/admin/AdminMenuEditor';
+import { AdminPages } from '@/components/admin/AdminPages';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ const menuItems = [
   { id: 'media', label: 'Media Library', icon: Image },
   { id: 'streaming', label: 'Streaming', icon: Music },
   { id: 'groups', label: 'Course Groups', icon: FolderOpen },
+  { id: 'pages', label: 'Pages', icon: FileCode },
   { id: 'import', label: 'Import', icon: Upload },
   { id: 'landing', label: 'Landing Pages', icon: FileText },
   { id: 'email-crm', label: 'Email CRM', icon: Mail },
@@ -108,6 +110,7 @@ export default function AdminDashboard() {
       case 'media': return <AdminMedia />;
       case 'streaming': return <AdminStreaming />;
       case 'groups': return <AdminCourseGroups />;
+      case 'pages': return <AdminPages />;
       case 'import': return <ImportCourseData />;
       case 'landing': return <LandingPageEditor />;
       case 'email-crm': return <AdminEmailCRM />;

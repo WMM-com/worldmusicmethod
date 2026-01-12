@@ -12,6 +12,9 @@ import { Mail, CheckCircle, AlertTriangle } from 'lucide-react';
 import wmmLogo from '@/assets/world-music-method-logo.png';
 import { HoneypotField, useHoneypotValidator } from '@/components/ui/honeypot-field';
 import { usePersistentRateLimiter } from '@/hooks/useRateLimiter';
+import { Turnstile, useTurnstileVerification } from '@/components/ui/turnstile';
+
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -27,10 +30,12 @@ export default function Auth() {
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [signupNotice, setSignupNotice] = useState<{ email: string } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const { signIn, signUp } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const { validateSubmission } = useHoneypotValidator();
   const rateLimiter = usePersistentRateLimiter({ maxAttempts: 5, windowMs: 60000, blockDurationMs: 300000 });
+  const { verify: verifyTurnstile, isVerifying } = useTurnstileVerification();
 
   useEffect(() => {
     if (verified) {
@@ -68,6 +73,16 @@ export default function Auth() {
       console.warn('Bot detected:', honeypotCheck.reason);
       // Silently fail for bots - don't give them feedback
       return;
+    }
+    
+    // Verify Turnstile if configured and token available
+    if (TURNSTILE_SITE_KEY && turnstileToken) {
+      const isValid = await verifyTurnstile(turnstileToken);
+      if (!isValid) {
+        toast.error('Security verification failed. Please try again.');
+        setLoading(false);
+        return;
+      }
     }
     
     // Record the attempt
@@ -244,8 +259,19 @@ export default function Auth() {
                     />
                   </div>
                 )}
-                <Button type="submit" className="w-full gradient-primary" disabled={loading}>
-                  {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Email'}
+                {/* Turnstile widget */}
+                {TURNSTILE_SITE_KEY && (
+                  <div className="flex justify-center">
+                    <Turnstile
+                      siteKey={TURNSTILE_SITE_KEY}
+                      onVerify={setTurnstileToken}
+                      theme="auto"
+                      size="normal"
+                    />
+                  </div>
+                )}
+                <Button type="submit" className="w-full gradient-primary" disabled={loading || isVerifying || (TURNSTILE_SITE_KEY && !turnstileToken)}>
+                  {loading || isVerifying ? 'Please wait...' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Email'}
                 </Button>
               </form>
               
