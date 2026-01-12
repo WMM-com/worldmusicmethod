@@ -526,7 +526,7 @@ export function useDeleteProject() {
 // Update extended profile
 export function useUpdateExtendedProfile() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
 
   return useMutation({
     mutationFn: async (updates: Partial<ExtendedProfile>) => {
@@ -539,9 +539,12 @@ export function useUpdateExtendedProfile() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['extended-profile'] });
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      // Refresh the auth context profile so Account page syncs
+      await refreshProfile();
       toast.success('Profile updated');
     },
     onError: (error: any) => {

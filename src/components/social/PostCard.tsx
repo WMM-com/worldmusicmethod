@@ -136,6 +136,124 @@ function VideoPlayer({ src }: { src: string }) {
   );
 }
 
+// Component for expandable post text with "Read more"
+function PostContentText({ content }: { content: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const MAX_LINES = 5;
+  const MAX_CHARS = 400;
+  
+  const shouldTruncate = content.length > MAX_CHARS || content.split('\n').length > MAX_LINES;
+  
+  if (!shouldTruncate || isExpanded) {
+    return <p className="whitespace-pre-wrap">{renderMentionText(content)}</p>;
+  }
+  
+  // Truncate by character count and line count
+  let truncated = content;
+  const lines = content.split('\n');
+  if (lines.length > MAX_LINES) {
+    truncated = lines.slice(0, MAX_LINES).join('\n');
+  }
+  if (truncated.length > MAX_CHARS) {
+    truncated = truncated.slice(0, MAX_CHARS);
+  }
+  truncated = truncated.trim() + '...';
+  
+  return (
+    <div>
+      <p className="whitespace-pre-wrap">{renderMentionText(truncated)}</p>
+      <button
+        onClick={() => setIsExpanded(true)}
+        className="text-primary text-sm font-medium hover:underline mt-1"
+      >
+        Read more
+      </button>
+    </div>
+  );
+}
+
+// Facebook-style image gallery for multiple images
+function ImageGallery({ images }: { images: string[] }) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  if (images.length === 0) return null;
+  
+  if (images.length === 1) {
+    return (
+      <>
+        <div 
+          className="rounded-lg overflow-hidden cursor-pointer"
+          onClick={() => setSelectedImage(images[0])}
+        >
+          <img
+            src={images[0]}
+            alt=""
+            className="w-full max-h-[500px] object-contain bg-black/5"
+          />
+        </div>
+        {selectedImage && (
+          <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+            <DialogContent className="max-w-4xl p-0 bg-black">
+              <img
+                src={selectedImage}
+                alt=""
+                className="w-full h-auto max-h-[90vh] object-contain"
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </>
+    );
+  }
+  
+  // Multi-image layout (for future use when posts support multiple images)
+  const gridClass = images.length === 2 
+    ? "grid-cols-2" 
+    : images.length === 3 
+      ? "grid-cols-2" 
+      : "grid-cols-2";
+      
+  return (
+    <>
+      <div className={cn("grid gap-1 rounded-lg overflow-hidden", gridClass)}>
+        {images.slice(0, 4).map((img, idx) => (
+          <div 
+            key={idx}
+            className={cn(
+              "relative cursor-pointer overflow-hidden",
+              images.length === 3 && idx === 0 && "row-span-2",
+              idx === 3 && images.length > 4 && "relative"
+            )}
+            onClick={() => setSelectedImage(img)}
+          >
+            <img
+              src={img}
+              alt=""
+              className="w-full h-full object-cover aspect-square"
+            />
+            {idx === 3 && images.length > 4 && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                <span className="text-white text-2xl font-bold">+{images.length - 4}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {selectedImage && (
+        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+          <DialogContent className="max-w-4xl p-0 bg-black">
+            <img
+              src={selectedImage}
+              alt=""
+              className="w-full h-auto max-h-[90vh] object-contain"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
 interface PostCardProps {
   post: Post;
   defaultShowComments?: boolean;
@@ -418,19 +536,15 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
         </CardHeader>
         
         <CardContent className="pb-3">
-          <p className="whitespace-pre-wrap">{renderMentionText(post.content)}</p>
-{post.image_url && (
+          <PostContentText content={post.content} />
+          {post.image_url && (
             <div className="mt-3">
               {displayMediaType === 'video' ? (
                 <VideoPlayer src={post.image_url} />
               ) : displayMediaType === 'audio' ? (
                 <audio src={post.image_url} controls className="w-full mt-2" />
               ) : (
-                <img
-                  src={post.image_url}
-                  alt=""
-                  className="rounded-lg max-h-96 w-full object-cover"
-                />
+                <ImageGallery images={[post.image_url]} />
               )}
             </div>
           )}

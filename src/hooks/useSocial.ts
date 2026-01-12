@@ -322,6 +322,17 @@ export function useCreateComment() {
     }) => {
       if (!user) throw new Error('Not authenticated');
       
+      // Check if user has a private profile
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('visibility')
+        .eq('id', user.id)
+        .single();
+      
+      if (userProfile?.visibility === 'private') {
+        throw new Error('Private profiles cannot comment. Please change your profile visibility in Account Settings.');
+      }
+      
       const { data: comment, error } = await supabase.from('comments').insert({
         post_id: postId,
         user_id: user.id,
@@ -455,6 +466,19 @@ export function useAppreciate() {
       remove: boolean;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      
+      // Check if user has a private profile (only for adding appreciation, not removing)
+      if (!remove) {
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('visibility')
+          .eq('id', user.id)
+          .single();
+        
+        if (userProfile?.visibility === 'private') {
+          throw new Error('Private profiles cannot appreciate posts. Please change your profile visibility in Account Settings.');
+        }
+      }
       
       if (remove) {
         const query = supabase.from('appreciations').delete().eq('user_id', user.id);

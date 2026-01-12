@@ -30,6 +30,8 @@ export default function Social() {
 
   const postId = searchParams.get('postId');
   const openComments = searchParams.get('openComments') === 'true';
+  // Add timestamp to force re-trigger when clicking same post notification multiple times
+  const scrollKey = searchParams.get('t');
 
   useEffect(() => {
     if (!user) return;
@@ -46,11 +48,17 @@ export default function Social() {
         const elementPosition = el.getBoundingClientRect().top + window.scrollY;
         const offsetPosition = elementPosition - headerOffset;
         window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        
+        // Briefly highlight the post
+        el.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+        }, 2000);
       }
-    }, 50);
+    }, 100);
 
     return () => window.clearTimeout(t);
-  }, [user, activeTab, postId, isLoading, posts]);
+  }, [user, activeTab, postId, isLoading, scrollKey]);
 
   if (loading) {
     return (
