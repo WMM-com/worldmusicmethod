@@ -20,7 +20,6 @@ import {
   HelpCircle,
   Menu,
   FolderOpen,
-  Disc3,
   Gift
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -45,11 +44,11 @@ const getModuleDisplay = (title: string, index: number): { type: 'number' | 'ico
   const lowerTitle = title.toLowerCase();
   
   // Check for special non-numbered module types
-  if (lowerTitle.includes('additional resources') || lowerTitle.includes('bonus') || lowerTitle.includes('resources')) {
+  if (lowerTitle.includes('additional resources') || lowerTitle.includes('resources')) {
     return { type: 'icon', value: null, IconComponent: FolderOpen };
   }
   if (lowerTitle.includes('backing track') || lowerTitle.includes('play along') || lowerTitle.includes('play-along')) {
-    return { type: 'icon', value: null, IconComponent: Disc3 };
+    return { type: 'icon', value: null, IconComponent: Headphones };
   }
   if (lowerTitle.includes('bonus') || lowerTitle.includes('extra')) {
     return { type: 'icon', value: null, IconComponent: Gift };
@@ -59,22 +58,24 @@ const getModuleDisplay = (title: string, index: number): { type: 'number' | 'ico
   const numberWords: Record<string, number> = {
     'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
     'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
-    'eleven': 11, 'twelve': 12
+    'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+    'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20,
+    'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23, 'twenty-four': 24, 'twenty-five': 25
   };
   
-  // Match "Module X" or "Module X:" patterns
+  // Match "Module X" or "Module X:" patterns (numeric)
   const moduleNumMatch = title.match(/module\s+(\d+)/i);
   if (moduleNumMatch) {
     return { type: 'number', value: parseInt(moduleNumMatch[1], 10) };
   }
   
-  // Match "Module One", "Module Two", etc.
-  const moduleWordMatch = title.match(/module\s+(\w+)/i);
+  // Match "Module One", "Module Two", etc. (word numbers)
+  const moduleWordMatch = title.match(/module\s+([\w-]+)/i);
   if (moduleWordMatch && numberWords[moduleWordMatch[1].toLowerCase()]) {
     return { type: 'number', value: numberWords[moduleWordMatch[1].toLowerCase()] };
   }
   
-  // Match leading number like "1." or "1:"
+  // Match leading number like "1." or "1:" or just "1 "
   const leadingNumMatch = title.match(/^(\d+)[.:\s]/);
   if (leadingNumMatch) {
     return { type: 'number', value: parseInt(leadingNumMatch[1], 10) };
