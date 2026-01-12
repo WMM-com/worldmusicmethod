@@ -301,15 +301,15 @@ export default function Account() {
                         onValueChange={(v: 'private' | 'members' | 'public') => setForm({...form, visibility: v})}
                         className="space-y-3"
                       >
-                        <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                          <RadioGroupItem value="private" id="visibility-private" className="mt-1" />
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-colors">
+                          <RadioGroupItem value="public" id="visibility-public" className="mt-1" />
                           <div className="flex-1">
-                            <Label htmlFor="visibility-private" className="flex items-center gap-2 cursor-pointer font-medium">
-                              <EyeOff className="h-4 w-4" />
-                              Private
+                            <Label htmlFor="visibility-public" className="flex items-center gap-2 cursor-pointer font-medium text-green-600 dark:text-green-400">
+                              <Globe className="h-4 w-4" />
+                              Public
                             </Label>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Your profile is hidden. You cannot post or comment in the community.
+                              Everyone can see your profile. You'll appear in the community members page and can fully participate.
                             </p>
                           </div>
                         </div>
@@ -327,15 +327,15 @@ export default function Account() {
                           </div>
                         </div>
                         
-                        <div className="flex items-start space-x-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-colors">
-                          <RadioGroupItem value="public" id="visibility-public" className="mt-1" />
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <RadioGroupItem value="private" id="visibility-private" className="mt-1" />
                           <div className="flex-1">
-                            <Label htmlFor="visibility-public" className="flex items-center gap-2 cursor-pointer font-medium text-green-600 dark:text-green-400">
-                              <Globe className="h-4 w-4" />
-                              Public (Recommended)
+                            <Label htmlFor="visibility-private" className="flex items-center gap-2 cursor-pointer font-medium">
+                              <EyeOff className="h-4 w-4" />
+                              Private
                             </Label>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Everyone can see your profile. You'll appear in the community members page and can fully participate.
+                              Your profile is hidden. You cannot post or comment in the community.
                             </p>
                           </div>
                         </div>

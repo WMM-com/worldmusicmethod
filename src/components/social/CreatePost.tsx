@@ -12,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star, Music2 } from 'lucide-react';
+import { Globe, Users, Image, Video, Music, X, Upload, Loader2, Megaphone, RefreshCw, Star, Music2, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreatePost } from '@/hooks/useSocial';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { MentionInput } from '@/components/ui/mention-input';
+import { Link } from 'react-router-dom';
 
 type MediaType = 'image' | 'video' | 'audio' | null;
 type PostType = 'statement' | 'update' | 'recommendation' | 'practice';
@@ -76,18 +77,21 @@ export function CreatePost() {
   const { uploadFile, isUploading, progress } = useR2Upload();
 
   const { data: profile } = useQuery({
-    queryKey: ['my-profile', user?.id],
+    queryKey: ['my-profile-visibility', user?.id],
     queryFn: async () => {
       if (!user) return null;
       const { data } = await supabase
         .from('profiles')
-        .select('full_name, avatar_url')
+        .select('full_name, avatar_url, visibility')
         .eq('id', user.id)
         .single();
       return data;
     },
     enabled: !!user,
   });
+
+  // Check if user has a private profile
+  const isPrivateProfile = profile?.visibility === 'private';
 
   const initials = profile?.full_name
     ?.split(' ')
@@ -180,6 +184,27 @@ export function CreatePost() {
   };
 
   if (!user) return null;
+
+  // Don't allow private profiles to post
+  if (isPrivateProfile) {
+    return (
+      <Card>
+        <CardContent className="py-6">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Lock className="h-5 w-5" />
+            <div>
+              <p className="font-medium text-foreground">Your profile is private</p>
+              <p className="text-sm">
+                Change your profile visibility to "Members Only" or "Public" in{' '}
+                <Link to="/account?section=profile" className="text-primary underline">Account Settings</Link>{' '}
+                to post and comment.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

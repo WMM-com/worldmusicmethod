@@ -40,7 +40,13 @@ export default function Social() {
     // Defer to ensure the DOM has rendered the post cards.
     const t = window.setTimeout(() => {
       const el = document.getElementById(`post-${postId}`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (el) {
+        // Scroll with offset for header (approximately 100px for header + some padding)
+        const headerOffset = 100;
+        const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+        const offsetPosition = elementPosition - headerOffset;
+        window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+      }
     }, 50);
 
     return () => window.clearTimeout(t);
@@ -91,34 +97,38 @@ export default function Social() {
 
         <main className="max-w-7xl mx-auto px-4 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            {/* Centered Tabs */}
-            <div className="flex justify-center">
-              <TabsList className="grid w-full max-w-2xl grid-cols-5">
-                <TabsTrigger value="feed" className="flex items-center gap-2">
-                  <Newspaper className="h-4 w-4" />
-                  Feed
-                </TabsTrigger>
-                <TabsTrigger value="friends" className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Friends
-                </TabsTrigger>
-                <TabsTrigger value="members" className="flex items-center gap-2">
-                  <UserSearch className="h-4 w-4" />
-                  Members
-                </TabsTrigger>
-                <TabsTrigger value="groups" className="flex items-center gap-2">
-                  <UsersRound className="h-4 w-4" />
-                  Groups
-                </TabsTrigger>
-                {user && (
-                  <TabsTrigger value="profile" className="flex items-center gap-2" asChild>
-                    <Link to="/profile">
-                      <User className="h-4 w-4" />
-                      My Profile
-                    </Link>
+            {/* Centered Tabs - aligned with feed content */}
+            <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
+              <div className="hidden lg:block" /> {/* Spacer for left sidebar */}
+              <div className="max-w-2xl mx-auto w-full">
+                <TabsList className={`grid w-full ${user ? 'grid-cols-5' : 'grid-cols-4'}`}>
+                  <TabsTrigger value="feed" className="flex items-center gap-2">
+                    <Newspaper className="h-4 w-4" />
+                    Feed
                   </TabsTrigger>
-                )}
-              </TabsList>
+                  <TabsTrigger value="friends" className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Friends
+                  </TabsTrigger>
+                  <TabsTrigger value="members" className="flex items-center gap-2">
+                    <UserSearch className="h-4 w-4" />
+                    Members
+                  </TabsTrigger>
+                  <TabsTrigger value="groups" className="flex items-center gap-2">
+                    <UsersRound className="h-4 w-4" />
+                    Groups
+                  </TabsTrigger>
+                  {user && (
+                    <TabsTrigger value="profile" className="flex items-center gap-2" asChild>
+                      <Link to="/profile">
+                        <User className="h-4 w-4" />
+                        My Profile
+                      </Link>
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
+              <div className="hidden lg:block" /> {/* Spacer for right sidebar */}
             </div>
             
             <TabsContent value="feed">
