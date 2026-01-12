@@ -611,8 +611,8 @@ function CheckoutContent() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background py-12 overflow-x-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="min-h-screen bg-background py-8 sm:py-12 overflow-x-hidden">
+        <div className="w-full max-w-5xl mx-auto px-3 sm:px-6">
           {/* Returning customer banner */}
           {!user && !isReturningCustomer && (
             <div className="mb-6 p-3 bg-muted/50 rounded-lg flex items-center gap-2">
@@ -627,14 +627,14 @@ function CheckoutContent() {
             </div>
           )}
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
             {/* Billing Details */}
             <div>
-              <h2 className="text-lg font-semibold mb-6 uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 uppercase tracking-wide text-muted-foreground">
                 Billing Details
               </h2>
 
-              <Card className="p-6">
+              <Card className="p-4 sm:p-6">
                 {user ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
@@ -787,11 +787,11 @@ function CheckoutContent() {
 
             {/* Your Order */}
             <div>
-              <h2 className="text-lg font-semibold mb-6 uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 uppercase tracking-wide text-muted-foreground">
                 Your Order
               </h2>
 
-              <Card className="p-6">
+              <Card className="p-4 sm:p-6">
                 {/* Product rows */}
                 <div className="space-y-3 pb-4 border-b border-border">
                   {isCartMode ? (
@@ -963,36 +963,36 @@ function CheckoutContent() {
                 {/* Payment method selection */}
                 <div className="py-4 border-b border-border">
                   <Label className="mb-3 block">Payment Method</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('card')}
-                      className={`p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
                         paymentMethod === 'card'
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-muted-foreground'
                       }`}
                     >
-                      <CreditCard className="h-5 w-5" />
-                      <span className="font-medium">Card</span>
+                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="font-medium text-sm sm:text-base">Card</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('paypal')}
-                      className={`p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-2 ${
+                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-0.5 sm:gap-2 ${
                         paymentMethod === 'paypal'
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-muted-foreground'
                       }`}
                     >
-                      <span className="text-[#003087] font-bold italic">Pay</span>
-                      <span className="text-[#009CDE] font-bold italic">Pal</span>
+                      <span className="text-[#003087] font-bold italic text-sm sm:text-base">Pay</span>
+                      <span className="text-[#009CDE] font-bold italic text-sm sm:text-base">Pal</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Payment form */}
-                <div className="py-6">
+                <div className="py-4 sm:py-6">
                   {paymentMethod === 'card' ? (
                     <StripeCardFields
                       productIds={isCartMode ? cartItems.map(item => item.productId) : [productId || '']}
