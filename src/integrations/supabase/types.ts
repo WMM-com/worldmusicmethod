@@ -2548,6 +2548,62 @@ export type Database = {
           },
         ]
       }
+      menu_items: {
+        Row: {
+          created_at: string
+          href: string | null
+          icon: string | null
+          id: string
+          is_visible: boolean
+          label: string
+          menu_type: string
+          order_index: number
+          parent_id: string | null
+          requires_admin: boolean | null
+          requires_auth: boolean | null
+          sync_with_desktop: boolean | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          href?: string | null
+          icon?: string | null
+          id?: string
+          is_visible?: boolean
+          label: string
+          menu_type: string
+          order_index?: number
+          parent_id?: string | null
+          requires_admin?: boolean | null
+          requires_auth?: boolean | null
+          sync_with_desktop?: boolean | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          href?: string | null
+          icon?: string | null
+          id?: string
+          is_visible?: boolean
+          label?: string
+          menu_type?: string
+          order_index?: number
+          parent_id?: string | null
+          requires_admin?: boolean | null
+          requires_auth?: boolean | null
+          sync_with_desktop?: boolean | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
