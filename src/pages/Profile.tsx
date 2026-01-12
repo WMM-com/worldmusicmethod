@@ -160,13 +160,22 @@ export default function Profile() {
     navigate('/messages', { state: { conversationId } });
   };
 
-  const handleTogglePublic = async () => {
-    const newVisibility = extendedProfile?.visibility === 'public' ? 'private' : 'public';
+  const handleCycleVisibility = async () => {
+    // Cycle: public -> members -> private -> public
+    let newVisibility: 'public' | 'members' | 'private';
+    if (extendedProfile?.visibility === 'public') {
+      newVisibility = 'members';
+    } else if (extendedProfile?.visibility === 'members') {
+      newVisibility = 'private';
+    } else {
+      newVisibility = 'public';
+    }
     await updateExtendedProfile.mutateAsync({ 
       visibility: newVisibility,
       is_public: newVisibility === 'public',
     });
-    toast.success(newVisibility === 'public' ? 'Profile is now public' : 'Profile is now private');
+    const labels = { public: 'Public', members: 'Members Only', private: 'Private' };
+    toast.success(`Profile visibility: ${labels[newVisibility]}`);
   };
 
   const handleAddSection = async (sectionType: string) => {
@@ -490,14 +499,20 @@ export default function Profile() {
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="public-profile"
-                          checked={extendedProfile?.is_public || false}
-                          onCheckedChange={handleTogglePublic}
-                        />
-                        <Label htmlFor="public-profile">Public Profile</Label>
-                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleCycleVisibility}
+                        className="gap-2"
+                      >
+                        {extendedProfile?.visibility === 'public' ? (
+                          <><Globe className="h-4 w-4 text-green-500" /> Public</>
+                        ) : extendedProfile?.visibility === 'members' ? (
+                          <><Users className="h-4 w-4 text-blue-500" /> Members Only</>
+                        ) : (
+                          <><Lock className="h-4 w-4" /> Private</>
+                        )}
+                      </Button>
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
