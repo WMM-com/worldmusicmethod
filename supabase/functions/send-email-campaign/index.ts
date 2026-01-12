@@ -346,7 +346,7 @@ serve(async (req) => {
     let sentCount = 0;
 
     // Use the production Lovable URL for unsubscribe links
-    const baseUrl = 'https://wpczgwxsriezaubncuom.lovable.app';
+    const baseUrl = 'https://worldmusicmethod.lovable.app';
 
     // Send emails
     for (const recipient of finalRecipients) {

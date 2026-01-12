@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
@@ -693,11 +694,22 @@ export default function CourseLanding() {
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showNavWheel, setShowNavWheel] = useState(false);
+  const isMobile = useIsMobile();
 
   // Scroll to top on page load
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [courseId]);
+
+  // Auto-close sidebar on desktop after 3 seconds
+  useEffect(() => {
+    if (!isMobile && sidebarOpen) {
+      const timer = setTimeout(() => {
+        setSidebarOpen(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile]);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});

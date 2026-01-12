@@ -192,7 +192,7 @@ serve(async (req) => {
     logStep("Found due campaigns", { count: dueCampaigns?.length || 0 });
 
     const results = [];
-    const baseUrl = 'https://wpczgwxsriezaubncuom.lovable.app';
+    const baseUrl = 'https://worldmusicmethod.lovable.app';
 
     for (const campaign of dueCampaigns || []) {
       logStep("Sending scheduled campaign", { id: campaign.id, name: campaign.name });
