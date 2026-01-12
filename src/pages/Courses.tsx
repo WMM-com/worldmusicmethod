@@ -88,10 +88,10 @@ export default function Courses() {
       <>
         <SiteHeader />
         <div className="min-h-screen bg-background p-6">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-[1400px] mx-auto">
             <Skeleton className="h-12 w-64 mb-8" />
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map(i => (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map(i => (
                 <Skeleton key={i} className="h-64 rounded-2xl" />
               ))}
             </div>
@@ -107,7 +107,8 @@ export default function Courses() {
       <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card">
-        <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="max-w-[1400px] mx-auto px-6 py-8">
+        
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2">World Music Method</h1>
@@ -137,9 +138,9 @@ export default function Courses() {
       </header>
 
       {/* Course grid */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="max-w-[1400px] mx-auto px-6 py-8">
         {filteredCourses.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredCourses.map((course, i) => {
               const priceInfo = getCoursePrice(course.id);
               

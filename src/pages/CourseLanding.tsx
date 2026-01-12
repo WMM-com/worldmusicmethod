@@ -812,19 +812,19 @@ export default function CourseLanding() {
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  // Fetch landing page data from database
+  // Fetch landing page data from database - use course.id (UUID) not courseId (slug)
   const { data: dbLandingPage } = useQuery({
-    queryKey: ['course-landing-page', courseId],
+    queryKey: ['course-landing-page', course?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('course_landing_pages')
         .select('*')
-        .eq('course_id', courseId)
+        .eq('course_id', course!.id)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!courseId,
+    enabled: !!course?.id,
   });
 
   // Get hardcoded course-specific config as fallback
@@ -923,20 +923,20 @@ export default function CourseLanding() {
     }
   };
 
-  // Fetch product for this course
+  // Fetch product for this course - use course.id (UUID)
   const { data: product } = useQuery({
-    queryKey: ['course-product', courseId],
+    queryKey: ['course-product', course?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('course_id', courseId)
+        .eq('course_id', course!.id)
         .eq('is_active', true)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!courseId,
+    enabled: !!course?.id,
   });
 
   // Fetch product-specific regional pricing
@@ -953,22 +953,22 @@ export default function CourseLanding() {
     enabled: !!product?.id,
   });
 
-  // Check if user is enrolled
+  // Check if user is enrolled - use course.id (UUID)
   const { data: isEnrolled } = useQuery({
-    queryKey: ['user-enrollment', courseId, user?.id],
+    queryKey: ['user-enrollment', course?.id, user?.id],
     queryFn: async () => {
       if (!user) return false;
       const { data, error } = await supabase
         .from('course_enrollments')
         .select('id')
-        .eq('course_id', courseId!)
+        .eq('course_id', course!.id)
         .eq('user_id', user.id)
         .eq('is_active', true)
         .maybeSingle();
       if (error) throw error;
       return !!data;
     },
-    enabled: !!courseId && !!user,
+    enabled: !!course?.id && !!user,
   });
 
   if (isLoading) {

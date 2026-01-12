@@ -167,8 +167,12 @@ export default function Auth() {
       
       <Card className="relative w-full max-w-md glass">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4">
-            <img src={siteLogo || wmmLogo} alt="World Music Method" className="h-20 w-auto mx-auto" />
+          <div className="mx-auto mb-4 h-20 flex items-center justify-center">
+            <img 
+              src={siteLogo || wmmLogo} 
+              alt="World Music Method" 
+              className="h-20 w-auto mx-auto"
+            />
           </div>
           <CardTitle className="text-2xl font-bold">
             World Music Method

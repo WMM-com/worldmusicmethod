@@ -316,7 +316,7 @@ export default function Course() {
               >
                 <LessonView
                   lesson={selectedLesson}
-                  courseId={courseId!}
+                  courseId={course.id}
                   isCompleted={completedLessons.has(selectedLesson.id)}
                   onNavigate={handleNavigateLesson}
                   hasPrev={currentLessonIndex > 0}
