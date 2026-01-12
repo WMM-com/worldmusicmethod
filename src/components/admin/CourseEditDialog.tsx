@@ -44,6 +44,7 @@ interface CourseEditDialogProps {
   course: {
     id: string;
     title: string;
+    slug?: string | null;
     description: string | null;
     country: string;
     is_published: boolean;
@@ -56,6 +57,7 @@ interface CourseEditDialogProps {
 export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(course.title);
+  const [slug, setSlug] = useState(course.slug || '');
   const [description, setDescription] = useState(course.description || '');
   const [country, setCountry] = useState(course.country);
   const [isPublished, setIsPublished] = useState(course.is_published);
@@ -69,6 +71,7 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
         .from('courses')
         .update({
           title,
+          slug: slug || null,
           description: description || null,
           country,
           is_published: isPublished,
@@ -115,6 +118,20 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
           onChange={(e) => setTitle(e.target.value)}
           required
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="slug">URL Slug</Label>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">/courses/</span>
+          <Input
+            id="slug"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+            placeholder="course-url-slug"
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">The URL path for this course (e.g., peruvian-guitar-styles)</p>
       </div>
       
       <div className="space-y-2">

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode, Settings } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -19,6 +19,7 @@ import { AdminSales } from '@/components/admin/AdminSales';
 import { AdminCoupons } from '@/components/admin/AdminCoupons';
 import { AdminMenuEditor } from '@/components/admin/AdminMenuEditor';
 import { AdminPages } from '@/components/admin/AdminPages';
+import { AdminSiteSettings } from '@/components/admin/AdminSiteSettings';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -39,6 +40,7 @@ const menuItems = [
   { id: 'email-crm', label: 'Email CRM', icon: Mail },
   { id: 'reports', label: 'Reports', icon: Flag },
   { id: 'menu-editor', label: 'Menu Editor', icon: LayoutGrid },
+  { id: 'settings', label: 'Site Settings', icon: Settings },
 ];
 
 export default function AdminDashboard() {
@@ -116,6 +118,7 @@ export default function AdminDashboard() {
       case 'email-crm': return <AdminEmailCRM />;
       case 'reports': return <AdminReports />;
       case 'menu-editor': return <AdminMenuEditor />;
+      case 'settings': return <AdminSiteSettings />;
       default: return <AdminUsers />;
     }
   };

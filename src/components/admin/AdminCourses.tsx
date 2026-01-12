@@ -176,24 +176,24 @@ export function AdminCourses() {
             <TableHeader>
               <TableRow>
                 <TableHead>Course</TableHead>
+                <TableHead>URL Slug</TableHead>
                 <TableHead>Country</TableHead>
                 <TableHead>Modules</TableHead>
                 <TableHead>Enrollments</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : courses?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     No courses yet
                   </TableCell>
                 </TableRow>
@@ -220,6 +220,13 @@ export function AdminCourses() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      {course.slug ? (
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">/{course.slug}</code>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Not set</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         {course.country}
@@ -238,9 +245,6 @@ export function AdminCourses() {
                       <Badge variant={course.is_published ? 'default' : 'secondary'}>
                         {course.is_published ? 'Published' : 'Draft'}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(course.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
