@@ -233,7 +233,7 @@ export default function Course() {
         {/* Main content (light mode learning surface) */}
         <main
           className={cn(
-            "flex-1 light bg-background text-foreground",
+            "flex-1 light bg-background text-foreground overflow-x-hidden w-full max-w-full",
             headerCollapsed ? "min-h-screen" : "min-h-[calc(100vh-4rem)]"
           )}
         >

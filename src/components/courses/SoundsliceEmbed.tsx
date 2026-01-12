@@ -150,14 +150,15 @@ export function SoundsliceEmbed({
   }, [sliceIdOrUrl, preset, user?.id, params]);
 
   return (
-    <div className={`rounded-2xl overflow-hidden shadow-2xl bg-card border border-border ${className}`}>
+    <div className={`w-full max-w-full overflow-hidden rounded-2xl shadow-2xl bg-card border border-border ${className}`}>
       <iframe
         src={embedUrl}
         width="100%"
         height={height}
         frameBorder="0"
         allowFullScreen
-        className="w-full"
+        className="w-full max-w-full"
+        style={{ maxWidth: '100%' }}
         title="Soundslice Music Player"
       />
     </div>

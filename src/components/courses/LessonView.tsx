@@ -149,8 +149,8 @@ export function LessonView({
   }, [contentSpotifyPaths, dbSpotifyPaths, spotifyPathFromVideoUrl]);
 
   return (
-    <div className="flex-1 overflow-auto w-full">
-      <div className="w-full max-w-6xl mx-auto px-4 py-6 lg:px-8 lg:py-8">
+    <div className="flex-1 overflow-x-hidden overflow-y-auto w-full max-w-full">
+      <div className="w-full max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:px-8 lg:py-8 overflow-hidden">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -185,12 +185,13 @@ export function LessonView({
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="mb-8"
+            className="mb-6 sm:mb-8 w-full max-w-full overflow-hidden"
           >
             <SoundsliceEmbed 
               sliceIdOrUrl={lesson.video_url}
               preset={(lesson.soundslice_preset as SoundslicePreset) || 'guitar'}
-              height={600}
+              height={typeof window !== 'undefined' && window.innerWidth < 640 ? 400 : 600}
+              className="w-full max-w-full"
             />
           </motion.div>
         )}
