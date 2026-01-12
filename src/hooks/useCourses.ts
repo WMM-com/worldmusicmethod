@@ -14,10 +14,11 @@ export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
-      // Fetch courses with their landing page images
+      // Fetch ONLY PUBLISHED courses for public grid
       const { data: courses, error } = await supabase
         .from('courses')
         .select('*')
+        .eq('is_published', true)
         .order('title', { ascending: true }); // Alphabetical order
       
       if (error) throw error;

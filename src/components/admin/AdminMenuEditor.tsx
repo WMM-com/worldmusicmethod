@@ -489,12 +489,12 @@ export function AdminMenuEditor() {
 
               <div className="space-y-2">
                 <Label>Icon</Label>
-                <Select value={formData.icon} onValueChange={(v) => setFormData(prev => ({ ...prev, icon: v }))}>
+                <Select value={formData.icon || "none"} onValueChange={(v) => setFormData(prev => ({ ...prev, icon: v === "none" ? "" : v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select an icon (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {AVAILABLE_ICONS.map(icon => (
                       <SelectItem key={icon} value={icon}>{icon}</SelectItem>
                     ))}
@@ -505,12 +505,12 @@ export function AdminMenuEditor() {
               {parentOptions.length > 0 && (
                 <div className="space-y-2">
                   <Label>Parent Item</Label>
-                  <Select value={formData.parent_id} onValueChange={(v) => setFormData(prev => ({ ...prev, parent_id: v }))}>
+                  <Select value={formData.parent_id || "top-level"} onValueChange={(v) => setFormData(prev => ({ ...prev, parent_id: v === "top-level" ? "" : v }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Top level (no parent)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Top level</SelectItem>
+                      <SelectItem value="top-level">Top level</SelectItem>
                       {parentOptions.map(p => (
                         <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
                       ))}
