@@ -1061,7 +1061,7 @@ export default function CourseLanding() {
                 initial={{ x: '-100%' }}
                 animate={{ x: 0 }}
                 exit={{ x: '-100%' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 180, mass: 1.2 }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={{ left: 0.3, right: 0 }}
