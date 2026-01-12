@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +28,7 @@ import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
 import { 
   User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
-  AtSign, Eye, EyeOff, ChevronRight
+  AtSign, Eye, EyeOff, ChevronRight, Globe, Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +37,7 @@ type Section = 'profile' | 'orders' | 'notifications' | 'security';
 export default function Account() {
   const { user, profile, updateProfile, loading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [saving, setSaving] = useState(false);
   
@@ -47,7 +50,7 @@ export default function Account() {
     username: '',
     email: '',
     display_name_preference: 'full_name',
-    is_public: false,
+    visibility: 'private' as 'private' | 'members' | 'public',
   });
 
   // Password form
@@ -99,7 +102,7 @@ export default function Account() {
         username: (profile as any).username || '',
         email: profile.email || '',
         display_name_preference: (profile as any).display_name_preference || 'full_name',
-        is_public: (profile as any).is_public ?? false,
+        visibility: (profile as any).visibility || 'private',
       });
       setMessagePrivacy(profile.message_privacy || 'community');
       setNotifications({
@@ -123,13 +126,17 @@ export default function Account() {
       full_name: `${form.first_name} ${form.last_name}`.trim(),
       username: form.username || null,
       display_name_preference: form.display_name_preference,
-      is_public: form.is_public,
+      visibility: form.visibility,
+      is_public: form.visibility === 'public', // Keep for backwards compatibility
     } as any);
     
     if (error) {
       toast.error('Failed to save: ' + error.message);
     } else {
       toast.success('Profile settings saved');
+      // Invalidate profile queries to sync with Profile page
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['extended-profile'] });
     }
     setSaving(false);
   };
@@ -277,6 +284,78 @@ export default function Account() {
               {/* Profile & Display Section */}
               {currentSection === 'profile' && (
                 <>
+                  {/* Profile Visibility - FIRST */}
+                  <Card className="border-primary/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {form.visibility === 'public' ? <Globe className="h-5 w-5 text-green-500" /> 
+                         : form.visibility === 'members' ? <Users className="h-5 w-5 text-blue-500" /> 
+                         : <EyeOff className="h-5 w-5 text-muted-foreground" />}
+                        Profile Visibility
+                      </CardTitle>
+                      <CardDescription>Control who can see your profile and where it appears</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <RadioGroup 
+                        value={form.visibility} 
+                        onValueChange={(v: 'private' | 'members' | 'public') => setForm({...form, visibility: v})}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <RadioGroupItem value="private" id="visibility-private" className="mt-1" />
+                          <div className="flex-1">
+                            <Label htmlFor="visibility-private" className="flex items-center gap-2 cursor-pointer font-medium">
+                              <EyeOff className="h-4 w-4" />
+                              Private
+                            </Label>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Your profile is hidden. You cannot post or comment in the community.
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                          <RadioGroupItem value="members" id="visibility-members" className="mt-1" />
+                          <div className="flex-1">
+                            <Label htmlFor="visibility-members" className="flex items-center gap-2 cursor-pointer font-medium">
+                              <Users className="h-4 w-4" />
+                              Members Only
+                            </Label>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Only logged-in community members can see your profile. You won't appear in public member listings.
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start space-x-3 p-3 rounded-lg border border-green-500/30 bg-green-500/5 hover:bg-green-500/10 transition-colors">
+                          <RadioGroupItem value="public" id="visibility-public" className="mt-1" />
+                          <div className="flex-1">
+                            <Label htmlFor="visibility-public" className="flex items-center gap-2 cursor-pointer font-medium text-green-600 dark:text-green-400">
+                              <Globe className="h-4 w-4" />
+                              Public (Recommended)
+                            </Label>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Everyone can see your profile. You'll appear in the community members page and can fully participate.
+                            </p>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                      
+                      {form.visibility === 'private' && (
+                        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                          <p className="text-sm text-amber-600 dark:text-amber-400">
+                            ⚠️ With a private profile, you cannot post or comment in the community. 
+                            Change to "Members Only" or "Public" to participate.
+                          </p>
+                        </div>
+                      )}
+                      
+                      <Button onClick={handleSaveProfile} disabled={saving}>
+                        {saving ? 'Saving...' : 'Save Visibility'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -360,35 +439,6 @@ export default function Account() {
                       
                       <Button onClick={handleSaveProfile} disabled={saving}>
                         {saving ? 'Saving...' : 'Save Profile'}
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        {form.is_public ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
-                        Profile Visibility
-                      </CardTitle>
-                      <CardDescription>Control who can see your profile</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label>Make Profile Public</Label>
-                          <p className="text-sm text-muted-foreground">
-                            {form.is_public 
-                              ? 'Your profile is visible to other community members' 
-                              : 'Your profile is hidden from other community members'}
-                          </p>
-                        </div>
-                        <Switch 
-                          checked={form.is_public} 
-                          onCheckedChange={(v) => setForm({...form, is_public: v})}
-                        />
-                      </div>
-                      <Button onClick={handleSaveProfile} disabled={saving} variant="outline">
-                        {saving ? 'Saving...' : 'Save Visibility'}
                       </Button>
                     </CardContent>
                   </Card>

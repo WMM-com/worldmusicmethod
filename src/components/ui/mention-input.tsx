@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Textarea } from '@/components/ui/textarea';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -20,6 +19,24 @@ interface MentionInputProps {
   rows?: number;
 }
 
+// Convert raw mention format to display format for the input
+function convertToDisplayText(text: string): string {
+  return text.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, '@$1');
+}
+
+// Convert display text back to raw format using a mention map
+function convertToRawText(displayText: string, mentionMap: Map<string, string>): string {
+  let result = displayText;
+  mentionMap.forEach((userId, displayName) => {
+    const displayMention = `@${displayName}`;
+    const rawMention = `@[${displayName}](${userId})`;
+    // Only replace if not already in raw format
+    const regex = new RegExp(`@${displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!\\])`, 'g');
+    result = result.replace(regex, rawMention);
+  });
+  return result;
+}
+
 export function MentionInput({ value, onChange, placeholder, className, rows = 3 }: MentionInputProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
@@ -28,6 +45,12 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
   const [mentionStartPos, setMentionStartPos] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  
+  // Track mentions that have been inserted (displayName -> userId)
+  const [mentionMap, setMentionMap] = useState<Map<string, string>>(new Map());
+  
+  // Display value (shows @Name instead of @[Name](uuid))
+  const displayValue = useMemo(() => convertToDisplayText(value), [value]);
 
   // Search for users
   const searchUsers = useCallback(async (query: string) => {
@@ -49,13 +72,16 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
 
   // Handle text input
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
+    const newDisplayValue = e.target.value;
     const cursorPos = e.target.selectionStart;
-    onChange(newValue);
+    
+    // Convert display text back to raw format
+    const newRawValue = convertToRawText(newDisplayValue, mentionMap);
+    onChange(newRawValue);
 
     // Check if we're typing a mention
-    const textBeforeCursor = newValue.slice(0, cursorPos);
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    const textBeforeCursor = newDisplayValue.slice(0, cursorPos);
+    const mentionMatch = textBeforeCursor.match(/@(\S*)$/);
 
     if (mentionMatch) {
       setMentionQuery(mentionMatch[1]);
@@ -98,13 +124,20 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
   // Insert mention
   const insertMention = (user: UserSuggestion) => {
     const displayName = user.full_name || user.username || 'Unknown';
-    const mentionText = `@[${displayName}](${user.id}) `;
+    const displayMention = `@${displayName} `;
+    const rawMention = `@[${displayName}](${user.id}) `;
     
-    const beforeMention = value.slice(0, mentionStartPos);
-    const afterMention = value.slice(mentionStartPos + mentionQuery.length + 1); // +1 for @
+    // Update mention map
+    setMentionMap(prev => new Map(prev).set(displayName, user.id));
     
-    const newValue = beforeMention + mentionText + afterMention;
-    onChange(newValue);
+    // Work with display value for cursor positioning
+    const beforeMention = displayValue.slice(0, mentionStartPos);
+    const afterMention = displayValue.slice(mentionStartPos + mentionQuery.length + 1); // +1 for @
+    
+    const newDisplayValue = beforeMention + displayMention + afterMention;
+    const newRawValue = convertToRawText(newDisplayValue, new Map([...mentionMap, [displayName, user.id]]));
+    
+    onChange(newRawValue);
     
     setShowSuggestions(false);
     setMentionQuery('');
@@ -113,7 +146,7 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
     // Focus textarea and set cursor position
     setTimeout(() => {
       if (textareaRef.current) {
-        const newCursorPos = beforeMention.length + mentionText.length;
+        const newCursorPos = beforeMention.length + displayMention.length;
         textareaRef.current.focus();
         textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
@@ -136,6 +169,19 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+  
+  // Initialize mention map from existing value
+  useEffect(() => {
+    const mentionRegex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+    const newMap = new Map<string, string>();
+    let match;
+    while ((match = mentionRegex.exec(value)) !== null) {
+      newMap.set(match[1], match[2]);
+    }
+    if (newMap.size > 0) {
+      setMentionMap(newMap);
+    }
+  }, []);
 
   const getInitials = (name: string | null) => {
     if (!name) return '?';
@@ -144,13 +190,16 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
 
   return (
     <div className="relative">
-      <Textarea
+      <textarea
         ref={textareaRef}
-        value={value}
+        value={displayValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className={className}
+        className={cn(
+          "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
         rows={rows}
       />
       
