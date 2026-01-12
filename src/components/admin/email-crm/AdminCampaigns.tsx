@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, Send, Mail, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Send, Mail, Copy, Users, Loader2 } from 'lucide-react';
 
 interface EmailCampaign {
   id: string;
@@ -45,7 +45,6 @@ export function AdminCampaigns() {
   const [tags, setTags] = useState<EmailTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<EmailCampaign | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -58,9 +57,121 @@ export function AdminCampaigns() {
     scheduled_at: ''
   });
 
+  // Recipient count preview state
+  const [recipientCount, setRecipientCount] = useState<number | null>(null);
+  const [previewEmails, setPreviewEmails] = useState<string[]>([]);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Debounced recipient count calculation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.send_to_lists.length > 0 || formData.include_tags.length > 0) {
+        calculateRecipientCount();
+      } else {
+        setRecipientCount(null);
+        setPreviewEmails([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [formData.send_to_lists, formData.include_tags, formData.exclude_tags]);
+
+  async function calculateRecipientCount() {
+    setLoadingPreview(true);
+    try {
+      // Create a temporary campaign object for preview
+      const tempCampaign = {
+        send_to_lists: formData.send_to_lists,
+        include_tags: formData.include_tags,
+        exclude_tags: formData.exclude_tags,
+      };
+
+      // If we have an existing campaign ID, use it, otherwise we need to save first
+      if (editingCampaign?.id) {
+        const { data, error } = await supabase.functions.invoke('send-email-campaign', {
+          body: { campaignId: editingCampaign.id, previewOnly: true }
+        });
+
+        if (!error && data) {
+          setRecipientCount(data.recipientCount);
+          setPreviewEmails(data.recipients || []);
+        }
+      } else {
+        // For new campaigns, we need to calculate locally based on the selected tags
+        await calculateLocalRecipientCount();
+      }
+    } catch (err) {
+      console.error('Failed to calculate recipient count:', err);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }
+
+  async function calculateLocalRecipientCount() {
+    let count = 0;
+    const emails: string[] = [];
+
+    // Get contacts from lists
+    if (formData.send_to_lists.length > 0) {
+      const { data: listMembers } = await supabase
+        .from('email_list_members')
+        .select('contact:email_contacts(email, is_subscribed)')
+        .in('list_id', formData.send_to_lists);
+
+      if (listMembers) {
+        for (const member of listMembers) {
+          const contact = member.contact as any;
+          if (contact && contact.is_subscribed && !emails.includes(contact.email)) {
+            emails.push(contact.email);
+          }
+        }
+      }
+    }
+
+    // Get contacts with include tags
+    if (formData.include_tags.length > 0) {
+      const { data: taggedUsers } = await supabase
+        .from('user_tags')
+        .select('email')
+        .in('tag_id', formData.include_tags);
+
+      if (taggedUsers) {
+        for (const tagged of taggedUsers) {
+          if (tagged.email && !emails.includes(tagged.email)) {
+            // Check if unsubscribed
+            const { data: contact } = await supabase
+              .from('email_contacts')
+              .select('is_subscribed')
+              .eq('email', tagged.email)
+              .maybeSingle();
+
+            if (!contact || contact.is_subscribed) {
+              emails.push(tagged.email);
+            }
+          }
+        }
+      }
+    }
+
+    // Remove excluded tag emails
+    let finalEmails = emails;
+    if (formData.exclude_tags.length > 0) {
+      const { data: excludedUsers } = await supabase
+        .from('user_tags')
+        .select('email')
+        .in('tag_id', formData.exclude_tags);
+
+      const excludeSet = new Set((excludedUsers || []).map(e => e.email?.toLowerCase()).filter(Boolean));
+      finalEmails = emails.filter(e => !excludeSet.has(e.toLowerCase()));
+    }
+
+    setRecipientCount(finalEmails.length);
+    setPreviewEmails(finalEmails.slice(0, 10));
+  }
 
   async function fetchData() {
     const [campaignsRes, listsRes, tagsRes] = await Promise.all([
@@ -138,14 +249,37 @@ export function AdminCampaigns() {
     if (!confirm('Send this campaign now? This cannot be undone.')) return;
 
     // Call edge function to send campaign
-    const { error } = await supabase.functions.invoke('send-email-campaign', {
+    const { data, error } = await supabase.functions.invoke('send-email-campaign', {
       body: { campaignId: campaign.id }
     });
 
     if (error) {
       toast.error('Failed to send campaign');
     } else {
-      toast.success('Campaign is being sent');
+      toast.success(`Campaign sent to ${data?.sentCount || 0} recipients`);
+      fetchData();
+    }
+  }
+
+  async function handleDuplicate(campaign: EmailCampaign) {
+    const payload = {
+      name: `${campaign.name} (Copy)`,
+      subject: campaign.subject,
+      body_html: campaign.body_html,
+      body_text: campaign.body_text,
+      send_to_lists: campaign.send_to_lists || [],
+      include_tags: campaign.include_tags || [],
+      exclude_tags: campaign.exclude_tags || [],
+      scheduled_at: null,
+      status: 'draft'
+    };
+
+    const { error } = await supabase.from('email_campaigns').insert(payload);
+
+    if (error) {
+      toast.error('Failed to duplicate campaign');
+    } else {
+      toast.success('Campaign duplicated');
       fetchData();
     }
   }
@@ -162,6 +296,8 @@ export function AdminCampaigns() {
       exclude_tags: [],
       scheduled_at: ''
     });
+    setRecipientCount(null);
+    setPreviewEmails([]);
   }
 
   function openEdit(campaign: EmailCampaign) {
@@ -231,7 +367,7 @@ export function AdminCampaigns() {
               Email Campaigns
             </CardTitle>
             <CardDescription>
-              Create and send email campaigns to lists or tagged contacts
+              Create and send email campaigns to lists or tagged contacts. Unsubscribe links are added automatically.
             </CardDescription>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -251,7 +387,14 @@ export function AdminCampaigns() {
               <Tabs defaultValue="content" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="content">Content</TabsTrigger>
-                  <TabsTrigger value="audience">Audience</TabsTrigger>
+                  <TabsTrigger value="audience">
+                    Audience
+                    {recipientCount !== null && (
+                      <Badge variant="secondary" className="ml-2">
+                        {loadingPreview ? <Loader2 className="h-3 w-3 animate-spin" /> : recipientCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="schedule">Schedule</TabsTrigger>
                 </TabsList>
 
@@ -282,7 +425,7 @@ export function AdminCampaigns() {
                       className="font-mono text-sm"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Use {'{{first_name}}'}, {'{{email}}'} for personalization
+                      Use {'{{first_name}}'}, {'{{email}}'}, {'{{unsubscribe_url}}'} for personalization. An unsubscribe link is added automatically if not included.
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -297,6 +440,31 @@ export function AdminCampaigns() {
                 </TabsContent>
 
                 <TabsContent value="audience" className="space-y-4 py-4">
+                  {/* Recipient count display */}
+                  {(formData.send_to_lists.length > 0 || formData.include_tags.length > 0) && (
+                    <div className="bg-muted/50 rounded-lg p-4 flex items-center gap-3">
+                      <Users className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="font-medium">
+                          {loadingPreview ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Calculating...
+                            </span>
+                          ) : (
+                            `${recipientCount ?? 0} recipients will receive this email`
+                          )}
+                        </p>
+                        {previewEmails.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Including: {previewEmails.slice(0, 3).join(', ')}
+                            {previewEmails.length > 3 && ` and ${recipientCount! - 3} more...`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>Send to Lists</Label>
                     <div className="flex flex-wrap gap-2">
@@ -346,7 +514,7 @@ export function AdminCampaigns() {
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Recipients = (All in selected lists OR have include tags) AND NOT have exclude tags
+                    Recipients = (All in selected lists OR have include tags) AND NOT have exclude tags AND are subscribed
                   </p>
                 </TabsContent>
 
@@ -407,27 +575,39 @@ export function AdminCampaigns() {
                       : '-'}
                   </TableCell>
                   <TableCell className="text-right">
-                    {campaign.status === 'draft' && (
-                      <Button variant="ghost" size="icon" onClick={() => handleSend(campaign)}>
-                        <Send className="h-4 w-4" />
+                    <div className="flex justify-end gap-1">
+                      {campaign.status === 'draft' && (
+                        <Button variant="ghost" size="icon" onClick={() => handleSend(campaign)} title="Send">
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDuplicate(campaign)}
+                        title="Duplicate"
+                      >
+                        <Copy className="h-4 w-4" />
                       </Button>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => openEdit(campaign)}
-                      disabled={campaign.status === 'sending' || campaign.status === 'sent'}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDelete(campaign.id)}
-                      disabled={campaign.status === 'sending'}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => openEdit(campaign)}
+                        disabled={campaign.status === 'sending'}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDelete(campaign.id)}
+                        disabled={campaign.status === 'sending'}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

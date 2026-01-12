@@ -793,6 +793,7 @@ export type Database = {
           last_name: string | null
           source: string | null
           subscribed_at: string
+          unsubscribe_reason: string | null
           unsubscribed_at: string | null
           updated_at: string
           user_id: string | null
@@ -806,6 +807,7 @@ export type Database = {
           last_name?: string | null
           source?: string | null
           subscribed_at?: string
+          unsubscribe_reason?: string | null
           unsubscribed_at?: string | null
           updated_at?: string
           user_id?: string | null
@@ -819,6 +821,7 @@ export type Database = {
           last_name?: string | null
           source?: string | null
           subscribed_at?: string
+          unsubscribe_reason?: string | null
           unsubscribed_at?: string | null
           updated_at?: string
           user_id?: string | null
@@ -1212,6 +1215,33 @@ export type Database = {
           template_type?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
         }
         Relationships: []
       }

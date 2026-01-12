@@ -11,7 +11,7 @@ const logStep = (step: string, details?: any) => {
   console.log(`[SEND-CAMPAIGN] ${step}${detailsStr}`);
 };
 
-// AWS SES signing (same as send-email-ses)
+// AWS SES signing
 async function signRequest(
   method: string,
   url: URL,
@@ -144,8 +144,13 @@ async function sendEmail(
 
   try {
     const response = await fetch(url.toString(), { method: 'POST', headers, body });
+    if (!response.ok) {
+      const text = await response.text();
+      logStep("SES error response", { status: response.status, text });
+    }
     return response.ok;
-  } catch {
+  } catch (err) {
+    logStep("Send error", { error: err instanceof Error ? err.message : String(err) });
     return false;
   }
 }
@@ -158,8 +163,9 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
@@ -171,8 +177,8 @@ serve(async (req) => {
       throw new Error("AWS SES credentials not configured");
     }
 
-    const { campaignId } = await req.json();
-    logStep("Campaign ID", { campaignId });
+    const { campaignId, previewOnly } = await req.json();
+    logStep("Campaign ID", { campaignId, previewOnly });
 
     if (!campaignId) {
       throw new Error("campaignId is required");
@@ -189,17 +195,7 @@ serve(async (req) => {
       throw new Error("Campaign not found");
     }
 
-    if (campaign.status !== 'draft' && campaign.status !== 'scheduled') {
-      throw new Error("Campaign is not in a sendable state");
-    }
-
     logStep("Campaign fetched", { name: campaign.name, status: campaign.status });
-
-    // Update campaign status to sending
-    await supabase
-      .from("email_campaigns")
-      .update({ status: 'sending' })
-      .eq("id", campaignId);
 
     // Build recipient list
     let recipients: { email: string; first_name: string | null }[] = [];
@@ -219,26 +215,50 @@ serve(async (req) => {
           }
         }
       }
+      logStep("List recipients", { count: recipients.length });
     }
 
-    // Get contacts with include tags
+    // Get contacts with include tags - now properly checking both user_tags and profiles
     if (campaign.include_tags && campaign.include_tags.length > 0) {
-      const { data: taggedContacts } = await supabase
+      // Get emails from user_tags
+      const { data: taggedUsers } = await supabase
         .from("user_tags")
-        .select("email")
+        .select("email, user_id")
         .in("tag_id", campaign.include_tags);
 
-      if (taggedContacts) {
-        for (const tagged of taggedContacts) {
+      logStep("Tagged users found", { count: taggedUsers?.length || 0 });
+
+      if (taggedUsers) {
+        for (const tagged of taggedUsers) {
+          // Check if unsubscribed in email_contacts
           const { data: contact } = await supabase
             .from("email_contacts")
-            .select("email, first_name, is_subscribed")
+            .select("is_subscribed")
             .eq("email", tagged.email)
-            .eq("is_subscribed", true)
             .maybeSingle();
 
-          if (contact) {
-            recipients.push({ email: contact.email, first_name: contact.first_name });
+          // If contact exists and is unsubscribed, skip
+          if (contact && !contact.is_subscribed) {
+            logStep("Skipping unsubscribed", { email: tagged.email });
+            continue;
+          }
+
+          // Get name from profile if user_id exists
+          let firstName = null;
+          if (tagged.user_id) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", tagged.user_id)
+              .maybeSingle();
+            
+            if (profile?.full_name) {
+              firstName = profile.full_name.split(' ')[0];
+            }
+          }
+
+          if (tagged.email) {
+            recipients.push({ email: tagged.email, first_name: firstName });
           }
         }
       }
@@ -257,27 +277,68 @@ serve(async (req) => {
         .select("email")
         .in("tag_id", campaign.exclude_tags);
 
-      const excludeSet = new Set((excludedEmails || []).map(e => e.email.toLowerCase()));
+      const excludeSet = new Set((excludedEmails || []).map(e => e.email?.toLowerCase()).filter(Boolean));
       finalRecipients = uniqueRecipients.filter(r => !excludeSet.has(r.email.toLowerCase()));
     }
 
     logStep("Recipients calculated", { total: finalRecipients.length });
 
-    // Update total recipients
+    // If preview only, just return the count
+    if (previewOnly) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        recipientCount: finalRecipients.length,
+        recipients: finalRecipients.slice(0, 10).map(r => r.email) // First 10 for preview
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Check campaign is in sendable state
+    if (campaign.status !== 'draft' && campaign.status !== 'scheduled') {
+      throw new Error("Campaign is not in a sendable state");
+    }
+
+    // Update campaign status to sending
     await supabase
       .from("email_campaigns")
-      .update({ total_recipients: finalRecipients.length })
+      .update({ status: 'sending', total_recipients: finalRecipients.length })
       .eq("id", campaignId);
 
     let sentCount = 0;
 
+    // Construct the app URL for unsubscribe
+    const appUrl = supabaseUrl.replace('.supabase.co', '').replace('https://', 'https://');
+    // Use the production URL if available
+    const baseUrl = 'https://worldmusicmethod.com';
+
     // Send emails
     for (const recipient of finalRecipients) {
       try {
+        // Create unsubscribe token
+        const { data: tokenData } = await supabase
+          .from("email_unsubscribe_tokens")
+          .insert({ email: recipient.email.toLowerCase() })
+          .select('token')
+          .single();
+
+        const unsubscribeUrl = `${baseUrl}/unsubscribe?token=${tokenData?.token || ''}&email=${encodeURIComponent(recipient.email)}`;
+
         // Variable substitution
         let htmlBody = campaign.body_html
           .replace(/\{\{first_name\}\}/g, recipient.first_name || 'there')
-          .replace(/\{\{email\}\}/g, recipient.email);
+          .replace(/\{\{email\}\}/g, recipient.email)
+          .replace(/\{\{unsubscribe_url\}\}/g, unsubscribeUrl);
+
+        // Add unsubscribe footer if not already in the email
+        if (!htmlBody.includes('unsubscribe') && !htmlBody.includes('Unsubscribe')) {
+          htmlBody += `
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666; text-align: center;">
+              <p>If you no longer wish to receive these emails, you can <a href="${unsubscribeUrl}" style="color: #666;">unsubscribe here</a>.</p>
+            </div>
+          `;
+        }
 
         const success = await sendEmail(
           recipient.email,
@@ -308,7 +369,7 @@ serve(async (req) => {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       } catch (sendError) {
-        logStep("Failed to send to recipient", { email: recipient.email });
+        logStep("Failed to send to recipient", { email: recipient.email, error: sendError instanceof Error ? sendError.message : String(sendError) });
         await supabase.from("email_send_log").insert({
           email: recipient.email,
           subject: campaign.subject,
@@ -329,7 +390,7 @@ serve(async (req) => {
 
     logStep("Campaign sent", { sentCount, total: finalRecipients.length });
 
-    return new Response(JSON.stringify({ success: true, sentCount }), {
+    return new Response(JSON.stringify({ success: true, sentCount, total: finalRecipients.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
