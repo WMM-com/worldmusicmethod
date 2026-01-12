@@ -460,10 +460,17 @@ export default function Profile() {
                       </>
                     ) : (
                       <>
-                        <Button onClick={handleMessage} variant="outline">
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Message
-                        </Button>
+                        {user ? (
+                          <Button onClick={handleMessage} variant="outline">
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Message
+                          </Button>
+                        ) : (
+                          <Button onClick={() => navigate('/auth')} variant="outline">
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Message
+                          </Button>
+                        )}
                         {isFriend ? (
                           <Badge variant="secondary" className="h-9 px-3 flex items-center">
                             <Check className="h-4 w-4 mr-1" />
@@ -473,8 +480,13 @@ export default function Profile() {
                           <Badge variant="outline" className="h-9 px-3 flex items-center">
                             Request Sent
                           </Badge>
-                        ) : (
+                        ) : user ? (
                           <Button onClick={() => sendFriendRequest.mutate(profileId!)}>
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Add Friend
+                          </Button>
+                        ) : (
+                          <Button onClick={() => navigate('/auth')}>
                             <UserPlus className="h-4 w-4 mr-2" />
                             Add Friend
                           </Button>
@@ -557,15 +569,72 @@ export default function Profile() {
 
               {/* About Tab */}
               <TabsContent value="about">
-                <div className="flex gap-6">
+                <div className="flex flex-col lg:flex-row gap-6">
                   {/* Left Column - Bio (fixed max-width like posts) */}
-                  <div className="w-full max-w-2xl space-y-6">
+                  <div className="w-full lg:max-w-2xl space-y-6">
                     {extendedProfile && (
                       <BioSection profile={extendedProfile} isEditing={isEditing} />
                     )}
+                    
+                    {/* Mobile: Show sidebar sections here */}
+                    <div className="lg:hidden space-y-6">
+                      {sidebarSections.map(section => renderSection(section, true))}
+                      
+                      {/* Social Links - mobile */}
+                      {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
+                        <Card>
+                          <CardContent className="pt-6">
+                            <h3 className="font-semibold mb-4 flex items-center gap-2">
+                              <Share2 className="h-4 w-4" />
+                              Links
+                            </h3>
+                            <div className="space-y-2">
+                              {extendedProfile.website_url && (
+                                <a 
+                                  href={extendedProfile.website_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 text-sm text-primary hover:underline"
+                                >
+                                  <Globe className="h-4 w-4" />
+                                  Website
+                                </a>
+                              )}
+                              {Object.entries(extendedProfile.social_links as Record<string, string>).map(([platform, url]) => (
+                                <a 
+                                  key={platform}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 text-sm text-primary hover:underline capitalize"
+                                >
+                                  <Share2 className="h-4 w-4" />
+                                  {platform}
+                                </a>
+                              ))}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      
+                      {/* Member Info - mobile */}
+                      <Card>
+                        <CardContent className="pt-6">
+                          <h3 className="font-semibold mb-4">Info</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
+                          </p>
+                          {extendedProfile?.profile_type && (
+                            <Badge variant="outline" className="mt-2 capitalize">
+                              {extendedProfile.profile_type}
+                            </Badge>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
                   </div>
 
-                  {/* Right Column - Embeds & Info (fills remaining space) */}
+                  {/* Right Column - Embeds & Info (desktop only) */}
                   <div className="hidden lg:block flex-1 space-y-6">
                     {/* Sidebar Embed Sections */}
                     {sidebarSections.map(section => renderSection(section, true))}

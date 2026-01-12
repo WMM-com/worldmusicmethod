@@ -25,9 +25,18 @@ export function SubscriptionDetails({
 }: SubscriptionDetailsProps) {
   const today = new Date();
   
-  // Normalize interval to handle various formats
+  // Normalize interval to handle various formats - map to full word labels
   const normalizedInterval = interval?.toLowerCase().replace('ly', '') || 'month';
-  const intervalLabel = normalizedInterval === 'annual' ? 'year' : normalizedInterval;
+  const intervalLabels: Record<string, string> = {
+    'day': 'day',
+    'dai': 'day',
+    'daily': 'day',
+    'week': 'week',
+    'month': 'month',
+    'year': 'year',
+    'annual': 'year',
+  };
+  const intervalLabel = intervalLabels[normalizedInterval] || normalizedInterval;
   
   // Calculate next payment date based on trial or billing cycle
   const getNextPaymentDate = () => {
