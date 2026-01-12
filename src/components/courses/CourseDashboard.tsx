@@ -43,11 +43,11 @@ export function CourseDashboard({
   const next = findNextLesson();
 
   return (
-    <div className="max-w-5xl mx-auto p-6 md:p-8">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8 w-full overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="space-y-8"
+        className="space-y-6 sm:space-y-8"
       >
         {/* Hero section */}
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-primary/20 via-primary/10 to-white border border-gray-200 p-8">
@@ -120,34 +120,34 @@ export function CourseDashboard({
                 <button
                   key={module.id}
                   onClick={() => onModuleSelect(module.id)}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors text-left"
+                  className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-gray-700 bg-gray-900 hover:bg-gray-800 transition-colors text-left w-full overflow-hidden"
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex-shrink-0 flex items-center justify-center text-base sm:text-lg font-bold ${
                     isComplete 
                       ? 'bg-green-500/20 text-green-400' 
                       : 'bg-primary/20 text-primary'
                   }`}>
-                    {isComplete ? <CheckCircle2 className="w-6 h-6" /> : index + 1}
+                    {isComplete ? <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" /> : index + 1}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium truncate text-white">{module.title}</h3>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                      <h3 className="font-medium text-white text-sm sm:text-base break-words">{module.title}</h3>
                       {module.region_name && (
-                        <span className="text-xs text-gray-300 bg-gray-700 px-2 py-0.5 rounded-full">
+                        <span className="text-xs text-gray-300 bg-gray-700 px-2 py-0.5 rounded-full w-fit flex-shrink-0">
                           {module.region_name}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 mt-1">
-                      <span className="text-sm text-gray-400">
+                    <div className="flex items-center gap-2 sm:gap-4 mt-1">
+                      <span className="text-xs sm:text-sm text-gray-400 flex-shrink-0">
                         {completed}/{lessons.length} lessons
                       </span>
-                      <Progress value={progress} className="h-1.5 flex-1 max-w-32" />
+                      <Progress value={progress} className="h-1.5 flex-1 max-w-24 sm:max-w-32" />
                     </div>
                   </div>
 
-                  <BookOpen className="w-5 h-5 text-gray-500" />
+                  <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 flex-shrink-0 hidden sm:block" />
                 </button>
               );
             })}

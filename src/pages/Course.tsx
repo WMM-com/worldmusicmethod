@@ -161,6 +161,7 @@ export default function Course() {
         if (isMobile) setSidebarOpen(false);
         else setSidebarCollapsed(true);
       }}
+      onDashboardClick={handleBackToDashboard}
     />
   );
 
