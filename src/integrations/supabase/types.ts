@@ -739,6 +739,7 @@ export type Database = {
           include_tags: string[] | null
           name: string
           scheduled_at: string | null
+          send_to_all: boolean | null
           send_to_lists: string[] | null
           sent_at: string | null
           sent_count: number | null
@@ -756,6 +757,7 @@ export type Database = {
           include_tags?: string[] | null
           name: string
           scheduled_at?: string | null
+          send_to_all?: boolean | null
           send_to_lists?: string[] | null
           sent_at?: string | null
           sent_count?: number | null
@@ -773,6 +775,7 @@ export type Database = {
           include_tags?: string[] | null
           name?: string
           scheduled_at?: string | null
+          send_to_all?: boolean | null
           send_to_lists?: string[] | null
           sent_at?: string | null
           sent_count?: number | null

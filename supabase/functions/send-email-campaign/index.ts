@@ -200,8 +200,39 @@ serve(async (req) => {
     // Build recipient list
     let recipients: { email: string; first_name: string | null }[] = [];
 
-    // Get contacts from lists
-    if (campaign.send_to_lists && campaign.send_to_lists.length > 0) {
+    // If send_to_all is true, get all subscribed users from profiles
+    if (campaign.send_to_all) {
+      logStep("Sending to all subscribed users");
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name")
+        .not("email", "is", null);
+
+      if (allProfiles) {
+        for (const profile of allProfiles) {
+          if (!profile.email) continue;
+
+          // Check if unsubscribed in email_contacts
+          const { data: contact } = await supabase
+            .from("email_contacts")
+            .select("is_subscribed")
+            .eq("email", profile.email.toLowerCase())
+            .maybeSingle();
+
+          // If contact exists and is unsubscribed, skip
+          if (contact && !contact.is_subscribed) {
+            continue;
+          }
+
+          const firstName = profile.full_name ? profile.full_name.split(' ')[0] : null;
+          recipients.push({ email: profile.email, first_name: firstName });
+        }
+      }
+      logStep("All users recipients", { count: recipients.length });
+    }
+
+    // Get contacts from lists (only if not send_to_all)
+    if (!campaign.send_to_all && campaign.send_to_lists && campaign.send_to_lists.length > 0) {
       const { data: listMembers } = await supabase
         .from("email_list_members")
         .select("contact:email_contacts(id, email, first_name, is_subscribed)")
@@ -218,8 +249,8 @@ serve(async (req) => {
       logStep("List recipients", { count: recipients.length });
     }
 
-    // Get contacts with include tags - now properly checking both user_tags and profiles
-    if (campaign.include_tags && campaign.include_tags.length > 0) {
+    // Get contacts with include tags (only if not send_to_all)
+    if (!campaign.send_to_all && campaign.include_tags && campaign.include_tags.length > 0) {
       // Get emails from user_tags
       const { data: taggedUsers } = await supabase
         .from("user_tags")
@@ -307,10 +338,8 @@ serve(async (req) => {
 
     let sentCount = 0;
 
-    // Construct the app URL for unsubscribe
-    const appUrl = supabaseUrl.replace('.supabase.co', '').replace('https://', 'https://');
-    // Use the production URL if available
-    const baseUrl = 'https://worldmusicmethod.com';
+    // Use the production Lovable URL for unsubscribe links
+    const baseUrl = 'https://wpczgwxsriezaubncuom.lovable.app';
 
     // Send emails
     for (const recipient of finalRecipients) {

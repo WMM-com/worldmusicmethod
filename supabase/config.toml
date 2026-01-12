@@ -128,3 +128,9 @@ verify_jwt = false
 
 [functions.send-email-campaign]
 verify_jwt = true
+
+[functions.process-scheduled-campaigns]
+verify_jwt = false
+
+[functions.send-direct-email]
+verify_jwt = true
