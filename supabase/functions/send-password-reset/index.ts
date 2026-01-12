@@ -266,27 +266,24 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check if user exists
-    const { data: existingUsers } = await supabaseClient.auth.admin.listUsers();
-    const user = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    // Check if user exists by looking up their profile by email
+    // Note: listUsers() has pagination limits, so we use profile lookup instead
+    const { data: profileData, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('id, first_name, email')
+      .ilike('email', email)
+      .single();
 
-    if (!user) {
+    if (profileError || !profileData) {
       // Return success even if user doesn't exist (security best practice)
-      logStep("User not found, returning success anyway for security", { email });
+      logStep("User not found in profiles, returning success anyway for security", { email });
       return new Response(
         JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    logStep("User found", { userId: user.id });
-
-    // Get user's first name from profile
-    const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('first_name')
-      .eq('id', user.id)
-      .single();
+    logStep("User found", { userId: profileData.id, firstName: profileData.first_name });
 
     // Generate a password reset link using Supabase admin API
     const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
@@ -314,7 +311,7 @@ Deno.serve(async (req) => {
     const result = await sendEmailViaSES(
       [email],
       'Reset Your Password - World Music Method',
-      getPasswordResetEmailHtml(resetLink, profile?.first_name || ''),
+      getPasswordResetEmailHtml(resetLink, profileData.first_name || ''),
       fromAddress,
       accessKeyId,
       secretAccessKey,

@@ -242,7 +242,7 @@ export default function Account() {
   const sidebarItems: { id: Section; label: string; icon: React.ElementType }[] = [
     { id: 'profile', label: 'Profile & Display', icon: User },
     { id: 'orders', label: 'Orders & Subscriptions', icon: ShoppingBag },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'notifications', label: 'Notification Preferences', icon: Bell },
     { id: 'security', label: 'Security', icon: Lock },
   ];
 
@@ -309,7 +309,7 @@ export default function Account() {
                               Public
                             </Label>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Everyone can see your profile. You'll appear in the community members page and can fully participate.
+                              Everyone can see your profile. You'll appear in the community members page.
                             </p>
                           </div>
                         </div>
