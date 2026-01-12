@@ -312,59 +312,15 @@ export function StripeCardFields({
         </div>
       )}
 
-      {/* Card details - responsive layout */}
+      {/* Card details - responsive layout (single Element instance per type) */}
       <div className="space-y-2">
         <Label htmlFor="card-number">Card details</Label>
-        {/* Mobile: stacked layout */}
-        <div className="flex flex-col sm:hidden gap-2">
-          <div
-            id="card-number-mobile"
-            className="min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white"
-          >
-            <CardNumberElement
-              options={{ style: CARD_ELEMENT_STYLE }}
-              onReady={() => {
-                console.log('[StripeCardFields] CardNumberElement ready');
-                setMounted((prev) => ({ ...prev, number: true }));
-              }}
-              onChange={(e) => setCardComplete((prev) => ({ ...prev, number: e.complete && !e.error }))}
-            />
-          </div>
-          <div className="flex gap-2">
-            <div
-              id="card-expiry-mobile"
-              className="flex-1 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white"
-            >
-              <CardExpiryElement
-                options={{ style: CARD_ELEMENT_STYLE }}
-                onReady={() => {
-                  console.log('[StripeCardFields] CardExpiryElement ready');
-                  setMounted((prev) => ({ ...prev, expiry: true }));
-                }}
-                onChange={(e) => setCardComplete((prev) => ({ ...prev, expiry: e.complete && !e.error }))}
-              />
-            </div>
-            <div
-              id="card-cvc-mobile"
-              className="w-24 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white"
-            >
-              <CardCvcElement
-                options={{ style: CARD_ELEMENT_STYLE }}
-                onReady={() => {
-                  console.log('[StripeCardFields] CardCvcElement ready');
-                  setMounted((prev) => ({ ...prev, cvc: true }));
-                }}
-                onChange={(e) => setCardComplete((prev) => ({ ...prev, cvc: e.complete && !e.error }))}
-              />
-            </div>
-          </div>
-        </div>
-        {/* Desktop: single row layout */}
-        <div className="hidden sm:flex rounded-md border border-gray-300 bg-white overflow-hidden">
-          {/* Card number - takes up more space */}
+
+        <div className="grid grid-cols-2 sm:grid-cols-[minmax(0,1fr)_6rem_5rem] gap-2 sm:gap-0 sm:rounded-md sm:border sm:border-gray-300 sm:bg-white sm:overflow-hidden">
+          {/* Card number: full width on mobile, first column on desktop */}
           <div
             id="card-number"
-            className="flex-1 min-h-[44px] px-3 py-3 border-r border-gray-300"
+            className="col-span-2 sm:col-span-1 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white sm:rounded-none sm:border-0 sm:border-r sm:border-gray-300 sm:bg-transparent"
           >
             <CardNumberElement
               options={{ style: CARD_ELEMENT_STYLE }}
@@ -375,10 +331,11 @@ export function StripeCardFields({
               onChange={(e) => setCardComplete((prev) => ({ ...prev, number: e.complete && !e.error }))}
             />
           </div>
+
           {/* Expiry */}
           <div
             id="card-expiry"
-            className="w-24 min-h-[44px] px-3 py-3 border-r border-gray-300"
+            className="col-span-1 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white sm:rounded-none sm:border-0 sm:border-r sm:border-gray-300 sm:bg-transparent"
           >
             <CardExpiryElement
               options={{ style: CARD_ELEMENT_STYLE }}
@@ -389,10 +346,11 @@ export function StripeCardFields({
               onChange={(e) => setCardComplete((prev) => ({ ...prev, expiry: e.complete && !e.error }))}
             />
           </div>
+
           {/* CVC */}
           <div
             id="card-cvc"
-            className="w-16 min-h-[44px] px-3 py-3"
+            className="col-span-1 min-h-[44px] px-3 py-3 rounded-md border border-gray-300 bg-white sm:rounded-none sm:border-0 sm:bg-transparent"
           >
             <CardCvcElement
               options={{ style: CARD_ELEMENT_STYLE }}
