@@ -1000,7 +1000,7 @@ export default function CourseLanding() {
 
   const handleStartCourse = () => {
     if (isEnrolled) {
-      navigate(`/courses/${courseId}/learn`);
+      navigate(`/courses/${course?.slug || courseId}/learn`);
     } else if (product && priceInfo) {
       // Add to cart silently, then go to checkout
       const added = addToCart({
