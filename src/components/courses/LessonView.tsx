@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   CheckCircle2, 
@@ -94,6 +94,12 @@ export function LessonView({
   hasNext
 }: LessonViewProps) {
   const markComplete = useMarkLessonComplete();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when lesson changes
+  useEffect(() => {
+    containerRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+  }, [lesson.id]);
 
   const handleMarkComplete = async () => {
     try {
@@ -103,6 +109,11 @@ export function LessonView({
       });
       
       toast.success('Lesson completed!');
+      
+      // Navigate to next lesson if available
+      if (hasNext) {
+        onNavigate('next');
+      }
     } catch (error) {
       toast.error('Failed to save progress');
     }
@@ -149,7 +160,7 @@ export function LessonView({
   }, [contentSpotifyPaths, dbSpotifyPaths, spotifyPathFromVideoUrl]);
 
   return (
-    <div className="flex-1 overflow-x-hidden overflow-y-auto w-full max-w-full">
+    <div ref={containerRef} className="flex-1 overflow-x-hidden overflow-y-auto w-full max-w-full">
       <div className="w-full max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:px-8 lg:py-8 overflow-hidden">
         {/* Header */}
         <motion.div
@@ -366,39 +377,39 @@ export function LessonView({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-4 border-t border-gray-200"
+          className="flex items-center justify-between gap-2 pt-4 border-t border-gray-200"
         >
           <Button
             variant="outline"
             onClick={() => onNavigate('prev')}
             disabled={!hasPrev}
-            className="w-full sm:w-auto flex-shrink-0"
+            size="sm"
+            className="flex-shrink-0"
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
+            <ChevronLeft className="w-4 h-4 mr-1" />
             Previous
           </Button>
 
-          <div className="relative order-first sm:order-none">
-            {!isCompleted && (
-              <Button
-                onClick={handleMarkComplete}
-                disabled={markComplete.isPending}
-                className="relative overflow-hidden w-full sm:w-auto"
-              >
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Mark Complete
-              </Button>
-            )}
-          </div>
+          {!isCompleted && (
+            <Button
+              onClick={handleMarkComplete}
+              disabled={markComplete.isPending}
+              size="sm"
+              className="flex-shrink-0"
+            >
+              Mark Complete
+            </Button>
+          )}
 
           <Button
             variant="outline"
             onClick={() => onNavigate('next')}
             disabled={!hasNext}
-            className="w-full sm:w-auto flex-shrink-0"
+            size="sm"
+            className="flex-shrink-0"
           >
             Next
-            <ChevronRight className="w-4 h-4 ml-2" />
+            <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </motion.div>
       </div>
