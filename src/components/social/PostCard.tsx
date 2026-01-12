@@ -39,6 +39,26 @@ import { UserHoverCard } from './UserHoverCard';
 import { MentionInput, renderMentionText } from '@/components/ui/mention-input';
 import { LazyImage } from '@/components/ui/lazy-image';
 
+// Helper function to parse image URLs - handles both single URL and JSON array
+function parseImageUrls(imageUrl: string): string[] {
+  if (!imageUrl) return [];
+  
+  // Check if it's a JSON array (starts with '[')
+  if (imageUrl.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(imageUrl);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(url => typeof url === 'string' && url.length > 0);
+      }
+    } catch (e) {
+      // Not valid JSON, treat as single URL
+    }
+  }
+  
+  // Single URL
+  return [imageUrl];
+}
+
 // Global video manager to ensure only one video plays at a time
 const videoRegistry = new Set<HTMLVideoElement>();
 
@@ -549,7 +569,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
               ) : displayMediaType === 'audio' ? (
                 <audio src={post.image_url} controls className="w-full mt-2" />
               ) : (
-                <ImageGallery images={[post.image_url]} />
+                <ImageGallery images={parseImageUrls(post.image_url)} />
               )}
             </div>
           )}
