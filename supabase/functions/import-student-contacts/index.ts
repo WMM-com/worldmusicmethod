@@ -79,6 +79,36 @@ const ACCESS_ALL_COURSES_IDS = [
   '4f9afc85-b38a-46e2-afcb-b75b13c83f66',
 ];
 
+// Parse CSV content into array of objects
+function parseCSV(csvContent: string): Array<{email: string; tags: string}> {
+  const lines = csvContent.trim().split('\n');
+  const students: Array<{email: string; tags: string}> = [];
+  
+  for (let i = 1; i < lines.length; i++) { // Skip header
+    const line = lines[i];
+    // Handle CSV with quoted fields containing commas
+    const match = line.match(/^([^,]*),([^,]*),([^,]*),([^,]*),"?([^"]*)"?,?.*$/);
+    if (match) {
+      const email = match[3].trim();
+      const tags = match[5].trim();
+      if (email) {
+        students.push({ email, tags });
+      }
+    } else {
+      // Simple fallback for lines without quoted tags
+      const parts = line.split(',');
+      if (parts.length >= 5) {
+        const email = parts[2].trim();
+        const tags = parts[4].trim();
+        if (email) {
+          students.push({ email, tags });
+        }
+      }
+    }
+  }
+  return students;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -89,11 +119,19 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { students } = await req.json();
+    const body = await req.json();
     
-    if (!students || !Array.isArray(students)) {
+    // Support both students array and csvContent string
+    let students: Array<{email: string; tags: string}>;
+    
+    if (body.csvContent) {
+      students = parseCSV(body.csvContent);
+      console.log(`[IMPORT] Parsed ${students.length} students from CSV`);
+    } else if (body.students && Array.isArray(body.students)) {
+      students = body.students;
+    } else {
       return new Response(
-        JSON.stringify({ error: 'Students array is required' }),
+        JSON.stringify({ error: 'Either students array or csvContent is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -192,7 +230,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Create enrollments for new courses only
+      // Create enrollments for new courses only (using upsert to avoid duplicates)
       const enrollmentsToCreate: Array<{user_id: string; course_id: string; enrollment_type: string; is_active: boolean}> = [];
       for (const courseId of courseIdsToEnroll) {
         const key = `${profileId}|${courseId}`;
@@ -210,7 +248,7 @@ Deno.serve(async (req) => {
       if (enrollmentsToCreate.length > 0) {
         const { error: enrollError } = await supabase
           .from('course_enrollments')
-          .insert(enrollmentsToCreate);
+          .upsert(enrollmentsToCreate, { onConflict: 'user_id,course_id', ignoreDuplicates: true });
 
         if (enrollError) {
           errors.push(`Enroll ${email}: ${enrollError.message}`);
