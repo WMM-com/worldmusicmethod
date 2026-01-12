@@ -4180,6 +4180,7 @@ export type Database = {
         Args: { p_course_id: string; p_email: string }
         Returns: boolean
       }
+      enroll_users_from_tags: { Args: never; Returns: Json }
       generate_invoice_number: { Args: { _user_id: string }; Returns: string }
       get_public_profile: {
         Args: { p_username: string }
