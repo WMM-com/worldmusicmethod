@@ -13,6 +13,7 @@ interface CourseSidebarProps {
   onLessonSelect: (moduleId: string, lessonId: string) => void;
   courseTitle: string;
   onClose?: () => void;
+  onDashboardClick?: () => void;
 }
 
 const LESSON_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -31,6 +32,7 @@ export function CourseSidebar({
   onLessonSelect,
   courseTitle,
   onClose,
+  onDashboardClick,
 }: CourseSidebarProps) {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(currentModuleId ? [currentModuleId] : [modules[0]?.id])
@@ -67,12 +69,18 @@ export function CourseSidebar({
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between gap-3">
-        <h2 className="font-bold text-lg truncate">{courseTitle}</h2>
+        <button 
+          onClick={onDashboardClick}
+          className="font-bold text-lg truncate hover:text-primary transition-colors text-left"
+          title="Back to course overview"
+        >
+          {courseTitle}
+        </button>
 
         {onClose && (
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors flex-shrink-0"
             aria-label="Hide curriculum"
             title="Hide curriculum"
           >

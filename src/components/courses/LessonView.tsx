@@ -366,35 +366,36 @@ export function LessonView({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="flex items-center justify-between gap-4 pt-4 border-t border-gray-200"
+          className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 pt-4 border-t border-gray-200"
         >
           <Button
             variant="outline"
             onClick={() => onNavigate('prev')}
             disabled={!hasPrev}
+            className="w-full sm:w-auto flex-shrink-0"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous
           </Button>
 
-          <div className="relative">
+          <div className="relative order-first sm:order-none">
             {!isCompleted && (
               <Button
                 onClick={handleMarkComplete}
                 disabled={markComplete.isPending}
-                className="relative overflow-hidden"
+                className="relative overflow-hidden w-full sm:w-auto"
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Mark Complete
               </Button>
             )}
-            
           </div>
 
           <Button
             variant="outline"
             onClick={() => onNavigate('next')}
             disabled={!hasNext}
+            className="w-full sm:w-auto flex-shrink-0"
           >
             Next
             <ChevronRight className="w-4 h-4 ml-2" />
