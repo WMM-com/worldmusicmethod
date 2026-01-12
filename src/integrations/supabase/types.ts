@@ -3479,6 +3479,7 @@ export type Database = {
           profile_type: string | null
           social_links: Json | null
           tagline: string | null
+          tags: string[] | null
           tax_country: string | null
           tax_id: string | null
           tip_jar_enabled: boolean | null
@@ -3529,6 +3530,7 @@ export type Database = {
           profile_type?: string | null
           social_links?: Json | null
           tagline?: string | null
+          tags?: string[] | null
           tax_country?: string | null
           tax_id?: string | null
           tip_jar_enabled?: boolean | null
@@ -3579,6 +3581,7 @@ export type Database = {
           profile_type?: string | null
           social_links?: Json | null
           tagline?: string | null
+          tags?: string[] | null
           tax_country?: string | null
           tax_id?: string | null
           tip_jar_enabled?: boolean | null
