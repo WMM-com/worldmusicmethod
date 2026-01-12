@@ -701,6 +701,9 @@ export default function CourseLanding() {
     window.scrollTo(0, 0);
   }, [courseId]);
 
+  // Track if mobile sidebar has been auto-opened this session
+  const [hasAutoOpenedMobile, setHasAutoOpenedMobile] = useState(false);
+
   // Auto-close sidebar on desktop after 5 seconds
   useEffect(() => {
     if (!isMobile && sidebarOpen) {
@@ -709,7 +712,7 @@ export default function CourseLanding() {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [isMobile]);
+  }, [isMobile, sidebarOpen]);
 
   // Section refs for scroll tracking
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -780,6 +783,12 @@ export default function CourseLanding() {
       setShowStickyCTA(scrollY > 300);
       setShowNavWheel(scrollY > heroHeight - 100);
 
+      // Auto-open mobile sidebar when scrolling past hero (once per session)
+      if (isMobile && !hasAutoOpenedMobile && scrollY > heroHeight) {
+        setSidebarOpen(true);
+        setHasAutoOpenedMobile(true);
+      }
+
       // Find active section
       const sectionPositions = SECTIONS.map(section => {
         const el = sectionRefs.current[section.id];
@@ -804,7 +813,7 @@ export default function CourseLanding() {
     
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isMobile, hasAutoOpenedMobile]);
 
   const scrollToSection = (sectionId: string) => {
     const el = sectionRefs.current[sectionId];
@@ -935,15 +944,100 @@ export default function CourseLanding() {
     <>
       <SiteHeader />
       <div className="min-h-screen bg-background">
-        {/* Left Sidebar - Course Curriculum */}
+        {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
-          {sidebarOpen && (
+          {sidebarOpen && isMobile && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-40"
+                onClick={() => setSidebarOpen(false)}
+              />
+              {/* Drawer */}
+              <motion.aside
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-50 overflow-y-auto overflow-x-hidden"
+              >
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
+                  <button 
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-5 h-5 text-primary-foreground" />
+                  </button>
+                </div>
+                
+                {/* Watch Preview button in sidebar */}
+                {courseConfig?.trailerVideo && (
+                  <button
+                    onClick={() => {
+                      setSidebarOpen(false);
+                      setShowVideoModal(true);
+                    }}
+                    className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-primary hover:bg-muted/50 transition-colors border-b border-border"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Play className="w-3.5 h-3.5 text-primary fill-primary ml-0.5" />
+                    </div>
+                    Watch Preview
+                  </button>
+                )}
+                
+                <div className="p-2 pb-24">
+                  <Accordion type="single" collapsible defaultValue={course.modules?.[0]?.id} className="space-y-1">
+                    {course.modules?.map((module, i) => (
+                      <AccordionItem key={module.id} value={module.id} className="border-none">
+                        <AccordionTrigger className="hover:no-underline hover:bg-muted/50 px-3 py-2 rounded-md text-sm">
+                          <div className="flex items-start gap-3 text-left">
+                            <div className="w-7 h-7 bg-primary/10 rounded flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                              {i + 1}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium break-words whitespace-normal">{module.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {module.lessons?.length || 0} lessons
+                              </p>
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pb-1">
+                          <div className="ml-10 space-y-0.5">
+                            {module.lessons?.map((lesson) => (
+                              <div 
+                                key={lesson.id}
+                                className="flex items-start gap-2 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/30 rounded-md cursor-default"
+                              >
+                                <Play className="w-3 h-3 shrink-0 mt-0.5" />
+                                <span className="break-words whitespace-normal">{lesson.title}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Desktop Sidebar */}
+        <AnimatePresence>
+          {sidebarOpen && !isMobile && (
             <motion.aside
               initial={{ x: -320, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -320, opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed left-0 top-16 bottom-0 w-80 bg-card border-r border-border z-40 overflow-y-auto overflow-x-hidden hidden lg:block"
+              className="fixed left-0 top-16 bottom-0 w-80 bg-card border-r border-border z-40 overflow-y-auto overflow-x-hidden"
             >
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground">Course Curriculum</h3>
@@ -1015,15 +1109,29 @@ export default function CourseLanding() {
           )}
         </AnimatePresence>
 
-        {/* Sidebar Toggle Button (when closed) */}
-        {!sidebarOpen && (
+        {/* Sidebar Toggle Button - Desktop (when closed) */}
+        {!sidebarOpen && !isMobile && (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg px-3 py-2 shadow-lg hidden lg:flex items-center gap-2 hover:bg-muted transition-colors"
+            className="fixed left-0 top-1/2 -translate-y-1/2 z-40 bg-card border border-l-0 border-border rounded-r-lg px-3 py-2 shadow-lg flex items-center gap-2 hover:bg-muted transition-colors"
           >
             <Menu className="w-4 h-4" />
             <span className="text-sm font-medium">View Curriculum</span>
           </button>
+        )}
+
+        {/* Sidebar Toggle Button - Mobile (sticky at bottom when scrolled past hero) */}
+        {!sidebarOpen && isMobile && showNavWheel && (
+          <motion.button
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            onClick={() => setSidebarOpen(true)}
+            className="fixed left-4 bottom-20 z-40 bg-card border border-border rounded-full px-4 py-3 shadow-lg flex items-center gap-2 hover:bg-muted transition-colors"
+          >
+            <Menu className="w-4 h-4" />
+            <span className="text-sm font-medium">View Curriculum</span>
+          </motion.button>
         )}
 
         {/* Right Sidebar - Page Navigation Wheel (Overlay - appears after hero) */}
@@ -1070,35 +1178,56 @@ export default function CourseLanding() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                    {courseConfig?.instrumentTag || 'Music'}
-                  </span>
-                  <span className="px-3 py-1 bg-muted text-muted-foreground rounded-full text-sm font-medium">
-                    {course.country}
-                  </span>
+                {/* Mobile: Video thumbnail with play button */}
+                <div className="lg:hidden mb-4">
+                  {courseConfig?.trailerVideo && (
+                    <div 
+                      className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group"
+                      onClick={() => setShowVideoModal(true)}
+                    >
+                      {courseConfig?.courseImage || course.cover_image_url ? (
+                        <img 
+                          src={courseConfig?.courseImage || course.cover_image_url} 
+                          alt={course.title}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                          <Music className="w-12 h-12 text-primary/30" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+                        <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-primary fill-primary ml-1" />
+                        </div>
+                        <span className="mt-2 px-3 py-1 bg-black/60 rounded text-white text-xs font-medium">
+                          Watch Preview
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <h1 className="text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                <h1 className="text-2xl lg:text-5xl font-bold mb-2 lg:mb-4 leading-tight">
                   {course.title}
                 </h1>
 
-                <p className="text-lg text-muted-foreground mb-6 max-w-xl">
+                <p className="text-sm lg:text-lg text-muted-foreground mb-3 lg:mb-6 max-w-xl">
                   {course.description || `From Huayño to the Peruvian Waltz, immerse yourself in Andean culture and develop new guitar talents.`}
                 </p>
 
                 {/* Course stats */}
-                <div className="flex flex-wrap gap-6 text-sm mb-6">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-primary" />
+                <div className="flex flex-wrap gap-3 lg:gap-6 text-xs lg:text-sm mb-3 lg:mb-6">
+                  <div className="flex items-center gap-1.5 lg:gap-2">
+                    <BookOpen className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary" />
                     <span>{course.modules?.length || 0} Modules</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Play className="w-4 h-4 text-primary" />
+                  <div className="flex items-center gap-1.5 lg:gap-2">
+                    <Play className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary" />
                     <span>{totalLessons} Lessons</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary" />
+                  <div className="flex items-center gap-1.5 lg:gap-2">
+                    <Clock className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary" />
                     <span>
                       {totalDuration >= 3600 
                         ? `${Math.floor(totalDuration / 3600)}h ${Math.round((totalDuration % 3600) / 60)}m`
@@ -1108,35 +1237,32 @@ export default function CourseLanding() {
                   </div>
                 </div>
 
-                {/* Price display */}
-                {priceInfo && !isEnrolled && (
-                  <div className="mb-6">
-                    <span className="text-3xl font-bold text-yellow-500">
-                      {formatPrice(priceInfo.price, priceInfo.currency)}
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-4 mb-6">
-                  <Button size="lg" onClick={handleStartCourse} className="gap-2">
+                {/* Price + CTA button inline */}
+                <div className="flex flex-wrap items-center gap-3 lg:gap-4 mb-3 lg:mb-6">
+                  <Button size="default" onClick={handleStartCourse} className="gap-2">
                     {isEnrolled ? (
                       <>
-                        <Play className="w-5 h-5" />
+                        <Play className="w-4 h-4 lg:w-5 lg:h-5" />
                         Continue Learning
                       </>
                     ) : (
                       <>
-                        <ShoppingCart className="w-5 h-5" />
+                        <ShoppingCart className="w-4 h-4 lg:w-5 lg:h-5" />
                         Enroll Now
                       </>
                     )}
                   </Button>
+                  {priceInfo && !isEnrolled && (
+                    <span className="text-xl lg:text-3xl font-bold text-yellow-500">
+                      {formatPrice(priceInfo.price, priceInfo.currency)}
+                    </span>
+                  )}
                 </div>
 
                 {/* Money-back guarantee */}
                 {!isEnrolled && (
-                  <div className="flex items-center gap-2 text-sm text-green-600">
-                    <Shield className="w-4 h-4" />
+                  <div className="flex items-center gap-1.5 lg:gap-2 text-xs lg:text-sm text-green-600">
+                    <Shield className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     <span>30-Day 110% Money Back Guarantee</span>
                   </div>
                 )}
@@ -1288,16 +1414,34 @@ export default function CourseLanding() {
                       transition={{ delay: i * 0.1 }}
                     >
                       <Card className="p-4 md:p-6 h-full">
-                        <div className="flex items-start gap-3 md:gap-4">
-                          <div className="p-2 md:p-3 bg-primary/10 rounded-lg shrink-0">
-                            <IconComponent className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                        {/* Mobile: stacked layout - icon+title row, then full-width bullets */}
+                        <div className="md:hidden">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                              <IconComponent className="w-5 h-5 text-primary" />
+                            </div>
+                            <h3 className="font-semibold text-sm">{outcome.title}</h3>
+                          </div>
+                          <ul className="space-y-1.5">
+                            {outcome.items.map((item, j) => (
+                              <li key={j} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <ChevronRight className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        {/* Desktop: side-by-side layout */}
+                        <div className="hidden md:flex items-start gap-4">
+                          <div className="p-3 bg-primary/10 rounded-lg shrink-0">
+                            <IconComponent className="w-6 h-6 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold mb-2 md:mb-3 text-sm md:text-base">{outcome.title}</h3>
-                            <ul className="space-y-1.5 md:space-y-2">
+                            <h3 className="font-semibold mb-3 text-base">{outcome.title}</h3>
+                            <ul className="space-y-2">
                               {outcome.items.map((item, j) => (
-                                <li key={j} className="flex items-start gap-1.5 md:gap-2 text-xs md:text-sm text-muted-foreground">
-                                  <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5 text-primary" />
+                                <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                  <ChevronRight className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                                   <span>{item}</span>
                                 </li>
                               ))}
@@ -1364,7 +1508,7 @@ export default function CourseLanding() {
                     {/* Single vertical divider line */}
                     <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-border" />
                     
-                    <div className="grid md:grid-cols-2 gap-12 md:gap-8">
+                    <div className="grid md:grid-cols-2 gap-16 md:gap-8">
                       {courseConfig.resources.map((resource, i) => (
                         <div key={i} className="flex flex-col md:flex-row gap-4 items-start">
                           <img 
@@ -1372,7 +1516,7 @@ export default function CourseLanding() {
                             alt={resource.title}
                             className="w-full md:w-72 h-auto object-contain rounded-lg shrink-0"
                           />
-                          <div className="pb-4 md:pb-0">
+                          <div className="pb-6 md:pb-0">
                             <h3 className="text-xl font-semibold mb-2">{resource.title}</h3>
                             <p className="text-muted-foreground text-sm">{resource.description}</p>
                           </div>
