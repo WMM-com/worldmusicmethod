@@ -75,6 +75,7 @@ export function AdminStreaming() {
     artist_id: '',
     album_name: '',
     genre: '',
+    release_year: '',
     is_published: true,
   });
   const [podcastForm, setPodcastForm] = useState({
@@ -209,6 +210,7 @@ export function AdminStreaming() {
         artist_id: data.artist_id || null,
         album_name: data.album_name || null,
         genre: data.genre || null,
+        release_date: data.release_year ? `${data.release_year}-01-01` : null,
         is_published: data.is_published,
       });
       if (error) throw error;
@@ -227,6 +229,7 @@ export function AdminStreaming() {
         artist_id: '',
         album_name: '',
         genre: '',
+        release_year: '',
         is_published: true,
       });
       toast.success('Track created');
@@ -246,6 +249,7 @@ export function AdminStreaming() {
         artist_id: data.artist_id || null,
         album_name: data.album_name || null,
         genre: data.genre || null,
+        release_date: data.release_year ? `${data.release_year}-01-01` : null,
         is_published: data.is_published,
       }).eq('id', id);
       if (error) throw error;
@@ -301,6 +305,7 @@ export function AdminStreaming() {
 
   const openEditTrack = (track: Track) => {
     setEditingTrack(track);
+    const releaseYear = track.release_date ? new Date(track.release_date).getFullYear().toString() : '';
     setTrackForm({
       title: track.title,
       audio_url: track.audio_url,
@@ -311,6 +316,7 @@ export function AdminStreaming() {
       artist_id: track.artist_id || '',
       album_name: track.album_name || '',
       genre: track.genre || '',
+      release_year: releaseYear,
       is_published: track.is_published ?? true,
     });
     setTrackDialogOpen(true);
@@ -369,6 +375,7 @@ export function AdminStreaming() {
                     artist_id: '',
                     album_name: '',
                     genre: '',
+                    release_year: '',
                     is_published: true,
                   });
                 }
@@ -448,6 +455,16 @@ export function AdminStreaming() {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
+                            
+                            // Auto-detect duration
+                            const audio = new Audio();
+                            audio.src = URL.createObjectURL(file);
+                            audio.addEventListener('loadedmetadata', () => {
+                              const durationSecs = Math.round(audio.duration);
+                              setTrackForm(p => ({ ...p, duration_seconds: durationSecs.toString() }));
+                              URL.revokeObjectURL(audio.src);
+                            });
+                            
                             setUploadingField('audio');
                             const result = await uploadFile(file, {
                               bucket: 'admin',
@@ -559,7 +576,7 @@ export function AdminStreaming() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>Album</Label>
                         <Input
@@ -572,6 +589,17 @@ export function AdminStreaming() {
                         <Input
                           value={trackForm.genre}
                           onChange={(e) => setTrackForm(p => ({ ...p, genre: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Year</Label>
+                        <Input
+                          type="number"
+                          min="1900"
+                          max={new Date().getFullYear()}
+                          placeholder="e.g. 2024"
+                          value={trackForm.release_year}
+                          onChange={(e) => setTrackForm(p => ({ ...p, release_year: e.target.value }))}
                         />
                       </div>
                     </div>
