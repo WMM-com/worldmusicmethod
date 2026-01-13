@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, UserPlus, Check, X, UserMinus, Users, UserX, ShieldOff, LogIn } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Search, UserPlus, Check, X, UserMinus, Users, UserX, ShieldOff, LogIn, MessageCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   useFriendships,
   useSearchUsers,
@@ -18,10 +18,24 @@ import { useBlockedUsers, useUnblockUser } from '@/hooks/useReports';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useCreateConversation } from '@/hooks/useMessaging';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function FriendsTab() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
+  const [removeConfirmName, setRemoveConfirmName] = useState<string>('');
   
   const { data: friendships, isLoading } = useFriendships();
   const { data: searchResults } = useSearchUsers(searchQuery);
@@ -30,6 +44,7 @@ export function FriendsTab() {
   const respondMutation = useRespondToFriendRequest();
   const removeMutation = useRemoveFriend();
   const unblockMutation = useUnblockUser();
+  const createConversationMutation = useCreateConversation();
 
   // Fetch profiles for blocked users
   const { data: blockedProfiles } = useQuery({
@@ -65,6 +80,26 @@ export function FriendsTab() {
   const hasPendingRequest = (userId: string) => {
     return friendships?.pending.some(f => f.friend_id === userId) ||
            friendships?.requests.some(f => f.user_id === userId);
+  };
+
+  const handleSendMessage = async (userId: string) => {
+    try {
+      const conversationId = await createConversationMutation.mutateAsync(userId);
+      navigate(`/messages?id=${conversationId}`);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleRemoveConfirm = () => {
+    if (removeConfirmId) {
+      removeMutation.mutate(removeConfirmId, {
+        onSuccess: () => {
+          setRemoveConfirmId(null);
+          setRemoveConfirmName('');
+        },
+      });
+    }
   };
 
   // Helper to get the other user's ID from a friendship
@@ -112,29 +147,30 @@ export function FriendsTab() {
           {searchQuery.length >= 2 && searchResults && searchResults.length > 0 && (
             <div className="mt-4 space-y-2">
               {searchResults.map((searchUser) => (
-                <div key={searchUser.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <Link to={`/profile/${searchUser.id}`} className="flex items-center gap-3 flex-1">
-                    <Avatar className="h-10 w-10">
+                <div key={searchUser.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-card">
+                  <Link to={`/profile/${searchUser.id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                    <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={searchUser.avatar_url || undefined} />
                       <AvatarFallback>{getInitials(searchUser.full_name)}</AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium">{searchUser.full_name || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground">{searchUser.email}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{searchUser.full_name || 'Unknown'}</p>
+                      <p className="text-sm text-muted-foreground truncate">{searchUser.email}</p>
                     </div>
                   </Link>
                   {isAlreadyFriend(searchUser.id) ? (
-                    <Badge variant="secondary">Friends</Badge>
+                    <Badge variant="secondary" className="shrink-0">Friends</Badge>
                   ) : hasPendingRequest(searchUser.id) ? (
-                    <Badge variant="outline">Pending</Badge>
+                    <Badge variant="outline" className="shrink-0">Pending</Badge>
                   ) : (
                     <Button
                       size="sm"
                       onClick={() => sendRequestMutation.mutate(searchUser.id)}
                       disabled={sendRequestMutation.isPending}
+                      className="shrink-0"
                     >
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add Friend
+                      <UserPlus className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Add Friend</span>
                     </Button>
                   )}
                 </div>
@@ -152,25 +188,25 @@ export function FriendsTab() {
 
       {/* Tabs */}
       <Tabs defaultValue="friends" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="friends" className="gap-2">
-            <Users className="h-4 w-4" />
-            Friends ({friendships?.friends.length || 0})
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="friends" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
+            <Users className="h-4 w-4 shrink-0" />
+            <span className="truncate">Friends ({friendships?.friends.length || 0})</span>
           </TabsTrigger>
-          <TabsTrigger value="requests" className="gap-2">
-            Requests
+          <TabsTrigger value="requests" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
+            <span className="truncate">Requests</span>
             {friendships?.requests.length ? (
-              <Badge variant="destructive" className="ml-1 h-5 min-w-5 p-1 text-xs">
+              <Badge variant="destructive" className="ml-1 h-5 min-w-5 p-1 text-xs shrink-0">
                 {friendships.requests.length}
               </Badge>
             ) : null}
           </TabsTrigger>
-          <TabsTrigger value="pending" className="gap-2">
-            Pending ({friendships?.pending.length || 0})
+          <TabsTrigger value="pending" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
+            <span className="truncate">Pending ({friendships?.pending.length || 0})</span>
           </TabsTrigger>
-          <TabsTrigger value="blocked" className="gap-2">
-            <UserX className="h-4 w-4" />
-            Blocked ({blockedUserIds?.length || 0})
+          <TabsTrigger value="blocked" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
+            <UserX className="h-4 w-4 shrink-0" />
+            <span className="truncate">Blocked ({blockedUserIds?.length || 0})</span>
           </TabsTrigger>
         </TabsList>
 
@@ -192,26 +228,61 @@ export function FriendsTab() {
                   {friendships?.friends.map((friend) => {
                     const otherUserId = getOtherUserId(friend);
                     return (
-                      <div key={friend.id} className="flex items-center justify-between p-4 rounded-lg border">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
+                      <div key={friend.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={friend.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium">{friend.profiles?.full_name || 'Unknown'}</p>
-                            <p className="text-sm text-muted-foreground">{friend.profiles?.email}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{friend.profiles?.full_name || 'Unknown'}</p>
+                            <p className="text-sm text-muted-foreground truncate">{friend.profiles?.email}</p>
                           </div>
                         </Link>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => removeMutation.mutate(friend.id)}
-                          disabled={removeMutation.isPending}
-                        >
-                          <UserMinus className="h-4 w-4 mr-2" />
-                          Remove
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleSendMessage(otherUserId)}
+                            disabled={createConversationMutation.isPending}
+                            className="hidden sm:flex"
+                          >
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Message
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleSendMessage(otherUserId)}
+                            disabled={createConversationMutation.isPending}
+                            className="sm:hidden h-8 w-8"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setRemoveConfirmId(friend.id);
+                              setRemoveConfirmName(friend.profiles?.full_name || 'this friend');
+                            }}
+                            className="hidden sm:flex text-destructive hover:text-destructive"
+                          >
+                            <UserMinus className="h-4 w-4 mr-2" />
+                            Remove
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              setRemoveConfirmId(friend.id);
+                              setRemoveConfirmName(friend.profiles?.full_name || 'this friend');
+                            }}
+                            className="sm:hidden h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -237,32 +308,34 @@ export function FriendsTab() {
                   {friendships?.requests.map((request) => {
                     const otherUserId = getOtherUserId(request);
                     return (
-                      <div key={request.id} className="flex items-center justify-between p-4 rounded-lg border">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
+                      <div key={request.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={request.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(request.profiles?.full_name)}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium">{request.profiles?.full_name || 'Unknown'}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{request.profiles?.full_name || 'Unknown'}</p>
                             <p className="text-sm text-muted-foreground">wants to be friends</p>
                           </div>
                         </Link>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 shrink-0">
                           <Button
+                            size="sm"
                             onClick={() => respondMutation.mutate({ friendshipId: request.id, accept: true })}
                             disabled={respondMutation.isPending}
                           >
-                            <Check className="h-4 w-4 mr-2" />
-                            Accept
+                            <Check className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Accept</span>
                           </Button>
                           <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => respondMutation.mutate({ friendshipId: request.id, accept: false })}
                             disabled={respondMutation.isPending}
                           >
-                            <X className="h-4 w-4 mr-2" />
-                            Decline
+                            <X className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Decline</span>
                           </Button>
                         </div>
                       </div>
@@ -290,18 +363,18 @@ export function FriendsTab() {
                   {friendships?.pending.map((pending) => {
                     const otherUserId = getOtherUserId(pending);
                     return (
-                      <div key={pending.id} className="flex items-center justify-between p-4 rounded-lg border">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
+                      <div key={pending.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={pending.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(pending.profiles?.full_name)}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium">{pending.profiles?.full_name || 'Unknown'}</p>
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{pending.profiles?.full_name || 'Unknown'}</p>
                             <p className="text-sm text-muted-foreground">Request pending</p>
                           </div>
                         </Link>
-                        <Badge variant="outline">Awaiting response</Badge>
+                        <Badge variant="outline" className="shrink-0 text-xs sm:text-sm">Awaiting</Badge>
                       </div>
                     );
                   })}
@@ -325,24 +398,26 @@ export function FriendsTab() {
               ) : (
                 <div className="grid gap-3">
                   {blockedProfiles.map((blockedUser) => (
-                    <div key={blockedUser.id} className="flex items-center justify-between p-4 rounded-lg border">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
+                    <div key={blockedUser.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                           <AvatarImage src={blockedUser.avatar_url || undefined} />
                           <AvatarFallback>{getInitials(blockedUser.full_name)}</AvatarFallback>
                         </Avatar>
-                        <div>
-                          <p className="font-medium">{blockedUser.full_name || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground">{blockedUser.email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{blockedUser.full_name || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground truncate">{blockedUser.email}</p>
                         </div>
                       </div>
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => unblockMutation.mutate(blockedUser.id)}
                         disabled={unblockMutation.isPending}
+                        className="shrink-0"
                       >
-                        <ShieldOff className="h-4 w-4 mr-2" />
-                        Unblock
+                        <ShieldOff className="h-4 w-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Unblock</span>
                       </Button>
                     </div>
                   ))}
@@ -352,6 +427,28 @@ export function FriendsTab() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Remove Friend Confirmation Dialog */}
+      <AlertDialog open={!!removeConfirmId} onOpenChange={(open) => !open && setRemoveConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Friend</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {removeConfirmName} from your friends list? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveConfirm}
+              disabled={removeMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removeMutation.isPending ? 'Removing...' : 'Remove Friend'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -798,17 +798,17 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
               
                {/* Comment input - only for logged in users */}
                {user && !isPrivateProfile && (
-                 <div className="flex gap-2">
+                 <div className="flex items-center gap-2 w-full">
                    <input
-                     type="file"
-                     ref={fileInputRef}
-                     onChange={handleFileSelect}
-                     accept="image/*,video/*,.pdf,.doc,.docx"
-                     className="hidden"
-                   />
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      accept="image/*,video/*,.pdf,.doc,.docx"
+                      className="hidden"
+                    />
                    <DropdownMenu>
                      <DropdownMenuTrigger asChild>
-                       <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                       <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
                          <Paperclip className="h-4 w-4" />
                        </Button>
                      </DropdownMenuTrigger>
@@ -833,18 +833,21 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                        </DropdownMenuItem>
                      </DropdownMenuContent>
                    </DropdownMenu>
-                   <MentionInput
-                     value={commentText}
-                     onChange={setCommentText}
-                     placeholder={replyingTo ? "Write a reply... Use @ to mention" : "Write a comment... Use @ to mention"}
-                     rows={1}
-                     className="min-h-[40px] flex-1"
-                   />
+                   <div className="flex-1 min-w-0">
+                     <MentionInput
+                       value={commentText}
+                       onChange={setCommentText}
+                       placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
+                       rows={1}
+                       className="min-h-[36px] w-full"
+                     />
+                     <p className="text-xs text-muted-foreground mt-0.5">Use @ to mention</p>
+                   </div>
                    <Button
                      onClick={handleComment}
                      disabled={(!commentText.trim() && !commentAttachment) || createCommentMutation.isPending || isUploading}
                      size="sm"
-                     className={typeConfig.buttonColor}
+                     className={cn("shrink-0", typeConfig.buttonColor)}
                    >
                      Post
                    </Button>
