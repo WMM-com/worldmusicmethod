@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post, Comment, useAppreciate, useDeletePost, useUpdatePost, useComments, useCreateComment, useUpdateComment, useDeleteComment } from '@/hooks/useSocial';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
@@ -415,7 +415,8 @@ const POST_TYPE_CONFIG = {
 };
 
 export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const navigate = useNavigate();
   const [showComments, setShowComments] = useState(defaultShowComments);
   const [showAllComments, setShowAllComments] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -465,6 +466,10 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
   const visibleComments = showAllComments 
     ? topLevelComments 
     : topLevelComments.slice(0, INITIAL_COMMENTS_SHOWN);
+
+  const isPrivateProfile = (profile as any)?.visibility === 'private';
+  const goToLogin = () => navigate('/auth?mode=login');
+  const goToVisibilitySettings = () => navigate('/account?section=profile');
 
   const handleAppreciate = () => {
     appreciateMutation.mutate({
@@ -694,7 +699,11 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={user ? handleAppreciate : () => window.location.href = '/auth?mode=login'}
+              onClick={() => {
+                if (!user) return goToLogin();
+                if (isPrivateProfile && !post.user_appreciated) return goToVisibilitySettings();
+                handleAppreciate();
+              }}
               disabled={user ? appreciateMutation.isPending : false}
               className={cn(
                 'flex-1',
@@ -707,7 +716,11 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => user ? setShowComments(!showComments) : window.location.href = '/auth?mode=login'}
+              onClick={() => {
+                if (!user) return goToLogin();
+                if (isPrivateProfile) return goToVisibilitySettings();
+                setShowComments(!showComments);
+              }}
               className="flex-1"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
@@ -723,7 +736,11 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                   key={comment.id} 
                   comment={comment} 
                   replies={repliesMap.get(comment.id) || []}
-                  onReply={user ? (commentId) => setReplyingTo(commentId) : () => window.location.href = '/auth'}
+                   onReply={(commentId) => {
+                     if (!user) return goToLogin();
+                     if (isPrivateProfile) return goToVisibilitySettings();
+                     setReplyingTo(commentId);
+                   }}
                 />
               ))}
               
@@ -779,60 +796,76 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                 </div>
               )}
               
-              {/* Comment input - only for logged in users */}
-              {user && (
-                <div className="flex gap-2">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileSelect}
-                    accept="image/*,video/*,.pdf,.doc,.docx"
-                    className="hidden"
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
-                        <Paperclip className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.accept = 'image/*';
-                          fileInputRef.current.click();
-                        }
-                      }}>
-                        <Image className="h-4 w-4 mr-2" />
-                        Image
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        if (fileInputRef.current) {
-                          fileInputRef.current.accept = 'video/*';
-                          fileInputRef.current.click();
-                        }
-                      }}>
-                        <Video className="h-4 w-4 mr-2" />
-                        Video
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <MentionInput
-                    value={commentText}
-                    onChange={setCommentText}
-                    placeholder={replyingTo ? "Write a reply... Use @ to mention" : "Write a comment... Use @ to mention"}
-                    rows={1}
-                    className="min-h-[40px] flex-1"
-                  />
-                  <Button
-                    onClick={handleComment}
-                    disabled={(!commentText.trim() && !commentAttachment) || createCommentMutation.isPending || isUploading}
-                    size="sm"
-                    className={typeConfig.buttonColor}
-                  >
-                    Post
-                  </Button>
-                </div>
-              )}
+               {/* Comment input - only for logged in users */}
+               {user && !isPrivateProfile && (
+                 <div className="flex gap-2">
+                   <input
+                     type="file"
+                     ref={fileInputRef}
+                     onChange={handleFileSelect}
+                     accept="image/*,video/*,.pdf,.doc,.docx"
+                     className="hidden"
+                   />
+                   <DropdownMenu>
+                     <DropdownMenuTrigger asChild>
+                       <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0">
+                         <Paperclip className="h-4 w-4" />
+                       </Button>
+                     </DropdownMenuTrigger>
+                     <DropdownMenuContent align="start">
+                       <DropdownMenuItem onClick={() => {
+                         if (fileInputRef.current) {
+                           fileInputRef.current.accept = 'image/*';
+                           fileInputRef.current.click();
+                         }
+                       }}>
+                         <Image className="h-4 w-4 mr-2" />
+                         Image
+                       </DropdownMenuItem>
+                       <DropdownMenuItem onClick={() => {
+                         if (fileInputRef.current) {
+                           fileInputRef.current.accept = 'video/*';
+                           fileInputRef.current.click();
+                         }
+                       }}>
+                         <Video className="h-4 w-4 mr-2" />
+                         Video
+                       </DropdownMenuItem>
+                     </DropdownMenuContent>
+                   </DropdownMenu>
+                   <MentionInput
+                     value={commentText}
+                     onChange={setCommentText}
+                     placeholder={replyingTo ? "Write a reply... Use @ to mention" : "Write a comment... Use @ to mention"}
+                     rows={1}
+                     className="min-h-[40px] flex-1"
+                   />
+                   <Button
+                     onClick={handleComment}
+                     disabled={(!commentText.trim() && !commentAttachment) || createCommentMutation.isPending || isUploading}
+                     size="sm"
+                     className={typeConfig.buttonColor}
+                   >
+                     Post
+                   </Button>
+                 </div>
+               )}
+
+               {user && isPrivateProfile && (
+                 <div className="rounded-lg border bg-muted/40 px-3 py-2">
+                   <p className="text-sm font-medium text-foreground">Your profile is private</p>
+                   <p className="text-sm text-muted-foreground">
+                     Change your profile visibility to “Members Only” or “Public” to comment.
+                   </p>
+                   <Button
+                     variant="link"
+                     className="h-auto px-0"
+                     onClick={goToVisibilitySettings}
+                   >
+                     Open Account Settings
+                   </Button>
+                 </div>
+               )}
             </div>
           )}
         </CardFooter>
@@ -986,7 +1019,9 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const navigate = useNavigate();
+  const isPrivateProfile = (profile as any)?.visibility === 'private';
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   
@@ -1131,10 +1166,14 @@ function CommentItem({ comment, onReply, isReply = false }: CommentItemProps) {
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
               <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
               <button
-                onClick={() => appreciateMutation.mutate({
-                  commentId: comment.id,
-                  remove: comment.user_appreciated,
-                })}
+                onClick={() => {
+                  if (!user) return navigate('/auth?mode=login');
+                  if (isPrivateProfile && !comment.user_appreciated) return navigate('/account?section=profile');
+                  appreciateMutation.mutate({
+                    commentId: comment.id,
+                    remove: comment.user_appreciated,
+                  });
+                }}
                 className={cn('hover:underline', comment.user_appreciated && 'text-primary font-medium')}
               >
                 Appreciate {comment.appreciation_count > 0 && `(${comment.appreciation_count})`}

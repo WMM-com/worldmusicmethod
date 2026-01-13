@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,11 @@ interface GroupPostCardProps {
 }
 
 export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin }: GroupPostCardProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const isPrivateProfile = (profile as any)?.visibility === 'private';
+  const goToLogin = () => navigate('/auth?mode=login');
+  const goToVisibilitySettings = () => navigate('/account?section=profile');
   const [isOpen, setIsOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isEditingPost, setIsEditingPost] = useState(false);
@@ -67,6 +71,14 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
   const canDelete = isOwner || isAdmin;
   
   const handleAddComment = async () => {
+    if (!user) {
+      goToLogin();
+      return;
+    }
+    if (isPrivateProfile) {
+      goToVisibilitySettings();
+      return;
+    }
     if (!newComment.trim()) return;
     await createComment.mutateAsync({ postId: post.id, content: newComment });
     setNewComment('');
@@ -256,22 +268,50 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
                 )}
                 
                 {/* Add Comment */}
-                <div className="flex gap-2 pt-2 border-t">
-                  <MentionInput
-                    placeholder="Write a comment... Use @ to mention"
-                    value={newComment}
-                    onChange={setNewComment}
-                    rows={2}
-                    className="flex-1"
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim() || createComment.isPending}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
+                {user && !isPrivateProfile && (
+                  <div className="flex gap-2 pt-2 border-t">
+                    <MentionInput
+                      placeholder="Write a comment... Use @ to mention"
+                      value={newComment}
+                      onChange={setNewComment}
+                      rows={2}
+                      className="flex-1"
+                    />
+                    <Button 
+                      size="sm" 
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim() || createComment.isPending}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {user && isPrivateProfile && (
+                  <div className="pt-2 border-t">
+                    <div className="rounded-lg border bg-muted/40 px-3 py-2">
+                      <p className="text-sm font-medium text-foreground">Your profile is private</p>
+                      <p className="text-sm text-muted-foreground">
+                        Change your profile visibility to “Members Only” or “Public” to comment.
+                      </p>
+                      <Button
+                        variant="link"
+                        className="h-auto px-0"
+                        onClick={goToVisibilitySettings}
+                      >
+                        Open Account Settings
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!user && (
+                  <div className="pt-2 border-t">
+                    <Button variant="outline" size="sm" onClick={goToLogin}>
+                      Sign in to comment
+                    </Button>
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
           </div>
