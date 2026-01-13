@@ -211,6 +211,7 @@ export function useMessages(conversationId: string) {
         .is('read_at', null)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
         });
     }
   }, [user, conversationId, query.data, queryClient]);

@@ -7,6 +7,7 @@ import { useMediaPlayer } from '@/contexts/MediaPlayerContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { SiteHeader } from '@/components/layout/SiteHeader';
+import { PlaylistCoverGrid } from '@/components/media/PlaylistCoverGrid';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -120,6 +121,14 @@ export default function MediaPlaylist() {
               alt={playlist.name}
               className="w-48 h-48 rounded-lg object-cover shadow-lg"
             />
+          ) : playlist.tracks && playlist.tracks.length > 0 ? (
+            <div className="w-48 h-48 shadow-lg">
+              <PlaylistCoverGrid 
+                coverUrls={playlist.tracks.map(t => t.cover_image_url)} 
+                size="lg"
+                className="w-full h-full"
+              />
+            </div>
           ) : (
             <div className="w-48 h-48 rounded-lg bg-muted flex items-center justify-center shadow-lg">
               <ListMusic className="h-16 w-16 text-muted-foreground" />

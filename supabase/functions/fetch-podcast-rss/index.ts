@@ -40,14 +40,89 @@ function extractCDATA(text: string | null): string | null {
   return text.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1').trim();
 }
 
-function getElementText(item: any, tagName: string): string | null {
-  const element = item.querySelector(tagName) || item.getElementsByTagName?.(tagName)?.[0];
-  return element ? extractCDATA(element.textContent) : null;
-}
+// Simple regex-based XML parser for RSS feeds
+function parseRSS(xmlText: string) {
+  const getTagContent = (xml: string, tag: string): string | null => {
+    // Handle namespaced tags like itunes:author
+    const escapedTag = tag.replace(/:/g, '\\:');
+    const regex = new RegExp(`<${escapedTag}[^>]*>([\\s\\S]*?)<\\/${escapedTag}>`, 'i');
+    const match = xml.match(regex);
+    if (match) {
+      return extractCDATA(match[1].trim());
+    }
+    return null;
+  };
 
-function getAttributeValue(item: any, tagName: string, attribute: string): string | null {
-  const element = item.querySelector(tagName) || item.getElementsByTagName?.(tagName)?.[0];
-  return element?.getAttribute(attribute) || null;
+  const getAttribute = (xml: string, tag: string, attr: string): string | null => {
+    const escapedTag = tag.replace(/:/g, '\\:');
+    const regex = new RegExp(`<${escapedTag}[^>]*${attr}=["']([^"']*)["'][^>]*>`, 'i');
+    const match = xml.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const getEnclosureUrl = (xml: string): string | null => {
+    const regex = /<enclosure[^>]*url=["']([^"']*)["'][^>]*>/i;
+    const match = xml.match(regex);
+    return match ? match[1] : null;
+  };
+
+  // Get channel content
+  const channelMatch = xmlText.match(/<channel[^>]*>([\s\S]*)<\/channel>/i);
+  if (!channelMatch) {
+    return null;
+  }
+  const channelContent = channelMatch[1];
+
+  // Parse channel metadata
+  const feedTitle = getTagContent(channelContent, 'title');
+  const feedDescription = getTagContent(channelContent, 'description');
+  const feedAuthor = getTagContent(channelContent, 'itunes:author') || getTagContent(channelContent, 'author');
+  const feedImage = getAttribute(channelContent, 'itunes:image', 'href') || 
+                    getTagContent(channelContent, 'image')?.match(/<url>([^<]*)<\/url>/i)?.[1] ||
+                    null;
+
+  // Parse items
+  const items: PodcastEpisode[] = [];
+  const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
+  let itemMatch;
+  let episodeNumber = 0;
+
+  // First count all items
+  const allItems: string[] = [];
+  while ((itemMatch = itemRegex.exec(channelContent)) !== null) {
+    allItems.push(itemMatch[1]);
+  }
+  
+  episodeNumber = allItems.length;
+
+  for (const itemContent of allItems) {
+    const title = getTagContent(itemContent, 'title');
+    const description = getTagContent(itemContent, 'description') || getTagContent(itemContent, 'itunes:summary');
+    const audioUrl = getEnclosureUrl(itemContent);
+    const episodeImage = getAttribute(itemContent, 'itunes:image', 'href') || feedImage;
+    const durationStr = getTagContent(itemContent, 'itunes:duration');
+    const pubDate = getTagContent(itemContent, 'pubDate');
+
+    if (title && audioUrl) {
+      items.push({
+        title,
+        description,
+        audio_url: audioUrl,
+        cover_image_url: episodeImage,
+        duration_seconds: parseDuration(durationStr),
+        release_date: pubDate ? new Date(pubDate).toISOString() : null,
+        episode_number: episodeNumber--,
+      });
+    }
+  }
+
+  return {
+    title: feedTitle,
+    description: feedDescription,
+    author: feedAuthor,
+    image: feedImage,
+    episodes: items,
+  };
 }
 
 serve(async (req) => {
@@ -112,82 +187,33 @@ serve(async (req) => {
     const rssText = await rssResponse.text();
     console.log(`RSS response length: ${rssText.length} characters`);
 
-    // Parse XML using DOMParser
-    const { DOMParser } = await import("https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts");
-    const doc = new DOMParser().parseFromString(rssText, 'text/xml');
+    // Parse RSS using regex-based parser
+    const parsed = parseRSS(rssText);
     
-    if (!doc) {
+    if (!parsed) {
       return new Response(
-        JSON.stringify({ error: 'Failed to parse RSS XML' }),
+        JSON.stringify({ error: 'Failed to parse RSS XML - no channel found' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get channel info
-    const channel = doc.querySelector('channel');
-    if (!channel) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid RSS: no channel element found' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Update podcast metadata from feed
-    const feedTitle = getElementText(channel, 'title');
-    const feedDescription = getElementText(channel, 'description');
-    const feedAuthor = getElementText(channel, 'itunes\\:author') || getElementText(channel, 'author');
-    const feedImage = getAttributeValue(channel, 'itunes\\:image', 'href') || 
-                      getElementText(channel, 'image > url');
-
-    console.log(`Podcast: ${feedTitle}, Author: ${feedAuthor}, Image: ${feedImage}`);
+    console.log(`Podcast: ${parsed.title}, Author: ${parsed.author}, Image: ${parsed.image}`);
+    console.log(`Found ${parsed.episodes.length} episodes`);
 
     // Update podcast record with fresh metadata
     const updateData: Record<string, any> = {
       last_fetched_at: new Date().toISOString(),
     };
     
-    if (feedTitle && !podcast.title) updateData.title = feedTitle;
-    if (feedDescription && !podcast.description) updateData.description = feedDescription;
-    if (feedAuthor && !podcast.author) updateData.author = feedAuthor;
-    if (feedImage && !podcast.cover_image_url) updateData.cover_image_url = feedImage;
+    if (parsed.title && !podcast.title) updateData.title = parsed.title;
+    if (parsed.description && !podcast.description) updateData.description = parsed.description;
+    if (parsed.author && !podcast.author) updateData.author = parsed.author;
+    if (parsed.image && !podcast.cover_image_url) updateData.cover_image_url = parsed.image;
 
     await supabase
       .from('media_podcasts')
       .update(updateData)
       .eq('id', podcastId);
-
-    // Parse episodes
-    const items = channel.querySelectorAll('item');
-    console.log(`Found ${items.length} episodes`);
-
-    const episodes: PodcastEpisode[] = [];
-    let episodeNumber = items.length;
-
-    for (const item of items) {
-      const title = getElementText(item, 'title');
-      const description = getElementText(item, 'description') || getElementText(item, 'itunes\\:summary');
-      const audioUrl = getAttributeValue(item, 'enclosure', 'url');
-      const episodeImage = getAttributeValue(item, 'itunes\\:image', 'href') || feedImage;
-      const durationStr = getElementText(item, 'itunes\\:duration');
-      const pubDate = getElementText(item, 'pubDate');
-
-      if (!title || !audioUrl) {
-        console.log(`Skipping episode: missing title or audio URL`);
-        continue;
-      }
-
-      episodes.push({
-        title,
-        description,
-        audio_url: audioUrl,
-        cover_image_url: episodeImage || null,
-        duration_seconds: parseDuration(durationStr),
-        release_date: pubDate ? new Date(pubDate).toISOString() : null,
-        episode_number: episodeNumber--,
-      });
-    }
-
-    console.log(`Parsed ${episodes.length} valid episodes`);
 
     // Get existing tracks for this podcast
     const { data: existingTracks } = await supabase
@@ -198,7 +224,7 @@ serve(async (req) => {
     const existingUrls = new Set(existingTracks?.map(t => t.audio_url) || []);
 
     // Filter new episodes
-    const newEpisodes = episodes.filter(ep => !existingUrls.has(ep.audio_url));
+    const newEpisodes = parsed.episodes.filter(ep => !existingUrls.has(ep.audio_url));
     console.log(`${newEpisodes.length} new episodes to insert`);
 
     // Insert new episodes
@@ -234,10 +260,10 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: `Imported ${newEpisodes.length} new episodes`,
-        totalEpisodes: episodes.length,
+        totalEpisodes: parsed.episodes.length,
         newEpisodes: newEpisodes.length,
-        podcastTitle: feedTitle,
-        podcastImage: feedImage,
+        podcastTitle: parsed.title,
+        podcastImage: parsed.image,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
