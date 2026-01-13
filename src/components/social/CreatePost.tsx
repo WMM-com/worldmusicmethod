@@ -237,11 +237,11 @@ export function CreatePost() {
     return (
       <Card>
         <CardContent className="py-6">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <Lock className="h-5 w-5" />
-            <div>
+          <div className="flex items-start gap-3 text-muted-foreground">
+            <Lock className="h-5 w-5 shrink-0 mt-0.5" />
+            <div className="min-w-0">
               <p className="font-medium text-foreground">Your profile is private</p>
-              <p className="text-sm">
+              <p className="text-sm break-words">
                 Change your profile visibility to "Members Only" or "Public" in{' '}
                 <Link to="/account?section=profile" className="text-primary underline">Account Settings</Link>{' '}
                 to post and comment.

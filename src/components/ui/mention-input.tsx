@@ -189,7 +189,7 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <textarea
         ref={textareaRef}
         value={displayValue}
@@ -197,10 +197,12 @@ export function MentionInput({ value, onChange, placeholder, className, rows = 3
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className={cn(
-          "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-hidden",
+          rows === 1 ? "min-h-[36px]" : "min-h-[80px]",
           className
         )}
         rows={rows}
+        style={{ height: rows === 1 ? 'auto' : undefined }}
       />
       
       {showSuggestions && suggestions.length > 0 && (
