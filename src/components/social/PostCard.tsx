@@ -707,7 +707,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowComments(!showComments)}
+              onClick={() => user ? setShowComments(!showComments) : window.location.href = '/auth?mode=login'}
               className="flex-1"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
