@@ -4226,7 +4226,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          business_name: string | null
+          cover_image_url: string | null
+          created_at: string | null
+          first_name: string | null
+          full_name: string | null
+          id: string | null
+          is_public: boolean | null
+          last_name: string | null
+          profile_type: string | null
+          social_links: Json | null
+          tagline: string | null
+          website_url: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          business_name?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          last_name?: string | null
+          profile_type?: string | null
+          social_links?: Json | null
+          tagline?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          business_name?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          first_name?: string | null
+          full_name?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          last_name?: string | null
+          profile_type?: string | null
+          social_links?: Json | null
+          tagline?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       are_friends: {
