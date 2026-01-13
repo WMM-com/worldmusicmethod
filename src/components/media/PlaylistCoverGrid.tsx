@@ -10,23 +10,19 @@ interface PlaylistCoverGridProps {
 export function PlaylistCoverGrid({ coverUrls, size = 'md', className }: PlaylistCoverGridProps) {
   const validCovers = coverUrls.filter((url): url is string => !!url).slice(0, 4);
   
-  const sizeClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-24 h-24',
-    lg: 'w-48 h-48',
+  const iconSizes = {
+    sm: 'h-4 w-4',
+    md: 'h-8 w-8',
+    lg: 'h-16 w-16',
   };
 
   if (validCovers.length === 0) {
     return (
       <div className={cn(
-        sizeClasses[size],
-        "rounded-lg bg-muted flex items-center justify-center",
+        "rounded-lg bg-muted flex items-center justify-center aspect-square",
         className
       )}>
-        <ListMusic className={cn(
-          size === 'sm' ? 'h-4 w-4' : size === 'md' ? 'h-8 w-8' : 'h-16 w-16',
-          "text-muted-foreground"
-        )} />
+        <ListMusic className={cn(iconSizes[size], "text-muted-foreground")} />
       </div>
     );
   }
@@ -36,14 +32,14 @@ export function PlaylistCoverGrid({ coverUrls, size = 'md', className }: Playlis
       <img
         src={validCovers[0]}
         alt="Playlist cover"
-        className={cn(sizeClasses[size], "rounded-lg object-cover", className)}
+        className={cn("rounded-lg object-cover aspect-square", className)}
       />
     );
   }
 
   // 2x2 grid for 2-4 images
   return (
-    <div className={cn(sizeClasses[size], "rounded-lg overflow-hidden grid grid-cols-2", className)}>
+    <div className={cn("rounded-lg overflow-hidden grid grid-cols-2 aspect-square", className)}>
       {validCovers.map((url, i) => (
         <img
           key={i}

@@ -334,6 +334,83 @@ export function AdminStreaming() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const createAdminPlaylist = useMutation({
+    mutationFn: async (data: typeof adminPlaylistForm) => {
+      const { error } = await supabase.from('media_playlists').insert({
+        name: data.name,
+        description: data.description || null,
+        is_public: data.is_public,
+        is_admin_playlist: true,
+        show_in_community_feed: data.show_in_community_feed,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['media-admin-playlists'] });
+      setPlaylistDialogOpen(false);
+      setAdminPlaylistForm({ name: '', description: '', is_public: true, is_admin_playlist: true, show_in_community_feed: false });
+      toast.success('Playlist created');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const updateAdminPlaylist = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & typeof adminPlaylistForm) => {
+      const { error } = await supabase.from('media_playlists').update({
+        name: data.name,
+        description: data.description || null,
+        is_public: data.is_public,
+        show_in_community_feed: data.show_in_community_feed,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['media-admin-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['media-community-feed-playlist'] });
+      setPlaylistDialogOpen(false);
+      setEditingPlaylist(null);
+      toast.success('Playlist updated');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const deleteAdminPlaylist = useMutation({
+    mutationFn: async (id: string) => {
+      // First delete playlist tracks
+      await supabase.from('media_playlist_tracks').delete().eq('playlist_id', id);
+      // Then delete the playlist
+      const { error } = await supabase.from('media_playlists').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-playlists'] });
+      queryClient.invalidateQueries({ queryKey: ['media-admin-playlists'] });
+      toast.success('Playlist deleted');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const [syncingPodcast, setSyncingPodcast] = useState<string | null>(null);
+
+  const syncPodcastRss = async (podcastId: string) => {
+    setSyncingPodcast(podcastId);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-podcast-rss', {
+        body: { podcastId },
+      });
+      if (error) throw error;
+      toast.success(data.message || 'Podcast synced successfully');
+      queryClient.invalidateQueries({ queryKey: ['admin-tracks'] });
+      queryClient.invalidateQueries({ queryKey: ['media-tracks'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to sync podcast');
+    } finally {
+      setSyncingPodcast(null);
+    }
+  };
+
   const openEditArtist = (artist: Artist) => {
     setEditingArtist(artist);
     setArtistForm({ name: artist.name, bio: artist.bio || '', image_url: artist.image_url || '' });
@@ -360,6 +437,18 @@ export function AdminStreaming() {
     setTrackDialogOpen(true);
   };
 
+  const openEditPlaylist = (playlist: Playlist) => {
+    setEditingPlaylist(playlist);
+    setAdminPlaylistForm({
+      name: playlist.name,
+      description: playlist.description || '',
+      is_public: playlist.is_public,
+      is_admin_playlist: true,
+      show_in_community_feed: playlist.show_in_community_feed,
+    });
+    setPlaylistDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -379,6 +468,10 @@ export function AdminStreaming() {
           <TabsTrigger value="tracks" className="gap-2">
             <Music className="h-4 w-4" />
             Tracks ({tracks.length})
+          </TabsTrigger>
+          <TabsTrigger value="playlists" className="gap-2">
+            <ListMusic className="h-4 w-4" />
+            Playlists ({adminPlaylists.length})
           </TabsTrigger>
           <TabsTrigger value="artists" className="gap-2">
             <Users className="h-4 w-4" />
@@ -713,6 +806,137 @@ export function AdminStreaming() {
           </Card>
         </TabsContent>
 
+        {/* Playlists Tab */}
+        <TabsContent value="playlists">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Admin Playlists</CardTitle>
+              <Dialog open={playlistDialogOpen} onOpenChange={(open) => {
+                setPlaylistDialogOpen(open);
+                if (!open) {
+                  setEditingPlaylist(null);
+                  setAdminPlaylistForm({
+                    name: '',
+                    description: '',
+                    is_public: true,
+                    is_admin_playlist: true,
+                    show_in_community_feed: false,
+                  });
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Playlist
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingPlaylist ? 'Edit Playlist' : 'Create Admin Playlist'}</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editingPlaylist) {
+                      updateAdminPlaylist.mutate({ id: editingPlaylist.id, ...adminPlaylistForm });
+                    } else {
+                      createAdminPlaylist.mutate(adminPlaylistForm);
+                    }
+                  }} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Playlist Name *</Label>
+                      <Input
+                        value={adminPlaylistForm.name}
+                        onChange={(e) => setAdminPlaylistForm(p => ({ ...p, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea
+                        value={adminPlaylistForm.description}
+                        onChange={(e) => setAdminPlaylistForm(p => ({ ...p, description: e.target.value }))}
+                        rows={2}
+                      />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={adminPlaylistForm.is_public}
+                          onCheckedChange={(c) => setAdminPlaylistForm(p => ({ ...p, is_public: c }))}
+                        />
+                        <Label>Public</Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={adminPlaylistForm.show_in_community_feed}
+                          onCheckedChange={(c) => setAdminPlaylistForm(p => ({ ...p, show_in_community_feed: c }))}
+                        />
+                        <Label>Show in Community Feed</Label>
+                      </div>
+                    </div>
+                    <Button type="submit" className="w-full">
+                      {editingPlaylist ? 'Update' : 'Create'} Playlist
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Visibility</TableHead>
+                    <TableHead>Community Feed</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {adminPlaylists.map((playlist) => (
+                    <TableRow key={playlist.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                            <ListMusic className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <span className="font-medium">{playlist.name}</span>
+                            {playlist.description && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">{playlist.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={playlist.is_public ? 'default' : 'secondary'}>
+                          {playlist.is_public ? 'Public' : 'Private'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {playlist.show_in_community_feed ? (
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600">Featured</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button size="icon" variant="ghost" onClick={() => openEditPlaylist(playlist)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteAdminPlaylist.mutate(playlist.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Artists Tab */}
         <TabsContent value="artists">
           <Card>
@@ -888,6 +1112,7 @@ export function AdminStreaming() {
                     <TableHead>Podcast</TableHead>
                     <TableHead>Author</TableHead>
                     <TableHead>RSS</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -911,6 +1136,20 @@ export function AdminStreaming() {
                           <Badge variant="outline">Has RSS</Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {podcast.rss_url && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="gap-2"
+                            onClick={() => syncPodcastRss(podcast.id)}
+                            disabled={syncingPodcast === podcast.id}
+                          >
+                            <RefreshCw className={`h-4 w-4 ${syncingPodcast === podcast.id ? 'animate-spin' : ''}`} />
+                            Sync Episodes
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
