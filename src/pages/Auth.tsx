@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,29 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Mail, CheckCircle } from 'lucide-react';
-import wmmLogo from '@/assets/world-music-method-logo.png';
+import wmmLogo from '@/assets/wmm-logo.png';
 import { HoneypotField, useHoneypotValidator } from '@/components/ui/honeypot-field';
 import { usePersistentRateLimiter } from '@/hooks/useRateLimiter';
 import { Turnstile, useTurnstileVerification } from '@/components/ui/turnstile';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
-
-// Hook to get site logo from site_settings
-function useSiteLogo() {
-  return useQuery({
-    queryKey: ['site-logo'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'site_logo')
-        .single();
-      if (error || !data?.value) return null;
-      return data.value;
-    },
-    staleTime: 1000 * 60 * 60, // Cache for 1 hour
-  });
-}
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -54,7 +36,6 @@ export default function Auth() {
   const { validateSubmission } = useHoneypotValidator();
   const rateLimiter = usePersistentRateLimiter({ maxAttempts: 5, windowMs: 60000, blockDurationMs: 300000 });
   const { verify: verifyTurnstile, isVerifying } = useTurnstileVerification();
-  const { data: siteLogo } = useSiteLogo();
 
   useEffect(() => {
     if (verified) {
@@ -169,7 +150,7 @@ export default function Auth() {
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 h-20 flex items-center justify-center">
             <img 
-              src={siteLogo || wmmLogo} 
+              src={wmmLogo} 
               alt="World Music Method" 
               className="h-20 w-auto mx-auto"
             />

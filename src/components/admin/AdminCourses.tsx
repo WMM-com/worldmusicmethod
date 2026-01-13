@@ -46,7 +46,7 @@ export function AdminCourses() {
       const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('title', { ascending: true });
       if (error) throw error;
       return data;
     },
