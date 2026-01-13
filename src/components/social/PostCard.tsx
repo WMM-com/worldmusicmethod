@@ -694,7 +694,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={user ? handleAppreciate : () => window.location.href = '/auth'}
+              onClick={user ? handleAppreciate : () => window.location.href = '/auth?mode=login'}
               disabled={user ? appreciateMutation.isPending : false}
               className={cn(
                 'flex-1',

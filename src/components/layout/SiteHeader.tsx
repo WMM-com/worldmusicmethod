@@ -15,8 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { MessagesDropdown } from '@/components/messaging/MessagesDropdown';
 import { useQuery } from '@tanstack/react-query';
-
-const DEFAULT_LOGO = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2024/04/o35xPjFH-Site-Logo-White.png';
+import wmmLogo from '@/assets/wmm-logo.png';
 
 // Icon mapping for menu items
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -44,21 +43,6 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const cartItemCount = getItemCount();
-
-  // Fetch site logo from database
-  const { data: siteLogo } = useQuery({
-    queryKey: ['site-logo-header'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('value')
-        .eq('key', 'site_logo')
-        .single();
-      if (error || !data?.value) return null;
-      return data.value;
-    },
-    staleTime: 1000 * 60 * 60, // Cache for 1 hour
-  });
 
   // Fetch menu items from database
   const { data: menuItems = [] } = useQuery({
@@ -208,7 +192,7 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
-              src={siteLogo || DEFAULT_LOGO} 
+              src={wmmLogo} 
               alt="World Music Method" 
               className="h-10 w-auto"
             />
