@@ -1,5 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -318,8 +321,19 @@ Deno.serve(async (req) => {
       region
     );
 
+    // Log to email_send_log
+    const logSubject = 'Reset Your Password - World Music Method';
+    
     if (!result.success) {
       logStep("ERROR: Failed to send email", { error: result.error });
+      
+      await supabaseClient.from('email_send_log').insert({
+        email,
+        subject: logSubject,
+        status: 'failed',
+        error_message: result.error || 'Unknown error',
+      });
+      
       return new Response(
         JSON.stringify({ error: result.error }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -327,6 +341,13 @@ Deno.serve(async (req) => {
     }
 
     logStep("Password reset email sent", { messageId: result.messageId });
+    
+    // Log successful send
+    await supabaseClient.from('email_send_log').insert({
+      email,
+      subject: logSubject,
+      status: 'sent',
+    });
 
     return new Response(
       JSON.stringify({ success: true }),

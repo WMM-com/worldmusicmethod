@@ -281,8 +281,19 @@ Deno.serve(async (req) => {
       region
     );
 
+    const logSubject = 'Verify Your Email - World Music Method';
+    
     if (!result.success) {
       console.error('Failed to send verification email:', result.error);
+      
+      // Log the failed send
+      await supabase.from('email_send_log').insert({
+        email: tokenData.email,
+        subject: logSubject,
+        status: 'failed',
+        error_message: result.error || 'Unknown error',
+      });
+      
       return new Response(
         JSON.stringify({ error: result.error }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -290,6 +301,13 @@ Deno.serve(async (req) => {
     }
 
     console.log('Verification email sent successfully, MessageId:', result.messageId);
+    
+    // Log successful send
+    await supabase.from('email_send_log').insert({
+      email: tokenData.email,
+      subject: logSubject,
+      status: 'sent',
+    });
 
     return new Response(
       JSON.stringify({ success: true, messageId: result.messageId }),

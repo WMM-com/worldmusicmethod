@@ -707,6 +707,15 @@ Deno.serve(async (req) => {
 
     if (!result.success) {
       console.error("Failed to send invoice email:", result.error);
+      
+      // Log to email_send_log for unified view
+      await supabase.from('email_send_log').insert({
+        email: recipientEmail,
+        subject,
+        status: 'failed',
+        error_message: result.error || 'Email delivery failed',
+      });
+      
       return new Response(
         JSON.stringify({ error: "Email delivery failed" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -721,7 +730,7 @@ Deno.serve(async (req) => {
       .update({ sent_at: new Date().toISOString() })
       .eq("id", invoiceId);
 
-    // Log the email
+    // Log the email to legacy email_logs table
     await supabase
       .from("email_logs")
       .insert({
@@ -731,6 +740,13 @@ Deno.serve(async (req) => {
         template_type: "invoice",
         status: "sent",
       });
+    
+    // Log to email_send_log for unified view
+    await supabase.from('email_send_log').insert({
+      email: recipientEmail,
+      subject,
+      status: 'sent',
+    });
 
     return new Response(
       JSON.stringify({ success: true, messageId: result.messageId }),

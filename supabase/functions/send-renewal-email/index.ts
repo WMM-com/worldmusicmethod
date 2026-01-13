@@ -278,6 +278,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    { auth: { persistSession: false } }
+  );
+
   try {
     const { email, firstName, productName, amount, currency, nextBillingDate } = await req.json();
     
@@ -296,6 +302,14 @@ Deno.serve(async (req) => {
 
     if (!accessKeyId || !secretAccessKey) {
       logStep("ERROR: Missing AWS SES credentials");
+      
+      await supabase.from('email_send_log').insert({
+        email,
+        subject: 'Your Subscription Has Been Renewed - World Music Method',
+        status: 'failed',
+        error_message: 'AWS SES credentials not configured',
+      });
+      
       return new Response(
         JSON.stringify({ error: 'Email service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -314,8 +328,18 @@ Deno.serve(async (req) => {
       region
     );
 
+    const logSubject = 'Your Subscription Has Been Renewed - World Music Method';
+    
     if (!result.success) {
       logStep("ERROR: Failed to send email", { error: result.error });
+      
+      await supabase.from('email_send_log').insert({
+        email,
+        subject: logSubject,
+        status: 'failed',
+        error_message: result.error || 'Unknown error',
+      });
+      
       return new Response(
         JSON.stringify({ error: result.error }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -323,6 +347,12 @@ Deno.serve(async (req) => {
     }
 
     logStep("Renewal email sent", { messageId: result.messageId });
+    
+    await supabase.from('email_send_log').insert({
+      email,
+      subject: logSubject,
+      status: 'sent',
+    });
 
     return new Response(
       JSON.stringify({ success: true }),
