@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Music, Podcast, Heart, ListMusic, Search, ChevronDown, ChevronUp } from 'lucide-react';
-import { useTracks, usePodcasts, useUserPlaylists, useLikedTracks, MediaPodcast } from '@/hooks/useMedia';
+import { useTracks, usePodcasts, useUserPlaylists, useLikedTracks, useAdminPlaylists, MediaPodcast, usePlaylist } from '@/hooks/useMedia';
 import { TrackList } from '@/components/media/TrackList';
 import { MediaSearch } from '@/components/media/MediaSearch';
 import { CreatePlaylistDialog } from '@/components/media/CreatePlaylistDialog';
+import { PlaylistCoverGrid } from '@/components/media/PlaylistCoverGrid';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -24,14 +25,20 @@ export default function Media() {
   const { data: podcastFeeds } = usePodcasts();
   const { data: playlists, isLoading: playlistsLoading } = useUserPlaylists();
   const { data: likedTracks, isLoading: likedLoading } = useLikedTracks();
+  const { data: adminPlaylists, isLoading: adminPlaylistsLoading } = useAdminPlaylists();
 
   useEffect(() => {
-    document.title = 'Media Library | World Music Method';
+    document.title = 'Music | World Music Method';
   }, []);
 
   // Get episodes for a specific podcast
   const getEpisodesForPodcast = (podcastId: string) => {
     return podcasts?.filter(ep => ep.podcast_id === podcastId) || [];
+  };
+
+  // Get cover URLs for a playlist
+  const getPlaylistCoverUrls = (playlistId: string, tracks: any[] | undefined) => {
+    return tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
   };
 
   return (
@@ -40,7 +47,7 @@ export default function Media() {
       <div className="container py-8 pb-28 space-y-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Media Library</h1>
+            <h1 className="text-3xl font-bold">Music</h1>
             <p className="text-muted-foreground">Stream music and podcasts</p>
           </div>
           {user && <CreatePlaylistDialog />}
@@ -226,6 +233,18 @@ export default function Media() {
           </TabsContent>
 
           <TabsContent value="playlists" className="space-y-6">
+            {/* Admin Playlists */}
+            {(adminPlaylists && adminPlaylists.length > 0) && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-semibold">Featured Playlists</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {adminPlaylists.map(playlist => (
+                    <AdminPlaylistCard key={playlist.id} playlist={playlist} />
+                  ))}
+                </div>
+              </section>
+            )}
+
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Your Playlists</h2>
               {user && <CreatePlaylistDialog />}
@@ -251,7 +270,7 @@ export default function Media() {
                   <Card 
                     key={playlist.id} 
                     className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => navigate(`/media/playlist/${playlist.id}`)}
+                    onClick={() => navigate(`/music/playlist/${playlist.id}`)}
                   >
                     <CardContent className="p-4">
                       {playlist.cover_image_url ? (
@@ -317,5 +336,32 @@ export default function Media() {
         </Tabs>
       </div>
     </>
+  );
+}
+
+// Component for admin playlist cards with auto-generated cover
+function AdminPlaylistCard({ playlist }: { playlist: any }) {
+  const navigate = useNavigate();
+  const { data: fullPlaylist } = usePlaylist(playlist.id);
+  
+  const coverUrls = fullPlaylist?.tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
+  
+  return (
+    <Card 
+      className="cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={() => navigate(`/music/playlist/${playlist.id}`)}
+    >
+      <CardContent className="p-4">
+        <PlaylistCoverGrid 
+          coverUrls={coverUrls} 
+          size="lg" 
+          className="w-full aspect-square mb-3" 
+        />
+        <h3 className="font-semibold truncate">{playlist.name}</h3>
+        {playlist.description && (
+          <p className="text-sm text-muted-foreground truncate">{playlist.description}</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

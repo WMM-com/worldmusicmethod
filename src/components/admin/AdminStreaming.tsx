@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X } from 'lucide-react';
+import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X, ListMusic, RefreshCw } from 'lucide-react';
 import { useR2Upload } from '@/hooks/useR2Upload';
 
 type Artist = {
@@ -39,6 +39,17 @@ type Track = {
   album_name: string | null;
   genre: string | null;
   release_date: string | null;
+  country: string | null;
+};
+
+type Playlist = {
+  id: string;
+  name: string;
+  description: string | null;
+  cover_image_url: string | null;
+  is_public: boolean;
+  is_admin_playlist: boolean;
+  show_in_community_feed: boolean;
 };
 
 type PodcastType = {
@@ -61,6 +72,8 @@ export function AdminStreaming() {
   const [podcastDialogOpen, setPodcastDialogOpen] = useState(false);
   const [editingArtist, setEditingArtist] = useState<Artist | null>(null);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
   const [uploadingField, setUploadingField] = useState<'audio' | 'cover' | null>(null);
 
   // Form states
@@ -75,8 +88,16 @@ export function AdminStreaming() {
     artist_id: '',
     album_name: '',
     genre: '',
+    country: '',
     release_year: '',
     is_published: true,
+  });
+  const [adminPlaylistForm, setAdminPlaylistForm] = useState({
+    name: '',
+    description: '',
+    is_public: true,
+    is_admin_playlist: true,
+    show_in_community_feed: false,
   });
   const [podcastForm, setPodcastForm] = useState({
     title: '',
@@ -114,6 +135,19 @@ export function AdminStreaming() {
       const { data, error } = await supabase.from('media_podcasts').select('*').order('title');
       if (error) throw error;
       return data as PodcastType[];
+    },
+  });
+
+  const { data: adminPlaylists = [] } = useQuery({
+    queryKey: ['admin-playlists'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('media_playlists')
+        .select('*')
+        .eq('is_admin_playlist', true)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Playlist[];
     },
   });
 
@@ -210,6 +244,7 @@ export function AdminStreaming() {
         artist_id: data.artist_id || null,
         album_name: data.album_name || null,
         genre: data.genre || null,
+        country: data.country || null,
         release_date: data.release_year ? `${data.release_year}-01-01` : null,
         is_published: data.is_published,
       });
@@ -229,6 +264,7 @@ export function AdminStreaming() {
         artist_id: '',
         album_name: '',
         genre: '',
+        country: '',
         release_year: '',
         is_published: true,
       });
@@ -249,6 +285,7 @@ export function AdminStreaming() {
         artist_id: data.artist_id || null,
         album_name: data.album_name || null,
         genre: data.genre || null,
+        country: data.country || null,
         release_date: data.release_year ? `${data.release_year}-01-01` : null,
         is_published: data.is_published,
       }).eq('id', id);
@@ -316,6 +353,7 @@ export function AdminStreaming() {
       artist_id: track.artist_id || '',
       album_name: track.album_name || '',
       genre: track.genre || '',
+      country: track.country || '',
       release_year: releaseYear,
       is_published: track.is_published ?? true,
     });
@@ -375,6 +413,7 @@ export function AdminStreaming() {
                     artist_id: '',
                     album_name: '',
                     genre: '',
+                    country: '',
                     release_year: '',
                     is_published: true,
                   });
@@ -576,7 +615,7 @@ export function AdminStreaming() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Album</Label>
                         <Input
@@ -589,6 +628,14 @@ export function AdminStreaming() {
                         <Input
                           value={trackForm.genre}
                           onChange={(e) => setTrackForm(p => ({ ...p, genre: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Input
+                          value={trackForm.country}
+                          onChange={(e) => setTrackForm(p => ({ ...p, country: e.target.value }))}
+                          placeholder="e.g. Brazil"
                         />
                       </div>
                       <div className="space-y-2">

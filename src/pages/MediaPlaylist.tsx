@@ -35,7 +35,7 @@ export default function MediaPlaylist() {
 
   useEffect(() => {
     if (playlist?.name) {
-      document.title = `${playlist.name} | Media Library`;
+      document.title = `${playlist.name} | Music`;
     }
   }, [playlist?.name]);
 
@@ -58,7 +58,7 @@ export default function MediaPlaylist() {
     deletePlaylist.mutate(playlistId, {
       onSuccess: () => {
         toast.success('Playlist deleted');
-        navigate('/media');
+        navigate('/music');
       },
       onError: () => {
         toast.error('Failed to delete playlist');
@@ -95,8 +95,8 @@ export default function MediaPlaylist() {
         <SiteHeader />
         <div className="container py-8 text-center">
           <p className="text-muted-foreground">Playlist not found</p>
-          <Button variant="link" onClick={() => navigate('/media')}>
-            Back to Media
+          <Button variant="link" onClick={() => navigate('/music')}>
+            Back to Music
           </Button>
         </div>
       </>
@@ -107,9 +107,9 @@ export default function MediaPlaylist() {
     <>
       <SiteHeader />
       <div className="container py-8 pb-28 space-y-8">
-        <Button variant="ghost" onClick={() => navigate('/media')} className="gap-2">
+        <Button variant="ghost" onClick={() => navigate('/music')} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Back to Media
+          Back to Music
         </Button>
 
         {/* Playlist header */}
