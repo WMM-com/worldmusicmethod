@@ -247,6 +247,12 @@ export function useDeletePost() {
             } else {
               console.log('R2 media deleted:', objectKey);
             }
+            
+            // Also delete from media_library to clean up orphaned records
+            await supabase
+              .from('media_library')
+              .delete()
+              .eq('file_url', post.image_url);
           }
         } catch (err) {
           console.error('Error parsing media URL for R2 deletion:', err);
@@ -433,6 +439,12 @@ export function useDeleteComment() {
             } else {
               console.log('R2 comment media deleted:', objectKey);
             }
+            
+            // Also delete from media_library to clean up orphaned records
+            await supabase
+              .from('media_library')
+              .delete()
+              .eq('file_url', comment.media_url);
           }
         } catch (err) {
           console.error('Error parsing comment media URL for R2 deletion:', err);

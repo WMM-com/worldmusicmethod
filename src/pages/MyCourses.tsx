@@ -35,6 +35,8 @@ export default function MyCourses() {
     queryFn: async () => {
       if (!user) return [];
 
+      // Fetch enrollments - include ALL courses (published or not)
+      // since the user has explicit access via enrollment
       const { data, error } = await supabase
         .from('course_enrollments')
         .select(`
@@ -45,19 +47,23 @@ export default function MyCourses() {
             title,
             description,
             country,
-            cover_image_url
+            cover_image_url,
+            is_published
           )
         `)
         .eq('user_id', user.id)
         .eq('is_active', true);
 
       if (error) throw error;
+      
+      // Filter out null courses but keep unpublished ones - user has enrollment access
+      const validEnrollments = (data || []).filter((e: any) => e.courses?.id);
 
-      const courseIds = (data || [])
+      const courseIds = validEnrollments
         .map((row: any) => row.courses?.id)
         .filter(Boolean);
 
-      if (!courseIds.length) return data || [];
+      if (!courseIds.length) return validEnrollments;
 
       // "Course Image" lives in the landing page builder
       const { data: landingPages, error: lpError } = await supabase
@@ -67,7 +73,7 @@ export default function MyCourses() {
 
       if (lpError) throw lpError;
 
-      return (data || []).map((enrollment: any) => {
+      return validEnrollments.map((enrollment: any) => {
         const course = enrollment.courses;
         const landingPage = landingPages?.find(lp => lp.course_id === course?.id);
 
