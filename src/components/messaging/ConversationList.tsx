@@ -1,4 +1,5 @@
 import { useConversations, useCreateConversation, useDeleteConversation, Conversation } from '@/hooks/useMessaging';
+import { useAuth } from '@/contexts/AuthContext';
 import { useFriendships } from '@/hooks/useSocial';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -34,6 +35,7 @@ interface ConversationListProps {
 }
 
 export function ConversationList({ onSelectConversation, selectedId }: ConversationListProps) {
+  const { user } = useAuth();
   const { data: conversations, isLoading } = useConversations();
   const { data: friendships } = useFriendships();
   const createConversation = useCreateConversation();
@@ -72,8 +74,9 @@ export function ConversationList({ onSelectConversation, selectedId }: Conversat
         </CardTitle>
         <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="outline" size="sm" className="gap-2">
               <Plus className="h-4 w-4" />
+              Create
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -88,7 +91,8 @@ export function ConversationList({ onSelectConversation, selectedId }: Conversat
                   </p>
                 ) : (
                   friendships?.friends.map((friend) => {
-                    const friendUserId = friend.friend_id;
+                    // Use other_user_id if available, otherwise compute it
+                    const friendUserId = friend.other_user_id || (friend.user_id === user?.id ? friend.friend_id : friend.user_id);
                     return (
                       <button
                         key={friend.id}

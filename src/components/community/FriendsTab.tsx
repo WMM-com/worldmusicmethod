@@ -67,6 +67,11 @@ export function FriendsTab() {
            friendships?.requests.some(f => f.user_id === userId);
   };
 
+  // Helper to get the other user's ID from a friendship
+  const getOtherUserId = (friendship: any) => {
+    return friendship.other_user_id || (friendship.user_id === user?.id ? friendship.friend_id : friendship.user_id);
+  };
+
   if (!user) {
     return (
       <Card>
@@ -106,26 +111,26 @@ export function FriendsTab() {
           {/* Search Results */}
           {searchQuery.length >= 2 && searchResults && searchResults.length > 0 && (
             <div className="mt-4 space-y-2">
-              {searchResults.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                  <Link to={`/profile/${user.id}`} className="flex items-center gap-3 flex-1">
+              {searchResults.map((searchUser) => (
+                <div key={searchUser.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                  <Link to={`/profile/${searchUser.id}`} className="flex items-center gap-3 flex-1">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={user.avatar_url || undefined} />
-                      <AvatarFallback>{getInitials(user.full_name)}</AvatarFallback>
+                      <AvatarImage src={searchUser.avatar_url || undefined} />
+                      <AvatarFallback>{getInitials(searchUser.full_name)}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{user.full_name || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                      <p className="font-medium">{searchUser.full_name || 'Unknown'}</p>
+                      <p className="text-sm text-muted-foreground">{searchUser.email}</p>
                     </div>
                   </Link>
-                  {isAlreadyFriend(user.id) ? (
+                  {isAlreadyFriend(searchUser.id) ? (
                     <Badge variant="secondary">Friends</Badge>
-                  ) : hasPendingRequest(user.id) ? (
+                  ) : hasPendingRequest(searchUser.id) ? (
                     <Badge variant="outline">Pending</Badge>
                   ) : (
                     <Button
                       size="sm"
-                      onClick={() => sendRequestMutation.mutate(user.id)}
+                      onClick={() => sendRequestMutation.mutate(searchUser.id)}
                       disabled={sendRequestMutation.isPending}
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
@@ -184,29 +189,32 @@ export function FriendsTab() {
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {friendships?.friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center justify-between p-4 rounded-lg border">
-                      <Link to={`/profile/${friend.friend_id}`} className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={friend.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{friend.profiles?.full_name || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground">{friend.profiles?.email}</p>
-                        </div>
-                      </Link>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeMutation.mutate(friend.id)}
-                        disabled={removeMutation.isPending}
-                      >
-                        <UserMinus className="h-4 w-4 mr-2" />
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
+                  {friendships?.friends.map((friend) => {
+                    const otherUserId = getOtherUserId(friend);
+                    return (
+                      <div key={friend.id} className="flex items-center justify-between p-4 rounded-lg border">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={friend.profiles?.avatar_url || undefined} />
+                            <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{friend.profiles?.full_name || 'Unknown'}</p>
+                            <p className="text-sm text-muted-foreground">{friend.profiles?.email}</p>
+                          </div>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeMutation.mutate(friend.id)}
+                          disabled={removeMutation.isPending}
+                        >
+                          <UserMinus className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -226,37 +234,40 @@ export function FriendsTab() {
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {friendships?.requests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-4 rounded-lg border">
-                      <Link to={`/profile/${request.user_id}`} className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={request.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>{getInitials(request.profiles?.full_name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{request.profiles?.full_name || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground">wants to be friends</p>
+                  {friendships?.requests.map((request) => {
+                    const otherUserId = getOtherUserId(request);
+                    return (
+                      <div key={request.id} className="flex items-center justify-between p-4 rounded-lg border">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={request.profiles?.avatar_url || undefined} />
+                            <AvatarFallback>{getInitials(request.profiles?.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{request.profiles?.full_name || 'Unknown'}</p>
+                            <p className="text-sm text-muted-foreground">wants to be friends</p>
+                          </div>
+                        </Link>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => respondMutation.mutate({ friendshipId: request.id, accept: true })}
+                            disabled={respondMutation.isPending}
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Accept
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => respondMutation.mutate({ friendshipId: request.id, accept: false })}
+                            disabled={respondMutation.isPending}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Decline
+                          </Button>
                         </div>
-                      </Link>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => respondMutation.mutate({ friendshipId: request.id, accept: true })}
-                          disabled={respondMutation.isPending}
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Accept
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => respondMutation.mutate({ friendshipId: request.id, accept: false })}
-                          disabled={respondMutation.isPending}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Decline
-                        </Button>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -276,21 +287,24 @@ export function FriendsTab() {
                 </div>
               ) : (
                 <div className="grid gap-3">
-                  {friendships?.pending.map((pending) => (
-                    <div key={pending.id} className="flex items-center justify-between p-4 rounded-lg border">
-                      <Link to={`/profile/${pending.friend_id}`} className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={pending.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>{getInitials(pending.profiles?.full_name)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{pending.profiles?.full_name || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground">Request pending</p>
-                        </div>
-                      </Link>
-                      <Badge variant="outline">Awaiting response</Badge>
-                    </div>
-                  ))}
+                  {friendships?.pending.map((pending) => {
+                    const otherUserId = getOtherUserId(pending);
+                    return (
+                      <div key={pending.id} className="flex items-center justify-between p-4 rounded-lg border">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={pending.profiles?.avatar_url || undefined} />
+                            <AvatarFallback>{getInitials(pending.profiles?.full_name)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{pending.profiles?.full_name || 'Unknown'}</p>
+                            <p className="text-sm text-muted-foreground">Request pending</p>
+                          </div>
+                        </Link>
+                        <Badge variant="outline">Awaiting response</Badge>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
