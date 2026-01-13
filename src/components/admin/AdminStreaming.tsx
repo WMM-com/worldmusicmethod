@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3 } from 'lucide-react';
+import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X } from 'lucide-react';
+import { useR2Upload } from '@/hooks/useR2Upload';
 
 type Artist = {
   id: string;
@@ -52,11 +53,15 @@ type PodcastType = {
 
 export function AdminStreaming() {
   const queryClient = useQueryClient();
+  const { uploadFile, isUploading, progress } = useR2Upload();
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [artistDialogOpen, setArtistDialogOpen] = useState(false);
   const [trackDialogOpen, setTrackDialogOpen] = useState(false);
   const [podcastDialogOpen, setPodcastDialogOpen] = useState(false);
   const [editingArtist, setEditingArtist] = useState<Artist | null>(null);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [uploadingField, setUploadingField] = useState<'audio' | 'cover' | null>(null);
 
   // Form states
   const [artistForm, setArtistForm] = useState({ name: '', bio: '', image_url: '' });
@@ -413,21 +418,121 @@ export function AdminStreaming() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Audio URL *</Label>
-                      <Input
-                        value={trackForm.audio_url}
-                        onChange={(e) => setTrackForm(p => ({ ...p, audio_url: e.target.value }))}
-                        placeholder="https://..."
-                        required
-                      />
+                      <Label>Audio File / URL *</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={trackForm.audio_url}
+                          onChange={(e) => setTrackForm(p => ({ ...p, audio_url: e.target.value }))}
+                          placeholder="https://... or upload file"
+                          required
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => audioInputRef.current?.click()}
+                          disabled={isUploading && uploadingField === 'audio'}
+                        >
+                          {isUploading && uploadingField === 'audio' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <input
+                          ref={audioInputRef}
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingField('audio');
+                            const result = await uploadFile(file, {
+                              bucket: 'admin',
+                              folder: 'streaming/audio',
+                              trackInDatabase: true,
+                            });
+                            if (result) {
+                              setTrackForm(p => ({ ...p, audio_url: result.url }));
+                              toast.success('Audio file uploaded');
+                            }
+                            setUploadingField(null);
+                            if (audioInputRef.current) audioInputRef.current.value = '';
+                          }}
+                        />
+                      </div>
+                      {isUploading && uploadingField === 'audio' && (
+                        <div className="text-xs text-muted-foreground">Uploading: {progress}%</div>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label>Cover Image URL</Label>
-                      <Input
-                        value={trackForm.cover_image_url}
-                        onChange={(e) => setTrackForm(p => ({ ...p, cover_image_url: e.target.value }))}
-                        placeholder="https://..."
-                      />
+                      <Label>Cover Image</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={trackForm.cover_image_url}
+                          onChange={(e) => setTrackForm(p => ({ ...p, cover_image_url: e.target.value }))}
+                          placeholder="https://... or upload file"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => coverInputRef.current?.click()}
+                          disabled={isUploading && uploadingField === 'cover'}
+                        >
+                          {isUploading && uploadingField === 'cover' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                        {trackForm.cover_image_url && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setTrackForm(p => ({ ...p, cover_image_url: '' }))}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <input
+                          ref={coverInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingField('cover');
+                            const result = await uploadFile(file, {
+                              bucket: 'admin',
+                              folder: 'streaming/covers',
+                              imageOptimization: 'media',
+                              trackInDatabase: true,
+                            });
+                            if (result) {
+                              setTrackForm(p => ({ ...p, cover_image_url: result.url }));
+                              toast.success('Cover image uploaded');
+                            }
+                            setUploadingField(null);
+                            if (coverInputRef.current) coverInputRef.current.value = '';
+                          }}
+                        />
+                      </div>
+                      {trackForm.cover_image_url && (
+                        <img 
+                          src={trackForm.cover_image_url} 
+                          alt="Cover preview" 
+                          className="w-20 h-20 object-cover rounded border"
+                        />
+                      )}
+                      {isUploading && uploadingField === 'cover' && (
+                        <div className="text-xs text-muted-foreground">Uploading: {progress}%</div>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
