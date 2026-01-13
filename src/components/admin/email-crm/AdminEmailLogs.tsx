@@ -29,9 +29,10 @@ export function AdminEmailLogs() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['admin-email-logs', page, search, statusFilter],
+    queryKey: ['admin-email-logs', page, search, statusFilter, typeFilter],
     queryFn: async () => {
       // Query email_send_log which has the most comprehensive data
       let query = supabase
@@ -45,6 +46,35 @@ export function AdminEmailLogs() {
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
+      }
+
+      // Filter by email type based on subject patterns
+      if (typeFilter !== 'all') {
+        switch (typeFilter) {
+          case 'password_reset':
+            query = query.ilike('subject', '%password%');
+            break;
+          case 'verification':
+            query = query.ilike('subject', '%verify%');
+            break;
+          case 'order':
+            query = query.ilike('subject', '%order%');
+            break;
+          case 'invoice':
+            query = query.ilike('subject', '%invoice%');
+            break;
+          case 'renewal':
+            query = query.ilike('subject', '%renew%');
+            break;
+          case 'campaign':
+            // Campaign emails don't match the transactional patterns
+            query = query.not('subject', 'ilike', '%password%')
+              .not('subject', 'ilike', '%verify%')
+              .not('subject', 'ilike', '%order%')
+              .not('subject', 'ilike', '%invoice%')
+              .not('subject', 'ilike', '%renew%');
+            break;
+        }
       }
 
       const from = (page - 1) * PAGE_SIZE;
@@ -61,6 +91,26 @@ export function AdminEmailLogs() {
       };
     },
   });
+
+  const getEmailType = (subject: string): { label: string; color: string } => {
+    const subjectLower = subject.toLowerCase();
+    if (subjectLower.includes('password') || subjectLower.includes('reset')) {
+      return { label: 'Password Reset', color: 'bg-orange-100 text-orange-800 border-orange-200' };
+    }
+    if (subjectLower.includes('verify') || subjectLower.includes('verification')) {
+      return { label: 'Verification', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+    }
+    if (subjectLower.includes('order') || subjectLower.includes('confirmed')) {
+      return { label: 'Order', color: 'bg-green-100 text-green-800 border-green-200' };
+    }
+    if (subjectLower.includes('invoice')) {
+      return { label: 'Invoice', color: 'bg-purple-100 text-purple-800 border-purple-200' };
+    }
+    if (subjectLower.includes('renew') || subjectLower.includes('subscription')) {
+      return { label: 'Renewal', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' };
+    }
+    return { label: 'Campaign', color: 'bg-gray-100 text-gray-800 border-gray-200' };
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -136,6 +186,20 @@ export function AdminEmailLogs() {
                 <SelectItem value="clicked">Clicked</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="password_reset">Password Reset</SelectItem>
+                <SelectItem value="verification">Verification</SelectItem>
+                <SelectItem value="order">Order Confirmation</SelectItem>
+                <SelectItem value="invoice">Invoice</SelectItem>
+                <SelectItem value="renewal">Renewal</SelectItem>
+                <SelectItem value="campaign">Campaign</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Table */}
@@ -143,11 +207,10 @@ export function AdminEmailLogs() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Subject</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Opened</TableHead>
-                <TableHead>Clicked</TableHead>
                 <TableHead>Error</TableHead>
               </TableRow>
             </TableHeader>
@@ -160,36 +223,38 @@ export function AdminEmailLogs() {
                 </TableRow>
               ) : data?.data?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No email logs found
                   </TableCell>
                 </TableRow>
               ) : (
-                data?.data?.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="text-sm whitespace-nowrap">
-                      {format(new Date(log.sent_at), 'MMM d, yyyy HH:mm')}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm">
-                      {log.email}
-                    </TableCell>
-                    <TableCell className="max-w-[250px] truncate text-sm font-medium">
-                      {log.subject}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusBadge(log.status)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.opened_at ? format(new Date(log.opened_at), 'MMM d HH:mm') : '-'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.clicked_at ? format(new Date(log.clicked_at), 'MMM d HH:mm') : '-'}
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-xs text-destructive">
-                      {log.error_message || '-'}
-                    </TableCell>
-                  </TableRow>
-                ))
+                data?.data?.map((log) => {
+                  const emailType = getEmailType(log.subject);
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {format(new Date(log.sent_at), 'MMM d, yyyy HH:mm')}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={emailType.color}>
+                          {emailType.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-sm">
+                        {log.email}
+                      </TableCell>
+                      <TableCell className="max-w-[250px] truncate text-sm font-medium">
+                        {log.subject}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(log.status)}
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-xs text-destructive">
+                        {log.error_message || '-'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
