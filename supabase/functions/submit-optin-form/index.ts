@@ -11,6 +11,11 @@ const logStep = (step: string, details?: any) => {
   console.log(`[SUBMIT-OPTIN-FORM] ${step}${detailsStr}`);
 };
 
+// Rate limit configuration
+const RATE_LIMIT_WINDOW_HOURS = 1;
+const MAX_SUBMISSIONS_PER_IP = 5;
+const MAX_SUBMISSIONS_PER_EMAIL = 3;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -24,8 +29,14 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { formId, email, firstName } = await req.json();
-    logStep("Request body", { formId, email, firstName });
+    // Get client IP for rate limiting
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                     req.headers.get('cf-connecting-ip') || 
+                     req.headers.get('x-real-ip') ||
+                     'unknown';
+
+    const { formId, email, firstName, turnstileToken } = await req.json();
+    logStep("Request body", { formId, email: email ? `${email.substring(0, 3)}...` : null, hasToken: !!turnstileToken });
 
     if (!formId || !email) {
       throw new Error("formId and email are required");
@@ -35,6 +46,74 @@ serve(async (req) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw new Error("Invalid email format");
+    }
+
+    // Validate email length
+    if (email.length > 255) {
+      throw new Error("Email address is too long");
+    }
+
+    // Validate firstName length if provided
+    if (firstName && firstName.length > 100) {
+      throw new Error("First name is too long");
+    }
+
+    // IP-based rate limiting (if IP is available)
+    if (clientIP !== 'unknown') {
+      const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+      
+      const { data: recentIPSubmissions, error: ipCheckError } = await supabase
+        .from('optin_form_submissions')
+        .select('id')
+        .eq('ip_address', clientIP)
+        .gte('submitted_at', windowStart);
+
+      if (!ipCheckError && recentIPSubmissions && recentIPSubmissions.length >= MAX_SUBMISSIONS_PER_IP) {
+        logStep("Rate limit exceeded - IP", { ip: clientIP, count: recentIPSubmissions.length });
+        throw new Error('Too many submissions. Please try again later.');
+      }
+    }
+
+    // Email-based rate limiting
+    const emailWindowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+    
+    const { data: recentEmailSubmissions, error: emailCheckError } = await supabase
+      .from('optin_form_submissions')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .gte('submitted_at', emailWindowStart);
+
+    if (!emailCheckError && recentEmailSubmissions && recentEmailSubmissions.length >= MAX_SUBMISSIONS_PER_EMAIL) {
+      logStep("Rate limit exceeded - Email", { email: email.substring(0, 5), count: recentEmailSubmissions.length });
+      throw new Error('This email has been submitted recently. Please try again later.');
+    }
+
+    // Optional Turnstile verification (if token provided)
+    if (turnstileToken) {
+      const secretKey = Deno.env.get('TURNSTILE_SECRET_KEY');
+      if (secretKey) {
+        const verifyResponse = await fetch(
+          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+              secret: secretKey,
+              response: turnstileToken,
+              remoteip: clientIP !== 'unknown' ? clientIP : '',
+            }),
+          }
+        );
+
+        const verifyResult = await verifyResponse.json();
+        if (!verifyResult.success) {
+          logStep("Turnstile verification failed", { codes: verifyResult['error-codes'] });
+          throw new Error("CAPTCHA verification failed. Please try again.");
+        }
+        logStep("Turnstile verified successfully");
+      }
     }
 
     // Fetch form configuration
@@ -94,7 +173,7 @@ serve(async (req) => {
       logStep("New contact created", { contactId });
     }
 
-    // Log form submission
+    // Log form submission with IP address and user agent for rate limiting
     const { error: submissionError } = await supabase
       .from("optin_form_submissions")
       .insert({
@@ -102,6 +181,8 @@ serve(async (req) => {
         contact_id: contactId,
         email: email.toLowerCase(),
         form_data: { firstName },
+        ip_address: clientIP !== 'unknown' ? clientIP : null,
+        user_agent: req.headers.get('user-agent')?.substring(0, 500) || null,
       });
 
     if (submissionError) {
