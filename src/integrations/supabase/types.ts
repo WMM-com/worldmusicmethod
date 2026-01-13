@@ -2295,8 +2295,10 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_admin_playlist: boolean | null
           is_public: boolean | null
           name: string
+          show_in_community_feed: boolean | null
           updated_at: string
           user_id: string | null
         }
@@ -2305,8 +2307,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_admin_playlist?: boolean | null
           is_public?: boolean | null
           name: string
+          show_in_community_feed?: boolean | null
           updated_at?: string
           user_id?: string | null
         }
@@ -2315,8 +2319,10 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_admin_playlist?: boolean | null
           is_public?: boolean | null
           name?: string
+          show_in_community_feed?: boolean | null
           updated_at?: string
           user_id?: string | null
         }
@@ -2414,6 +2420,7 @@ export type Database = {
           artist_id: string | null
           audio_url: string
           content_type: string
+          country: string | null
           cover_image_url: string | null
           created_at: string
           description: string | null
@@ -2434,6 +2441,7 @@ export type Database = {
           artist_id?: string | null
           audio_url: string
           content_type?: string
+          country?: string | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -2454,6 +2462,7 @@ export type Database = {
           artist_id?: string | null
           audio_url?: string
           content_type?: string
+          country?: string | null
           cover_image_url?: string | null
           created_at?: string
           description?: string | null

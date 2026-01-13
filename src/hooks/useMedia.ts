@@ -471,3 +471,58 @@ export function usePublicPlaylists() {
     },
   });
 }
+
+// Fetch admin playlists (site-wide playlists created in admin)
+export function useAdminPlaylists() {
+  return useQuery({
+    queryKey: ['media-admin-playlists'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('media_playlists')
+        .select('*')
+        .eq('is_admin_playlist', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as MediaPlaylist[];
+    },
+  });
+}
+
+// Fetch community feed playlist (first playlist marked for community feed)
+export function useCommunityFeedPlaylist() {
+  return useQuery({
+    queryKey: ['media-community-feed-playlist'],
+    queryFn: async () => {
+      const { data: playlist, error: playlistError } = await supabase
+        .from('media_playlists')
+        .select('*')
+        .eq('show_in_community_feed', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (playlistError) throw playlistError;
+      if (!playlist) return null;
+
+      const { data: playlistTracks, error: tracksError } = await supabase
+        .from('media_playlist_tracks')
+        .select(`
+          position,
+          track:media_tracks(
+            *,
+            artist:media_artists(*),
+            podcast:media_podcasts(*)
+          )
+        `)
+        .eq('playlist_id', playlist.id)
+        .order('position');
+
+      if (tracksError) throw tracksError;
+
+      return {
+        ...playlist,
+        tracks: playlistTracks.map(pt => pt.track),
+      } as MediaPlaylist;
+    },
+  });
+}

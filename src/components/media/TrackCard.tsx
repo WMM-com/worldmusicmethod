@@ -164,32 +164,44 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
 
       {/* Track info */}
       <div className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className={cn("font-medium truncate", isCurrentTrack && "text-primary")}>
+        <div className="flex items-start justify-between gap-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <p 
+              className={cn(
+                "font-medium text-sm leading-tight",
+                isCurrentTrack && "text-primary"
+              )}
+              title={track.title}
+              style={{
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
               {track.title}
             </p>
             {showArtist && (
-              <p className="text-sm text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {track.artist?.name || 'Unknown Artist'}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8"
+              className="h-7 w-7"
               onClick={handleLike}
             >
-              <Heart className={cn("h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
+              <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-red-500 text-red-500")} />
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -221,7 +233,7 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
           <span>{formatDuration(track.duration_seconds)}</span>
           {track.play_count > 0 && (
             <>
