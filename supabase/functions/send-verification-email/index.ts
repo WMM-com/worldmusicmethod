@@ -265,8 +265,8 @@ Deno.serve(async (req) => {
 
     const firstName = profileData?.first_name || '';
 
-    // Build the verification link
-    const siteUrl = 'https://worldmusicmethod.lovable.app';
+    // Build the verification link - use production domain
+    const siteUrl = 'https://worldmusicmethod.com';
     const verifyLink = `${siteUrl}/verify-email?token=${tokenData.token}`;
 
     console.log(`Sending verification email to ${tokenData.email}`);
