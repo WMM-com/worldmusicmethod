@@ -267,29 +267,7 @@ export default function Media() {
             ) : playlists && playlists.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {playlists.map(playlist => (
-                  <Card 
-                    key={playlist.id} 
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => navigate(`/music/playlist/${playlist.id}`)}
-                  >
-                    <CardContent className="p-4">
-                      {playlist.cover_image_url ? (
-                        <img 
-                          src={playlist.cover_image_url} 
-                          alt={playlist.name}
-                          className="aspect-square rounded-lg object-cover mb-3"
-                        />
-                      ) : (
-                        <div className="aspect-square rounded-lg bg-muted flex items-center justify-center mb-3">
-                          <ListMusic className="h-12 w-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      <h3 className="font-semibold truncate">{playlist.name}</h3>
-                      {playlist.description && (
-                        <p className="text-sm text-muted-foreground truncate">{playlist.description}</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                  <UserPlaylistCard key={playlist.id} playlist={playlist} />
                 ))}
               </div>
             ) : (
@@ -355,7 +333,34 @@ function AdminPlaylistCard({ playlist }: { playlist: any }) {
         <PlaylistCoverGrid 
           coverUrls={coverUrls} 
           size="lg" 
-          className="w-full aspect-square mb-3" 
+          className="w-full mb-3" 
+        />
+        <h3 className="font-semibold truncate">{playlist.name}</h3>
+        {playlist.description && (
+          <p className="text-sm text-muted-foreground truncate">{playlist.description}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Component for user playlist cards with auto-generated cover
+function UserPlaylistCard({ playlist }: { playlist: any }) {
+  const navigate = useNavigate();
+  const { data: fullPlaylist } = usePlaylist(playlist.id);
+  
+  const coverUrls = fullPlaylist?.tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
+  
+  return (
+    <Card 
+      className="cursor-pointer hover:bg-muted/50 transition-colors"
+      onClick={() => navigate(`/music/playlist/${playlist.id}`)}
+    >
+      <CardContent className="p-4">
+        <PlaylistCoverGrid 
+          coverUrls={coverUrls} 
+          size="lg" 
+          className="w-full mb-3" 
         />
         <h3 className="font-semibold truncate">{playlist.name}</h3>
         {playlist.description && (

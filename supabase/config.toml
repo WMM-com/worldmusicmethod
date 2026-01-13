@@ -137,3 +137,6 @@ verify_jwt = true
 
 [functions.import-student-contacts]
 verify_jwt = true
+
+[functions.fetch-podcast-rss]
+verify_jwt = true
