@@ -44,6 +44,7 @@ export interface Friendship {
   friend_id: string;
   status: string;
   created_at: string;
+  other_user_id?: string; // Computed field for convenience
   profiles?: {
     full_name: string | null;
     avatar_url: string | null;
@@ -579,6 +580,7 @@ export function useFriendships() {
         const otherUserId = f.user_id === user.id ? f.friend_id : f.user_id;
         const friendship = {
           ...f,
+          other_user_id: otherUserId, // Add computed other user ID for easy access
           profiles: profilesMap.get(otherUserId),
         };
 

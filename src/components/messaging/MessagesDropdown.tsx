@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, User, Send } from 'lucide-react';
+import { MessageSquare, User, Send, PenLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,7 +9,15 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useConversations, useUnreadMessageCount } from '@/hooks/useMessaging';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { useConversations, useUnreadMessageCount, useCreateConversation } from '@/hooks/useMessaging';
+import { useFriendships } from '@/hooks/useSocial';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -17,8 +25,11 @@ import { useNavigate } from 'react-router-dom';
 
 export function MessagesDropdown() {
   const [open, setOpen] = useState(false);
+  const [newChatOpen, setNewChatOpen] = useState(false);
   const { data: conversations, isLoading } = useConversations();
   const { data: unreadCount } = useUnreadMessageCount();
+  const { data: friendships } = useFriendships();
+  const createConversation = useCreateConversation();
   const { openPopupChat } = useMessagingPopup();
   const navigate = useNavigate();
 
@@ -29,6 +40,17 @@ export function MessagesDropdown() {
       participantName: participant?.full_name || 'Unknown',
       participantAvatar: participant?.avatar_url,
     });
+    setOpen(false);
+  };
+
+  const handleStartConversation = async (friendId: string, friendName: string, friendAvatar: string | null) => {
+    const conversationId = await createConversation.mutateAsync(friendId);
+    openPopupChat({
+      id: conversationId,
+      participantName: friendName,
+      participantAvatar: friendAvatar || undefined,
+    });
+    setNewChatOpen(false);
     setOpen(false);
   };
 
@@ -66,14 +88,54 @@ export function MessagesDropdown() {
                 Messages
               </h4>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewAll}
-              className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-            >
-              View All
-            </Button>
+            <Dialog open={newChatOpen} onOpenChange={setNewChatOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                >
+                  <PenLine className="h-3 w-3 mr-1" />
+                  Write Message
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>New Conversation</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="max-h-[400px]">
+                  <div className="space-y-2">
+                    {friendships?.friends.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        Add friends to start a conversation
+                      </p>
+                    ) : (
+                      friendships?.friends.map((friend) => {
+                        const friendUserId = friend.other_user_id || friend.friend_id;
+                        const friendName = friend.profiles?.full_name || friend.profiles?.email || 'Unknown';
+                        const friendAvatar = friend.profiles?.avatar_url || null;
+                        return (
+                          <button
+                            key={friend.id}
+                            onClick={() => handleStartConversation(friendUserId, friendName, friendAvatar)}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors text-left"
+                            disabled={createConversation.isPending}
+                          >
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={friendAvatar || undefined} />
+                              <AvatarFallback>
+                                <User className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{friendName}</span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         

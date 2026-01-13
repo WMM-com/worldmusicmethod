@@ -38,7 +38,7 @@ export default function Notifications() {
     if (notification.reference_type === 'post' && notification.reference_id) {
       navigate(`/community?tab=feed&postId=${notification.reference_id}&t=${Date.now()}`);
     } else if (notification.reference_type === 'friendship') {
-      navigate('/community');
+      navigate('/community?tab=friends');
     } else if (notification.reference_type === 'conversation') {
       navigate('/messages', { state: { conversationId: notification.reference_id } });
     }
