@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useConversations, useCreateConversation, useDeleteConversation, Conversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFriendships } from '@/hooks/useSocial';
@@ -7,7 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, Plus, User, Trash2 } from 'lucide-react';
+import { MessageSquare, Plus, User, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -152,11 +159,19 @@ function ConversationItem({
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const navigate = useNavigate();
   const participant = conversation.participants?.[0];
   const deleteConversation = useDeleteConversation();
 
   const handleDelete = () => {
     deleteConversation.mutate(conversation.id);
+  };
+
+  const handleViewProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (participant?.id) {
+      navigate(`/profile/${participant.id}`);
+    }
   };
 
   return (
@@ -196,32 +211,37 @@ function ConversationItem({
         )}
       </div>
       
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 shrink-0 text-neutral-500 hover:text-red-500 hover:bg-neutral-800"
+            className="h-8 w-8 shrink-0 text-neutral-500 hover:text-white hover:bg-neutral-800"
             onClick={(e) => e.stopPropagation()}
           >
-            <Trash2 className="h-4 w-4" />
+            <MoreVertical className="h-4 w-4" />
           </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent className="bg-[#0a0a0a] border-neutral-800">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white">Delete Conversation?</AlertDialogTitle>
-            <AlertDialogDescription className="text-neutral-400">
-              This will delete all messages in this conversation for you. The other participant will still be able to see their copy.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700 hover:text-white">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 text-white hover:bg-red-700">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-neutral-800">
+          <DropdownMenuItem 
+            onClick={handleViewProfile}
+            className="text-white hover:bg-neutral-800 focus:bg-neutral-800 cursor-pointer"
+          >
+            <User className="h-4 w-4 mr-2" />
+            View Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete();
+            }}
+            className="text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 hover:text-red-500 focus:text-red-500 cursor-pointer"
+          >
+            <span className="h-4 w-4 mr-2">🗑️</span>
+            Delete Conversation
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

@@ -125,108 +125,81 @@ export function StickyAudioPlayer() {
         isExpanded ? "h-auto" : "h-20"
       )}
     >
-      {/* Clickable/swipeable progress bar (thin line at top) */}
-      <div 
-        className="absolute top-0 left-0 right-0 h-3 bg-muted cursor-pointer group touch-pan-x"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const clickX = e.clientX - rect.left;
-          const percentage = clickX / rect.width;
-          seek(percentage * duration);
-        }}
-        onTouchMove={(e) => {
-          const touch = e.touches[0];
-          const rect = e.currentTarget.getBoundingClientRect();
-          const touchX = touch.clientX - rect.left;
-          const percentage = Math.max(0, Math.min(1, touchX / rect.width));
-          seek(percentage * duration);
-        }}
-      >
-        <div 
-          className="h-full bg-success transition-all duration-100 group-hover:bg-success/80"
-          style={{ width: `${progress}%` }}
+      {/* Top progress bar with draggable thumb */}
+      <div className="absolute top-0 left-0 right-0 -translate-y-1/2 px-2">
+        <Slider
+          value={[currentTime]}
+          onValueChange={([v]) => seek(v)}
+          max={duration || 100}
+          step={0.1}
+          variant="progress"
+          className="w-full h-3"
         />
-        {/* Touch/hover indicator */}
-        <div className="absolute top-0 left-0 right-0 h-4 -mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       <div className="container mx-auto px-4 h-full">
         {/* Compact view */}
-        <div className="flex items-center gap-4 h-20">
-          {/* Track info */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-4 h-20">
+          {/* Track info - hide cover on mobile compact, show on expanded */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            {/* Cover image - hidden on mobile compact */}
             {currentTrack.cover_image_url ? (
               <img 
                 src={currentTrack.cover_image_url} 
                 alt={currentTrack.title}
-                className="w-12 h-12 rounded object-cover"
+                className="w-12 h-12 rounded object-cover hidden sm:block"
               />
             ) : (
-              <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+              <div className="w-12 h-12 rounded bg-muted items-center justify-center hidden sm:flex">
                 <ListMusic className="h-6 w-6 text-muted-foreground" />
               </div>
             )}
-            <div className="min-w-0">
-              <p className="font-medium truncate">{currentTrack.title}</p>
-              <p className="text-sm text-muted-foreground truncate">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium truncate text-sm sm:text-base">{currentTrack.title}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {currentTrack.artist?.name || 'Unknown Artist'}
               </p>
             </div>
           </div>
 
           {/* Center controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={toggleShuffle}
-              className={cn("hidden sm:flex", isShuffled && "text-primary")}
+              className={cn("hidden sm:flex h-8 w-8", isShuffled && "text-primary")}
             >
               <Shuffle className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={previous}>
-              <SkipBack className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={previous} className="h-8 w-8 sm:h-10 sm:w-10">
+              <SkipBack className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Button 
               variant="default" 
               size="icon" 
               onClick={togglePlay}
-              className="h-10 w-10 rounded-full"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full"
             >
-              {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+              {isPlaying ? <Pause className="h-4 w-4 sm:h-5 sm:w-5" /> : <Play className="h-4 w-4 sm:h-5 sm:w-5 ml-0.5" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={next}>
-              <SkipForward className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={next} className="h-8 w-8 sm:h-10 sm:w-10">
+              <SkipForward className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={cycleRepeat}
-              className={cn("hidden sm:flex", repeatMode !== 'off' && "text-primary")}
+              className={cn("hidden sm:flex h-8 w-8", repeatMode !== 'off' && "text-primary")}
             >
               {repeatMode === 'one' ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
             </Button>
           </div>
 
           {/* Right controls */}
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            {/* Desktop seek bar */}
-            <div className="hidden lg:flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-10 text-right">
-                {formatTime(currentTime)}
-              </span>
-              <Slider
-                value={[currentTime]}
-                onValueChange={([v]) => seek(v)}
-                max={duration || 100}
-                variant="progress"
-                className="w-32"
-              />
-              <span className="text-xs text-muted-foreground w-10">
-                {formatTime(duration)}
-              </span>
-            </div>
-            <span className="text-xs text-muted-foreground hidden md:block lg:hidden">
+          <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-end">
+            {/* Time display - compact on mobile */}
+            <span className="text-xs text-muted-foreground hidden sm:block">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
             
@@ -235,20 +208,21 @@ export function StickyAudioPlayer() {
                 variant="ghost" 
                 size="icon"
                 onClick={handleLike}
-                className={cn(isLiked && "text-red-500")}
+                className={cn("h-8 w-8 hidden sm:flex", isLiked && "text-red-500")}
               >
                 <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
               </Button>
             )}
 
             <div className="hidden md:flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={toggleMute}>
+              <Button variant="ghost" size="icon" onClick={toggleMute} className="h-8 w-8">
                 {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
               <Slider
                 value={[isMuted ? 0 : volume * 100]}
                 onValueChange={([v]) => setVolume(v / 100)}
                 max={100}
+                step={1}
                 variant="volume"
                 className="w-24"
               />
@@ -259,7 +233,7 @@ export function StickyAudioPlayer() {
               variant="ghost" 
               size="icon"
               onClick={() => setIsMinimized(true)}
-              className="hidden sm:flex"
+              className="hidden sm:flex h-8 w-8"
               title="Minimize player"
             >
               <Minimize2 className="h-4 w-4" />
@@ -270,7 +244,7 @@ export function StickyAudioPlayer() {
               variant="ghost" 
               size="icon"
               onClick={closePlayer}
-              className="hidden sm:flex text-muted-foreground hover:text-destructive"
+              className="hidden sm:flex h-8 w-8 text-muted-foreground hover:text-destructive"
               title="Close player"
             >
               <X className="h-4 w-4" />
@@ -280,7 +254,7 @@ export function StickyAudioPlayer() {
               variant="ghost" 
               size="icon"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="md:hidden"
+              className="md:hidden h-8 w-8"
             >
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </Button>
@@ -290,14 +264,46 @@ export function StickyAudioPlayer() {
         {/* Expanded view (mobile) */}
         {isExpanded && (
           <div className="pb-6 pt-2 space-y-4 md:hidden">
-            {/* Seek bar */}
+            {/* Track info with cover image */}
+            <div className="flex items-center gap-3">
+              {currentTrack.cover_image_url ? (
+                <img 
+                  src={currentTrack.cover_image_url} 
+                  alt={currentTrack.title}
+                  className="w-16 h-16 rounded object-cover"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded bg-muted flex items-center justify-center">
+                  <ListMusic className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-lg">{currentTrack.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {currentTrack.artist?.name || 'Unknown Artist'}
+                </p>
+              </div>
+              {user && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleLike}
+                  className={cn(isLiked && "text-red-500")}
+                >
+                  <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
+                </Button>
+              )}
+            </div>
+
+            {/* Seek bar with times */}
             <div className="space-y-2">
               <Slider
                 value={[currentTime]}
                 onValueChange={([v]) => seek(v)}
                 max={duration || 100}
+                step={0.1}
                 variant="progress"
-                className="w-full touch-pan-x"
+                className="w-full"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{formatTime(currentTime)}</span>
@@ -306,7 +312,7 @@ export function StickyAudioPlayer() {
             </div>
 
             {/* Extra controls */}
-            <div className="flex justify-center gap-4">
+            <div className="flex justify-center items-center gap-4">
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -331,6 +337,7 @@ export function StickyAudioPlayer() {
                   value={[isMuted ? 0 : volume * 100]}
                   onValueChange={([v]) => setVolume(v / 100)}
                   max={100}
+                  step={1}
                   variant="volume"
                   className="w-24"
                 />
