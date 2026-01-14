@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Megaphone, RefreshCw, Star, Music2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { CommunityFeedPlaylist } from './CommunityFeedPlaylist';
 
 interface CommunitySidebarProps {
   onPostTypeSelect?: (type: string) => void;
@@ -78,9 +77,7 @@ export function CommunitySidebar({ onPostTypeSelect }: CommunitySidebarProps) {
           })}
         </CardContent>
       </Card>
-
-      {/* Featured Playlist */}
-      <CommunityFeedPlaylist />
     </div>
   );
 }
+
