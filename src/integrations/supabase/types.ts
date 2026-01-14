@@ -4346,7 +4346,7 @@ export type Database = {
       }
       mark_messages_read: {
         Args: { p_conversation_id: string }
-        Returns: undefined
+        Returns: number
       }
       repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
       soft_delete_message: { Args: { message_id: string }; Returns: boolean }
