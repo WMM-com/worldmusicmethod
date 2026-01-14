@@ -220,10 +220,33 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [currentIndex, currentTime, playTrackAtIndex]);
 
+  // Track whether we were playing before seeking (to avoid scratch sound)
+  const wasPlayingBeforeSeek = useRef(false);
+  const seekTimeoutRef = useRef<number | null>(null);
+
   const seek = useCallback((time: number) => {
     if (audioRef.current) {
+      // On first seek action, pause if playing to prevent scratching
+      if (!wasPlayingBeforeSeek.current && !audioRef.current.paused) {
+        wasPlayingBeforeSeek.current = true;
+        audioRef.current.pause();
+      }
+      
       audioRef.current.currentTime = time;
       setCurrentTime(time);
+      
+      // Clear any pending resume
+      if (seekTimeoutRef.current) {
+        clearTimeout(seekTimeoutRef.current);
+      }
+      
+      // Resume playing after a short delay (when user stops seeking)
+      seekTimeoutRef.current = window.setTimeout(() => {
+        if (wasPlayingBeforeSeek.current && audioRef.current) {
+          audioRef.current.play().catch(console.error);
+          wasPlayingBeforeSeek.current = false;
+        }
+      }, 150);
     }
   }, []);
 
