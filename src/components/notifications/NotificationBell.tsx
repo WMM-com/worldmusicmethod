@@ -38,7 +38,8 @@ export function NotificationBell() {
     if (notification.reference_type === 'post' && notification.reference_id) {
       navigate(`/community?tab=feed&postId=${notification.reference_id}&t=${Date.now()}`);
     } else if (notification.reference_type === 'friendship') {
-      navigate('/community?tab=friends');
+      // Navigate to the requests tab for friend request notifications
+      navigate('/community?tab=friends&section=requests');
     } else if (notification.reference_type === 'conversation') {
       navigate('/messages', { state: { conversationId: notification.reference_id } });
     }

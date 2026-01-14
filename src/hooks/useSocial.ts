@@ -722,11 +722,21 @@ export function useCancelFriendRequest() {
 
   return useMutation({
     mutationFn: async (friendshipId: string) => {
+      // First delete the notification that was created for this friend request
+      // The notification has reference_id = friendshipId and reference_type = 'friendship'
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('reference_id', friendshipId)
+        .eq('reference_type', 'friendship');
+      
+      // Then delete the friendship record
       const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friendships'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Friend request cancelled');
     },
     onError: (error: any) => {

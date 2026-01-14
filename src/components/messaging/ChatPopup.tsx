@@ -56,9 +56,9 @@ export function ChatPopup() {
     return () => window.removeEventListener('audio-player-state', handler as EventListener);
   }, []);
 
-  // When sticky player is visible and not minimized, sit flush against it (no gap)
-  // When no player or minimized, sit at bottom of screen with small offset
-  const popupBottomPx = audioPlayer.visible && !audioPlayer.minimized ? STICKY_PLAYER_HEIGHT : 0;
+  // When sticky player is visible and not minimized, sit flush against the player
+  // When no player or minimized, sit at bottom of screen with a small offset (16px)
+  const popupBottomPx = audioPlayer.visible && !audioPlayer.minimized ? STICKY_PLAYER_HEIGHT : 16;
 
   useEffect(() => {
     if (scrollContainerRef.current) {
