@@ -70,8 +70,13 @@ export function CourseSidebar({
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between gap-3">
         <button 
-          onClick={onDashboardClick}
-          className="font-bold text-lg truncate hover:text-primary transition-colors text-left"
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDashboardClick?.();
+          }}
+          className="font-bold text-lg truncate hover:text-primary transition-colors text-left cursor-pointer"
           title="Back to course overview"
         >
           {courseTitle}

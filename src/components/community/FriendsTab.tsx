@@ -125,7 +125,7 @@ export function FriendsTab() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto overflow-hidden">
       {/* Search */}
       <Card>
         <CardHeader>
@@ -147,15 +147,15 @@ export function FriendsTab() {
           {searchQuery.length >= 2 && searchResults && searchResults.length > 0 && (
             <div className="mt-4 space-y-2">
               {searchResults.map((searchUser) => (
-                <div key={searchUser.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-card">
-                  <Link to={`/profile/${searchUser.id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                <div key={searchUser.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-card overflow-hidden">
+                  <Link to={`/profile/${searchUser.id}`} className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                     <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={searchUser.avatar_url || undefined} />
                       <AvatarFallback>{getInitials(searchUser.full_name)}</AvatarFallback>
                     </Avatar>
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{searchUser.full_name || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground truncate">{searchUser.email}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate max-w-[150px] sm:max-w-none">{searchUser.full_name || 'Unknown'}</p>
+                      <p className="text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-none">{searchUser.email}</p>
                     </div>
                   </Link>
                   {isAlreadyFriend(searchUser.id) ? (
@@ -188,25 +188,29 @@ export function FriendsTab() {
 
       {/* Tabs */}
       <Tabs defaultValue="friends" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="friends" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
+        <TabsList className="grid w-full grid-cols-4 h-auto bg-accent/20">
+          <TabsTrigger value="friends" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Users className="h-4 w-4 shrink-0" />
-            <span className="truncate">Friends ({friendships?.friends.length || 0})</span>
+            <span className="hidden sm:inline truncate">Friends ({friendships?.friends.length || 0})</span>
+            <span className="sm:hidden">{friendships?.friends.length || 0}</span>
           </TabsTrigger>
-          <TabsTrigger value="requests" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
-            <span className="truncate">Requests</span>
+          <TabsTrigger value="requests" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+            <span className="hidden sm:inline truncate">Requests</span>
+            <span className="sm:hidden">Req</span>
             {friendships?.requests.length ? (
               <Badge variant="destructive" className="ml-1 h-5 min-w-5 p-1 text-xs shrink-0">
                 {friendships.requests.length}
               </Badge>
             ) : null}
           </TabsTrigger>
-          <TabsTrigger value="pending" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
-            <span className="truncate">Pending ({friendships?.pending.length || 0})</span>
+          <TabsTrigger value="pending" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+            <span className="hidden sm:inline truncate">Pending ({friendships?.pending.length || 0})</span>
+            <span className="sm:hidden">{friendships?.pending.length || 0}</span>
           </TabsTrigger>
-          <TabsTrigger value="blocked" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2">
+          <TabsTrigger value="blocked" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <UserX className="h-4 w-4 shrink-0" />
-            <span className="truncate">Blocked ({blockedUserIds?.length || 0})</span>
+            <span className="hidden sm:inline truncate">Blocked ({blockedUserIds?.length || 0})</span>
+            <span className="sm:hidden">{blockedUserIds?.length || 0}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -228,15 +232,15 @@ export function FriendsTab() {
                   {friendships?.friends.map((friend) => {
                     const otherUserId = getOtherUserId(friend);
                     return (
-                      <div key={friend.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                      <div key={friend.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border overflow-hidden">
+                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                           <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={friend.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
                           </Avatar>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{friend.profiles?.full_name || 'Unknown'}</p>
-                            <p className="text-sm text-muted-foreground truncate">{friend.profiles?.email}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate max-w-[120px] sm:max-w-none">{friend.profiles?.full_name || 'Unknown'}</p>
+                            <p className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">{friend.profiles?.email}</p>
                           </div>
                         </Link>
                         <div className="flex items-center gap-1 shrink-0">

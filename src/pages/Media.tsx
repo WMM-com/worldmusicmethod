@@ -54,24 +54,24 @@ export default function Media() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="browse" className="gap-2">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid bg-accent/20">
+            <TabsTrigger value="browse" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
               <Search className="h-4 w-4" />
               <span className="hidden sm:inline">Browse</span>
             </TabsTrigger>
-            <TabsTrigger value="songs" className="gap-2">
+            <TabsTrigger value="songs" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
               <Music className="h-4 w-4" />
               <span className="hidden sm:inline">Songs</span>
             </TabsTrigger>
-            <TabsTrigger value="podcasts" className="gap-2">
+            <TabsTrigger value="podcasts" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
               <Podcast className="h-4 w-4" />
               <span className="hidden sm:inline">Podcasts</span>
             </TabsTrigger>
-            <TabsTrigger value="playlists" className="gap-2">
+            <TabsTrigger value="playlists" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
               <ListMusic className="h-4 w-4" />
               <span className="hidden sm:inline">Playlists</span>
             </TabsTrigger>
-            <TabsTrigger value="liked" className="gap-2">
+            <TabsTrigger value="liked" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
               <Heart className="h-4 w-4" />
               <span className="hidden sm:inline">Liked</span>
             </TabsTrigger>

@@ -103,31 +103,6 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }
   }, [currentTime, currentTrack, duration, playRecorded, sessionId]);
 
-  const handleTrackEnd = useCallback(() => {
-    if (!currentTrack) return;
-
-    // Record completed play
-    recordPlay.mutate({
-      trackId: currentTrack.id,
-      durationPlayed: Math.floor(duration),
-      completed: true,
-      sessionId,
-    });
-
-    if (repeatMode === 'one') {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play();
-      }
-    } else if (currentIndex < queue.length - 1) {
-      next();
-    } else if (repeatMode === 'all' && queue.length > 0) {
-      playTrackAtIndex(0);
-    } else {
-      setIsPlaying(false);
-    }
-  }, [currentTrack, currentIndex, queue, repeatMode, duration, sessionId]);
-
   const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -150,6 +125,35 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       audioRef.current.play().catch(console.error);
     }
   }, [queue]);
+
+  const handleTrackEnd = useCallback(() => {
+    if (!currentTrack) return;
+
+    // Record completed play
+    recordPlay.mutate({
+      trackId: currentTrack.id,
+      durationPlayed: Math.floor(duration),
+      completed: true,
+      sessionId,
+    });
+
+    if (repeatMode === 'one') {
+      // Repeat the same track
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
+    } else if (currentIndex < queue.length - 1) {
+      // Play next track in queue
+      playTrackAtIndex(currentIndex + 1);
+    } else if (repeatMode === 'all' && queue.length > 0) {
+      // Repeat the entire queue from the beginning
+      playTrackAtIndex(0);
+    } else {
+      // End of queue with no repeat - just stop
+      setIsPlaying(false);
+    }
+  }, [currentTrack, currentIndex, queue, repeatMode, duration, sessionId, playTrackAtIndex]);
 
   const playTrack = useCallback((track: MediaTrack, trackList?: MediaTrack[]) => {
     let newQueue = trackList || [track];
