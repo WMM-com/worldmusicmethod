@@ -371,10 +371,12 @@ function PopupMessageBubble({
   return (
     <>
       <div className={cn('flex min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 max-w-[85%]">
           <div
             className={cn(
-              'max-w-[85%] min-w-0 px-3 py-2 rounded-2xl text-sm break-words shadow-sm',
+              'px-3 py-2 rounded-2xl text-sm shadow-sm',
+              'break-words overflow-hidden',
+              '[word-break:break-word] [overflow-wrap:anywhere]',
               isOwn 
                 ? 'bg-primary text-primary-foreground rounded-br-md' 
                 : 'bg-card border border-primary/20 rounded-bl-md'
@@ -400,7 +402,7 @@ function PopupMessageBubble({
               </div>
             )}
             {message.content && !message.content.startsWith('[') && (
-              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+              <p className="whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">{message.content}</p>
             )}
           </div>
           
