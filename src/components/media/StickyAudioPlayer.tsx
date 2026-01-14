@@ -262,54 +262,13 @@ export function StickyAudioPlayer() {
           </div>
         </div>
 
-        {/* Expanded view (mobile) */}
+        {/* Expanded view (mobile) - only extra controls, no duplicate track info */}
         {isExpanded && (
-          <div className="pb-6 pt-2 space-y-4 md:hidden">
-            {/* Track info with cover image */}
-            <div className="flex items-center gap-3">
-              {currentTrack.cover_image_url ? (
-                <img 
-                  src={currentTrack.cover_image_url} 
-                  alt={currentTrack.title}
-                  className="w-16 h-16 rounded object-cover"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded bg-muted flex items-center justify-center">
-                  <ListMusic className="h-8 w-8 text-muted-foreground" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-lg">{currentTrack.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {currentTrack.artist?.name || 'Unknown Artist'}
-                </p>
-              </div>
-              {user && (
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  onClick={handleLike}
-                  className={cn(isLiked && "text-red-500")}
-                >
-                  <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
-                </Button>
-              )}
-            </div>
-
-            {/* Seek bar with times */}
-            <div className="space-y-2">
-              <Slider
-                value={[currentTime]}
-                onValueChange={([v]) => seek(v)}
-                max={duration || 100}
-                step={0.1}
-                variant="progress"
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
+          <div className="pb-4 pt-2 md:hidden">
+            {/* Time display */}
+            <div className="flex justify-between text-xs text-muted-foreground px-2 mb-3">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
 
             {/* Extra controls */}
@@ -330,6 +289,16 @@ export function StickyAudioPlayer() {
               >
                 {repeatMode === 'one' ? <Repeat1 className="h-5 w-5" /> : <Repeat className="h-5 w-5" />}
               </Button>
+              {user && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={handleLike}
+                  className={cn(isLiked && "text-red-500")}
+                >
+                  <Heart className={cn("h-5 w-5", isLiked && "fill-current")} />
+                </Button>
+              )}
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={toggleMute}>
                   {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
