@@ -56,6 +56,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
   const recordPlay = useRecordPlay();
 
+  // Ref to hold the latest handleTrackEnd function
+  const handleTrackEndRef = useRef<() => void>(() => {});
+  
   // Initialize audio element
   useEffect(() => {
     if (!audioRef.current) {
@@ -67,7 +70,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
     const handleDurationChange = () => setDuration(audio.duration || 0);
-    const handleEnded = () => handleTrackEnd();
+    const handleEnded = () => handleTrackEndRef.current();
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
 
@@ -154,6 +157,11 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       setIsPlaying(false);
     }
   }, [currentTrack, currentIndex, queue, repeatMode, duration, sessionId, playTrackAtIndex]);
+
+  // Keep the ref updated with the latest handleTrackEnd
+  useEffect(() => {
+    handleTrackEndRef.current = handleTrackEnd;
+  }, [handleTrackEnd]);
 
   const playTrack = useCallback((track: MediaTrack, trackList?: MediaTrack[]) => {
     let newQueue = trackList || [track];
