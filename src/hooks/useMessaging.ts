@@ -247,7 +247,7 @@ export function useMessages(conversationId: string) {
 
     try {
       // Use the security-definer RPC function to mark messages as read
-      const { error } = await supabase.rpc('mark_messages_read', {
+      const { data: updatedCount, error } = await supabase.rpc('mark_messages_read', {
         p_conversation_id: conversationId,
       });
       
@@ -255,6 +255,8 @@ export function useMessages(conversationId: string) {
         console.error('Error marking messages as read:', error);
         return;
       }
+      
+      console.log(`Marked ${updatedCount} messages as read for conversation ${conversationId}`);
 
       // Force immediate refetch of all related queries
       await Promise.all([

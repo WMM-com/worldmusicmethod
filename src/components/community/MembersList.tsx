@@ -30,7 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Search, UserPlus, MessageCircle, Users, Check, Clock, MoreHorizontal, Flag, Ban } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMembers, useConnectWithMember, useConnectionStatus } from '@/hooks/useMembers';
+import { useMembers, useConnectWithMember, useConnectionStatus, useCancelConnection } from '@/hooks/useMembers';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
@@ -40,6 +40,7 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
   const navigate = useNavigate();
   const { data: connectionStatus, isLoading: loadingStatus } = useConnectionStatus(member.id);
   const connectMutation = useConnectWithMember();
+  const cancelConnectionMutation = useCancelConnection();
   const createConversation = useCreateConversation();
   const createReport = useCreateReport();
   const blockUser = useBlockUser();
@@ -148,10 +149,23 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
                   </Button>
                 </>
               ) : connectionStatus?.pendingRequest ? (
-                <Button size="sm" variant="outline" disabled className="flex-1">
-                  <Clock className="h-4 w-4 mr-1" />
-                  {connectionStatus.pendingRequest.sentByMe ? 'Pending' : 'Respond'}
-                </Button>
+                connectionStatus.pendingRequest.sentByMe ? (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1 text-destructive hover:text-destructive"
+                    onClick={() => cancelConnectionMutation.mutate(connectionStatus.pendingRequest!.id)}
+                    disabled={cancelConnectionMutation.isPending}
+                  >
+                    <Clock className="h-4 w-4 mr-1" />
+                    Cancel Request
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" disabled className="flex-1">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Respond
+                  </Button>
+                )
               ) : (
                 <>
                   <Button 

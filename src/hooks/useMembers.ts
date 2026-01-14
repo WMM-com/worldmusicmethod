@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { sanitizeSearchQuery, sanitizeIdentifier } from '@/lib/sanitize';
+import { createNotification } from '@/hooks/useNotifications';
 
 export interface MemberProfile {
   id: string;
@@ -101,21 +102,36 @@ export function useConnectionStatus(userId: string) {
 // Connect with user (send friend request)
 export function useConnectWithMember() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   return useMutation({
     mutationFn: async (memberId: string) => {
       if (!user) throw new Error('Must be logged in');
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('friendships')
         .insert({
           user_id: user.id,
           friend_id: memberId,
           status: 'pending',
-        });
+        })
+        .select()
+        .single();
       
       if (error) throw error;
+      
+      // Create notification for the recipient
+      await createNotification({
+        userId: memberId,
+        type: 'friend_request',
+        title: 'New Friend Request',
+        message: `${profile?.full_name || 'Someone'} sent you a friend request`,
+        referenceId: data.id,
+        referenceType: 'friendship',
+        fromUserId: user.id,
+      });
+      
+      return data;
     },
     onSuccess: (_, memberId) => {
       queryClient.invalidateQueries({ queryKey: ['connection-status', user?.id, memberId] });
@@ -124,6 +140,27 @@ export function useConnectWithMember() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+}
+
+// Cancel a pending friend request
+export function useCancelConnection() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async (friendshipId: string) => {
+      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['connection-status'] });
+      queryClient.invalidateQueries({ queryKey: ['friendships'] });
+      toast.success('Connection request cancelled');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to cancel request');
     },
   });
 }
