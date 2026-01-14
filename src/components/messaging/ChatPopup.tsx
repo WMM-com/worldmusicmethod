@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
@@ -8,7 +8,6 @@ import { MessageOptionsMenu } from './MessageOptionsMenu';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { STICKY_PLAYER_HEIGHT } from '@/components/media/StickyAudioPlayer';
 import { X, ChevronUp, ChevronDown, Send, Paperclip, Image, Video, FileText, Maximize2 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -19,13 +18,62 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-// Height of course landing sticky CTA button
-const COURSE_CTA_HEIGHT = 72;
+function useBottomObstacleInsetPx() {
+  const [insetPx, setInsetPx] = useState(0);
+
+  const measure = useCallback(() => {
+    if (typeof window === 'undefined' || !document?.body) return;
+
+    const obstacles = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-chat-popup-obstacle="bottom"]')
+    );
+
+    let max = 0;
+    for (const el of obstacles) {
+      const rect = el.getBoundingClientRect();
+      if (!rect.height) continue;
+
+      // Distance from the bottom of the viewport to the *top* of the obstacle.
+      // This naturally accounts for obstacles that are themselves offset above the bottom.
+      const offset = window.innerHeight - rect.top;
+      if (offset > max) max = offset;
+    }
+
+    setInsetPx(Math.max(0, Math.round(max)));
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+
+    schedule();
+    window.addEventListener('resize', schedule);
+
+    // Watch for bottom bars mounting/unmounting and for class/style changes.
+    const mo = new MutationObserver(schedule);
+    mo.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+
+    return () => {
+      window.removeEventListener('resize', schedule);
+      mo.disconnect();
+      cancelAnimationFrame(raf);
+    };
+  }, [measure]);
+
+  return insetPx;
+}
 
 export function ChatPopup() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { popupConversation, closePopupChat, minimizePopupChat, isMinimized } = useMessagingPopup();
   const { data: messages, isLoading } = useMessages(popupConversation?.id || '');
   const sendMessage = useSendMessage();
@@ -35,44 +83,8 @@ export function ChatPopup() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check if on course landing page (has sticky CTA)
-  const isCourseLandingPage = location.pathname.startsWith('/course/') && !location.pathname.includes('/learn');
-
-  const [audioPlayer, setAudioPlayer] = useState<{ visible: boolean; minimized: boolean }>({
-    visible: false,
-    minimized: true,
-  });
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent)?.detail || {};
-
-      if (detail?.isVisible === false) {
-        setAudioPlayer({ visible: false, minimized: true });
-        return;
-      }
-
-      // If we get this event, the player exists
-      setAudioPlayer({
-        visible: true,
-        minimized: !!detail?.isMinimized,
-      });
-    };
-
-    window.addEventListener('audio-player-state', handler as EventListener);
-    return () => window.removeEventListener('audio-player-state', handler as EventListener);
-  }, []);
-
-  // Calculate bottom offset:
-  // 1. If audio player is visible and not minimized, sit above it
-  // 2. If on course landing page, sit above sticky CTA
-  // 3. Otherwise, sit at very bottom (0px)
-  let popupBottomPx = 0;
-  if (audioPlayer.visible && !audioPlayer.minimized) {
-    popupBottomPx = STICKY_PLAYER_HEIGHT;
-  } else if (isCourseLandingPage) {
-    popupBottomPx = COURSE_CTA_HEIGHT;
-  }
+  const bottomInsetPx = useBottomObstacleInsetPx();
+  const popupBottomPx = bottomInsetPx;
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -158,7 +170,7 @@ export function ChatPopup() {
         "fixed right-6 w-80 bg-card border border-primary/30 rounded-xl shadow-2xl z-50 flex flex-col transition-all duration-200",
         isMinimized ? "h-12" : "h-[450px]"
       )}
-      style={{ bottom: popupBottomPx }}
+      style={{ bottom: `calc(${popupBottomPx}px + env(safe-area-inset-bottom))` }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-xl shrink-0">

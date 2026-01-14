@@ -26,21 +26,23 @@ export function StickyAudioPlayer() {
   const toggleLike = useToggleLike();
   const location = useLocation();
 
-  // Dispatch custom events when minimized/expanded state changes
+  // Dispatch custom events when minimized/expanded/visibility state changes
   useEffect(() => {
+    const isVisible = !!currentTrack && !isInCourse;
+
     window.dispatchEvent(
       new CustomEvent('audio-player-state', {
-        detail: { isMinimized, isExpanded, isVisible: true },
+        detail: { isMinimized, isExpanded, isVisible },
       })
     );
-  }, [isMinimized, isExpanded]);
+  }, [isMinimized, isExpanded, currentTrack, isInCourse]);
 
-  // Notify listeners when the player is removed (e.g. closed / no track)
+  // Notify listeners when the player is removed (on unmount)
   useEffect(() => {
     return () => {
       window.dispatchEvent(
         new CustomEvent('audio-player-state', {
-          detail: { isVisible: false },
+          detail: { isMinimized: true, isExpanded: false, isVisible: false },
         })
       );
     };
@@ -116,10 +118,13 @@ export function StickyAudioPlayer() {
   }
 
   return (
-    <div className={cn(
-      "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 transition-all duration-300",
-      isExpanded ? "h-auto" : "h-20"
-    )}>
+    <div
+      data-chat-popup-obstacle="bottom"
+      className={cn(
+        "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 transition-all duration-300",
+        isExpanded ? "h-auto" : "h-20"
+      )}
+    >
       {/* Clickable/swipeable progress bar (thin line at top) */}
       <div 
         className="absolute top-0 left-0 right-0 h-3 bg-muted cursor-pointer group touch-pan-x"

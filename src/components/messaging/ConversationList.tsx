@@ -173,8 +173,8 @@ function ConversationItem({
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            <span className="font-medium flex-1 min-w-0 whitespace-normal break-words leading-tight">
               {participant?.full_name || 'Unknown'}
             </span>
             {conversation.last_message && (

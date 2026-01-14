@@ -130,7 +130,7 @@ export function MessageThread({ conversationId, participantName, participantId }
   return (
     <Card className="h-full flex flex-col overflow-hidden border-primary/20 shadow-lg">
       <CardHeader className="border-b border-primary/20 pb-4 shrink-0 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardTitle className="text-lg truncate">{participantName || 'Conversation'}</CardTitle>
+        <CardTitle className="text-lg leading-tight break-words whitespace-normal">{participantName || 'Conversation'}</CardTitle>
       </CardHeader>
 
       {/* Messages area */}
