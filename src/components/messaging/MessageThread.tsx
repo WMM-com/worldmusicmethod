@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
@@ -33,6 +34,7 @@ interface AttachmentPreview {
 
 export function MessageThread({ conversationId, participantName, participantId }: MessageThreadProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: messages, isLoading } = useMessages(conversationId);
   const sendMessage = useSendMessage();
   const { uploadFile, isUploading } = useR2Upload();
@@ -130,7 +132,12 @@ export function MessageThread({ conversationId, participantName, participantId }
   return (
     <Card className="h-full flex flex-col overflow-hidden border-neutral-800 bg-[#0a0a0a]">
       <CardHeader className="border-b border-neutral-800 pb-4 shrink-0 bg-[#111111]">
-        <CardTitle className="text-lg leading-tight break-words whitespace-normal text-white">{participantName || 'Conversation'}</CardTitle>
+        <CardTitle 
+          className="text-lg leading-tight break-words whitespace-normal text-white cursor-pointer hover:text-red-400 transition-colors"
+          onClick={() => participantId && navigate(`/profile/${participantId}`)}
+        >
+          {participantName || 'Conversation'}
+        </CardTitle>
       </CardHeader>
 
       {/* Messages area */}
