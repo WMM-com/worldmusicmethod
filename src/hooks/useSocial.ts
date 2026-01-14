@@ -717,6 +717,24 @@ export function useRemoveFriend() {
   });
 }
 
+export function useCancelFriendRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (friendshipId: string) => {
+      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['friendships'] });
+      toast.success('Friend request cancelled');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to cancel request');
+    },
+  });
+}
+
 export function useSearchUsers(query: string) {
   const { user } = useAuth();
 

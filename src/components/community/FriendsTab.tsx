@@ -13,6 +13,7 @@ import {
   useSendFriendRequest,
   useRespondToFriendRequest,
   useRemoveFriend,
+  useCancelFriendRequest,
 } from '@/hooks/useSocial';
 import { useBlockedUsers, useUnblockUser } from '@/hooks/useReports';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,6 +44,7 @@ export function FriendsTab() {
   const sendRequestMutation = useSendFriendRequest();
   const respondMutation = useRespondToFriendRequest();
   const removeMutation = useRemoveFriend();
+  const cancelRequestMutation = useCancelFriendRequest();
   const unblockMutation = useUnblockUser();
   const createConversationMutation = useCreateConversation();
 
@@ -155,7 +157,6 @@ export function FriendsTab() {
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium truncate max-w-[150px] sm:max-w-none">{searchUser.full_name || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground truncate max-w-[150px] sm:max-w-none">{searchUser.email}</p>
                     </div>
                   </Link>
                   {isAlreadyFriend(searchUser.id) ? (
@@ -240,7 +241,6 @@ export function FriendsTab() {
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <p className="font-medium truncate max-w-[120px] sm:max-w-none">{friend.profiles?.full_name || 'Unknown'}</p>
-                            <p className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">{friend.profiles?.email}</p>
                           </div>
                         </Link>
                         <div className="flex items-center gap-1 shrink-0">
@@ -378,7 +378,16 @@ export function FriendsTab() {
                             <p className="text-sm text-muted-foreground">Request pending</p>
                           </div>
                         </Link>
-                        <Badge variant="outline" className="shrink-0 text-xs sm:text-sm">Awaiting</Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => cancelRequestMutation.mutate(pending.id)}
+                          disabled={cancelRequestMutation.isPending}
+                          className="shrink-0 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cancel</span>
+                        </Button>
                       </div>
                     );
                   })}
@@ -410,7 +419,6 @@ export function FriendsTab() {
                         </Avatar>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{blockedUser.full_name || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground truncate">{blockedUser.email}</p>
                         </div>
                       </div>
                       <Button
