@@ -26,28 +26,6 @@ export function StickyAudioPlayer() {
   const toggleLike = useToggleLike();
   const location = useLocation();
 
-  // Dispatch custom events when minimized/expanded/visibility state changes
-  useEffect(() => {
-    const isVisible = !!currentTrack && !isInCourse;
-
-    window.dispatchEvent(
-      new CustomEvent('audio-player-state', {
-        detail: { isMinimized, isExpanded, isVisible },
-      })
-    );
-  }, [isMinimized, isExpanded, currentTrack, isInCourse]);
-
-  // Notify listeners when the player is removed (on unmount)
-  useEffect(() => {
-    return () => {
-      window.dispatchEvent(
-        new CustomEvent('audio-player-state', {
-          detail: { isMinimized: true, isExpanded: false, isVisible: false },
-        })
-      );
-    };
-  }, []);
-
   const {
     currentTrack,
     isPlaying,
@@ -71,6 +49,28 @@ export function StickyAudioPlayer() {
 
   // Hide player inside courses (learn pages)
   const isInCourse = location.pathname.includes('/learn');
+
+  // Dispatch custom events when minimized/expanded/visibility state changes
+  useEffect(() => {
+    const isVisible = !!currentTrack && !isInCourse;
+
+    window.dispatchEvent(
+      new CustomEvent('audio-player-state', {
+        detail: { isMinimized, isExpanded, isVisible },
+      })
+    );
+  }, [isMinimized, isExpanded, currentTrack, isInCourse]);
+
+  // Notify listeners when the player is removed (on unmount)
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent('audio-player-state', {
+          detail: { isMinimized: true, isExpanded: false, isVisible: false },
+        })
+      );
+    };
+  }, []);
 
   // Listen for video play events to pause audio
   useEffect(() => {
