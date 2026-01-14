@@ -886,6 +886,7 @@ export function AdminStreaming() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Tracks</TableHead>
                     <TableHead>Visibility</TableHead>
                     <TableHead>Community Feed</TableHead>
                     <TableHead></TableHead>
@@ -893,43 +894,7 @@ export function AdminStreaming() {
                 </TableHeader>
                 <TableBody>
                   {adminPlaylists.map((playlist) => (
-                    <TableRow key={playlist.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                            <ListMusic className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <span className="font-medium">{playlist.name}</span>
-                            {playlist.description && (
-                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">{playlist.description}</p>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={playlist.is_public ? 'default' : 'secondary'}>
-                          {playlist.is_public ? 'Public' : 'Private'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {playlist.show_in_community_feed ? (
-                          <Badge variant="outline" className="bg-green-500/10 text-green-600">Featured</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="icon" variant="ghost" onClick={() => openEditPlaylist(playlist)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => deleteAdminPlaylist.mutate(playlist.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <AdminPlaylistRow key={playlist.id} playlist={playlist} onEdit={openEditPlaylist} onDelete={(id) => deleteAdminPlaylist.mutate(id)} tracks={tracks} />
                   ))}
                 </TableBody>
               </Table>
@@ -1204,5 +1169,214 @@ export function AdminStreaming() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Admin Playlist Row Component with track management
+function AdminPlaylistRow({ 
+  playlist, 
+  onEdit, 
+  onDelete,
+  tracks 
+}: { 
+  playlist: Playlist; 
+  onEdit: (p: Playlist) => void; 
+  onDelete: (id: string) => void;
+  tracks: Track[];
+}) {
+  const [showTracks, setShowTracks] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
+
+  // Fetch tracks in this playlist
+  const { data: playlistTracks = [] } = useQuery({
+    queryKey: ['admin-playlist-tracks', playlist.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('media_playlist_tracks')
+        .select(`
+          id,
+          position,
+          track:media_tracks(id, title, artist:media_artists(name), cover_image_url)
+        `)
+        .eq('playlist_id', playlist.id)
+        .order('position');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addToPlaylist = useMutation({
+    mutationFn: async (trackId: string) => {
+      const maxPos = playlistTracks.length > 0 
+        ? Math.max(...playlistTracks.map(t => t.position || 0)) 
+        : -1;
+      const { error } = await supabase
+        .from('media_playlist_tracks')
+        .insert({
+          playlist_id: playlist.id,
+          track_id: trackId,
+          position: maxPos + 1,
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-playlist-tracks', playlist.id] });
+      queryClient.invalidateQueries({ queryKey: ['media-playlist', playlist.id] });
+      toast.success('Track added');
+      setSearchTerm('');
+    },
+    onError: (err: any) => toast.error(err.message || 'Already in playlist'),
+  });
+
+  const removeFromPlaylist = useMutation({
+    mutationFn: async (playlistTrackId: string) => {
+      const { error } = await supabase
+        .from('media_playlist_tracks')
+        .delete()
+        .eq('id', playlistTrackId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-playlist-tracks', playlist.id] });
+      queryClient.invalidateQueries({ queryKey: ['media-playlist', playlist.id] });
+      toast.success('Track removed');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const playlistTrackIds = new Set(playlistTracks.map((pt: any) => pt.track?.id));
+  const filteredTracks = tracks.filter(t => 
+    t.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    !playlistTrackIds.has(t.id)
+  );
+
+  return (
+    <>
+      <TableRow>
+        <TableCell>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+              <ListMusic className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <span className="font-medium">{playlist.name}</span>
+              {playlist.description && (
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">{playlist.description}</p>
+              )}
+            </div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowTracks(!showTracks)}
+            className="gap-1"
+          >
+            <Music className="h-3 w-3" />
+            {playlistTracks.length} tracks
+          </Button>
+        </TableCell>
+        <TableCell>
+          <Badge variant={playlist.is_public ? 'default' : 'secondary'}>
+            {playlist.is_public ? 'Public' : 'Private'}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {playlist.show_in_community_feed ? (
+            <Badge variant="outline" className="bg-green-500/10 text-green-600">Featured</Badge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </TableCell>
+        <TableCell>
+          <div className="flex gap-2">
+            <Button size="icon" variant="ghost" onClick={() => onEdit(playlist)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => onDelete(playlist.id)}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+      
+      {showTracks && (
+        <TableRow>
+          <TableCell colSpan={5} className="bg-muted/30 p-4">
+            <div className="space-y-4">
+              {/* Add tracks */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Add tracks to playlist</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search tracks..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
+                {searchTerm && filteredTracks.length > 0 && (
+                  <div className="border rounded-md max-h-40 overflow-y-auto">
+                    {filteredTracks.slice(0, 10).map(track => (
+                      <div 
+                        key={track.id} 
+                        className="flex items-center justify-between p-2 hover:bg-muted cursor-pointer"
+                        onClick={() => addToPlaylist.mutate(track.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          {track.cover_image_url && (
+                            <img src={track.cover_image_url} alt="" className="h-8 w-8 rounded object-cover" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">{track.title}</p>
+                            <p className="text-xs text-muted-foreground">{track.artist?.name}</p>
+                          </div>
+                        </div>
+                        <Plus className="h-4 w-4" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Current tracks */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Current tracks</Label>
+                {playlistTracks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No tracks in playlist yet</p>
+                ) : (
+                  <div className="space-y-1">
+                    {playlistTracks.map((pt: any, idx: number) => (
+                      <div key={pt.id} className="flex items-center justify-between p-2 rounded bg-background">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-5">{idx + 1}</span>
+                          {pt.track?.cover_image_url && (
+                            <img src={pt.track.cover_image_url} alt="" className="h-8 w-8 rounded object-cover" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">{pt.track?.title}</p>
+                            <p className="text-xs text-muted-foreground">{pt.track?.artist?.name}</p>
+                          </div>
+                        </div>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-7 w-7"
+                          onClick={() => removeFromPlaylist.mutate(pt.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   );
 }
