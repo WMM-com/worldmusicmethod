@@ -173,18 +173,18 @@ function ConversationItem({
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <span className="font-medium truncate">
+          <div className="flex items-center gap-2">
+            <span className="font-medium flex-1 min-w-0 truncate">
               {participant?.full_name || 'Unknown'}
             </span>
             {conversation.last_message && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {formatDistanceToNow(new Date(conversation.last_message.created_at), { addSuffix: true })}
               </span>
             )}
           </div>
           {conversation.last_message && (
-            <p className="text-sm text-muted-foreground truncate">
+            <p className="text-sm text-muted-foreground truncate min-w-0">
               {conversation.last_message.content}
             </p>
           )}

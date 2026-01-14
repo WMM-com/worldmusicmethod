@@ -222,7 +222,12 @@ export function useMessages(conversationId: string) {
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          if (user?.id) {
+            queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+            queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] });
+          } else {
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          }
         }
       )
       .subscribe();
@@ -230,7 +235,7 @@ export function useMessages(conversationId: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, queryClient]);
+  }, [conversationId, queryClient, user?.id]);
 
   // Mark messages as read when viewing conversation
   const markAsRead = useCallback(async () => {
@@ -249,8 +254,8 @@ export function useMessages(conversationId: string) {
 
       // Force immediate refetch of all related queries
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] }),
-        queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+        queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] }),
+        queryClient.invalidateQueries({ queryKey: ['conversations', user.id] }),
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }),
       ]);
     } catch (err) {
@@ -258,23 +263,16 @@ export function useMessages(conversationId: string) {
     }
   }, [user, conversationId, queryClient]);
 
-  // Effect to mark messages as read when data loads
+  // Mark messages as read whenever a conversation is opened
   useEffect(() => {
-    if (!user || !conversationId || !query.data) return;
+    if (!user || !conversationId) return;
 
-    const hasUnreadMessages = query.data.some(
-      m => m.sender_id !== user.id && !m.read_at
-    );
+    const t = window.setTimeout(() => {
+      markAsRead();
+    }, 250);
 
-    if (hasUnreadMessages) {
-      // Small delay to ensure the UI has rendered
-      const timer = setTimeout(() => {
-        markAsRead();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [user, conversationId, query.data, markAsRead]);
+    return () => window.clearTimeout(t);
+  }, [user, conversationId, markAsRead]);
 
   return query;
 }

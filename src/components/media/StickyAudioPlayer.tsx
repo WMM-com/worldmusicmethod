@@ -28,10 +28,23 @@ export function StickyAudioPlayer() {
 
   // Dispatch custom events when minimized/expanded state changes
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('audio-player-state', { 
-      detail: { isMinimized, isExpanded } 
-    }));
+    window.dispatchEvent(
+      new CustomEvent('audio-player-state', {
+        detail: { isMinimized, isExpanded, isVisible: true },
+      })
+    );
   }, [isMinimized, isExpanded]);
+
+  // Notify listeners when the player is removed (e.g. closed / no track)
+  useEffect(() => {
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent('audio-player-state', {
+          detail: { isVisible: false },
+        })
+      );
+    };
+  }, []);
 
   const {
     currentTrack,

@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { STICKY_PLAYER_HEIGHT } from '@/components/media/StickyAudioPlayer';
 import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2, MoreVertical, Trash2, Calendar, Flag, Ban } from 'lucide-react';
 import {
   DropdownMenu,
@@ -51,6 +52,33 @@ export function ChatPopup() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [audioPlayer, setAudioPlayer] = useState<{ visible: boolean; minimized: boolean }>({
+    visible: false,
+    minimized: true,
+  });
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent)?.detail || {};
+
+      if (detail?.isVisible === false) {
+        setAudioPlayer({ visible: false, minimized: true });
+        return;
+      }
+
+      // If we get this event, the player exists
+      setAudioPlayer({
+        visible: true,
+        minimized: !!detail?.isMinimized,
+      });
+    };
+
+    window.addEventListener('audio-player-state', handler as EventListener);
+    return () => window.removeEventListener('audio-player-state', handler as EventListener);
+  }, []);
+
+  const popupBottomPx = 24 + (audioPlayer.visible && !audioPlayer.minimized ? STICKY_PLAYER_HEIGHT : 0);
+
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -72,8 +100,8 @@ export function ChatPopup() {
 
     if (attachment) {
       try {
-        const result = await uploadFile(attachment.file, { 
-          bucket: 'user', 
+        const result = await uploadFile(attachment.file, {
+          bucket: 'user',
           folder: 'messages',
           trackInDatabase: false,
         });
@@ -87,8 +115,8 @@ export function ChatPopup() {
       }
     }
 
-    sendMessage.mutate({ 
-      conversationId: popupConversation.id, 
+    sendMessage.mutate({
+      conversationId: popupConversation.id,
       content: newMessage.trim() || (attachment ? `[${attachment.type}]` : ''),
       messageType: mediaUrl ? 'media' : 'text',
       metadata: mediaUrl ? { mediaUrl, mediaType } : {},
@@ -132,9 +160,10 @@ export function ChatPopup() {
   return (
     <div
       className={cn(
-        "fixed bottom-6 right-6 w-80 bg-card border border-primary/30 rounded-xl shadow-2xl z-50 flex flex-col transition-all duration-200",
+        "fixed right-6 w-80 bg-card border border-primary/30 rounded-xl shadow-2xl z-50 flex flex-col transition-all duration-200",
         isMinimized ? "h-12" : "h-[450px]"
       )}
+      style={{ bottom: popupBottomPx }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-xl shrink-0">
