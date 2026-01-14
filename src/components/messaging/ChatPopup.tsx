@@ -57,8 +57,8 @@ export function ChatPopup() {
   }, []);
 
   // When sticky player is visible and not minimized, sit flush against the player
-  // When no player or minimized, sit at bottom of screen with a small offset (16px)
-  const popupBottomPx = audioPlayer.visible && !audioPlayer.minimized ? STICKY_PLAYER_HEIGHT : 16;
+  // When no player or minimized, sit at very bottom of screen (0px offset)
+  const popupBottomPx = audioPlayer.visible && !audioPlayer.minimized ? STICKY_PLAYER_HEIGHT : 0;
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -153,7 +153,7 @@ export function ChatPopup() {
             <AvatarImage src={popupConversation.participantAvatar} />
             <AvatarFallback className="text-xs bg-primary/10">{initials}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold text-sm truncate max-w-[120px]">
+          <span className="font-semibold text-sm truncate max-w-[160px]">
             {popupConversation.participantName}
           </span>
         </div>

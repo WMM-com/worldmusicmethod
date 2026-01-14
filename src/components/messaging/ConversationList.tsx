@@ -174,7 +174,7 @@ function ConversationItem({
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium truncate" style={{ maxWidth: '140px' }}>
+            <span className="font-medium truncate flex-1 min-w-0">
               {participant?.full_name || 'Unknown'}
             </span>
             {conversation.last_message && (
@@ -184,7 +184,7 @@ function ConversationItem({
             )}
           </div>
           {conversation.last_message && (
-            <p className="text-sm text-muted-foreground truncate" style={{ maxWidth: '200px' }}>
+            <p className="text-sm text-muted-foreground truncate">
               {conversation.last_message.content}
             </p>
           )}
