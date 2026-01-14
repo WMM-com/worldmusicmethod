@@ -204,19 +204,16 @@ export function useMessages(conversationId: string) {
 
     if (unreadMessages.length > 0) {
       const markAsRead = async () => {
-        const { error } = await supabase
-          .from('messages')
-          .update({ read_at: new Date().toISOString() })
-          .eq('conversation_id', conversationId)
-          .neq('sender_id', user.id)
-          .is('read_at', null);
+        // Use the security-definer RPC function to mark messages as read
+        const { error } = await supabase.rpc('mark_messages_read', {
+          conversation_id: conversationId,
+        });
         
         if (!error) {
           // Invalidate all related queries after successful update
-          await queryClient.invalidateQueries({ queryKey: ['conversations'] });
-          await queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
-          // Also refetch the messages to update the UI
-          await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
+          queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
         }
       };
       

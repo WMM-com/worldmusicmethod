@@ -73,18 +73,14 @@ export function MessagesDropdown() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0 border-amber-200/30 bg-background">
-        {/* Hermes-themed header with winged sandal motif */}
+      <PopoverContent align="end" className="w-72 p-0 border-amber-200/30 bg-background">
+        {/* Header */}
         <div className="relative overflow-hidden border-b border-amber-200/20">
           <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10" />
-          <div className="relative flex items-center justify-between p-4">
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Send className="h-5 w-5 text-amber-500 rotate-[-20deg]" />
-                {/* Tiny wing decorations */}
-                <span className="absolute -top-0.5 -right-1 text-[8px]">✦</span>
-              </div>
-              <h4 className="font-semibold bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+          <div className="relative flex items-center justify-between p-3 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Send className="h-4 w-4 text-amber-500 rotate-[-20deg] shrink-0" />
+              <h4 className="font-semibold text-sm bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent truncate">
                 Messages
               </h4>
             </div>
@@ -93,10 +89,10 @@ export function MessagesDropdown() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                  className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 shrink-0 h-7 px-2"
                 >
                   <PenLine className="h-3 w-3 mr-1" />
-                  Write Message
+                  Write
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -183,15 +179,15 @@ export function MessagesDropdown() {
                           <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 border-2 border-background" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2">
                           <p className={cn(
-                            "text-sm truncate flex-1",
+                            "text-sm truncate flex-1 min-w-0",
                             hasUnread ? "font-semibold" : "font-medium"
                           )}>
                             {participant?.full_name || 'Unknown'}
                           </p>
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[10px] text-muted-foreground shrink-0">
                             {conversation.last_message_at && 
                               formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: false })}
                           </span>
