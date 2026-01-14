@@ -66,21 +66,20 @@ export function MessagesDropdown() {
           <MessageSquare className="h-5 w-5" />
           {unreadCount && unreadCount > 0 && (
             <Badge
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-amber-500 hover:bg-amber-500 text-amber-950"
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-red-600 hover:bg-red-600 text-white border-0"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0 border-amber-200/30 bg-background">
+      <PopoverContent align="end" className="w-80 p-0 border-neutral-800 bg-[#0a0a0a]">
         {/* Header */}
-        <div className="relative overflow-hidden border-b border-amber-200/20">
-          <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10" />
-          <div className="relative flex items-center justify-between p-3">
+        <div className="border-b border-neutral-800 bg-[#111111]">
+          <div className="flex items-center justify-between p-3">
             <div className="flex items-center gap-2">
-              <Send className="h-4 w-4 text-amber-500 rotate-[-20deg]" />
-              <h4 className="font-semibold text-sm bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+              <Send className="h-4 w-4 text-red-500 rotate-[-20deg]" />
+              <h4 className="font-semibold text-sm text-white">
                 Messages
               </h4>
             </div>
@@ -89,21 +88,21 @@ export function MessagesDropdown() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-7 px-2"
+                  className="text-xs text-red-500 hover:text-red-400 hover:bg-neutral-800 h-7 px-2"
                 >
                   <PenLine className="h-3 w-3 mr-1" />
                   Write
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="bg-[#0a0a0a] border-neutral-800">
                 <DialogHeader>
-                  <DialogTitle>New Conversation</DialogTitle>
+                  <DialogTitle className="text-white">New Conversation</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2 p-2">
-                    <p className="text-xs text-muted-foreground px-2 mb-2">Select a friend to message:</p>
+                    <p className="text-xs text-neutral-500 px-2 mb-2">Select a friend to message:</p>
                     {!friendships?.friends || friendships.friends.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
+                      <p className="text-sm text-neutral-500 text-center py-4">
                         No friends yet. You can still message members from their profile page.
                       </p>
                     ) : (
@@ -115,16 +114,16 @@ export function MessagesDropdown() {
                           <button
                             key={friend.id}
                             onClick={() => handleStartConversation(friendUserId, friendName, friendAvatar)}
-                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors text-left"
+                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-800 transition-colors text-left"
                             disabled={createConversation.isPending}
                           >
-                            <Avatar className="h-10 w-10 shrink-0">
+                            <Avatar className="h-10 w-10 shrink-0 ring-2 ring-neutral-700">
                               <AvatarImage src={friendAvatar || undefined} />
-                              <AvatarFallback>
+                              <AvatarFallback className="bg-neutral-800 text-white">
                                 <User className="h-4 w-4" />
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium truncate">{friendName}</span>
+                            <span className="font-medium truncate text-white">{friendName}</span>
                           </button>
                         );
                       })
@@ -138,22 +137,22 @@ export function MessagesDropdown() {
         
         <ScrollArea className="h-[350px]">
           {isLoading ? (
-            <div className="p-4 text-center text-muted-foreground">
+            <div className="p-4 text-center text-neutral-500">
               Loading...
             </div>
           ) : !conversations || conversations.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
+            <div className="p-8 text-center">
               <div className="relative inline-block mb-3">
-                <MessageSquare className="h-10 w-10 mx-auto text-amber-300" />
-                <Send className="h-4 w-4 absolute -top-1 -right-1 text-amber-400 rotate-[-30deg]" />
+                <MessageSquare className="h-10 w-10 mx-auto text-neutral-600" />
+                <Send className="h-4 w-4 absolute -top-1 -right-1 text-red-500 rotate-[-30deg]" />
               </div>
-              <p className="text-sm font-medium text-amber-600/70">No messages yet</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Swift as Hermes, your messages will appear here
+              <p className="text-sm font-medium text-neutral-400">No messages yet</p>
+              <p className="text-xs text-neutral-600 mt-1">
+                Your conversations will appear here
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-amber-100/50">
+            <div className="divide-y divide-neutral-800">
               {conversations.map((conversation: any) => {
                 const participant = conversation.participants?.[0];
                 const hasUnread = conversation.unread_count > 0;
@@ -162,35 +161,35 @@ export function MessagesDropdown() {
                   <div
                     key={conversation.id}
                     className={cn(
-                      'p-3 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors cursor-pointer group relative',
-                      hasUnread && 'bg-amber-50/30 dark:bg-amber-900/5'
+                      'p-3 hover:bg-neutral-900 transition-colors cursor-pointer group relative',
+                      hasUnread && 'bg-neutral-900/50'
                     )}
                     onClick={() => handleConversationClick(conversation)}
                   >
                     <div className="flex gap-3">
                       <div className="relative shrink-0">
-                        <Avatar className="h-10 w-10 ring-2 ring-amber-200/30">
+                        <Avatar className="h-10 w-10 ring-2 ring-neutral-700">
                           <AvatarImage src={participant?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-amber-100 text-amber-700">
+                          <AvatarFallback className="bg-neutral-800 text-white">
                             <User className="h-4 w-4" />
                           </AvatarFallback>
                         </Avatar>
                         {hasUnread && (
-                          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 border-2 border-background" />
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-600 border-2 border-[#0a0a0a]" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p
                             className={cn(
-                              "text-sm truncate",
+                              "text-sm truncate text-white",
                               hasUnread ? "font-semibold" : "font-medium"
                             )}
                             style={{ maxWidth: '120px' }}
                           >
                             {participant?.full_name || 'Unknown'}
                           </p>
-                          <span className="text-[10px] text-muted-foreground shrink-0">
+                          <span className="text-[10px] text-neutral-500 shrink-0">
                             {conversation.last_message_at &&
                               formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: false })}
                           </span>
@@ -198,14 +197,14 @@ export function MessagesDropdown() {
                         <p
                           className={cn(
                             "text-xs truncate mt-0.5",
-                            hasUnread ? "text-foreground" : "text-muted-foreground"
+                            hasUnread ? "text-neutral-300" : "text-neutral-500"
                           )}
                           style={{ maxWidth: '180px' }}
                         >
                           {conversation.last_message?.content || 'Start a conversation'}
                         </p>
                         {hasUnread && (
-                          <Badge className="mt-1 h-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500 text-amber-950">
+                          <Badge className="mt-1 h-5 px-1.5 text-[10px] bg-red-600 hover:bg-red-600 text-white border-0">
                             {conversation.unread_count} new
                           </Badge>
                         )}
@@ -219,11 +218,11 @@ export function MessagesDropdown() {
         </ScrollArea>
         
         {/* Footer */}
-        <div className="p-2 border-t border-amber-200/20 bg-amber-50/30 dark:bg-amber-900/5">
+        <div className="p-2 border-t border-neutral-800 bg-[#111111]">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="w-full text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-100/50"
+            className="w-full text-xs text-red-500 hover:text-red-400 hover:bg-neutral-800"
             onClick={handleViewAll}
           >
             <Send className="h-3 w-3 mr-1.5 rotate-[-20deg]" />

@@ -32,9 +32,6 @@ function useBottomObstacleInsetPx() {
     for (const el of obstacles) {
       const rect = el.getBoundingClientRect();
       if (!rect.height) continue;
-
-      // Distance from the bottom of the viewport to the *top* of the obstacle.
-      // This naturally accounts for obstacles that are themselves offset above the bottom.
       const offset = window.innerHeight - rect.top;
       if (offset > max) max = offset;
     }
@@ -49,20 +46,27 @@ function useBottomObstacleInsetPx() {
       raf = requestAnimationFrame(measure);
     };
 
+    // Initial measure
     schedule();
+
+    // Re-measure on resize
     window.addEventListener('resize', schedule);
 
-    // Watch for bottom bars mounting/unmounting and for class/style changes.
+    // Re-measure on scroll (for sticky elements entering/leaving)
+    window.addEventListener('scroll', schedule, { passive: true });
+
+    // Watch for DOM changes
     const mo = new MutationObserver(schedule);
     mo.observe(document.body, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['class', 'style'],
+      attributeFilter: ['class', 'style', 'data-chat-popup-obstacle'],
     });
 
     return () => {
       window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule);
       mo.disconnect();
       cancelAnimationFrame(raf);
     };
@@ -167,19 +171,22 @@ export function ChatPopup() {
   return (
     <div
       className={cn(
-        "fixed right-6 w-80 bg-card border border-primary/30 rounded-xl shadow-2xl z-50 flex flex-col transition-all duration-200",
+        "fixed right-6 w-80 bg-[#0a0a0a] border border-neutral-800 rounded-xl shadow-2xl z-50 flex flex-col",
         isMinimized ? "h-12" : "h-[450px]"
       )}
-      style={{ bottom: `calc(${popupBottomPx}px + env(safe-area-inset-bottom))` }}
+      style={{ 
+        bottom: `calc(${popupBottomPx}px + env(safe-area-inset-bottom))`,
+        transition: 'bottom 300ms ease-out, height 200ms ease-out'
+      }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-primary/20 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-t-xl shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-800 bg-[#111111] rounded-t-xl shrink-0">
         <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7 ring-2 ring-primary/30">
+          <Avatar className="h-7 w-7 ring-2 ring-neutral-700">
             <AvatarImage src={popupConversation.participantAvatar} />
-            <AvatarFallback className="text-xs bg-primary/10">{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs bg-neutral-800 text-white">{initials}</AvatarFallback>
           </Avatar>
-          <span className="font-semibold text-sm truncate max-w-[160px]">
+          <span className="font-semibold text-sm truncate max-w-[160px] text-white">
             {popupConversation.participantName}
           </span>
         </div>
@@ -187,7 +194,7 @@ export function ChatPopup() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 hover:bg-primary/10"
+            className="h-7 w-7 hover:bg-neutral-800 text-neutral-400 hover:text-white"
             onClick={handleViewInMessages}
             title="View in Messages"
           >
@@ -196,7 +203,7 @@ export function ChatPopup() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 hover:bg-primary/10"
+            className="h-7 w-7 hover:bg-neutral-800 text-neutral-400 hover:text-white"
             onClick={minimizePopupChat}
             title={isMinimized ? "Expand" : "Minimize"}
           >
@@ -205,7 +212,7 @@ export function ChatPopup() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 hover:bg-primary/10"
+            className="h-7 w-7 hover:bg-neutral-800 text-neutral-400 hover:text-white"
             onClick={closePopupChat}
           >
             <X className="h-4 w-4" />
@@ -219,12 +226,12 @@ export function ChatPopup() {
           {/* Messages with scroll */}
           <div 
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto p-3 min-h-0 bg-gradient-to-b from-background to-card/50"
+            className="flex-1 overflow-y-auto p-3 min-h-0 bg-[#0a0a0a]"
           >
             {isLoading ? (
-              <div className="text-center text-muted-foreground text-sm py-4">Loading...</div>
+              <div className="text-center text-neutral-500 text-sm py-4">Loading...</div>
             ) : messages?.length === 0 ? (
-              <div className="text-center text-muted-foreground text-sm py-4">
+              <div className="text-center text-neutral-500 text-sm py-4">
                 No messages yet. Say hello!
               </div>
             ) : (
@@ -244,12 +251,12 @@ export function ChatPopup() {
 
           {/* Attachment Preview */}
           {attachment && (
-            <div className="px-2 pb-1 shrink-0 bg-card">
+            <div className="px-2 pb-1 shrink-0 bg-[#0a0a0a]">
               <div className="relative inline-block">
                 {attachment.type === 'image' ? (
                   <img src={attachment.url} alt="Preview" className="h-12 rounded object-cover" />
                 ) : (
-                  <div className="h-10 px-2 bg-muted rounded flex items-center gap-1 text-xs">
+                  <div className="h-10 px-2 bg-neutral-800 rounded flex items-center gap-1 text-xs text-white">
                     <FileText className="h-4 w-4" />
                     <span className="truncate max-w-[100px]">{attachment.file.name}</span>
                   </div>
@@ -257,7 +264,7 @@ export function ChatPopup() {
                 <Button
                   variant="destructive"
                   size="icon"
-                  className="absolute -top-1 -right-1 h-5 w-5"
+                  className="absolute -top-1 -right-1 h-5 w-5 bg-red-600 hover:bg-red-700"
                   onClick={removeAttachment}
                 >
                   <X className="h-2 w-2" />
@@ -267,7 +274,7 @@ export function ChatPopup() {
           )}
 
           {/* Input */}
-          <div className="p-2 border-t border-primary/20 shrink-0 bg-card rounded-b-xl">
+          <div className="p-2 border-t border-neutral-800 shrink-0 bg-[#111111] rounded-b-xl">
             <div className="flex gap-1 items-end">
               <input
                 type="file"
@@ -278,12 +285,13 @@ export function ChatPopup() {
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 hover:bg-primary/10">
+                  <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 hover:bg-neutral-800 text-neutral-400 hover:text-white">
                     <Paperclip className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-card">
+                <DropdownMenuContent align="start" className="bg-[#1a1a1a] border-neutral-800">
                   <DropdownMenuItem
+                    className="text-white hover:bg-neutral-800 focus:bg-neutral-800"
                     onClick={() => {
                       if (fileInputRef.current) {
                         fileInputRef.current.accept = 'image/*';
@@ -295,6 +303,7 @@ export function ChatPopup() {
                     Image
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    className="text-white hover:bg-neutral-800 focus:bg-neutral-800"
                     onClick={() => {
                       if (fileInputRef.current) {
                         fileInputRef.current.accept = 'video/*';
@@ -306,6 +315,7 @@ export function ChatPopup() {
                     Video
                   </DropdownMenuItem>
                   <DropdownMenuItem
+                    className="text-white hover:bg-neutral-800 focus:bg-neutral-800"
                     onClick={() => {
                       if (fileInputRef.current) {
                         fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
@@ -322,7 +332,7 @@ export function ChatPopup() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                className="text-sm min-h-[36px] max-h-28 resize-none flex-1 border-primary/20"
+                className="text-sm min-h-[36px] max-h-28 resize-none flex-1 bg-neutral-900 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-red-500 focus:ring-red-500/20"
                 rows={1}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -333,7 +343,7 @@ export function ChatPopup() {
               />
               <Button
                 size="icon"
-                className="h-9 w-9 shrink-0"
+                className="h-9 w-9 shrink-0 bg-red-600 hover:bg-red-700 text-white"
                 onClick={handleSend}
                 disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending || isUploading}
               >
@@ -367,12 +377,12 @@ function PopupMessageBubble({
       <div className="flex items-center gap-1 max-w-[85%]">
         <div
           className={cn(
-            'px-3 py-2 rounded-2xl text-sm shadow-sm',
+            'px-3 py-2 rounded-2xl text-sm',
             'break-words overflow-hidden',
             '[word-break:break-word] [overflow-wrap:anywhere]',
             isOwn 
-              ? 'bg-primary text-primary-foreground rounded-br-md' 
-              : 'bg-card border border-primary/20 rounded-bl-md'
+              ? 'bg-red-600 text-white rounded-br-md' 
+              : 'bg-neutral-800 text-white rounded-bl-md'
           )}
         >
           {isMedia && mediaUrl && (
@@ -386,7 +396,7 @@ function PopupMessageBubble({
                   href={mediaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 underline text-xs break-words"
+                  className="flex items-center gap-1 underline text-xs break-words text-white"
                 >
                   <FileText className="h-3 w-3" />
                   Attachment
@@ -404,7 +414,7 @@ function PopupMessageBubble({
           conversationId={conversationId}
           otherUserId={otherUserId}
           align={isOwn ? 'end' : 'start'}
-          className="h-5 w-5"
+          className="h-5 w-5 text-neutral-500 hover:text-white"
         />
       </div>
     </div>

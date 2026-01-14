@@ -43,24 +43,24 @@ export default function Messages() {
   if (loading || !user) return null;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-black">
       <SiteHeader />
-      <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-br from-background via-background to-primary/5">
-        <header className="border-b border-primary/20 bg-card/80 backdrop-blur shrink-0">
+      <div className="flex-1 flex flex-col min-h-0">
+        <header className="border-b border-neutral-800 bg-[#0a0a0a] shrink-0">
           <div className="max-w-6xl mx-auto px-4 py-6">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
-                <MessageSquare className="h-5 w-5 text-primary-foreground" />
+              <div className="h-10 w-10 rounded-lg bg-red-600 flex items-center justify-center">
+                <MessageSquare className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Messages</h1>
-                <p className="text-sm text-muted-foreground">Your conversations</p>
+                <h1 className="text-2xl font-bold text-white">Messages</h1>
+                <p className="text-sm text-neutral-400">Your conversations</p>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 min-h-0 max-w-6xl mx-auto px-4 py-4 w-full">
+        <main className="flex-1 min-h-0 max-w-6xl mx-auto px-4 py-4 w-full bg-black">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
             {/* Conversation List */}
             <div className="lg:col-span-1 h-full overflow-hidden">
@@ -79,13 +79,13 @@ export default function Messages() {
                   participantId={participantId}
                 />
               ) : (
-                <Card className="h-full flex items-center justify-center border-primary/20 bg-gradient-to-br from-card to-card/50">
+                <Card className="h-full flex items-center justify-center border-neutral-800 bg-[#0a0a0a]">
                   <CardContent className="text-center">
-                    <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                      <MessageSquare className="h-8 w-8 text-primary" />
+                    <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-neutral-800 flex items-center justify-center">
+                      <MessageSquare className="h-8 w-8 text-neutral-500" />
                     </div>
-                    <h3 className="font-semibold mb-2">Select a conversation</h3>
-                    <p className="text-muted-foreground">
+                    <h3 className="font-semibold mb-2 text-white">Select a conversation</h3>
+                    <p className="text-neutral-500">
                       Choose a conversation from the list to start messaging
                     </p>
                   </CardContent>
