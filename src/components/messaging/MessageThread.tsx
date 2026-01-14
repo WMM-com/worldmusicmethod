@@ -116,27 +116,27 @@ export function MessageThread({ conversationId, participantName, participantId }
 
   if (isLoading) {
     return (
-      <Card className="h-full flex flex-col overflow-hidden border-primary/20">
-        <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
-          <Skeleton className="h-6 w-32" />
+      <Card className="h-full flex flex-col overflow-hidden border-neutral-800 bg-[#0a0a0a]">
+        <CardHeader className="bg-[#111111]">
+          <Skeleton className="h-6 w-32 bg-neutral-800" />
         </CardHeader>
         <CardContent className="flex-1">
-          <Skeleton className="h-full" />
+          <Skeleton className="h-full bg-neutral-800" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden border-primary/20 shadow-lg">
-      <CardHeader className="border-b border-primary/20 pb-4 shrink-0 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardTitle className="text-lg leading-tight break-words whitespace-normal">{participantName || 'Conversation'}</CardTitle>
+    <Card className="h-full flex flex-col overflow-hidden border-neutral-800 bg-[#0a0a0a]">
+      <CardHeader className="border-b border-neutral-800 pb-4 shrink-0 bg-[#111111]">
+        <CardTitle className="text-lg leading-tight break-words whitespace-normal text-white">{participantName || 'Conversation'}</CardTitle>
       </CardHeader>
 
       {/* Messages area */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 min-h-0 bg-gradient-to-b from-background to-card/50"
+        className="flex-1 overflow-y-auto p-4 min-h-0 bg-[#0a0a0a]"
       >
         <div className="space-y-4">
           {messages?.map((message) => (
@@ -149,7 +149,7 @@ export function MessageThread({ conversationId, participantName, participantId }
             />
           ))}
           {messages?.length === 0 && (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-neutral-500 py-8">
               No messages yet. Start the conversation.
             </p>
           )}
@@ -158,22 +158,22 @@ export function MessageThread({ conversationId, participantName, participantId }
 
       {/* Attachment Preview */}
       {attachment && (
-        <div className="px-4 pb-2 shrink-0 bg-card">
+        <div className="px-4 pb-2 shrink-0 bg-[#0a0a0a]">
           <div className="relative inline-block">
             {attachment.type === 'image' ? (
               <img src={attachment.url} alt="Preview" className="h-20 rounded-lg object-cover" />
             ) : attachment.type === 'video' ? (
               <video src={attachment.url} className="h-20 rounded-lg" />
             ) : (
-              <div className="h-20 px-4 bg-muted rounded-lg flex items-center gap-2">
-                <FileText className="h-6 w-6" />
-                <span className="text-sm truncate max-w-[150px]">{attachment.file.name}</span>
+              <div className="h-20 px-4 bg-neutral-800 rounded-lg flex items-center gap-2">
+                <FileText className="h-6 w-6 text-white" />
+                <span className="text-sm truncate max-w-[150px] text-white">{attachment.file.name}</span>
               </div>
             )}
             <Button
               variant="destructive"
               size="icon"
-              className="absolute -top-2 -right-2 h-6 w-6"
+              className="absolute -top-2 -right-2 h-6 w-6 bg-red-600 hover:bg-red-700"
               onClick={removeAttachment}
             >
               <X className="h-3 w-3" />
@@ -183,7 +183,7 @@ export function MessageThread({ conversationId, participantName, participantId }
       )}
 
       {/* Input area */}
-      <div className="p-4 border-t border-primary/20 shrink-0 bg-card">
+      <div className="p-4 border-t border-neutral-800 shrink-0 bg-[#111111]">
         <div className="flex gap-2 items-end">
           <input
             type="file"
@@ -194,35 +194,44 @@ export function MessageThread({ conversationId, participantName, participantId }
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 hover:bg-primary/10">
+              <Button variant="ghost" size="icon" className="shrink-0 hover:bg-neutral-800 text-neutral-400 hover:text-white">
                 <Paperclip className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="bg-card">
-              <DropdownMenuItem onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = 'image/*';
-                  fileInputRef.current.click();
-                }
-              }}>
+            <DropdownMenuContent align="start" className="bg-[#1a1a1a] border-neutral-800">
+              <DropdownMenuItem 
+                className="text-white hover:bg-neutral-800 focus:bg-neutral-800"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = 'image/*';
+                    fileInputRef.current.click();
+                  }
+                }}
+              >
                 <Image className="h-4 w-4 mr-2" />
                 Image
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = 'video/*';
-                  fileInputRef.current.click();
-                }
-              }}>
+              <DropdownMenuItem 
+                className="text-white hover:bg-neutral-800 focus:bg-neutral-800"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = 'video/*';
+                    fileInputRef.current.click();
+                  }
+                }}
+              >
                 <Video className="h-4 w-4 mr-2" />
                 Video
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                if (fileInputRef.current) {
-                  fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
-                  fileInputRef.current.click();
-                }
-              }}>
+              <DropdownMenuItem 
+                className="text-white hover:bg-neutral-800 focus:bg-neutral-800"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.accept = '.pdf,.doc,.docx,.txt';
+                    fileInputRef.current.click();
+                  }
+                }}
+              >
                 <FileText className="h-4 w-4 mr-2" />
                 Document
               </DropdownMenuItem>
@@ -233,14 +242,14 @@ export function MessageThread({ conversationId, participantName, participantId }
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="min-h-[44px] max-h-32 resize-none flex-1 border-primary/20 focus:border-primary"
+            className="min-h-[44px] max-h-32 resize-none flex-1 bg-neutral-900 border-neutral-700 text-white placeholder:text-neutral-500 focus:border-red-500 focus:ring-red-500/20"
             rows={1}
           />
           <Button
             onClick={handleSend}
             disabled={(!content.trim() && !attachment) || sendMessage.isPending || isUploading}
             size="icon"
-            className="shrink-0"
+            className="shrink-0 bg-red-600 hover:bg-red-700 text-white"
           >
             <Send className="h-4 w-4" />
           </Button>
@@ -268,9 +277,9 @@ function MessageBubble({
   return (
     <div className={cn('flex gap-2 min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
       {!isOwn && (
-        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-primary/20">
+        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-neutral-700">
           <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
-          <AvatarFallback className="bg-primary/10">
+          <AvatarFallback className="bg-neutral-800 text-white">
             <User className="h-3 w-3" />
           </AvatarFallback>
         </Avatar>
@@ -279,10 +288,10 @@ function MessageBubble({
       <div className={cn('flex items-center gap-1 max-w-[75%]', isOwn ? 'flex-row-reverse' : 'flex-row')}>
         <div
           className={cn(
-            'min-w-0 break-words rounded-2xl px-4 py-2 shadow-sm',
+            'min-w-0 break-words rounded-2xl px-4 py-2',
             isOwn 
-              ? 'bg-primary text-primary-foreground rounded-br-md' 
-              : 'bg-card border border-primary/20 rounded-bl-md'
+              ? 'bg-red-600 text-white rounded-br-md' 
+              : 'bg-neutral-800 text-white rounded-bl-md'
           )}
         >
           {isMedia && mediaUrl && (
@@ -296,7 +305,7 @@ function MessageBubble({
                   href={mediaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 underline break-words"
+                  className="flex items-center gap-2 underline break-words text-white"
                 >
                   <FileText className="h-4 w-4" />
                   View attachment
@@ -315,7 +324,7 @@ function MessageBubble({
           <span
             className={cn(
               'text-xs block mt-1',
-              isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+              isOwn ? 'text-white/70' : 'text-neutral-400'
             )}
           >
             {format(new Date(message.created_at), 'h:mm a')}
@@ -327,13 +336,14 @@ function MessageBubble({
           conversationId={conversationId}
           otherUserId={otherUserId}
           align={isOwn ? 'end' : 'start'}
+          className="text-neutral-500 hover:text-white"
         />
       </div>
       
       {isOwn && (
-        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-secondary/20">
+        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-neutral-700">
           <AvatarImage src={message.sender_profile?.avatar_url || undefined} />
-          <AvatarFallback className="bg-secondary/10">
+          <AvatarFallback className="bg-neutral-800 text-white">
             <User className="h-3 w-3" />
           </AvatarFallback>
         </Avatar>
