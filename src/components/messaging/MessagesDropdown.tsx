@@ -179,11 +179,11 @@ export function MessagesDropdown() {
                           <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 border-2 border-background" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-2">
                           <p
                             className={cn(
-                              "text-sm flex-1 min-w-0 truncate",
+                              "text-sm flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
                               hasUnread ? "font-semibold" : "font-medium"
                             )}
                           >
@@ -196,7 +196,7 @@ export function MessagesDropdown() {
                         </div>
                         <p
                           className={cn(
-                            "text-xs truncate mt-0.5 min-w-0",
+                            "text-xs overflow-hidden text-ellipsis whitespace-nowrap mt-0.5",
                             hasUnread ? "text-foreground" : "text-muted-foreground"
                           )}
                         >

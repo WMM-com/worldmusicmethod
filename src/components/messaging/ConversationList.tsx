@@ -172,9 +172,9 @@ function ConversationItem({
             <User className="h-4 w-4" />
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-2">
-            <span className="font-medium flex-1 min-w-0 truncate">
+            <span className="font-medium flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
               {participant?.full_name || 'Unknown'}
             </span>
             {conversation.last_message && (
@@ -184,7 +184,7 @@ function ConversationItem({
             )}
           </div>
           {conversation.last_message && (
-            <p className="text-sm text-muted-foreground truncate min-w-0">
+            <p className="text-sm text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap">
               {conversation.last_message.content}
             </p>
           )}

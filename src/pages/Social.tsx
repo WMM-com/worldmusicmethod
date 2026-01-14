@@ -7,7 +7,7 @@ import { MembersList } from '@/components/community/MembersList';
 import { FriendsTab } from '@/components/community/FriendsTab';
 import { PendingInvitesBanner } from '@/components/groups/PendingInvitesBanner';
 import { CommunitySidebar } from '@/components/community/CommunitySidebar';
-import { CommunityPlaylistPlayer } from '@/components/community/CommunityPlaylistPlayer';
+import { CommunityFeedPlaylist } from '@/components/community/CommunityFeedPlaylist';
 import { useFeed } from '@/hooks/useSocial';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -196,7 +196,7 @@ export default function Social() {
                 {/* Right Sidebar - Playlist Player */}
                 <div className="hidden lg:block">
                   <div className="sticky top-24">
-                    <CommunityPlaylistPlayer playlistName="Artists I played with in 2025" />
+                    <CommunityFeedPlaylist />
                   </div>
                 </div>
               </div>
