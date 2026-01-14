@@ -53,6 +53,8 @@ export function useConversations() {
         .from('conversations')
         .select('*')
         .contains('participant_ids', [user.id])
+        // Hide conversations the current user has deleted (soft-delete)
+        .or(`deleted_for_users.is.null,deleted_for_users.not.cs.{${user.id}}`)
         .order('last_message_at', { ascending: false });
 
       if (error) throw error;
@@ -402,6 +404,7 @@ export function useSoftDeleteMessage() {
 
 export function useDeleteConversation() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (conversationId: string) => {
@@ -409,12 +412,38 @@ export function useDeleteConversation() {
         body: { conversationId },
       });
       if (error) throw error;
+      return conversationId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    onMutate: async (conversationId) => {
+      // Optimistically remove from list so the sidebar updates instantly
+      if (!user?.id) return {};
+
+      await queryClient.cancelQueries({ queryKey: ['conversations', user.id] });
+      const previous = queryClient.getQueryData<Conversation[]>(['conversations', user.id]);
+
+      if (previous) {
+        queryClient.setQueryData<Conversation[]>(
+          ['conversations', user.id],
+          previous.filter((c) => c.id !== conversationId)
+        );
+      }
+
+      return { previous };
+    },
+    onSuccess: async (conversationId) => {
+      if (user?.id) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['conversations', user.id] }),
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] }),
+        ]);
+      }
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       toast.success('Conversation deleted');
     },
-    onError: (error: any) => {
+    onError: (error: any, _conversationId, context) => {
+      if (user?.id && context?.previous) {
+        queryClient.setQueryData(['conversations', user.id], context.previous);
+      }
       toast.error(error.message || 'Failed to delete conversation');
     },
   });

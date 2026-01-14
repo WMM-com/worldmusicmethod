@@ -14,19 +14,21 @@ export default function Messages() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: conversations } = useConversations();
-  
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(
-    location.state?.conversationId || null
+
+  const queryConversationId = (() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('conversation') || params.get('id');
+  })();
+
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(() =>
+    location.state?.conversationId || queryConversationId || null
   );
 
-  // Auto-select conversation when navigating from Members page with conversationId
+  // Auto-open when coming from other places (Members/Friends/Profile)
   useEffect(() => {
-    if (location.state?.conversationId) {
-      setSelectedConversationId(location.state.conversationId);
-      // Clear the state to prevent re-selecting on subsequent renders
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state?.conversationId]);
+    const nextId = location.state?.conversationId || queryConversationId || null;
+    if (nextId) setSelectedConversationId(nextId);
+  }, [location.state?.conversationId, queryConversationId]);
 
   useEffect(() => {
     if (!loading && !user) {
