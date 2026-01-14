@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 export interface Message {
   id: string;
@@ -107,14 +107,17 @@ export function useConversations() {
   });
 }
 
+// Completely rebuilt unread message count hook
 export function useUnreadMessageCount() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['unread-messages-count', user?.id],
     queryFn: async () => {
       if (!user) return 0;
 
+      // Get all conversations for this user
       const { data: conversations } = await supabase
         .from('conversations')
         .select('id')
@@ -124,6 +127,7 @@ export function useUnreadMessageCount() {
 
       const conversationIds = conversations.map(c => c.id);
 
+      // Count unread messages (not sent by user, read_at is null)
       const { count, error } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
@@ -131,12 +135,44 @@ export function useUnreadMessageCount() {
         .neq('sender_id', user.id)
         .is('read_at', null);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching unread count:', error);
+        return 0;
+      }
+      
       return count || 0;
     },
     enabled: !!user,
-    refetchInterval: 30000,
+    refetchInterval: 15000, // Refetch every 15 seconds
+    staleTime: 5000, // Consider data stale after 5 seconds
   });
+
+  // Listen for realtime message updates to refresh count
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('unread-messages-global')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          // Refetch unread count whenever any message changes
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
+
+  return query;
 }
 
 export function useMessages(conversationId: string) {
@@ -170,6 +206,7 @@ export function useMessages(conversationId: string) {
     enabled: !!conversationId && !!user,
   });
 
+  // Subscribe to realtime updates for this conversation
   useEffect(() => {
     if (!conversationId) return;
 
@@ -195,31 +232,49 @@ export function useMessages(conversationId: string) {
     };
   }, [conversationId, queryClient]);
 
+  // Mark messages as read when viewing conversation
+  const markAsRead = useCallback(async () => {
+    if (!user || !conversationId) return;
+
+    try {
+      // Use the security-definer RPC function to mark messages as read
+      const { error } = await supabase.rpc('mark_messages_read', {
+        conversation_id: conversationId,
+      });
+      
+      if (error) {
+        console.error('Error marking messages as read:', error);
+        return;
+      }
+
+      // Force immediate refetch of all related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] }),
+        queryClient.invalidateQueries({ queryKey: ['conversations'] }),
+        queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }),
+      ]);
+    } catch (err) {
+      console.error('Failed to mark messages as read:', err);
+    }
+  }, [user, conversationId, queryClient]);
+
+  // Effect to mark messages as read when data loads
   useEffect(() => {
     if (!user || !conversationId || !query.data) return;
 
-    const unreadMessages = query.data.filter(
+    const hasUnreadMessages = query.data.some(
       m => m.sender_id !== user.id && !m.read_at
     );
 
-    if (unreadMessages.length > 0) {
-      const markAsRead = async () => {
-        // Use the security-definer RPC function to mark messages as read
-        const { error } = await supabase.rpc('mark_messages_read', {
-          conversation_id: conversationId,
-        });
-        
-        if (!error) {
-          // Invalidate all related queries after successful update
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
-          queryClient.invalidateQueries({ queryKey: ['unread-messages-count'] });
-          queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
-        }
-      };
+    if (hasUnreadMessages) {
+      // Small delay to ensure the UI has rendered
+      const timer = setTimeout(() => {
+        markAsRead();
+      }, 100);
       
-      markAsRead();
+      return () => clearTimeout(timer);
     }
-  }, [user, conversationId, query.data, queryClient]);
+  }, [user, conversationId, query.data, markAsRead]);
 
   return query;
 }
