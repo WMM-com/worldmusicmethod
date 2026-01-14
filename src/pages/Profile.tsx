@@ -271,7 +271,7 @@ export default function Profile() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background pb-24 overflow-x-hidden">
+      <div className="min-h-screen bg-background overflow-x-hidden">
         {/* Community Navigation */}
         <div className="border-b border-border bg-card overflow-x-hidden">
           <div className="max-w-7xl mx-auto px-4 py-4 overflow-x-auto">

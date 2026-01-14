@@ -213,12 +213,12 @@ function ConversationItem({
   return (
     <>
       <div
-        className={`relative flex items-center gap-3 p-4 hover:bg-neutral-900 transition-colors cursor-pointer ${
+        className={`relative flex items-center gap-2 p-4 hover:bg-neutral-900 transition-colors cursor-pointer ${
           isSelected ? 'bg-neutral-900 border-l-2 border-l-red-600' : ''
         }`}
       >
-        <div className="flex-1 flex items-center gap-3" onClick={onClick}>
-          <Avatar className="h-10 w-10 ring-2 ring-neutral-700">
+        <div className="flex items-center gap-3 flex-1 min-w-0" onClick={onClick}>
+          <Avatar className="h-10 w-10 ring-2 ring-neutral-700 shrink-0">
             <AvatarImage src={participant?.avatar_url || undefined} />
             <AvatarFallback className="bg-neutral-800 text-white">
               <User className="h-4 w-4" />
@@ -226,7 +226,7 @@ function ConversationItem({
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2">
-              <span className="font-medium flex-1 min-w-0 whitespace-normal break-words leading-tight text-white">
+              <span className="font-medium flex-1 min-w-0 truncate leading-tight text-white">
                 {participant?.full_name || 'Unknown'}
               </span>
               {conversation.last_message && (
@@ -241,12 +241,13 @@ function ConversationItem({
               </p>
             )}
           </div>
-          {conversation.unread_count > 0 && (
-            <Badge className="ml-2 bg-red-600 hover:bg-red-600 text-white border-0">
-              {conversation.unread_count}
-            </Badge>
-          )}
         </div>
+
+        {conversation.unread_count > 0 && (
+          <Badge className="bg-red-600 hover:bg-red-600 text-white border-0 shrink-0">
+            {conversation.unread_count}
+          </Badge>
+        )}
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

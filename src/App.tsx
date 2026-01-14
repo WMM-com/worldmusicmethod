@@ -89,12 +89,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Wrapper to add bottom padding when player is visible
+// Wrapper content
 function AppContent() {
   return (
     <>
       <ScrollToTop />
-      <div className="pb-24">
       <Routes>
         <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -144,7 +143,6 @@ function AppContent() {
       </Routes>
       <ChatPopup />
       <StickyAudioPlayer />
-      </div>
     </>
   );
 }
