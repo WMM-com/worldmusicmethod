@@ -2,12 +2,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Play, Shuffle, ListMusic, Trash2, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { usePlaylist, useRemoveFromPlaylist, useDeletePlaylist } from '@/hooks/useMedia';
+import { usePlaylist, useDeletePlaylist } from '@/hooks/useMedia';
 import { useMediaPlayer } from '@/contexts/MediaPlayerContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { PlaylistCoverGrid } from '@/components/media/PlaylistCoverGrid';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,10 +30,14 @@ import { PlaylistTrackList } from '@/components/media/PlaylistTrackList';
 export default function MediaPlaylist() {
   const { playlistId } = useParams<{ playlistId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { playTrack } = useMediaPlayer();
   const { data: playlist, isLoading } = usePlaylist(playlistId || '');
   const deletePlaylist = useDeletePlaylist();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  // Only show delete option if user owns this playlist
+  const canDelete = user && playlist?.user_id === user.id;
 
   useEffect(() => {
     if (playlist?.name) {
@@ -148,22 +153,24 @@ export default function MediaPlaylist() {
                 </p>
               </div>
               
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    className="text-destructive"
-                    onClick={() => setShowDeleteDialog(true)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Playlist
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {canDelete && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem 
+                      className="text-destructive"
+                      onClick={() => setShowDeleteDialog(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Playlist
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             <div className="flex gap-2">
