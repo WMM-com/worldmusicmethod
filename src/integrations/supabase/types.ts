@@ -4349,6 +4349,10 @@ export type Database = {
         Returns: number
       }
       repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
+      retract_friend_request: {
+        Args: { p_friendship_id: string }
+        Returns: boolean
+      }
       soft_delete_message: { Args: { message_id: string }; Returns: boolean }
       user_owns_course: {
         Args: { p_course_id: string; p_user_id: string }
