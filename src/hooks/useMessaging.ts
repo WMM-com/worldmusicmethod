@@ -78,15 +78,17 @@ export function useConversations() {
             .from('messages')
             .select('*')
             .eq('conversation_id', conv.id)
+            .not('deleted_for_users', 'cs', `{${user.id}}`)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           const { count } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
             .eq('conversation_id', conv.id)
             .neq('sender_id', user.id)
+            .not('deleted_for_users', 'cs', `{${user.id}}`)
             .is('read_at', null);
 
           return {
@@ -133,6 +135,7 @@ export function useUnreadMessageCount() {
         .select('*', { count: 'exact', head: true })
         .in('conversation_id', conversationIds)
         .neq('sender_id', user.id)
+        .not('deleted_for_users', 'cs', `{${user.id}}`)
         .is('read_at', null);
 
       if (error) {
@@ -186,6 +189,7 @@ export function useMessages(conversationId: string) {
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
+        .not('deleted_for_users', 'cs', `{${user.id}}`)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -366,65 +370,27 @@ export function useCreateConversation() {
   });
 }
 
-export function useAvailabilityTemplates() {
-  const { user } = useAuth();
+// Availability templates feature removed
 
-  return useQuery({
-    queryKey: ['availability-templates', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('availability_templates')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-}
-
-export function useCreateAvailabilityTemplate() {
+export function useSoftDeleteMessage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-
-  return useMutation({
-    mutationFn: async ({ name, slots }: { name: string; slots: any[] }) => {
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase.from('availability_templates').insert({
-        user_id: user.id,
-        name,
-        slots,
-      });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availability-templates'] });
-      toast.success('Template saved');
-    },
-  });
-}
-
-export function useDeleteMessage() {
-  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ messageId, conversationId }: { messageId: string; conversationId: string }) => {
-      const { error } = await supabase.functions.invoke('delete-message', {
-        body: { messageId },
+      const { error } = await supabase.rpc('soft_delete_message', {
+        message_id: messageId,
       });
       if (error) throw error;
       return conversationId;
     },
     onSuccess: (conversationId) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
-      toast.success('Message deleted');
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+        queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+        queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] });
+      }
+      toast.success('Message removed');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to delete message');

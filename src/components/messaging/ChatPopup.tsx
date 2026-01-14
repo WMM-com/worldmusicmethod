@@ -4,39 +4,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
 import { useR2Upload } from '@/hooks/useR2Upload';
-import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
+import { MessageOptionsMenu } from './MessageOptionsMenu';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { STICKY_PLAYER_HEIGHT } from '@/components/media/StickyAudioPlayer';
-import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2, MoreVertical, Trash2, Calendar, Flag, Ban } from 'lucide-react';
+import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -352,175 +331,55 @@ function PopupMessageBubble({
   conversationId: string;
   otherUserId?: string;
 }) {
-  const { user } = useAuth();
-  const sendMessage = useSendMessage();
-  const createReport = useCreateReport();
-  const blockUser = useBlockUser();
-  
-  const [showReportDialog, setShowReportDialog] = useState(false);
-  const [showBlockAlert, setShowBlockAlert] = useState(false);
-  const [reportReason, setReportReason] = useState<ReportReason>('too_negative');
-  const [reportDetails, setReportDetails] = useState('');
-
   const isMedia = message.message_type === 'media';
   const mediaUrl = message.metadata?.mediaUrl;
   const mediaType = message.metadata?.mediaType;
 
-  const handleSendAvailability = () => {
-    const slots = [
-      'Monday 10:00 AM - 12:00 PM',
-      'Wednesday 2:00 PM - 4:00 PM',
-      'Friday 11:00 AM - 1:00 PM',
-    ];
-    sendMessage.mutate({
-      conversationId,
-      content: `I'm available at the following times:\n${slots.join('\n')}\n\nLet me know which works for you.`,
-      messageType: 'availability',
-      metadata: { slots },
-    });
-  };
-
-  const handleReport = () => {
-    createReport.mutate({
-      reportType: 'user',
-      reason: reportReason,
-      reportedUserId: message.sender_id,
-      details: reportDetails || undefined,
-    });
-    setShowReportDialog(false);
-    setReportReason('too_negative');
-    setReportDetails('');
-  };
-
-  const handleBlock = () => {
-    if (otherUserId) {
-      blockUser.mutate(otherUserId);
-    }
-    setShowBlockAlert(false);
-  };
-
   return (
-    <>
-      <div className={cn('flex min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
-        <div className="flex items-center gap-1 max-w-[85%]">
-          <div
-            className={cn(
-              'px-3 py-2 rounded-2xl text-sm shadow-sm',
-              'break-words overflow-hidden',
-              '[word-break:break-word] [overflow-wrap:anywhere]',
-              isOwn 
-                ? 'bg-primary text-primary-foreground rounded-br-md' 
-                : 'bg-card border border-primary/20 rounded-bl-md'
-            )}
-          >
-            {isMedia && mediaUrl && (
-              <div className="mb-1">
-                {mediaType === 'image' ? (
-                  <img src={mediaUrl} alt="Shared image" className="max-w-full rounded" />
-                ) : mediaType === 'video' ? (
-                  <video src={mediaUrl} controls className="max-w-full rounded" />
-                ) : (
-                  <a
-                    href={mediaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 underline text-xs break-words"
-                  >
-                    <FileText className="h-3 w-3" />
-                    Attachment
-                  </a>
-                )}
-              </div>
-            )}
-            {message.content && !message.content.startsWith('[') && (
-              <p className="whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">{message.content}</p>
-            )}
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <MoreVertical className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-44 bg-card">
-              <DropdownMenuItem onClick={handleSendAvailability}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Send Availability
-              </DropdownMenuItem>
-              
-              {!isOwn && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowReportDialog(true)}>
-                    <Flag className="h-4 w-4 mr-2" />
-                    Report User
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowBlockAlert(true)} className="text-destructive focus:text-destructive">
-                    <Ban className="h-4 w-4 mr-2" />
-                    Block User
-                  </DropdownMenuItem>
-                </>
+    <div className={cn('flex min-w-0 group', isOwn ? 'justify-end' : 'justify-start')}>
+      <div className="flex items-center gap-1 max-w-[85%]">
+        <div
+          className={cn(
+            'px-3 py-2 rounded-2xl text-sm shadow-sm',
+            'break-words overflow-hidden',
+            '[word-break:break-word] [overflow-wrap:anywhere]',
+            isOwn 
+              ? 'bg-primary text-primary-foreground rounded-br-md' 
+              : 'bg-card border border-primary/20 rounded-bl-md'
+          )}
+        >
+          {isMedia && mediaUrl && (
+            <div className="mb-1">
+              {mediaType === 'image' ? (
+                <img src={mediaUrl} alt="Shared image" className="max-w-full rounded" />
+              ) : mediaType === 'video' ? (
+                <video src={mediaUrl} controls className="max-w-full rounded" />
+              ) : (
+                <a
+                  href={mediaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 underline text-xs break-words"
+                >
+                  <FileText className="h-3 w-3" />
+                  Attachment
+                </a>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+          )}
+          {message.content && !message.content.startsWith('[') && (
+            <p className="whitespace-pre-wrap break-words [word-break:break-word] [overflow-wrap:anywhere]">{message.content}</p>
+          )}
         </div>
+        
+        <MessageOptionsMenu
+          message={message}
+          conversationId={conversationId}
+          otherUserId={otherUserId}
+          align={isOwn ? 'end' : 'start'}
+          className="h-5 w-5"
+        />
       </div>
-
-      {/* Report Dialog */}
-      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report User</DialogTitle>
-            <DialogDescription>
-              Help us understand what's wrong.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <RadioGroup value={reportReason} onValueChange={(v) => setReportReason(v as ReportReason)}>
-              {REPORT_REASONS.map((reason) => (
-                <div key={reason.value} className="flex items-center space-x-2">
-                  <RadioGroupItem value={reason.value} id={`popup-${reason.value}`} />
-                  <Label htmlFor={`popup-${reason.value}`}>{reason.label}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-            <Textarea
-              placeholder="Additional details (optional)"
-              value={reportDetails}
-              onChange={(e) => setReportDetails(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReportDialog(false)}>Cancel</Button>
-            <Button onClick={handleReport} disabled={createReport.isPending}>
-              Submit Report
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Block Alert */}
-      <AlertDialog open={showBlockAlert} onOpenChange={setShowBlockAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Block User?</AlertDialogTitle>
-            <AlertDialogDescription>
-              They won't be able to message you or see your posts.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBlock} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Block
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    </div>
   );
 }

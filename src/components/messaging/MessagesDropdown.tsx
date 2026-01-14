@@ -183,11 +183,11 @@ export function MessagesDropdown() {
                         <div className="flex items-center gap-2">
                           <p
                             className={cn(
-                              "text-sm flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap",
+                              "text-sm flex-1 min-w-0 truncate",
                               hasUnread ? "font-semibold" : "font-medium"
                             )}
                           >
-                            {participant?.full_name || 'Unknown'}
+                            {(participant?.full_name || 'Unknown').slice(0, 25)}
                           </p>
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             {conversation.last_message_at &&
@@ -196,11 +196,14 @@ export function MessagesDropdown() {
                         </div>
                         <p
                           className={cn(
-                            "text-xs overflow-hidden text-ellipsis whitespace-nowrap mt-0.5",
+                            "text-xs truncate mt-0.5",
                             hasUnread ? "text-foreground" : "text-muted-foreground"
                           )}
                         >
-                          {conversation.last_message?.content ?? 'Start a conversation'}
+                          {(() => {
+                            const msg = conversation.last_message?.content ?? 'Start a conversation';
+                            return msg.length > 35 ? msg.slice(0, 35) + '...' : msg;
+                          })()}
                         </p>
                         {hasUnread && (
                           <Badge className="mt-1 h-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500 text-amber-950">
