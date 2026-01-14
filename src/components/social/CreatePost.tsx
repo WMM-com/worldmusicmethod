@@ -254,21 +254,21 @@ export function CreatePost() {
   }
 
   return (
-    <Card>
-      <CardContent className="pt-4">
+    <Card className="w-full overflow-hidden">
+      <CardContent className="pt-4 overflow-hidden">
         <div className="flex gap-3">
           <Avatar className="h-10 w-10">
             <AvatarImage src={profile?.avatar_url || undefined} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
           
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 min-w-0 space-y-3 overflow-hidden">
             <MentionInput
               value={content}
               onChange={setContent}
               placeholder="Share something with your network... Use @ to mention someone"
               rows={3}
-              className="resize-none"
+              className="resize-none w-full"
             />
             
             {/* Media preview */}

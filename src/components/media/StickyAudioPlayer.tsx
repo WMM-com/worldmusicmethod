@@ -120,22 +120,29 @@ export function StickyAudioPlayer() {
       "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 transition-all duration-300",
       isExpanded ? "h-auto" : "h-20"
     )}>
-      {/* Clickable progress bar (thin line at top) */}
+      {/* Clickable/swipeable progress bar (thin line at top) */}
       <div 
-        className="absolute top-0 left-0 right-0 h-1 bg-muted cursor-pointer group"
+        className="absolute top-0 left-0 right-0 h-3 bg-muted cursor-pointer group touch-pan-x"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const clickX = e.clientX - rect.left;
           const percentage = clickX / rect.width;
           seek(percentage * duration);
         }}
+        onTouchMove={(e) => {
+          const touch = e.touches[0];
+          const rect = e.currentTarget.getBoundingClientRect();
+          const touchX = touch.clientX - rect.left;
+          const percentage = Math.max(0, Math.min(1, touchX / rect.width));
+          seek(percentage * duration);
+        }}
       >
         <div 
-          className="h-full bg-primary transition-all duration-100 group-hover:bg-primary/80"
+          className="h-full bg-success transition-all duration-100 group-hover:bg-success/80"
           style={{ width: `${progress}%` }}
         />
-        {/* Hover indicator */}
-        <div className="absolute top-0 left-0 right-0 h-2 -mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        {/* Touch/hover indicator */}
+        <div className="absolute top-0 left-0 right-0 h-4 -mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       <div className="container mx-auto px-4 h-full">
@@ -207,6 +214,7 @@ export function StickyAudioPlayer() {
                 value={[currentTime]}
                 onValueChange={([v]) => seek(v)}
                 max={duration || 100}
+                variant="progress"
                 className="w-32"
               />
               <span className="text-xs text-muted-foreground w-10">
@@ -236,6 +244,7 @@ export function StickyAudioPlayer() {
                 value={[isMuted ? 0 : volume * 100]}
                 onValueChange={([v]) => setVolume(v / 100)}
                 max={100}
+                variant="volume"
                 className="w-24"
               />
             </div>
@@ -282,7 +291,8 @@ export function StickyAudioPlayer() {
                 value={[currentTime]}
                 onValueChange={([v]) => seek(v)}
                 max={duration || 100}
-                className="w-full"
+                variant="progress"
+                className="w-full touch-pan-x"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{formatTime(currentTime)}</span>
@@ -316,6 +326,7 @@ export function StickyAudioPlayer() {
                   value={[isMuted ? 0 : volume * 100]}
                   onValueChange={([v]) => setVolume(v / 100)}
                   max={100}
+                  variant="volume"
                   className="w-24"
                 />
               </div>

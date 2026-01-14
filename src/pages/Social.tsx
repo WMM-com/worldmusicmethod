@@ -108,29 +108,29 @@ export default function Social() {
             {/* Centered Tabs - aligned with feed content */}
             <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
               <div className="hidden lg:block" /> {/* Spacer for left sidebar */}
-              <div className="max-w-2xl mx-auto w-full">
-                <TabsList className={`grid w-full ${user ? 'grid-cols-5' : 'grid-cols-4'}`}>
-                  <TabsTrigger value="feed" className="flex items-center gap-2">
-                    <Newspaper className="h-4 w-4" />
-                    Feed
+              <div className="max-w-2xl mx-auto w-full px-0">
+                <TabsList className={`grid w-full ${user ? 'grid-cols-5' : 'grid-cols-4'} bg-accent/20`}>
+                  <TabsTrigger value="feed" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                    <Newspaper className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">Feed</span>
                   </TabsTrigger>
-                  <TabsTrigger value="friends" className="flex items-center gap-2">
-                    <UserPlus className="h-4 w-4" />
-                    Friends
+                  <TabsTrigger value="friends" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                    <UserPlus className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">Friends</span>
                   </TabsTrigger>
-                  <TabsTrigger value="members" className="flex items-center gap-2">
-                    <UserSearch className="h-4 w-4" />
-                    Members
+                  <TabsTrigger value="members" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                    <UserSearch className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">Members</span>
                   </TabsTrigger>
-                  <TabsTrigger value="groups" className="flex items-center gap-2">
-                    <UsersRound className="h-4 w-4" />
-                    Groups
+                  <TabsTrigger value="groups" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                    <UsersRound className="h-4 w-4 shrink-0" />
+                    <span className="hidden sm:inline">Groups</span>
                   </TabsTrigger>
                   {user && (
-                    <TabsTrigger value="profile" className="flex items-center gap-2" asChild>
+                    <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm data-[state=active]:bg-accent data-[state=active]:text-accent-foreground" asChild>
                       <Link to="/profile">
-                        <User className="h-4 w-4" />
-                        My Profile
+                        <User className="h-4 w-4 shrink-0" />
+                        <span className="hidden sm:inline">My Profile</span>
                       </Link>
                     </TabsTrigger>
                   )}
@@ -149,7 +149,7 @@ export default function Social() {
                 </div>
 
                 {/* Center Feed */}
-                <div className="max-w-2xl mx-auto w-full space-y-4">
+                <div className="max-w-2xl mx-auto w-full space-y-4 overflow-hidden">
                   {user ? <CreatePost /> : null}
 
                   {!user && (
