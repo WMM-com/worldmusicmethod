@@ -89,33 +89,6 @@ export type Database = {
           },
         ]
       }
-      availability_templates: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          slots: Json
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          slots?: Json
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          slots?: Json
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       calendar_connections: {
         Row: {
           access_token: string | null
@@ -4373,6 +4346,7 @@ export type Database = {
       }
       mark_messages_read: { Args: { conversation_id: string }; Returns: number }
       repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
+      soft_delete_message: { Args: { message_id: string }; Returns: boolean }
       user_owns_course: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
