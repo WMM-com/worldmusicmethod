@@ -104,10 +104,11 @@ export function MessagesDropdown() {
                   <DialogTitle>New Conversation</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[400px]">
-                  <div className="space-y-2">
-                    {friendships?.friends.length === 0 ? (
+                  <div className="space-y-2 p-2">
+                    <p className="text-xs text-muted-foreground px-2 mb-2">Select a friend to message:</p>
+                    {!friendships?.friends || friendships.friends.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">
-                        Add friends to start a conversation
+                        No friends yet. You can still message members from their profile page.
                       </p>
                     ) : (
                       friendships?.friends.map((friend) => {
@@ -183,9 +184,9 @@ export function MessagesDropdown() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <p className={cn(
-                            "text-sm",
+                            "text-sm truncate flex-1",
                             hasUnread ? "font-semibold" : "font-medium"
                           )}>
                             {participant?.full_name || 'Unknown'}

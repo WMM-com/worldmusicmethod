@@ -84,10 +84,11 @@ export function ConversationList({ onSelectConversation, selectedId }: Conversat
               <DialogTitle>New Conversation</DialogTitle>
             </DialogHeader>
             <ScrollArea className="max-h-[400px]">
-              <div className="space-y-2">
-                {friendships?.friends.length === 0 ? (
+              <div className="space-y-2 p-2">
+                <p className="text-xs text-muted-foreground px-2 mb-2">Select a friend to message:</p>
+                {!friendships?.friends || friendships.friends.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Add friends to start a conversation
+                    No friends yet. You can still message members from their profile page.
                   </p>
                 ) : (
                   friendships?.friends.map((friend) => {

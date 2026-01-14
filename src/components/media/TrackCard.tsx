@@ -111,7 +111,7 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
           </p>
           {showArtist && (
             <p className="text-xs text-muted-foreground truncate">
-              {track.artist?.name || 'Unknown Artist'}
+              {track.artist?.name || track.podcast?.author || 'Unknown Artist'}
             </p>
           )}
         </div>
@@ -183,7 +183,7 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
             </p>
             {showArtist && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">
-                {track.artist?.name || 'Unknown Artist'}
+                {track.artist?.name || track.podcast?.author || 'Unknown Artist'}
               </p>
             )}
           </div>
@@ -204,30 +204,32 @@ export function TrackCard({ track, trackList, showArtist = true, compact = false
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {user && playlists.length > 0 && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add to Playlist
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      {playlists.map(playlist => (
-                        <DropdownMenuItem 
-                          key={playlist.id}
-                          onClick={() => handleAddToPlaylist(playlist.id)}
-                        >
-                          {playlist.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                )}
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={handleAddToQueue}>
                   <ListPlus className="h-4 w-4 mr-2" />
                   Add to Queue
                 </DropdownMenuItem>
+                {user && playlists.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add to Playlist
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-40">
+                        {playlists.map(playlist => (
+                          <DropdownMenuItem 
+                            key={playlist.id}
+                            onClick={() => handleAddToPlaylist(playlist.id)}
+                          >
+                            {playlist.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

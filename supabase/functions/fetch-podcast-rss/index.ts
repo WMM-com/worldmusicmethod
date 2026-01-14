@@ -85,17 +85,26 @@ function parseRSS(xmlText: string) {
   const items: PodcastEpisode[] = [];
   const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi;
   let itemMatch;
-  let episodeNumber = 0;
 
-  // First count all items
+  // Collect all items first
   const allItems: string[] = [];
   while ((itemMatch = itemRegex.exec(channelContent)) !== null) {
     allItems.push(itemMatch[1]);
   }
   
-  episodeNumber = allItems.length;
+  // Sort items by pubDate in ascending order (oldest first) to assign episode numbers correctly
+  const itemsWithDates = allItems.map(itemContent => {
+    const pubDate = getTagContent(itemContent, 'pubDate');
+    return {
+      content: itemContent,
+      date: pubDate ? new Date(pubDate).getTime() : 0,
+    };
+  }).sort((a, b) => a.date - b.date);
 
-  for (const itemContent of allItems) {
+  // Assign episode numbers in chronological order (oldest = 1)
+  let episodeNumber = 1;
+
+  for (const { content: itemContent } of itemsWithDates) {
     const title = getTagContent(itemContent, 'title');
     const description = getTagContent(itemContent, 'description') || getTagContent(itemContent, 'itunes:summary');
     const audioUrl = getEnclosureUrl(itemContent);
@@ -111,7 +120,7 @@ function parseRSS(xmlText: string) {
         cover_image_url: episodeImage,
         duration_seconds: parseDuration(durationStr),
         release_date: pubDate ? new Date(pubDate).toISOString() : null,
-        episode_number: episodeNumber--,
+        episode_number: episodeNumber++,
       });
     }
   }
@@ -227,7 +236,7 @@ serve(async (req) => {
     const newEpisodes = parsed.episodes.filter(ep => !existingUrls.has(ep.audio_url));
     console.log(`${newEpisodes.length} new episodes to insert`);
 
-    // Insert new episodes
+    // Insert new episodes with podcast author as fallback for artist_name field
     if (newEpisodes.length > 0) {
       const tracksToInsert = newEpisodes.map(ep => ({
         title: ep.title,
@@ -241,6 +250,7 @@ serve(async (req) => {
         media_type: 'audio',
         content_type: 'podcast_episode',
         is_published: true,
+        // Note: artist_name is stored in podcast.author - tracks use podcast relation
       }));
 
       const { error: insertError } = await supabase

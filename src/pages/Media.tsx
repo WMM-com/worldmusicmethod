@@ -210,26 +210,6 @@ export default function Media() {
               </section>
             )}
 
-            {/* Episodes */}
-            <section className="space-y-4">
-              <h2 className="text-xl font-semibold">Latest Episodes</h2>
-              {podcastsLoading ? (
-                <div className="space-y-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-16 rounded-lg" />
-                  ))}
-                </div>
-              ) : podcasts && podcasts.length > 0 ? (
-                <TrackList tracks={podcasts} compact />
-              ) : (
-                <Card>
-                  <CardContent className="py-12 text-center">
-                    <Podcast className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No podcast episodes available yet</p>
-                  </CardContent>
-                </Card>
-              )}
-            </section>
           </TabsContent>
 
           <TabsContent value="playlists" className="space-y-6">
