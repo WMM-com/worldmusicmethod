@@ -38,21 +38,22 @@ const Slider = React.forwardRef<
     : "bg-success";
     
   const thumbClass = variant === "progress" 
-    ? "border-success" 
+    ? "border-success bg-white" 
     : variant === "volume" 
-    ? "border-accent" 
-    : "border-success";
+    ? "border-accent bg-white" 
+    : "border-success bg-white";
 
   return (
     <SliderPrimitive.Root
       ref={ref}
-      className={cn("relative flex w-full touch-pan-x select-none items-center", className)}
+      className={cn("relative flex w-full select-none items-center", className)}
+      style={{ touchAction: 'none' }}
       {...props}
     >
       <SliderPrimitive.Track className={cn("relative h-2 w-full grow overflow-hidden rounded-full", trackClass)}>
         <SliderPrimitive.Range className={cn("absolute h-full", rangeClass)} />
       </SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className={cn("block h-5 w-5 rounded-full border-2 bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50", thumbClass)} />
+      <SliderPrimitive.Thumb className={cn("block h-4 w-4 rounded-full border-2 ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-grab active:cursor-grabbing", thumbClass)} />
     </SliderPrimitive.Root>
   );
 });
