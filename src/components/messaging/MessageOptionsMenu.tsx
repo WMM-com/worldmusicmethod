@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDeleteMessage, useSendMessage, Message } from '@/hooks/useMessaging';
+import { useSoftDeleteMessage, Message } from '@/hooks/useMessaging';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +31,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { MoreVertical, Trash2, Calendar, Flag, Ban } from 'lucide-react';
+import { MoreVertical, Trash2, Flag, Ban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MessageOptionsMenuProps {
@@ -50,8 +50,7 @@ export function MessageOptionsMenu({
   align = 'end' 
 }: MessageOptionsMenuProps) {
   const { user } = useAuth();
-  const deleteMessage = useDeleteMessage();
-  const sendMessage = useSendMessage();
+  const softDeleteMessage = useSoftDeleteMessage();
   const createReport = useCreateReport();
   const blockUser = useBlockUser();
   
@@ -64,22 +63,8 @@ export function MessageOptionsMenu({
   const isOwn = message.sender_id === user?.id;
 
   const handleDelete = () => {
-    deleteMessage.mutate({ messageId: message.id, conversationId });
+    softDeleteMessage.mutate({ messageId: message.id, conversationId });
     setShowDeleteAlert(false);
-  };
-
-  const handleSendAvailability = () => {
-    const slots = [
-      'Monday 10:00 AM - 12:00 PM',
-      'Wednesday 2:00 PM - 4:00 PM',
-      'Friday 11:00 AM - 1:00 PM',
-    ];
-    sendMessage.mutate({
-      conversationId,
-      content: `I'm available at the following times:\n${slots.join('\n')}\n\nLet me know which works for you.`,
-      messageType: 'availability',
-      metadata: { slots },
-    });
   };
 
   const handleReport = () => {
@@ -114,16 +99,9 @@ export function MessageOptionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align={align} className="w-48">
-          {isOwn && (
-            <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Message
-            </DropdownMenuItem>
-          )}
-          
-          <DropdownMenuItem onClick={handleSendAvailability}>
-            <Calendar className="h-4 w-4 mr-2" />
-            Send Availability
+          <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="text-destructive focus:text-destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+            {isOwn ? 'Delete Message' : 'Remove for Me'}
           </DropdownMenuItem>
           
           {!isOwn && (
@@ -146,15 +124,17 @@ export function MessageOptionsMenu({
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Message?</AlertDialogTitle>
+            <AlertDialogTitle>{isOwn ? 'Delete Message?' : 'Remove Message?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              This message will be permanently deleted for everyone.
+              {isOwn 
+                ? 'This message will be removed from your view.'
+                : 'This message will be hidden from your view only. The sender will still see it.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+              {isOwn ? 'Delete' : 'Remove'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
