@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessages, useSendMessage, Message } from '@/hooks/useMessaging';
 import { useMessagingPopup } from '@/contexts/MessagingContext';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { STICKY_PLAYER_HEIGHT } from '@/components/media/StickyAudioPlayer';
-import { X, Minus, Send, Paperclip, Image, Video, FileText, Maximize2 } from 'lucide-react';
+import { X, ChevronUp, ChevronDown, Send, Paperclip, Image, Video, FileText, Maximize2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,9 +19,13 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
+// Height of course landing sticky CTA button
+const COURSE_CTA_HEIGHT = 72;
+
 export function ChatPopup() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { popupConversation, closePopupChat, minimizePopupChat, isMinimized } = useMessagingPopup();
   const { data: messages, isLoading } = useMessages(popupConversation?.id || '');
   const sendMessage = useSendMessage();
@@ -30,6 +34,9 @@ export function ChatPopup() {
   const [attachment, setAttachment] = useState<{ file: File; url: string; type: string } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if on course landing page (has sticky CTA)
+  const isCourseLandingPage = location.pathname.startsWith('/course/') && !location.pathname.includes('/learn');
 
   const [audioPlayer, setAudioPlayer] = useState<{ visible: boolean; minimized: boolean }>({
     visible: false,
@@ -56,9 +63,16 @@ export function ChatPopup() {
     return () => window.removeEventListener('audio-player-state', handler as EventListener);
   }, []);
 
-  // When sticky player is visible and not minimized, sit flush against the player
-  // When no player or minimized, sit at very bottom of screen (0px offset)
-  const popupBottomPx = audioPlayer.visible && !audioPlayer.minimized ? STICKY_PLAYER_HEIGHT : 0;
+  // Calculate bottom offset:
+  // 1. If audio player is visible and not minimized, sit above it
+  // 2. If on course landing page, sit above sticky CTA
+  // 3. Otherwise, sit at very bottom (0px)
+  let popupBottomPx = 0;
+  if (audioPlayer.visible && !audioPlayer.minimized) {
+    popupBottomPx = STICKY_PLAYER_HEIGHT;
+  } else if (isCourseLandingPage) {
+    popupBottomPx = COURSE_CTA_HEIGHT;
+  }
 
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -172,8 +186,9 @@ export function ChatPopup() {
             size="icon"
             className="h-7 w-7 hover:bg-primary/10"
             onClick={minimizePopupChat}
+            title={isMinimized ? "Expand" : "Minimize"}
           >
-            <Minus className="h-4 w-4" />
+            {isMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
           <Button
             variant="ghost"
