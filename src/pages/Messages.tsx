@@ -19,6 +19,15 @@ export default function Messages() {
     location.state?.conversationId || null
   );
 
+  // Auto-select conversation when navigating from Members page with conversationId
+  useEffect(() => {
+    if (location.state?.conversationId) {
+      setSelectedConversationId(location.state.conversationId);
+      // Clear the state to prevent re-selecting on subsequent renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.conversationId]);
+
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
