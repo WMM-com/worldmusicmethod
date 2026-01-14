@@ -179,15 +179,16 @@ export function MessagesDropdown() {
                           <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 border-2 border-background" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p
                             className={cn(
-                              "text-sm flex-1 min-w-0 truncate",
+                              "text-sm truncate",
                               hasUnread ? "font-semibold" : "font-medium"
                             )}
+                            style={{ maxWidth: '120px' }}
                           >
-                            {(participant?.full_name || 'Unknown').slice(0, 25)}
+                            {participant?.full_name || 'Unknown'}
                           </p>
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             {conversation.last_message_at &&
@@ -199,11 +200,9 @@ export function MessagesDropdown() {
                             "text-xs truncate mt-0.5",
                             hasUnread ? "text-foreground" : "text-muted-foreground"
                           )}
+                          style={{ maxWidth: '180px' }}
                         >
-                          {(() => {
-                            const msg = conversation.last_message?.content ?? 'Start a conversation';
-                            return msg.length > 35 ? msg.slice(0, 35) + '...' : msg;
-                          })()}
+                          {conversation.last_message?.content || 'Start a conversation'}
                         </p>
                         {hasUnread && (
                           <Badge className="mt-1 h-5 px-1.5 text-[10px] bg-amber-500 hover:bg-amber-500 text-amber-950">

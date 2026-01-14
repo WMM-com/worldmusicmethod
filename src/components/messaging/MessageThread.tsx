@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Send, User, Clock, Paperclip, Image, Video, FileText, X } from 'lucide-react';
+import { Send, User, Paperclip, Image, Video, FileText, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -261,7 +261,6 @@ function MessageBubble({
   conversationId: string;
   otherUserId?: string;
 }) {
-  const isAvailability = message.message_type === 'availability';
   const isMedia = message.message_type === 'media';
   const mediaUrl = message.metadata?.mediaUrl;
   const mediaType = message.metadata?.mediaType;
@@ -283,17 +282,9 @@ function MessageBubble({
             'min-w-0 break-words rounded-2xl px-4 py-2 shadow-sm',
             isOwn 
               ? 'bg-primary text-primary-foreground rounded-br-md' 
-              : 'bg-card border border-primary/20 rounded-bl-md',
-            isAvailability && 'border-l-4 border-secondary'
+              : 'bg-card border border-primary/20 rounded-bl-md'
           )}
         >
-          {isAvailability && (
-            <div className="flex items-center gap-1 mb-1 text-xs opacity-80">
-              <Clock className="h-3 w-3" />
-              <span>Availability</span>
-            </div>
-          )}
-
           {isMedia && mediaUrl && (
             <div className="mb-2">
               {mediaType === 'image' ? (

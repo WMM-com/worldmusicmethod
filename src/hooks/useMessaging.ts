@@ -248,7 +248,7 @@ export function useMessages(conversationId: string) {
     try {
       // Use the security-definer RPC function to mark messages as read
       const { error } = await supabase.rpc('mark_messages_read', {
-        conversation_id: conversationId,
+        p_conversation_id: conversationId,
       });
       
       if (error) {
