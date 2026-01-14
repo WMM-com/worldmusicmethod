@@ -309,6 +309,7 @@ export type Database = {
       conversations: {
         Row: {
           created_at: string
+          deleted_for_users: string[] | null
           id: string
           last_message_at: string | null
           participant_ids: string[]
@@ -316,6 +317,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_for_users?: string[] | null
           id?: string
           last_message_at?: string | null
           participant_ids: string[]
@@ -323,6 +325,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_for_users?: string[] | null
           id?: string
           last_message_at?: string | null
           participant_ids?: string[]
@@ -2621,6 +2624,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at: string
+          deleted_for_users: string[] | null
           id: string
           message_type: string | null
           metadata: Json | null
@@ -2631,6 +2635,7 @@ export type Database = {
           content: string
           conversation_id: string
           created_at?: string
+          deleted_for_users?: string[] | null
           id?: string
           message_type?: string | null
           metadata?: Json | null
@@ -2641,6 +2646,7 @@ export type Database = {
           content?: string
           conversation_id?: string
           created_at?: string
+          deleted_for_users?: string[] | null
           id?: string
           message_type?: string | null
           metadata?: Json | null
