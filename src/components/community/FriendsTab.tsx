@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, UserPlus, Check, X, UserMinus, Users, UserX, ShieldOff, LogIn, MessageCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useFriendships,
   useSearchUsers,
@@ -34,9 +34,22 @@ import {
 export function FriendsTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
   const [removeConfirmName, setRemoveConfirmName] = useState<string>('');
+  
+  // Check if we should default to a specific section (e.g., from notification click)
+  const sectionParam = searchParams.get('section');
+  const defaultTab = sectionParam === 'requests' ? 'requests' : 'friends';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  
+  // Update active tab when section param changes
+  useEffect(() => {
+    if (sectionParam === 'requests') {
+      setActiveTab('requests');
+    }
+  }, [sectionParam]);
   
   const { data: friendships, isLoading } = useFriendships();
   const { data: searchResults } = useSearchUsers(searchQuery);
@@ -188,7 +201,7 @@ export function FriendsTab() {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="friends" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4 h-auto bg-accent/20">
           <TabsTrigger value="friends" className="gap-1 text-xs sm:text-sm px-1 sm:px-2 py-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
             <Users className="h-4 w-4 shrink-0" />

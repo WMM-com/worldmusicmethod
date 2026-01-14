@@ -147,16 +147,24 @@ export function useConnectWithMember() {
 // Cancel a pending friend request
 export function useCancelConnection() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   
   return useMutation({
     mutationFn: async (friendshipId: string) => {
+      // First delete the notification that was created for this friend request
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('reference_id', friendshipId)
+        .eq('reference_type', 'friendship');
+      
+      // Then delete the friendship record
       const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connection-status'] });
       queryClient.invalidateQueries({ queryKey: ['friendships'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Connection request cancelled');
     },
     onError: (error: Error) => {
