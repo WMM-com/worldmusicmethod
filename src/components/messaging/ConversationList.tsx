@@ -172,10 +172,10 @@ function ConversationItem({
             <User className="h-4 w-4" />
           </AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium flex-1 min-w-0 truncate">
-              {(participant?.full_name || 'Unknown').slice(0, 30)}
+            <span className="font-medium truncate" style={{ maxWidth: '140px' }}>
+              {participant?.full_name || 'Unknown'}
             </span>
             {conversation.last_message && (
               <span className="text-xs text-muted-foreground shrink-0">
@@ -184,10 +184,8 @@ function ConversationItem({
             )}
           </div>
           {conversation.last_message && (
-            <p className="text-sm text-muted-foreground truncate">
-              {conversation.last_message.content.length > 40 
-                ? conversation.last_message.content.slice(0, 40) + '...'
-                : conversation.last_message.content}
+            <p className="text-sm text-muted-foreground truncate" style={{ maxWidth: '200px' }}>
+              {conversation.last_message.content}
             </p>
           )}
         </div>

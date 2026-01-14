@@ -4344,7 +4344,10 @@ export type Database = {
         Args: { p_group_id: string; p_user_id: string }
         Returns: boolean
       }
-      mark_messages_read: { Args: { conversation_id: string }; Returns: number }
+      mark_messages_read: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
       repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
       soft_delete_message: { Args: { message_id: string }; Returns: boolean }
       user_owns_course: {
