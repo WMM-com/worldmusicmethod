@@ -144,22 +144,19 @@ export function useConnectWithMember() {
   });
 }
 
-// Cancel a pending friend request
+// Cancel a pending friend request using secure backend function
 export function useCancelConnection() {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async (friendshipId: string) => {
-      // First delete the notification that was created for this friend request
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('reference_id', friendshipId)
-        .eq('reference_type', 'friendship');
+      // Use the secure RPC function that deletes both the friendship and the recipient's notification
+      const { data, error } = await supabase.rpc('retract_friend_request', {
+        p_friendship_id: friendshipId,
+      });
       
-      // Then delete the friendship record
-      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
       if (error) throw error;
+      if (!data) throw new Error('Could not cancel request');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['connection-status'] });
