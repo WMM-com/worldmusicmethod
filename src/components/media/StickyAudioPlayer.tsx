@@ -140,30 +140,30 @@ export function StickyAudioPlayer() {
       <div className="container mx-auto px-4 h-full">
         {/* Compact view */}
         <div className="flex items-center gap-2 sm:gap-4 h-20">
-          {/* Track info - hide cover on mobile compact, show on expanded */}
+          {/* Track info with cover image */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-            {/* Cover image - hidden on mobile compact */}
+            {/* Cover image - always show, smaller on mobile */}
             {currentTrack.cover_image_url ? (
               <img 
                 src={currentTrack.cover_image_url} 
                 alt={currentTrack.title}
-                className="w-12 h-12 rounded object-cover hidden sm:block"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-12 h-12 rounded bg-muted items-center justify-center hidden sm:flex">
-                <ListMusic className="h-6 w-6 text-muted-foreground" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
+                <ListMusic className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="font-medium truncate text-sm sm:text-base">{currentTrack.title}</p>
-              <p className="text-xs sm:text-sm text-muted-foreground truncate">
+              <p className="font-medium truncate text-xs sm:text-base">{currentTrack.title}</p>
+              <p className="text-[10px] sm:text-sm text-muted-foreground truncate">
                 {currentTrack.artist?.name || 'Unknown Artist'}
               </p>
             </div>
           </div>
 
-          {/* Center controls */}
-          <div className="flex items-center gap-1 sm:gap-2">
+          {/* Playback controls - positioned right on mobile */}
+          <div className="flex items-center gap-0.5 sm:gap-2">
             <Button 
               variant="ghost" 
               size="icon" 
@@ -172,19 +172,19 @@ export function StickyAudioPlayer() {
             >
               <Shuffle className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={previous} className="h-8 w-8 sm:h-10 sm:w-10">
-              <SkipBack className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Button variant="ghost" size="icon" onClick={previous} className="h-7 w-7 sm:h-10 sm:w-10">
+              <SkipBack className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
             </Button>
             <Button 
               variant="default" 
               size="icon" 
               onClick={togglePlay}
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full"
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-full"
             >
-              {isPlaying ? <Pause className="h-4 w-4 sm:h-5 sm:w-5" /> : <Play className="h-4 w-4 sm:h-5 sm:w-5 ml-0.5" />}
+              {isPlaying ? <Pause className="h-3.5 w-3.5 sm:h-5 sm:w-5" /> : <Play className="h-3.5 w-3.5 sm:h-5 sm:w-5 ml-0.5" />}
             </Button>
-            <Button variant="ghost" size="icon" onClick={next} className="h-8 w-8 sm:h-10 sm:w-10">
-              <SkipForward className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Button variant="ghost" size="icon" onClick={next} className="h-7 w-7 sm:h-10 sm:w-10">
+              <SkipForward className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
             </Button>
             <Button 
               variant="ghost" 
@@ -196,9 +196,9 @@ export function StickyAudioPlayer() {
             </Button>
           </div>
 
-          {/* Right controls */}
-          <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-end">
-            {/* Time display - compact on mobile */}
+          {/* Right controls - desktop extras + expand chevron */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Time display - desktop only */}
             <span className="text-xs text-muted-foreground hidden sm:block">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
@@ -228,7 +228,7 @@ export function StickyAudioPlayer() {
               />
             </div>
 
-            {/* Minimize button */}
+            {/* Minimize button - desktop only */}
             <Button 
               variant="ghost" 
               size="icon"
@@ -239,7 +239,7 @@ export function StickyAudioPlayer() {
               <Minimize2 className="h-4 w-4" />
             </Button>
 
-            {/* Close button */}
+            {/* Close button - desktop only */}
             <Button 
               variant="ghost" 
               size="icon"
@@ -250,11 +250,12 @@ export function StickyAudioPlayer() {
               <X className="h-4 w-4" />
             </Button>
 
+            {/* Expand/collapse chevron - mobile only */}
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="md:hidden h-8 w-8"
+              className="md:hidden h-7 w-7"
             >
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </Button>
