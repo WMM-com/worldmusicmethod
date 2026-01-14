@@ -13,8 +13,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X, ListMusic, RefreshCw } from 'lucide-react';
+import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X, ListMusic, RefreshCw, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useR2Upload } from '@/hooks/useR2Upload';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type Artist = {
   id: string;
@@ -1082,42 +1099,12 @@ export function AdminStreaming() {
                 </TableHeader>
                 <TableBody>
                   {podcasts.map((podcast) => (
-                    <TableRow key={podcast.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {podcast.cover_image_url ? (
-                            <img src={podcast.cover_image_url} alt={podcast.title} className="h-10 w-10 rounded object-cover" />
-                          ) : (
-                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                              <Podcast className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          <span className="font-medium">{podcast.title}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{podcast.author || '-'}</TableCell>
-                      <TableCell>
-                        {podcast.rss_url ? (
-                          <Badge variant="outline">Has RSS</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {podcast.rss_url && (
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="gap-2"
-                            onClick={() => syncPodcastRss(podcast.id)}
-                            disabled={syncingPodcast === podcast.id}
-                          >
-                            <RefreshCw className={`h-4 w-4 ${syncingPodcast === podcast.id ? 'animate-spin' : ''}`} />
-                            Sync Episodes
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                    <PodcastRow 
+                      key={podcast.id} 
+                      podcast={podcast} 
+                      onSync={() => syncPodcastRss(podcast.id)} 
+                      isSyncing={syncingPodcast === podcast.id} 
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -1172,7 +1159,54 @@ export function AdminStreaming() {
   );
 }
 
-// Admin Playlist Row Component with track management
+// Sortable playlist track item
+function SortablePlaylistTrack({ pt, onRemove }: { pt: any; onRemove: () => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: pt.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-2 rounded bg-background border border-border"
+    >
+      <div className="flex items-center gap-3">
+        <button {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+        {pt.track?.cover_image_url && (
+          <img src={pt.track.cover_image_url} alt="" className="h-8 w-8 rounded object-cover" />
+        )}
+        <div>
+          <p className="text-sm font-medium">{pt.track?.title}</p>
+          <p className="text-xs text-muted-foreground">{pt.track?.artist?.name}</p>
+        </div>
+      </div>
+      <Button 
+        size="icon" 
+        variant="ghost" 
+        className="h-7 w-7"
+        onClick={onRemove}
+      >
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
+// Admin Playlist Row Component with track management and drag-to-reorder
 function AdminPlaylistRow({ 
   playlist, 
   onEdit, 
@@ -1187,6 +1221,11 @@ function AdminPlaylistRow({
   const [showTracks, setShowTracks] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const queryClient = useQueryClient();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   // Fetch tracks in this playlist
   const { data: playlistTracks = [] } = useQuery({
@@ -1245,6 +1284,39 @@ function AdminPlaylistRow({
     onError: (err: any) => toast.error(err.message),
   });
 
+  const reorderTracks = useMutation({
+    mutationFn: async (reorderedTracks: typeof playlistTracks) => {
+      // Update positions for all tracks
+      const updates = reorderedTracks.map((pt, idx) => 
+        supabase
+          .from('media_playlist_tracks')
+          .update({ position: idx })
+          .eq('id', pt.id)
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-playlist-tracks', playlist.id] });
+      queryClient.invalidateQueries({ queryKey: ['media-playlist', playlist.id] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = playlistTracks.findIndex((pt: any) => pt.id === active.id);
+    const newIndex = playlistTracks.findIndex((pt: any) => pt.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(playlistTracks, oldIndex, newIndex);
+      // Optimistically update the UI
+      queryClient.setQueryData(['admin-playlist-tracks', playlist.id], reordered);
+      reorderTracks.mutate(reordered);
+    }
+  };
+
   const playlistTrackIds = new Set(playlistTracks.map((pt: any) => pt.track?.id));
   const filteredTracks = tracks.filter(t => 
     t.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
@@ -1274,6 +1346,7 @@ function AdminPlaylistRow({
             onClick={() => setShowTracks(!showTracks)}
             className="gap-1"
           >
+            {showTracks ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             <Music className="h-3 w-3" />
             {playlistTracks.length} tracks
           </Button>
@@ -1341,39 +1414,239 @@ function AdminPlaylistRow({
                 )}
               </div>
 
-              {/* Current tracks */}
+              {/* Current tracks with drag to reorder */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Current tracks</Label>
+                <Label className="text-sm font-medium">Current tracks (drag to reorder)</Label>
                 {playlistTracks.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No tracks in playlist yet</p>
                 ) : (
-                  <div className="space-y-1">
-                    {playlistTracks.map((pt: any, idx: number) => (
-                      <div key={pt.id} className="flex items-center justify-between p-2 rounded bg-background">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground w-5">{idx + 1}</span>
-                          {pt.track?.cover_image_url && (
-                            <img src={pt.track.cover_image_url} alt="" className="h-8 w-8 rounded object-cover" />
-                          )}
-                          <div>
-                            <p className="text-sm font-medium">{pt.track?.title}</p>
-                            <p className="text-xs text-muted-foreground">{pt.track?.artist?.name}</p>
-                          </div>
-                        </div>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-7 w-7"
-                          onClick={() => removeFromPlaylist.mutate(pt.id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={playlistTracks.map((pt: any) => pt.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-1">
+                        {playlistTracks.map((pt: any) => (
+                          <SortablePlaylistTrack
+                            key={pt.id}
+                            pt={pt}
+                            onRemove={() => removeFromPlaylist.mutate(pt.id)}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </div>
             </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+// Sortable podcast episode item
+function SortablePodcastEpisode({ episode, onUpdateEpisodeNumber }: { episode: any; onUpdateEpisodeNumber: (id: string, num: number) => void }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: episode.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-2 rounded bg-background border border-border"
+    >
+      <div className="flex items-center gap-3">
+        <button {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <Badge variant="outline" className="shrink-0">Ep {episode.episode_number}</Badge>
+        {episode.cover_image_url && (
+          <img src={episode.cover_image_url} alt="" className="h-8 w-8 rounded object-cover" />
+        )}
+        <p className="text-sm font-medium truncate max-w-[300px]">{episode.title}</p>
+      </div>
+    </div>
+  );
+}
+
+// Podcast Episodes Manager Component
+function PodcastEpisodesManager({ podcastId, podcastTitle }: { podcastId: string; podcastTitle: string }) {
+  const queryClient = useQueryClient();
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const { data: episodes = [] } = useQuery({
+    queryKey: ['podcast-episodes', podcastId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('media_tracks')
+        .select('id, title, episode_number, cover_image_url')
+        .eq('podcast_id', podcastId)
+        .order('episode_number', { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const reorderEpisodes = useMutation({
+    mutationFn: async (reordered: typeof episodes) => {
+      // Update episode numbers based on new order
+      const updates = reordered.map((ep, idx) =>
+        supabase
+          .from('media_tracks')
+          .update({ episode_number: idx + 1 })
+          .eq('id', ep.id)
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['podcast-episodes', podcastId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-tracks'] });
+      queryClient.invalidateQueries({ queryKey: ['media-tracks'] });
+      toast.success('Episode order updated');
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = episodes.findIndex((ep: any) => ep.id === active.id);
+    const newIndex = episodes.findIndex((ep: any) => ep.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(episodes, oldIndex, newIndex).map((ep, idx) => ({
+        ...ep,
+        episode_number: idx + 1,
+      }));
+      // Optimistically update the UI
+      queryClient.setQueryData(['podcast-episodes', podcastId], reordered);
+      reorderEpisodes.mutate(reordered);
+    }
+  };
+
+  const updateEpisodeNumber = (id: string, num: number) => {
+    // Not used in drag mode but kept for potential manual editing
+  };
+
+  if (episodes.length === 0) {
+    return <p className="text-sm text-muted-foreground py-2">No episodes yet. Sync the RSS feed to import episodes.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Episodes (drag to reorder)</Label>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={episodes.map((ep: any) => ep.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-1 max-h-[300px] overflow-y-auto">
+            {episodes.map((episode: any) => (
+              <SortablePodcastEpisode
+                key={episode.id}
+                episode={episode}
+                onUpdateEpisodeNumber={updateEpisodeNumber}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+    </div>
+  );
+}
+
+// Podcast row with expandable episodes
+function PodcastRow({ 
+  podcast, 
+  onSync, 
+  isSyncing 
+}: { 
+  podcast: PodcastType; 
+  onSync: () => void; 
+  isSyncing: boolean;
+}) {
+  const [showEpisodes, setShowEpisodes] = useState(false);
+
+  return (
+    <>
+      <TableRow>
+        <TableCell>
+          <div className="flex items-center gap-3">
+            {podcast.cover_image_url ? (
+              <img src={podcast.cover_image_url} alt={podcast.title} className="h-10 w-10 rounded object-cover" />
+            ) : (
+              <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                <Podcast className="h-5 w-5 text-muted-foreground" />
+              </div>
+            )}
+            <span className="font-medium">{podcast.title}</span>
+          </div>
+        </TableCell>
+        <TableCell>{podcast.author || '-'}</TableCell>
+        <TableCell>
+          {podcast.rss_url ? (
+            <Badge variant="outline">Has RSS</Badge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowEpisodes(!showEpisodes)}
+              className="gap-1"
+            >
+              {showEpisodes ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              Episodes
+            </Button>
+            {podcast.rss_url && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="gap-2"
+                onClick={onSync}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                Sync
+              </Button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+      {showEpisodes && (
+        <TableRow>
+          <TableCell colSpan={4} className="bg-muted/30 p-4">
+            <PodcastEpisodesManager podcastId={podcast.id} podcastTitle={podcast.title} />
           </TableCell>
         </TableRow>
       )}
