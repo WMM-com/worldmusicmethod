@@ -37,6 +37,7 @@ export function MessagesDropdown() {
     const participant = conversation.participants?.[0];
     openPopupChat({
       id: conversation.id,
+      participantId: participant?.id,
       participantName: participant?.full_name || 'Unknown',
       participantAvatar: participant?.avatar_url,
     });
@@ -47,6 +48,7 @@ export function MessagesDropdown() {
     const conversationId = await createConversation.mutateAsync(friendId);
     openPopupChat({
       id: conversationId,
+      participantId: friendId,
       participantName: friendName,
       participantAvatar: friendAvatar || undefined,
     });
