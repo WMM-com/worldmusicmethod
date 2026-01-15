@@ -3,25 +3,100 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Users, Receipt, FolderOpen, Home } from 'lucide-react';
+import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Home, Music } from 'lucide-react';
 import { useState } from 'react';
 import { SiteHeader } from './SiteHeader';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: PieChart },
+// Section guides for Left Brain features
+const sectionGuides: Record<string, string> = {
+  '/left-brain': 'Your financial overview showing earnings, expenses, and upcoming events at a glance.',
+  '/events': 'Manage your gigs, rehearsals, and sessions. Track dates, venues, and payments.',
+  '/invoices': 'Create and send professional invoices to clients. Track payment status.',
+  '/expenses': 'Log business expenses and keep receipts organized for tax time.',
+  '/finances': 'Detailed breakdown of your income and expenses with tax estimates.',
+  '/documents': 'Store and organize important documents like contracts and riders.',
+  '/left-brain-settings': 'Customize your Left Brain experience, invoice templates, and preferences.',
+};
+
+// Main navigation items
+const mainNavItems = [
+  { href: '/left-brain', label: 'Dashboard', icon: PieChart },
   { href: '/events', label: 'Events', icon: Calendar },
-  { href: '/shared', label: 'Shared With Me', icon: Users },
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/expenses', label: 'Expenses', icon: Receipt },
   { href: '/finances', label: 'Finances', icon: PieChart },
-  { href: '/documents', label: 'Documents', icon: FolderOpen },
+];
+
+// Documents section
+const documentNavItems = [
+  { href: '/documents?tab=documents', label: 'Documents', icon: FolderOpen },
+];
+
+// Tech Specs section  
+const techSpecNavItems = [
+  { href: '/documents?tab=techspecs', label: 'Tech Specs', icon: Music },
+];
+
+// Settings
+const settingsNavItems = [
   { href: '/left-brain-settings', label: 'Settings', icon: Settings },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { signOut, profile } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Get the guide for the current section
+  const currentGuide = sectionGuides[pathname] || '';
+  
+  // Check if current path matches (including query params for tabs)
+  const isActive = (href: string) => {
+    if (href.includes('?')) {
+      const [path, query] = href.split('?');
+      return pathname === path && search.includes(query.split('=')[1]);
+    }
+    return pathname === href;
+  };
+
+  const renderNavItem = (item: typeof mainNavItems[0]) => {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        to={item.href}
+        className={cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border-l-2',
+          active
+            ? 'text-secondary border-secondary bg-card'
+            : 'text-sidebar-foreground hover:text-secondary hover:bg-card border-transparent'
+        )}
+      >
+        <item.icon className="h-5 w-5" />
+        {item.label}
+      </Link>
+    );
+  };
+
+  const renderMobileNavItem = (item: typeof mainNavItems[0]) => {
+    const active = isActive(item.href);
+    return (
+      <Link
+        key={item.href}
+        to={item.href}
+        onClick={() => setMobileMenuOpen(false)}
+        className={cn(
+          'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors border-l-2',
+          active
+            ? 'text-secondary border-secondary bg-card'
+            : 'text-muted-foreground hover:text-secondary hover:bg-card border-transparent'
+        )}
+      >
+        <item.icon className="h-5 w-5" />
+        {item.label}
+      </Link>
+    );
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -38,25 +113,34 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <span className="text-base font-semibold text-foreground">Left Brain</span>
         </div>
         
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border-l-2',
-                  isActive
-                    ? 'text-secondary border-secondary bg-card'
-                    : 'text-sidebar-foreground hover:text-secondary hover:bg-card border-transparent'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {/* Main Section */}
+          <div className="space-y-1">
+            {mainNavItems.map(renderNavItem)}
+          </div>
+          
+          {/* Documents Section */}
+          <div className="pt-2">
+            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documents</p>
+            <div className="space-y-1">
+              {documentNavItems.map(renderNavItem)}
+            </div>
+          </div>
+          
+          {/* Tech Specs Section */}
+          <div className="pt-2">
+            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stage & Tech</p>
+            <div className="space-y-1">
+              {techSpecNavItems.map(renderNavItem)}
+            </div>
+          </div>
+          
+          {/* Settings Section */}
+          <div className="pt-2">
+            <div className="space-y-1">
+              {settingsNavItems.map(renderNavItem)}
+            </div>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-border">
@@ -95,27 +179,36 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-[7.5rem] bg-background z-30">
-          <nav className="p-4 space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors border-l-2',
-                    isActive
-                      ? 'text-secondary border-secondary bg-card'
-                      : 'text-muted-foreground hover:text-secondary hover:bg-card border-transparent'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              );
-            })}
+        <div className="lg:hidden fixed inset-0 top-[7.5rem] bg-background z-30 overflow-y-auto">
+          <nav className="p-4 space-y-4">
+            {/* Main Section */}
+            <div className="space-y-1">
+              {mainNavItems.map(renderMobileNavItem)}
+            </div>
+            
+            {/* Documents Section */}
+            <div className="pt-2">
+              <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documents</p>
+              <div className="space-y-1">
+                {documentNavItems.map(renderMobileNavItem)}
+              </div>
+            </div>
+            
+            {/* Tech Specs Section */}
+            <div className="pt-2">
+              <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stage & Tech</p>
+              <div className="space-y-1">
+                {techSpecNavItems.map(renderMobileNavItem)}
+              </div>
+            </div>
+            
+            {/* Settings Section */}
+            <div className="pt-2">
+              <div className="space-y-1">
+                {settingsNavItems.map(renderMobileNavItem)}
+              </div>
+            </div>
+            
             <Button variant="ghost" className="w-full justify-start mt-4 text-muted-foreground hover:text-secondary" onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign out
@@ -127,6 +220,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 lg:pl-64">
         <div className="pt-14 lg:pt-0 min-h-screen">
+          {/* Section Guide */}
+          {currentGuide && (
+            <div className="hidden lg:block px-6 lg:px-8 pt-6">
+              <div className="bg-card/50 border border-border rounded-lg px-4 py-3">
+                <p className="text-sm text-muted-foreground">{currentGuide}</p>
+              </div>
+            </div>
+          )}
           {children}
         </div>
       </main>
