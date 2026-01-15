@@ -14,7 +14,8 @@ const sectionGuides: Record<string, string> = {
   '/invoices': 'Create and send professional invoices to clients. Track payment status.',
   '/expenses': 'Log business expenses and keep receipts organized for tax time.',
   '/finances': 'Detailed breakdown of your income and expenses with tax estimates.',
-  '/documents': 'Store and organize important documents like contracts and riders.',
+  '/documents': 'Upload and store documents to share with venues, tour managers, or bandmates.',
+  '/tech-specs': 'Create visual stage plots and channel lists to share with venues and sound engineers.',
   '/left-brain-settings': 'Customize your Left Brain experience, invoice templates, and preferences.',
 };
 
@@ -29,12 +30,12 @@ const mainNavItems = [
 
 // Documents section
 const documentNavItems = [
-  { href: '/documents?tab=documents', label: 'Documents', icon: FolderOpen },
+  { href: '/documents', label: 'Documents', icon: FolderOpen },
 ];
 
 // Tech Specs section  
 const techSpecNavItems = [
-  { href: '/documents?tab=techspecs', label: 'Tech Specs', icon: Music },
+  { href: '/tech-specs', label: 'Tech Specs', icon: Music },
 ];
 
 // Settings

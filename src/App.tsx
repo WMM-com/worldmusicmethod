@@ -22,6 +22,7 @@ import LeftBrainSettings from "./pages/LeftBrainSettings";
 import SharedWithMe from "./pages/SharedWithMe";
 
 import Documents from "./pages/Documents";
+import TechSpecs from "./pages/TechSpecs";
 import SharedTechSpec from "./pages/SharedTechSpec";
 import Courses from "./pages/Courses";
 import Course from "./pages/Course";
@@ -103,10 +104,10 @@ function AppContent() {
         <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
         <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
-        <Route path="/settings" element={<Navigate to="/account" replace />} />
         <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
         <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+        <Route path="/tech-specs" element={<ProtectedRoute><TechSpecs /></ProtectedRoute>} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId" element={<CourseLanding />} />
         <Route path="/courses/:courseId/learn" element={<ProtectedRoute><Course /></ProtectedRoute>} />
@@ -121,7 +122,6 @@ function AppContent() {
         {/* Community is publicly viewable */}
         <Route path="/community" element={<Social />} />
         <Route path="/community/groups/:groupId" element={<GroupDetail />} />
-        <Route path="/friends" element={<Navigate to="/community?tab=friends" replace />} />
 
         {/* Profiles: public profiles at /profile/:userId, own profile at /profile (requires login) */}
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -132,16 +132,10 @@ function AppContent() {
         <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
         <Route path="/listen" element={<Media />} />
         <Route path="/listen/playlist/:playlistId" element={<MediaPlaylist />} />
-        {/* Legacy redirects */}
-        <Route path="/media" element={<Navigate to="/listen" replace />} />
-        <Route path="/media/playlist/:playlistId" element={<Navigate to="/listen/playlist/:playlistId" replace />} />
-        <Route path="/music" element={<Navigate to="/listen" replace />} />
-        <Route path="/music/playlist/:playlistId" element={<Navigate to="/listen/playlist/:playlistId" replace />} />
         <Route path="/membership" element={<Membership />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
         
         <Route path="/left-brain" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<Navigate to="/left-brain" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ChatPopup />
