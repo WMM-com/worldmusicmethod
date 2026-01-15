@@ -7,41 +7,63 @@ import { PlaylistCoverGrid } from '@/components/media/PlaylistCoverGrid';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+const PLAYLIST_SHOWN_KEY = 'community_playlist_shown';
 
 export function MobilePlaylistDrawer() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef(0);
   
   const { data: playlist, isLoading } = useCommunityFeedPlaylist();
   const { playTrack, currentTrack, isPlaying, togglePlay } = useMediaPlayer();
 
-  // Auto-open after 4 seconds, then auto-close
+  // Auto-open on first visit to /social or /community, then close after 4 seconds
   useEffect(() => {
-    if (hasAutoOpened || isLoading || !playlist) return;
+    if (isLoading || !playlist) return;
     
-    const openTimer = setTimeout(() => {
+    // Check if this is the first visit to community pages in this session
+    const hasBeenShown = sessionStorage.getItem(PLAYLIST_SHOWN_KEY);
+    const isCommunityPage = location.pathname === '/social' || location.pathname === '/community';
+    
+    if (!hasBeenShown && isCommunityPage) {
+      // Open immediately on page load
       setIsOpen(true);
-      setHasAutoOpened(true);
+      sessionStorage.setItem(PLAYLIST_SHOWN_KEY, 'true');
       
-      // Auto-close after 3 seconds
-      setTimeout(() => {
-        setIsOpen(false);
-      }, 3000);
-    }, 4000);
-    
-    return () => clearTimeout(openTimer);
-  }, [hasAutoOpened, isLoading, playlist]);
+      // Auto-close after 4 seconds if user hasn't interacted
+      const closeTimer = setTimeout(() => {
+        if (!hasInteracted) {
+          setIsOpen(false);
+        }
+      }, 4000);
+      
+      return () => clearTimeout(closeTimer);
+    }
+  }, [isLoading, playlist, location.pathname, hasInteracted]);
+
+  const handleOpen = () => {
+    setIsOpen(true);
+    setHasInteracted(true);
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+  };
 
   const handlePlayPlaylist = () => {
+    setHasInteracted(true);
     if (playlist?.tracks && playlist.tracks.length > 0) {
       playTrack(playlist.tracks[0], playlist.tracks);
     }
   };
 
   const handlePlayTrack = (track: any, index: number) => {
+    setHasInteracted(true);
     if (playlist?.tracks) {
       playTrack(track, playlist.tracks.slice(index));
     }
@@ -53,6 +75,21 @@ export function MobilePlaylistDrawer() {
 
   const isCurrentTrack = (trackId: string) => {
     return currentTrack?.id === trackId;
+  };
+
+  // Handle swipe gesture
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    
+    // Swipe left to close (threshold of 50px)
+    if (diff > 50) {
+      handleClose();
+    }
   };
 
   if (isLoading || !playlist) return null;
@@ -69,7 +106,7 @@ export function MobilePlaylistDrawer() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            onClick={() => setIsOpen(true)}
+            onClick={handleOpen}
             className="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-30 bg-primary text-primary-foreground p-3 rounded-r-lg shadow-lg flex items-center gap-2"
           >
             <ListMusic className="h-5 w-5" />
@@ -87,7 +124,7 @@ export function MobilePlaylistDrawer() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="lg:hidden fixed inset-0 bg-black/50 z-40"
-              onClick={() => setIsOpen(false)}
+              onClick={handleClose}
             />
             
             {/* Drawer */}
@@ -102,14 +139,18 @@ export function MobilePlaylistDrawer() {
               dragElastic={{ left: 0.3, right: 0 }}
               onDragEnd={(_, info) => {
                 if (info.offset.x < -100 || info.velocity.x < -500) {
-                  setIsOpen(false);
+                  handleClose();
+                } else {
+                  setHasInteracted(true);
                 }
               }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
               className="lg:hidden fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-50 overflow-hidden touch-pan-y flex flex-col"
             >
               {/* Close Button */}
               <button 
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 className="absolute top-4 right-4 z-[60] w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center transition-colors shadow-lg"
               >
                 <X className="w-5 h-5 text-primary-foreground" />
@@ -129,7 +170,7 @@ export function MobilePlaylistDrawer() {
                 <div 
                   className="cursor-pointer group"
                   onClick={() => {
-                    setIsOpen(false);
+                    handleClose();
                     navigate(`/listen/playlist/${playlist.id}`);
                   }}
                 >

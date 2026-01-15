@@ -140,7 +140,8 @@ function AppContent() {
         <Route path="/membership" element={<Membership />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
         
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/left-brain" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<Navigate to="/left-brain" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ChatPopup />
