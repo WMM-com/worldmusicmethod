@@ -65,7 +65,7 @@ export function CommunityFeedPlaylist() {
         {/* Playlist Cover and Title */}
         <div 
           className="cursor-pointer group"
-          onClick={() => navigate(`/music/playlist/${playlist.id}`)}
+          onClick={() => navigate(`/listen/playlist/${playlist.id}`)}
         >
           <div className="relative">
             <PlaylistCoverGrid coverUrls={coverUrls} size="lg" className="w-full aspect-square" />
@@ -91,7 +91,7 @@ export function CommunityFeedPlaylist() {
 
         {/* Track List */}
         {playlist.tracks && playlist.tracks.length > 0 && (
-          <ScrollArea className="h-[200px]">
+          <ScrollArea className="max-h-[calc(100vh-400px)]">
             <div className="space-y-1 pr-2">
               {playlist.tracks.map((track, index) => (
                 <div
