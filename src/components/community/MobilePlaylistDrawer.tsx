@@ -22,15 +22,19 @@ export function MobilePlaylistDrawer() {
   const { data: playlist, isLoading } = useCommunityFeedPlaylist();
   const { playTrack, currentTrack, isPlaying, togglePlay } = useMediaPlayer();
 
-  // Auto-open on first visit to /social or /community, then close after 4 seconds
+  // List of community pages where the drawer should appear
+  const isCommunityPage = ['/social', '/community', '/community/groups'].some(path => 
+    location.pathname === path || location.pathname.startsWith('/community/groups/')
+  );
+
+  // Auto-open on first visit to community pages, then close after 4 seconds
   useEffect(() => {
-    if (isLoading || !playlist) return;
+    if (isLoading || !playlist || !isCommunityPage) return;
     
     // Check if this is the first visit to community pages in this session
     const hasBeenShown = sessionStorage.getItem(PLAYLIST_SHOWN_KEY);
-    const isCommunityPage = location.pathname === '/social' || location.pathname === '/community';
     
-    if (!hasBeenShown && isCommunityPage) {
+    if (!hasBeenShown) {
       // Open immediately on page load
       setIsOpen(true);
       sessionStorage.setItem(PLAYLIST_SHOWN_KEY, 'true');
@@ -44,7 +48,7 @@ export function MobilePlaylistDrawer() {
       
       return () => clearTimeout(closeTimer);
     }
-  }, [isLoading, playlist, location.pathname, hasInteracted]);
+  }, [isLoading, playlist, isCommunityPage, hasInteracted]);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -92,26 +96,36 @@ export function MobilePlaylistDrawer() {
     }
   };
 
-  if (isLoading || !playlist) return null;
+  // Don't render if not on a community page or no playlist
+  if (isLoading || !playlist || !isCommunityPage) return null;
 
   const coverUrls = playlist.tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
 
   return (
     <>
-      {/* Toggle Button - always visible on mobile when drawer is closed */}
+      {/* Toggle Button - always visible on mobile when drawer is closed, swipeable from edge */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.button
+          <motion.div
             initial={{ x: -100, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 100 }}
+            dragElastic={{ left: 0, right: 0.5 }}
+            onDragEnd={(_, info) => {
+              // If swiped right more than 50px, open the drawer
+              if (info.offset.x > 50 || info.velocity.x > 300) {
+                handleOpen();
+              }
+            }}
             onClick={handleOpen}
-            className="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-30 bg-primary text-primary-foreground p-3 rounded-r-lg shadow-lg flex items-center gap-2"
+            className="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-30 bg-primary text-primary-foreground p-3 rounded-r-lg shadow-lg flex items-center gap-2 cursor-grab active:cursor-grabbing touch-pan-x"
           >
             <ListMusic className="h-5 w-5" />
             <ChevronRight className="h-4 w-4" />
-          </motion.button>
+          </motion.div>
         )}
       </AnimatePresence>
 
