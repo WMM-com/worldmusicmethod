@@ -8,6 +8,7 @@ import { FriendsTab } from '@/components/community/FriendsTab';
 import { PendingInvitesBanner } from '@/components/groups/PendingInvitesBanner';
 import { CommunitySidebar } from '@/components/community/CommunitySidebar';
 import { CommunityFeedPlaylist } from '@/components/community/CommunityFeedPlaylist';
+import { MobilePlaylistDrawer } from '@/components/community/MobilePlaylistDrawer';
 import { useFeed } from '@/hooks/useSocial';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -140,6 +141,9 @@ export default function Social() {
             </div>
             
             <TabsContent value="feed">
+              {/* Mobile Playlist Drawer */}
+              <MobilePlaylistDrawer />
+              
               <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_280px] gap-6">
                 {/* Left Sidebar - Posting Options */}
                 <div className="hidden lg:block">
