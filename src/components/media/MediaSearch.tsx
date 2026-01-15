@@ -28,7 +28,7 @@ export function MediaSearch({ onSearch }: MediaSearchProps) {
       <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search songs, artists, albums, podcasts..."
+          placeholder="Search songs, artists, albums..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-10 pr-10"

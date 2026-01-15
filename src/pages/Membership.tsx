@@ -11,8 +11,7 @@ import {
   BookOpen, 
   Music,
   Headphones,
-  Shield,
-  Sparkles
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -53,7 +52,6 @@ const highlights = [
 
 const features = [
   'Full access to all courses',
-  'New content added regularly', 
   'Interactive notation & tab',
   'Downloadable resources',
   'Community features',
@@ -220,42 +218,25 @@ export default function Membership() {
     <>
       <SiteHeader />
       <div className="min-h-screen bg-background">
-        {/* Hero Section */}
-        <section ref={heroRef} className="relative overflow-hidden">
-          {/* Background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
-          
-          <div className="relative max-w-6xl mx-auto px-4 pt-12 pb-16 md:pt-20 md:pb-24">
-            {/* Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="flex justify-center mb-6"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-primary">7-Day Free Trial</span>
-              </div>
-            </motion.div>
-
+        {/* Hero Section - Compact to fit viewport */}
+        <section ref={heroRef} className="relative">
+          <div className="relative max-w-6xl mx-auto px-4 pt-8 pb-8 md:pt-12 md:pb-12">
             {/* Title */}
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-3xl md:text-5xl lg:text-6xl font-bold text-center mb-4 md:mb-6"
+              transition={{ duration: 0.5 }}
+              className="text-2xl md:text-4xl lg:text-5xl font-bold text-center mb-3 md:mb-4"
             >
-              Unlock Your Full
-              <span className="block text-primary">Musical Potential</span>
+              Start Your 7-Day Free Trial
             </motion.h1>
 
             {/* Subtitle */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-lg md:text-xl text-muted-foreground text-center max-w-2xl mx-auto mb-8 md:mb-12"
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-base md:text-lg text-muted-foreground text-center max-w-2xl mx-auto mb-6 md:mb-8"
             >
               Access the world's most comprehensive library of traditional music courses, 
               taught by industry-leading experts.
@@ -266,11 +247,11 @@ export default function Membership() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="mb-8"
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="mb-6"
               >
                 {/* Video */}
-                <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10">
                   <video
                     ref={videoRef}
                     src={MEMBERSHIP_VIDEO_URL}
@@ -287,8 +268,8 @@ export default function Membership() {
                       onClick={handlePlayVideo}
                       className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors group"
                     >
-                      <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                        <Play className="w-6 h-6 text-primary-foreground ml-1" fill="currentColor" />
+                      <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                        <Play className="w-5 h-5 text-primary-foreground ml-1" fill="currentColor" />
                       </div>
                     </button>
                   )}
@@ -296,7 +277,7 @@ export default function Membership() {
                   {isVideoPlaying && (
                     <button
                       onClick={handleCloseVideo}
-                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -310,17 +291,17 @@ export default function Membership() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="text-center space-y-4 mb-12"
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-center space-y-4"
               >
                 {/* Price */}
                 {isLoading ? (
-                  <Skeleton className="h-12 w-40 mx-auto rounded-lg" />
+                  <Skeleton className="h-10 w-32 mx-auto rounded-lg" />
                 ) : priceInfo && (
                   <div className="space-y-1">
-                    <p className="text-4xl font-bold text-secondary">
+                    <p className="text-3xl font-bold text-secondary">
                       {formatPrice(priceInfo.price, priceInfo.currency)}
-                      <span className="text-lg font-normal text-muted-foreground">/month</span>
+                      <span className="text-base font-normal text-muted-foreground">/month</span>
                     </p>
                     <p className="text-sm text-muted-foreground">after your free trial</p>
                   </div>
@@ -330,12 +311,12 @@ export default function Membership() {
                 <Button
                   size="lg"
                   onClick={handleStartTrial}
-                  className="w-full text-lg py-7 h-auto"
+                  className="w-full text-base py-6 h-auto"
                 >
                   Start Your Free Trial
                 </Button>
                 
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   No commitment. Cancel anytime.
                 </p>
               </motion.div>
@@ -343,31 +324,30 @@ export default function Membership() {
 
             {/* Desktop Layout: Two Columns */}
             {!isMobile && (
-              <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="grid lg:grid-cols-2 gap-8 items-start">
                 {/* Left: CTA Content */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="space-y-8"
+                  transition={{ duration: 0.5, delay: 0.2 }}
                 >
                   {/* Price Card */}
-                  <div className="bg-card rounded-2xl border border-border p-6 space-y-6">
+                  <div className="bg-card rounded-xl border border-border p-5 space-y-4">
                     {/* Price */}
                     {isLoading ? (
-                      <Skeleton className="h-14 w-48 rounded-lg" />
+                      <Skeleton className="h-12 w-40 rounded-lg" />
                     ) : priceInfo && (
                       <div className="space-y-1">
-                        <p className="text-5xl font-bold text-secondary">
+                        <p className="text-4xl font-bold text-secondary">
                           {formatPrice(priceInfo.price, priceInfo.currency)}
-                          <span className="text-xl font-normal text-muted-foreground">/month</span>
+                          <span className="text-lg font-normal text-muted-foreground">/month</span>
                         </p>
-                        <p className="text-muted-foreground">after your 7-day free trial</p>
+                        <p className="text-muted-foreground text-sm">after your 7-day free trial</p>
                       </div>
                     )}
                     
                     {/* Features list */}
-                    <ul className="grid grid-cols-2 gap-3">
+                    <ul className="grid grid-cols-2 gap-2">
                       {features.map((feature, idx) => (
                         <li key={idx} className="flex items-center gap-2 text-sm">
                           <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
@@ -380,12 +360,12 @@ export default function Membership() {
                     <Button
                       size="lg"
                       onClick={handleStartTrial}
-                      className="w-full text-lg py-6 h-auto"
+                      className="w-full text-base py-5 h-auto"
                     >
                       Start Your Free Trial
                     </Button>
                     
-                    <p className="text-center text-sm text-muted-foreground">
+                    <p className="text-center text-xs text-muted-foreground">
                       No commitment • Cancel anytime
                     </p>
                   </div>
@@ -395,9 +375,9 @@ export default function Membership() {
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
                 >
-                  <div className="relative aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                  <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10">
                     <video
                       ref={videoRef}
                       src={MEMBERSHIP_VIDEO_URL}
@@ -414,8 +394,8 @@ export default function Membership() {
                         onClick={handlePlayVideo}
                         className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors group"
                       >
-                        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                          <Play className="w-8 h-8 text-primary-foreground ml-1" fill="currentColor" />
+                        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
+                          <Play className="w-6 h-6 text-primary-foreground ml-1" fill="currentColor" />
                         </div>
                       </button>
                     )}
@@ -423,9 +403,9 @@ export default function Membership() {
                     {isVideoPlaying && (
                       <button
                         onClick={handleCloseVideo}
-                        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
+                        className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center text-white transition-colors"
                       >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -436,25 +416,25 @@ export default function Membership() {
         </section>
 
         {/* Highlights Section */}
-        <section className="py-16 md:py-24 bg-muted/30">
+        <section className="py-12 md:py-16 bg-muted/30">
           <div className="max-w-6xl mx-auto px-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="text-center mb-12"
+              className="text-center mb-10"
             >
-              <h2 className="text-2xl md:text-4xl font-bold mb-4">
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">
                 Everything You Need to
                 <span className="text-primary"> Master World Music</span>
               </h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                From African rhythms to Latin American melodies, unlock centuries of musical tradition with our comprehensive courses.
+              <p className="text-muted-foreground max-w-2xl mx-auto text-sm md:text-base">
+                From African rhythms to Asia's melodic approach and the passion of Latin America, unlock centuries of musical tradition with our comprehensive courses.
               </p>
             </motion.div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {highlights.map((highlight, idx) => (
                 <motion.div
                   key={idx}
@@ -462,13 +442,13 @@ export default function Membership() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: idx * 0.1 }}
-                  className="bg-card rounded-xl border border-border p-6 text-center hover:border-primary/50 transition-colors"
+                  className="bg-card rounded-xl border border-border p-5 text-center hover:border-primary/50 transition-colors"
                 >
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <highlight.icon className="w-6 h-6 text-primary" />
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <highlight.icon className="w-5 h-5 text-primary" />
                   </div>
-                  <h3 className="font-semibold mb-2">{highlight.title}</h3>
-                  <p className="text-sm text-muted-foreground">{highlight.description}</p>
+                  <h3 className="font-semibold mb-1 text-sm">{highlight.title}</h3>
+                  <p className="text-xs text-muted-foreground">{highlight.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -476,41 +456,8 @@ export default function Membership() {
         </section>
 
         {/* Social Proof / Trust Section */}
-        <section className="py-16 md:py-24">
+        <section className="py-12 md:py-16">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="space-y-8"
-            >
-              <div className="flex justify-center gap-8 md:gap-16 flex-wrap">
-                <div className="text-center">
-                  <p className="text-4xl md:text-5xl font-bold text-primary">1000+</p>
-                  <p className="text-sm text-muted-foreground mt-1">Video Lessons</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-4xl md:text-5xl font-bold text-primary">50+</p>
-                  <p className="text-sm text-muted-foreground mt-1">Expert Instructors</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-4xl md:text-5xl font-bold text-primary">30+</p>
-                  <p className="text-sm text-muted-foreground mt-1">Music Traditions</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-center gap-2 text-green-600">
-                <Shield className="w-5 h-5" />
-                <span className="font-medium">30-Day 110% Money-Back Guarantee</span>
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Final CTA Section */}
-        <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 to-background">
-          <div className="max-w-2xl mx-auto px-4 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -518,31 +465,59 @@ export default function Membership() {
               transition={{ duration: 0.5 }}
               className="space-y-6"
             >
-              <h2 className="text-2xl md:text-4xl font-bold">
+              <div className="flex justify-center gap-8 md:gap-16 flex-wrap">
+                <div className="text-center">
+                  <p className="text-3xl md:text-4xl font-bold text-primary">1000+</p>
+                  <p className="text-xs text-muted-foreground mt-1">Video Lessons</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl md:text-4xl font-bold text-primary">20</p>
+                  <p className="text-xs text-muted-foreground mt-1">Expert Tutors</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-3xl md:text-4xl font-bold text-primary">70+</p>
+                  <p className="text-xs text-muted-foreground mt-1">Music Traditions</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Final CTA Section */}
+        <section className="py-12 md:py-16 bg-muted/30">
+          <div className="max-w-2xl mx-auto px-4 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="space-y-5"
+            >
+              <h2 className="text-xl md:text-3xl font-bold">
                 Ready to Start Your Journey?
               </h2>
-              <p className="text-muted-foreground">
-                Join thousands of musicians expanding their musical vocabulary with world music traditions.
+              <p className="text-muted-foreground text-sm md:text-base">
+                Join thousands of musicians expanding their vocabulary with world music traditions.
               </p>
               
               {isLoading ? (
-                <Skeleton className="h-12 w-40 mx-auto rounded-lg" />
+                <Skeleton className="h-10 w-32 mx-auto rounded-lg" />
               ) : priceInfo && (
-                <p className="text-3xl font-bold text-secondary">
+                <p className="text-2xl md:text-3xl font-bold text-secondary">
                   {formatPrice(priceInfo.price, priceInfo.currency)}
-                  <span className="text-lg font-normal text-muted-foreground">/month</span>
+                  <span className="text-base font-normal text-muted-foreground">/month</span>
                 </p>
               )}
               
               <Button
                 size="lg"
                 onClick={handleStartTrial}
-                className="text-lg px-12 py-6 h-auto"
+                className="text-base px-10 py-5 h-auto"
               >
                 Start Your 7-Day Free Trial
               </Button>
               
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Cancel anytime • No questions asked
               </p>
             </motion.div>
