@@ -71,11 +71,16 @@ export function useTracks(contentType?: 'song' | 'podcast_episode') {
           artist:media_artists(*),
           podcast:media_podcasts(*)
         `)
-        .eq('is_published', true)
-        .order('created_at', { ascending: false });
+        .eq('is_published', true);
 
-      if (contentType) {
-        query = query.eq('content_type', contentType);
+      // For podcast episodes, order by episode_number ascending
+      // For songs, order by created_at descending (newest first)
+      if (contentType === 'podcast_episode') {
+        query = query.eq('content_type', contentType).order('episode_number', { ascending: true });
+      } else if (contentType) {
+        query = query.eq('content_type', contentType).order('created_at', { ascending: false });
+      } else {
+        query = query.order('created_at', { ascending: false });
       }
 
       const { data, error } = await query;
@@ -85,7 +90,7 @@ export function useTracks(contentType?: 'song' | 'podcast_episode') {
   });
 }
 
-// Search tracks
+// Search tracks (includes searching by artist name and album)
 export function useSearchTracks(searchQuery: string) {
   return useQuery({
     queryKey: ['media-tracks-search', searchQuery],
@@ -93,7 +98,9 @@ export function useSearchTracks(searchQuery: string) {
       if (!searchQuery.trim()) return [];
       
       const safeQuery = sanitizeSearchQuery(searchQuery);
-      const { data, error } = await supabase
+      
+      // Search tracks by title, album, genre
+      const { data: trackResults, error: trackError } = await supabase
         .from('media_tracks')
         .select(`
           *,
@@ -105,8 +112,42 @@ export function useSearchTracks(searchQuery: string) {
         .order('play_count', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
-      return data as MediaTrack[];
+      if (trackError) throw trackError;
+      
+      // Also search by artist name
+      const { data: artistResults, error: artistError } = await supabase
+        .from('media_artists')
+        .select('id')
+        .ilike('name', `%${safeQuery}%`);
+      
+      if (artistError) throw artistError;
+      
+      let artistTracks: MediaTrack[] = [];
+      if (artistResults && artistResults.length > 0) {
+        const artistIds = artistResults.map(a => a.id);
+        const { data: artistTrackResults, error: artistTrackError } = await supabase
+          .from('media_tracks')
+          .select(`
+            *,
+            artist:media_artists(*),
+            podcast:media_podcasts(*)
+          `)
+          .eq('is_published', true)
+          .in('artist_id', artistIds)
+          .order('play_count', { ascending: false })
+          .limit(50);
+        
+        if (artistTrackError) throw artistTrackError;
+        artistTracks = artistTrackResults as MediaTrack[];
+      }
+      
+      // Combine and deduplicate results
+      const allTracks = [...(trackResults as MediaTrack[]), ...artistTracks];
+      const uniqueTracks = allTracks.filter((track, index, self) => 
+        index === self.findIndex(t => t.id === track.id)
+      );
+      
+      return uniqueTracks.slice(0, 50);
     },
     enabled: searchQuery.length > 0,
   });
@@ -136,7 +177,7 @@ export function usePodcasts() {
         .from('media_podcasts')
         .select('*')
         .eq('is_active', true)
-        .order('title');
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data as MediaPodcast[];
     },

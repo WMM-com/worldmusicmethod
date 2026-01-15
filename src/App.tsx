@@ -130,11 +130,13 @@ function AppContent() {
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
         <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
-        <Route path="/music" element={<Media />} />
-        <Route path="/music/playlist/:playlistId" element={<MediaPlaylist />} />
+        <Route path="/listen" element={<Media />} />
+        <Route path="/listen/playlist/:playlistId" element={<MediaPlaylist />} />
         {/* Legacy redirects */}
-        <Route path="/media" element={<Navigate to="/music" replace />} />
-        <Route path="/media/playlist/:playlistId" element={<Navigate to="/music/playlist/:playlistId" replace />} />
+        <Route path="/media" element={<Navigate to="/listen" replace />} />
+        <Route path="/media/playlist/:playlistId" element={<Navigate to="/listen/playlist/:playlistId" replace />} />
+        <Route path="/music" element={<Navigate to="/listen" replace />} />
+        <Route path="/music/playlist/:playlistId" element={<Navigate to="/listen/playlist/:playlistId" replace />} />
         <Route path="/membership" element={<Membership />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
         

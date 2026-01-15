@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Music, Podcast, Heart, ListMusic, Search, ChevronDown, ChevronUp } from 'lucide-react';
+import { Music, Mic, Heart, ListMusic, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTracks, usePodcasts, useUserPlaylists, useLikedTracks, useAdminPlaylists, MediaPodcast, usePlaylist } from '@/hooks/useMedia';
 import { TrackList } from '@/components/media/TrackList';
 import { MediaSearch } from '@/components/media/MediaSearch';
@@ -28,7 +28,7 @@ export default function Media() {
   const { data: adminPlaylists, isLoading: adminPlaylistsLoading } = useAdminPlaylists();
 
   useEffect(() => {
-    document.title = 'Music | World Music Method';
+    document.title = 'Listen | World Music Method';
   }, []);
 
   // Get episodes for a specific podcast
@@ -47,7 +47,7 @@ export default function Media() {
       <div className="container py-8 pb-28 space-y-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Music</h1>
+            <h1 className="text-3xl font-bold">Listen</h1>
             <p className="text-muted-foreground">Stream music and podcasts</p>
           </div>
           {user && <CreatePlaylistDialog />}
@@ -64,7 +64,7 @@ export default function Media() {
               <span className="hidden sm:inline">Songs</span>
             </TabsTrigger>
             <TabsTrigger value="podcasts" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-              <Podcast className="h-4 w-4" />
+              <Mic className="h-4 w-4" />
               <span className="hidden sm:inline">Podcasts</span>
             </TabsTrigger>
             <TabsTrigger value="playlists" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
@@ -171,7 +171,7 @@ export default function Media() {
                                   />
                                 ) : (
                                   <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                                    <Podcast className="h-8 w-8 text-muted-foreground" />
+                                    <Mic className="h-8 w-8 text-muted-foreground" />
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
@@ -307,7 +307,7 @@ function AdminPlaylistCard({ playlist }: { playlist: any }) {
   return (
     <Card 
       className="cursor-pointer hover:bg-muted/50 transition-colors"
-      onClick={() => navigate(`/music/playlist/${playlist.id}`)}
+      onClick={() => navigate(`/listen/playlist/${playlist.id}`)}
     >
       <CardContent className="p-4">
         <PlaylistCoverGrid 
@@ -334,7 +334,7 @@ function UserPlaylistCard({ playlist }: { playlist: any }) {
   return (
     <Card 
       className="cursor-pointer hover:bg-muted/50 transition-colors"
-      onClick={() => navigate(`/music/playlist/${playlist.id}`)}
+      onClick={() => navigate(`/listen/playlist/${playlist.id}`)}
     >
       <CardContent className="p-4">
         <PlaylistCoverGrid 
