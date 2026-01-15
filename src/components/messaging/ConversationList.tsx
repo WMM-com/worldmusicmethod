@@ -213,11 +213,12 @@ function ConversationItem({
   return (
     <>
       <div
-        className={`relative flex items-center gap-2 p-4 hover:bg-neutral-900 transition-colors cursor-pointer ${
+        className={`group relative hover:bg-neutral-900 transition-colors cursor-pointer ${
           isSelected ? 'bg-neutral-900 border-l-2 border-l-red-600' : ''
         }`}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0" onClick={onClick}>
+        {/* Main clickable area */}
+        <div className="flex items-center gap-3 p-4 pr-12" onClick={onClick}>
           <Avatar className="h-10 w-10 ring-2 ring-neutral-700 shrink-0">
             <AvatarImage src={participant?.avatar_url || undefined} />
             <AvatarFallback className="bg-neutral-800 text-white">
@@ -241,67 +242,69 @@ function ConversationItem({
               </p>
             )}
           </div>
+          {conversation.unread_count > 0 && (
+            <Badge className="bg-red-600 hover:bg-red-600 text-white border-0 shrink-0">
+              {conversation.unread_count}
+            </Badge>
+          )}
         </div>
 
-        {conversation.unread_count > 0 && (
-          <Badge className="bg-red-600 hover:bg-red-600 text-white border-0 shrink-0">
-            {conversation.unread_count}
-          </Badge>
-        )}
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 shrink-0 text-neutral-500 hover:text-white hover:bg-neutral-800"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-neutral-800 w-48">
-            <DropdownMenuItem 
-              onClick={handleViewProfile}
-              className="text-white hover:bg-neutral-800 focus:bg-neutral-800 cursor-pointer"
-            >
-              <User className="h-4 w-4 mr-2" />
-              View Profile
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-neutral-800" />
-            <DropdownMenuItem 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowReportDialog(true);
-              }}
-              className="text-white hover:bg-neutral-800 focus:bg-neutral-800 cursor-pointer"
-            >
-              <Flag className="h-4 w-4 mr-2" />
-              Report User
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowBlockAlert(true);
-              }}
-              className="text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 hover:text-red-500 focus:text-red-500 cursor-pointer"
-            >
-              <Ban className="h-4 w-4 mr-2" />
-              Block User
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-neutral-800" />
-            <DropdownMenuItem 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDeleteAlert(true);
-              }}
-              className="text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 hover:text-red-500 focus:text-red-500 cursor-pointer"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Conversation
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Dropdown menu - positioned absolutely */}
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-neutral-500 hover:text-white hover:bg-neutral-800"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-[#0a0a0a] border-neutral-800 w-48">
+              <DropdownMenuItem 
+                onClick={handleViewProfile}
+                className="text-white hover:bg-neutral-800 focus:bg-neutral-800 cursor-pointer"
+              >
+                <User className="h-4 w-4 mr-2" />
+                View Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-neutral-800" />
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowReportDialog(true);
+                }}
+                className="text-white hover:bg-neutral-800 focus:bg-neutral-800 cursor-pointer"
+              >
+                <Flag className="h-4 w-4 mr-2" />
+                Report User
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowBlockAlert(true);
+                }}
+                className="text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 hover:text-red-500 focus:text-red-500 cursor-pointer"
+              >
+                <Ban className="h-4 w-4 mr-2" />
+                Block User
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-neutral-800" />
+              <DropdownMenuItem 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteAlert(true);
+                }}
+                className="text-red-500 hover:bg-neutral-800 focus:bg-neutral-800 hover:text-red-500 focus:text-red-500 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Conversation
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Delete Alert */}
