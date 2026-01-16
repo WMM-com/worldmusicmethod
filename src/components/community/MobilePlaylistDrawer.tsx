@@ -16,8 +16,10 @@ export function MobilePlaylistDrawer() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [dragProgress, setDragProgress] = useState(0);
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
+  const isDragging = useRef(false);
   
   const { data: playlist, isLoading } = useCommunityFeedPlaylist();
   const { playTrack, currentTrack, isPlaying, togglePlay } = useMediaPlayer();
@@ -100,10 +102,6 @@ export function MobilePlaylistDrawer() {
   if (isLoading || !playlist || !isCommunityPage) return null;
 
   const coverUrls = playlist.tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
-
-  // Track drag progress for progressive opening
-  const [dragProgress, setDragProgress] = useState(0);
-  const isDragging = useRef(false);
 
   return (
     <>

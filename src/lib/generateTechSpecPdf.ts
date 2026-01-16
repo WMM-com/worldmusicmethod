@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { TechSpec, StagePlotItem, STAGE_ICONS, MIC_TYPES, IconType } from '@/types/techSpec';
 import { Profile } from '@/types/database';
+import { drawPdfIcon, getIconAbbreviation } from './pdfIconPaths';
 
 export function generateTechSpecPdf(
   techSpec: TechSpec,
@@ -137,13 +138,13 @@ export function generateTechSpecPdf(
     return abbrevMap[iconType] || iconType.substring(0, 2).toUpperCase();
   };
 
-  // Draw items on stage with channel numbers and icon abbreviations
+  // Draw items on stage with icons and channel numbers
   doc.setFontSize(6);
   items.forEach((item) => {
     const itemX = margin + (item.position_x / 100) * stageWidth;
     const itemY = y + (item.position_y / 100) * stageHeight;
     
-    // Draw circle/marker - larger to fit abbreviation
+    // Draw circle/marker background
     const radius = 6;
     if (item.provided_by === 'venue') {
       doc.setFillColor(200, 220, 255);
@@ -157,18 +158,17 @@ export function generateTechSpecPdf(
     }
     doc.circle(itemX, itemY, radius, 'FD');
     
-    // Draw icon abbreviation inside circle
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5);
-    const abbrev = getIconAbbrev(item.icon_type);
-    doc.text(abbrev, itemX, itemY - 0.5, { align: 'center' });
+    // Draw the actual icon inside the circle
+    const iconColor: [number, number, number] = item.provided_by === 'venue' 
+      ? [60, 90, 160] 
+      : [50, 50, 50];
+    drawPdfIcon(doc, item.icon_type as IconType, itemX, itemY - 1, 8, iconColor);
     
     // Draw channel number below if assigned
     if (item.channel_number) {
       doc.setFontSize(5);
       doc.setTextColor(100, 100, 100);
-      doc.text(`Ch${item.channel_number}`, itemX, itemY + 3, { align: 'center' });
+      doc.text(`Ch${item.channel_number}`, itemX, itemY + 5, { align: 'center' });
     }
   });
 
