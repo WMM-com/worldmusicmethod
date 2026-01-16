@@ -101,6 +101,10 @@ export function MobilePlaylistDrawer() {
 
   const coverUrls = playlist.tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
 
+  // Track drag progress for progressive opening
+  const [dragProgress, setDragProgress] = useState(0);
+  const isDragging = useRef(false);
+
   return (
     <>
       {/* Toggle Button - always visible on mobile when drawer is closed, swipeable from edge */}
@@ -112,13 +116,21 @@ export function MobilePlaylistDrawer() {
             exit={{ x: -100, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             drag="x"
-            dragConstraints={{ left: 0, right: 100 }}
-            dragElastic={{ left: 0, right: 0.5 }}
+            dragConstraints={{ left: 0, right: 150 }}
+            dragElastic={{ left: 0, right: 0.3 }}
+            onDrag={(_, info) => {
+              isDragging.current = true;
+              // Calculate progress (0 to 1) based on drag distance
+              const progress = Math.min(info.offset.x / 100, 1);
+              setDragProgress(progress);
+            }}
             onDragEnd={(_, info) => {
+              isDragging.current = false;
               // If swiped right more than 50px, open the drawer
               if (info.offset.x > 50 || info.velocity.x > 300) {
                 handleOpen();
               }
+              setDragProgress(0);
             }}
             onClick={handleOpen}
             className="lg:hidden fixed left-0 top-1/2 -translate-y-1/2 z-30 bg-primary text-primary-foreground p-3 rounded-r-lg shadow-lg flex items-center gap-2 cursor-grab active:cursor-grabbing touch-pan-x"
@@ -126,6 +138,44 @@ export function MobilePlaylistDrawer() {
             <ListMusic className="h-5 w-5" />
             <ChevronRight className="h-4 w-4" />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Progressive drawer preview - shows as you drag */}
+      <AnimatePresence>
+        {!isOpen && dragProgress > 0 && (
+          <>
+            {/* Backdrop that fades in */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: dragProgress * 0.5 }}
+              exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 bg-black z-35"
+              style={{ pointerEvents: 'none' }}
+            />
+            
+            {/* Drawer preview that slides in */}
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: `${-100 + (dragProgress * 100)}%` }}
+              exit={{ x: '-100%' }}
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-40 overflow-hidden flex flex-col pointer-events-none"
+              style={{ opacity: 0.3 + (dragProgress * 0.7) }}
+            >
+              {/* Header preview */}
+              <div className="p-4 border-b border-border">
+                <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                  <ListMusic className="h-4 w-4" />
+                  Community Playlist
+                </h3>
+              </div>
+              {/* Playlist cover preview */}
+              <div className="p-4">
+                <PlaylistCoverGrid coverUrls={coverUrls} size="lg" className="w-full aspect-square max-w-[200px] mx-auto" />
+                <h3 className="font-semibold mt-3 text-center">{playlist.name}</h3>
+              </div>
+            </motion.aside>
+          </>
         )}
       </AnimatePresence>
 

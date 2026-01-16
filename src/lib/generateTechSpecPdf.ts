@@ -89,14 +89,62 @@ export function generateTechSpecPdf(
   });
   doc.setLineDashPattern([], 0);
 
-  // Draw items on stage with channel numbers
+  // Icon abbreviations for PDF
+  const getIconAbbrev = (iconType: string): string => {
+    const abbrevMap: Record<string, string> = {
+      'person_standing': '🧍',
+      'person_seated': '🪑',
+      'electric_guitar': 'EG',
+      'acoustic_guitar': 'AG',
+      'classical_guitar': 'CG',
+      'bass_guitar': 'BG',
+      'keyboard': 'KB',
+      'piano': 'PN',
+      'synth': 'SY',
+      'drums': 'DR',
+      'percussion': 'PC',
+      'congas': 'CG',
+      'bongos': 'BN',
+      'cajon': 'CJ',
+      'timpani': 'TM',
+      'violin': 'VN',
+      'viola': 'VA',
+      'cello': 'VC',
+      'double_bass': 'DB',
+      'harp': 'HP',
+      'trumpet': 'TP',
+      'trombone': 'TB',
+      'french_horn': 'FH',
+      'tuba': 'TU',
+      'flugelhorn': 'FG',
+      'saxophone': 'SX',
+      'clarinet': 'CL',
+      'flute': 'FL',
+      'oboe': 'OB',
+      'bassoon': 'BS',
+      'monitor': 'M',
+      'mic_tall': '🎤',
+      'mic_short': '🎤',
+      'di_box': 'DI',
+      'amp_guitar': 'GA',
+      'amp_bass': 'BA',
+      'subwoofer': 'SW',
+      'iem': 'IE',
+      'laptop': '💻',
+      'mixer': 'MX',
+      'music_stand': 'MS',
+    };
+    return abbrevMap[iconType] || iconType.substring(0, 2).toUpperCase();
+  };
+
+  // Draw items on stage with channel numbers and icon abbreviations
   doc.setFontSize(6);
   items.forEach((item) => {
     const itemX = margin + (item.position_x / 100) * stageWidth;
     const itemY = y + (item.position_y / 100) * stageHeight;
     
-    // Draw circle/marker
-    const radius = 4;
+    // Draw circle/marker - larger to fit abbreviation
+    const radius = 6;
     if (item.provided_by === 'venue') {
       doc.setFillColor(200, 220, 255);
       doc.setDrawColor(100, 130, 200);
@@ -109,12 +157,18 @@ export function generateTechSpecPdf(
     }
     doc.circle(itemX, itemY, radius, 'FD');
     
-    // Draw channel number if assigned, otherwise index
+    // Draw icon abbreviation inside circle
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'bold');
-    const displayNum = item.channel_number ? item.channel_number.toString() : '';
-    if (displayNum) {
-      doc.text(displayNum, itemX, itemY + 1.5, { align: 'center' });
+    doc.setFontSize(5);
+    const abbrev = getIconAbbrev(item.icon_type);
+    doc.text(abbrev, itemX, itemY - 0.5, { align: 'center' });
+    
+    // Draw channel number below if assigned
+    if (item.channel_number) {
+      doc.setFontSize(5);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Ch${item.channel_number}`, itemX, itemY + 3, { align: 'center' });
     }
   });
 
