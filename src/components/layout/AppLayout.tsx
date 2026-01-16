@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Lightbulb, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music } from 'lucide-react';
+import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music } from 'lucide-react';
 import { useState } from 'react';
 import { SiteHeader } from './SiteHeader';
 
@@ -108,8 +108,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 border-r border-border bg-sidebar">
         <div className="flex h-14 items-center gap-2 px-6 border-b border-border">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary">
-            <Lightbulb className="h-4 w-4 text-secondary-foreground" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-secondary to-secondary/80">
+            <Brain className="h-4 w-4 text-secondary-foreground" />
           </div>
           <span className="text-base font-semibold text-foreground">Left Brain</span>
         </div>
@@ -167,8 +167,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="lg:hidden fixed top-16 left-0 right-0 h-14 bg-background/80 backdrop-blur-lg border-b border-border z-40">
         <div className="flex h-full items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-secondary">
-              <Lightbulb className="h-4 w-4 text-secondary-foreground" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-secondary to-secondary/80">
+              <Brain className="h-4 w-4 text-secondary-foreground" />
             </div>
             <span className="font-semibold text-foreground text-sm">Left Brain</span>
           </div>
