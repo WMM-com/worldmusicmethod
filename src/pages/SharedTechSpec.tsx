@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StageIcon } from '@/components/documents/StageIcon';
 import { STAGE_ICONS, MIC_TYPES, IconType, StagePlotItem } from '@/types/techSpec';
 import { cn } from '@/lib/utils';
-import { Brain, User, Building2 } from 'lucide-react';
-
+import { Lightbulb, User, Building2, Zap, Plug } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 interface SharedTechSpecData {
   id: string;
   name: string;
@@ -82,7 +83,7 @@ export default function SharedTechSpec() {
         <Card className="max-w-md">
           <CardContent className="p-6 text-center">
             <div className="h-12 w-12 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
-              <Brain className="h-6 w-6 text-destructive" />
+              <Lightbulb className="h-6 w-6 text-destructive" />
             </div>
             <h2 className="text-xl font-semibold mb-2">Link Invalid</h2>
             <p className="text-muted-foreground">{error || 'This tech spec could not be found.'}</p>
@@ -98,8 +99,8 @@ export default function SharedTechSpec() {
       <header className="border-b border-border bg-card/50">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-              <Brain className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
+              <Lightbulb className="h-5 w-5 text-secondary-foreground" />
             </div>
             <div>
               <h1 className="text-xl font-semibold">{spec.name}</h1>
@@ -238,6 +239,66 @@ export default function SharedTechSpec() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Channel List / Input List */}
+            {(() => {
+              const channelItems = items
+                .filter(item => item.channel_number !== null)
+                .sort((a, b) => (a.channel_number || 0) - (b.channel_number || 0));
+              
+              if (channelItems.length === 0) return null;
+              
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Channel List</CardTitle>
+                    <p className="text-xs text-muted-foreground">{channelItems.length} channels</p>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-10">Ch</TableHead>
+                          <TableHead>Input</TableHead>
+                          <TableHead className="hidden sm:table-cell">Mic</TableHead>
+                          <TableHead className="w-10 text-center">48V</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {channelItems.map((item) => {
+                          const iconInfo = STAGE_ICONS.find(i => i.type === item.icon_type);
+                          const micInfo = item.mic_type ? MIC_TYPES.find(m => m.value === item.mic_type) : null;
+                          return (
+                            <TableRow 
+                              key={item.id}
+                              className={cn(
+                                'cursor-pointer',
+                                selectedItem?.id === item.id && 'bg-secondary/10'
+                              )}
+                              onClick={() => setSelectedItem(item)}
+                            >
+                              <TableCell className="font-mono font-bold">{item.channel_number}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <StageIcon type={item.icon_type as IconType} size={16} />
+                                  <span className="text-sm truncate">{item.label || iconInfo?.label}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                                {micInfo?.label || '-'}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {item.phantom_power && <Zap className="h-4 w-4 text-yellow-500 mx-auto" />}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Equipment List */}
             <Card>
