@@ -139,7 +139,7 @@ export function MobilePlaylistDrawer() {
         )}
       </AnimatePresence>
 
-      {/* Progressive drawer preview - shows as you drag */}
+      {/* Progressive drawer preview - shows FULL content as you drag */}
       <AnimatePresence>
         {!isOpen && dragProgress > 0 && (
           <>
@@ -152,25 +152,96 @@ export function MobilePlaylistDrawer() {
               style={{ pointerEvents: 'none' }}
             />
             
-            {/* Drawer preview that slides in */}
+            {/* Full drawer that slides in during drag */}
             <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: `${-100 + (dragProgress * 100)}%` }}
               exit={{ x: '-100%' }}
               className="lg:hidden fixed left-0 top-0 bottom-0 w-[85vw] max-w-sm bg-card border-r border-border z-40 overflow-hidden flex flex-col pointer-events-none"
-              style={{ opacity: 0.3 + (dragProgress * 0.7) }}
             >
-              {/* Header preview */}
+              {/* Header */}
               <div className="p-4 border-b border-border">
                 <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground flex items-center gap-2">
                   <ListMusic className="h-4 w-4" />
                   Community Playlist
                 </h3>
+                <p className="text-xs text-muted-foreground mt-1">Swipe left to close</p>
               </div>
-              {/* Playlist cover preview */}
-              <div className="p-4">
-                <PlaylistCoverGrid coverUrls={coverUrls} size="lg" className="w-full aspect-square max-w-[200px] mx-auto" />
+              
+              {/* Playlist Cover */}
+              <div className="p-4 border-b border-border">
+                <div className="relative">
+                  <PlaylistCoverGrid coverUrls={coverUrls} size="lg" className="w-full aspect-square max-w-[200px] mx-auto" />
+                </div>
                 <h3 className="font-semibold mt-3 text-center">{playlist.name}</h3>
+                {playlist.description && (
+                  <p className="text-xs text-muted-foreground text-center line-clamp-2 mt-1">{playlist.description}</p>
+                )}
+              </div>
+              
+              {/* Track List */}
+              <ScrollArea className="flex-1">
+                <div className="p-2 space-y-1">
+                  {playlist.tracks?.map((track, index) => (
+                    <div
+                      key={track.id}
+                      className={cn(
+                        "flex items-center gap-3 p-2 rounded-md",
+                        isCurrentTrack(track.id) 
+                          ? "bg-primary/10" 
+                          : ""
+                      )}
+                    >
+                      {/* Track Number */}
+                      <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                        {isTrackPlaying(track.id) ? (
+                          <Pause className="h-4 w-4 text-primary" />
+                        ) : isCurrentTrack(track.id) ? (
+                          <Play className="h-4 w-4 text-primary ml-0.5" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            {index + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Track Cover */}
+                      <div className="h-10 w-10 rounded overflow-hidden shrink-0 bg-muted">
+                        {track.cover_image_url ? (
+                          <img 
+                            src={track.cover_image_url} 
+                            alt={track.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ListMusic className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Track Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "text-sm truncate",
+                          isCurrentTrack(track.id) ? "text-primary font-medium" : ""
+                        )}>
+                          {track.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {track.artist?.name || 'Unknown Artist'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              
+              {/* Footer */}
+              <div className="p-3 border-t border-border text-center">
+                <p className="text-xs text-muted-foreground">
+                  {playlist.tracks?.length || 0} tracks
+                </p>
               </div>
             </motion.aside>
           </>

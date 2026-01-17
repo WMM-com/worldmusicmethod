@@ -155,15 +155,6 @@ export function AdminUsers() {
     },
   });
 
-  const { data: userRoles } = useQuery({
-    queryKey: ['admin-user-roles'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('user_roles').select('*');
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const { data: courses } = useQuery({
     queryKey: ['admin-courses-list'],
     queryFn: async () => {
@@ -186,6 +177,22 @@ export function AdminUsers() {
 
   // Fetch enrollments for displayed users only (avoid 1000 row limit issue)
   const userIds = users?.map(u => u.id) || [];
+  
+  // Fetch roles for displayed users only (avoid 1000 row limit issue)
+  const { data: userRoles, refetch: refetchRoles } = useQuery({
+    queryKey: ['admin-user-roles', userIds],
+    queryFn: async () => {
+      if (userIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('*')
+        .in('user_id', userIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: userIds.length > 0,
+  });
+
   const { data: enrollments } = useQuery({
     queryKey: ['admin-enrollments', userIds],
     queryFn: async () => {
@@ -276,18 +283,27 @@ export function AdminUsers() {
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
       // First delete existing role
-      await supabase.from('user_roles').delete().eq('user_id', userId);
+      const { error: deleteError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteError) {
+        console.error('Error deleting existing role:', deleteError);
+        // Continue anyway - user might not have a role yet
+      }
       
       // Then insert new role - cast to any to handle enum type
-      const { error } = await supabase.from('user_roles').insert([{
+      const { error: insertError } = await supabase.from('user_roles').insert([{
         user_id: userId,
         role: role as any,
       }]);
-      if (error) throw error;
-
-      // Role updated successfully
+      
+      if (insertError) throw insertError;
     },
     onSuccess: () => {
+      // Force immediate refetch of roles for current users
+      refetchRoles();
       queryClient.invalidateQueries({ queryKey: ['admin-user-roles'] });
       queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
       toast.success('User role updated');
