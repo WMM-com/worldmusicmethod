@@ -36,6 +36,23 @@ export default function Media() {
     return podcasts?.filter(ep => ep.podcast_id === podcastId) || [];
   };
 
+  // Get diverse recent songs - max 1 per artist to avoid artist-heavy display
+  const getDiverseRecentSongs = () => {
+    if (!songs) return [];
+    const seenArtists = new Set<string>();
+    const diverseTracks: typeof songs = [];
+    
+    for (const song of songs) {
+      const artistId = song.artist_id || 'unknown';
+      if (!seenArtists.has(artistId)) {
+        seenArtists.add(artistId);
+        diverseTracks.push(song);
+      }
+      if (diverseTracks.length >= 8) break;
+    }
+    return diverseTracks;
+  };
+
   // Get cover URLs for a playlist
   const getPlaylistCoverUrls = (playlistId: string, tracks: any[] | undefined) => {
     return tracks?.slice(0, 4).map(t => t.cover_image_url) || [];
@@ -95,7 +112,7 @@ export default function Media() {
                   ))}
                 </div>
               ) : songs && songs.length > 0 ? (
-                <TrackList tracks={songs.slice(0, 6)} />
+                <TrackList tracks={getDiverseRecentSongs()} variant="featured" />
               ) : (
                 <p className="text-muted-foreground">No songs available yet</p>
               )}
@@ -132,7 +149,7 @@ export default function Media() {
                 ))}
               </div>
             ) : songs && songs.length > 0 ? (
-              <TrackList tracks={songs} />
+              <TrackList tracks={songs} variant="list" />
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">

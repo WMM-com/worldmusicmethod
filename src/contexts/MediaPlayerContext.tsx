@@ -200,31 +200,16 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     handleTrackEndRef.current = handleTrackEnd;
   }, [handleTrackEnd]);
 
-  const playTrack = useCallback(async (track: MediaTrack, trackList?: MediaTrack[]) => {
+  const playTrack = useCallback(async (track: MediaTrack, trackList?: MediaTrack[], preserveQueue = false) => {
     // Finalize tracking for previous track before starting new one
     await finalizeTracking();
     
-    // If trackList is provided, use it as the new queue
-    // If not provided, keep existing queue and add track if not already in it
     let newQueue: MediaTrack[];
     let newIndex: number;
     
-    if (trackList) {
-      // A track list was provided - use it as the new queue
-      newQueue = trackList;
-      newIndex = trackList.findIndex(t => t.id === track.id);
-      if (newIndex === -1) newIndex = 0;
-      setOriginalQueue(newQueue);
-      
-      if (isShuffled) {
-        const shuffled = shuffleArray(newQueue.filter(t => t.id !== track.id));
-        newQueue = [track, ...shuffled];
-        newIndex = 0;
-      }
-      
-      setQueue(newQueue);
-    } else {
-      // No track list - check if track is already in queue
+    // If preserveQueue is true, or no trackList provided, we want to keep the existing queue
+    if (preserveQueue || !trackList) {
+      // Check if track is already in queue
       const existingIndex = queue.findIndex(t => t.id === track.id);
       
       if (existingIndex >= 0) {
@@ -251,19 +236,47 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
           return [...prev, track];
         });
       }
+    } else {
+      // A track list was provided and we're not preserving queue
+      // Check if there are items in queue that were manually added (not in trackList)
+      const manuallyAddedTracks = queue.filter(qTrack => 
+        !trackList.find(t => t.id === qTrack.id)
+      );
+      
+      // Build the new queue: trackList items first, then append manually added items
+      newQueue = [...trackList];
+      
+      // Append any manually added tracks that aren't in the trackList
+      if (manuallyAddedTracks.length > 0) {
+        newQueue = [...newQueue, ...manuallyAddedTracks];
+      }
+      
+      newIndex = newQueue.findIndex(t => t.id === track.id);
+      if (newIndex === -1) newIndex = 0;
+      
+      setOriginalQueue([...trackList, ...manuallyAddedTracks]);
+      
+      if (isShuffled) {
+        const shuffled = shuffleArray(newQueue.filter(t => t.id !== track.id));
+        newQueue = [track, ...shuffled];
+        newIndex = 0;
+      }
+      
+      setQueue(newQueue);
     }
     
     setCurrentTrack(track);
     setCurrentIndex(newIndex);
     setPlayRecorded(false);
-    
-    // Start tracking new track
+    setIsPlaying(true);
+
+    // Start tracking for new track
     startTracking(
       track.id,
       track.content_type || 'song',
       track.duration_seconds || 0
     );
-    
+
     if (audioRef.current) {
       audioRef.current.src = track.audio_url;
       audioRef.current.play().catch(console.error);
