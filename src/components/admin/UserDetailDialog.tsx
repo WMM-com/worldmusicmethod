@@ -23,9 +23,10 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Mail, MailX, Send, User, Shield, Eye, EyeOff, Tag, BookOpen, X, Plus, CreditCard, Search } from 'lucide-react';
+import { Mail, MailX, Send, User, Shield, Eye, EyeOff, Tag, BookOpen, X, Plus, CreditCard, Search, BarChart3 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { ArtistDashboardAccessDialog } from './ArtistDashboardAccessDialog';
 import { format } from 'date-fns';
 
 type AppRole = 'user' | 'admin';
@@ -81,6 +82,9 @@ export function UserDetailDialog({
   // Enrollment management
   const [enrollSearch, setEnrollSearch] = useState('');
 
+  // Artist dashboard access dialog
+  const [artistAccessDialogOpen, setArtistAccessDialogOpen] = useState(false);
+
   const isSubscribed = emailSubscription?.is_subscribed !== false;
 
   // Fetch all tags
@@ -131,6 +135,21 @@ export function UserDetailDialog({
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch artist dashboard access for this user
+  const { data: userArtistAccess = [] } = useQuery({
+    queryKey: ['admin-user-artist-access', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('artist_dashboard_access')
+        .select('artist_id, media_artists(name)')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!user?.id,
   });
@@ -599,6 +618,28 @@ export function UserDetailDialog({
 
               <Separator />
 
+              {/* Artist Dashboard Access */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="font-medium">Artist Dashboard Access</span>
+                  {userArtistAccess.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {userArtistAccess.length} artist{userArtistAccess.length > 1 ? 's' : ''}
+                    </Badge>
+                  )}
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setArtistAccessDialogOpen(true)}
+                >
+                  Manage
+                </Button>
+              </div>
+
+              <Separator />
+
               {/* Tags Management */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -775,6 +816,14 @@ export function UserDetailDialog({
           </ScrollArea>
         </Tabs>
       </DialogContent>
+
+      {/* Artist Dashboard Access Dialog */}
+      <ArtistDashboardAccessDialog
+        user={user}
+        open={artistAccessDialogOpen}
+        onOpenChange={setArtistAccessDialogOpen}
+        currentAccess={userArtistAccess}
+      />
     </Dialog>
   );
 }
