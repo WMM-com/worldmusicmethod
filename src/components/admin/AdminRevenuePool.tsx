@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -22,10 +23,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { DollarSign, Calendar, Save } from 'lucide-react';
+import { DollarSign, Calendar, Save, Percent, Info } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
-const CURRENCIES = ['GBP', 'USD', 'EUR'];
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -38,8 +44,10 @@ export function AdminRevenuePool() {
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [poolAmount, setPoolAmount] = useState('');
-  const [currency, setCurrency] = useState('GBP');
+  const [percentageOfRevenue, setPercentageOfRevenue] = useState(50);
+  const [poolAmountGBP, setPoolAmountGBP] = useState('');
+  const [poolAmountUSD, setPoolAmountUSD] = useState('');
+  const [poolAmountEUR, setPoolAmountEUR] = useState('');
   const [notes, setNotes] = useState('');
 
   // Fetch all revenue pool settings
@@ -72,24 +80,31 @@ export function AdminRevenuePool() {
   });
 
   // Update form when selection changes
-  useState(() => {
+  useEffect(() => {
     if (currentPool) {
-      setPoolAmount(currentPool.pool_amount.toString());
-      setCurrency(currentPool.currency);
+      setPercentageOfRevenue(Number(currentPool.percentage_of_revenue) || 50);
+      setPoolAmountGBP(currentPool.pool_amount_gbp?.toString() || '0');
+      setPoolAmountUSD(currentPool.pool_amount_usd?.toString() || '0');
+      setPoolAmountEUR(currentPool.pool_amount_eur?.toString() || '0');
       setNotes(currentPool.notes || '');
     } else {
-      setPoolAmount('');
-      setCurrency('GBP');
+      setPercentageOfRevenue(50);
+      setPoolAmountGBP('');
+      setPoolAmountUSD('');
+      setPoolAmountEUR('');
       setNotes('');
     }
-  });
+  }, [currentPool]);
 
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const amount = parseFloat(poolAmount);
-      if (isNaN(amount) || amount < 0) {
-        throw new Error('Please enter a valid amount');
+      const gbp = parseFloat(poolAmountGBP) || 0;
+      const usd = parseFloat(poolAmountUSD) || 0;
+      const eur = parseFloat(poolAmountEUR) || 0;
+      
+      if (gbp < 0 || usd < 0 || eur < 0) {
+        throw new Error('Amounts cannot be negative');
       }
 
       const { error } = await supabase
@@ -97,8 +112,12 @@ export function AdminRevenuePool() {
         .upsert({
           year: selectedYear,
           month: selectedMonth,
-          pool_amount: amount,
-          currency,
+          percentage_of_revenue: percentageOfRevenue,
+          pool_amount_gbp: gbp,
+          pool_amount_usd: usd,
+          pool_amount_eur: eur,
+          pool_amount: gbp, // Keep legacy field for backwards compatibility
+          currency: 'GBP', // Legacy field
           notes: notes || null,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'year,month' });
@@ -134,6 +153,13 @@ export function AdminRevenuePool() {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
+  const totalPool = (parseFloat(poolAmountGBP) || 0) + (parseFloat(poolAmountUSD) || 0) + (parseFloat(poolAmountEUR) || 0);
+
+  const formatCurrency = (amount: number | string, currency: string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(num);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -143,7 +169,7 @@ export function AdminRevenuePool() {
             Revenue Pool Configuration
           </CardTitle>
           <CardDescription>
-            Set the monthly revenue pool amount that will be distributed to artists based on their play credits
+            Set the monthly revenue pool amounts from Beta Membership revenue to distribute to artists
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -187,33 +213,89 @@ export function AdminRevenuePool() {
             </div>
           </div>
 
-          {/* Pool Amount */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Pool Amount</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                value={poolAmount}
-                onChange={(e) => setPoolAmount(e.target.value)}
-              />
+          {/* Percentage of Revenue */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Label>Percentage of Beta Membership Revenue for Artists</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>This is the percentage of net Beta Membership revenue (after Stripe/PayPal fees) that goes into the artist royalty pool.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
-            <div className="space-y-2">
-              <Label>Currency</Label>
-              <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-4">
+              <Slider
+                value={[percentageOfRevenue]}
+                onValueChange={(v) => setPercentageOfRevenue(v[0])}
+                max={100}
+                min={0}
+                step={1}
+                className="flex-1"
+              />
+              <div className="flex items-center gap-1 min-w-[60px]">
+                <span className="text-2xl font-bold">{percentageOfRevenue}</span>
+                <Percent className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
+          {/* Multi-Currency Pool Amounts */}
+          <div className="space-y-4">
+            <Label>Net Revenue Pool Amounts (after payment fees)</Label>
+            <p className="text-sm text-muted-foreground">
+              Enter the actual amount allocated to the artist pool for each currency
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs">GBP (£)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={poolAmountGBP}
+                    onChange={(e) => setPoolAmountGBP(e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">USD ($)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={poolAmountUSD}
+                    onChange={(e) => setPoolAmountUSD(e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">EUR (€)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={poolAmountEUR}
+                    onChange={(e) => setPoolAmountEUR(e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -228,7 +310,7 @@ export function AdminRevenuePool() {
           </div>
 
           {/* Platform Stats */}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
             <h4 className="font-medium">Platform Stats for {MONTHS[selectedMonth - 1]} {selectedYear}</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -239,15 +321,39 @@ export function AdminRevenuePool() {
                 <span className="text-muted-foreground">Active Artists:</span>
                 <span className="ml-2 font-medium">{platformCredits?.breakdown.length || 0}</span>
               </div>
-              {poolAmount && platformCredits?.total && (
-                <div className="col-span-2">
-                  <span className="text-muted-foreground">Rate per Credit:</span>
-                  <span className="ml-2 font-medium">
-                    {currency} {(parseFloat(poolAmount) / platformCredits.total).toFixed(4)}
-                  </span>
-                </div>
-              )}
             </div>
+            
+            {platformCredits?.total && platformCredits.total > 0 && (
+              <div className="border-t border-border pt-3 mt-3">
+                <p className="text-sm font-medium mb-2">Rate per Credit:</p>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  {parseFloat(poolAmountGBP) > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">GBP:</span>
+                      <span className="ml-1 font-medium">
+                        £{(parseFloat(poolAmountGBP) / platformCredits.total).toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                  {parseFloat(poolAmountUSD) > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">USD:</span>
+                      <span className="ml-1 font-medium">
+                        ${(parseFloat(poolAmountUSD) / platformCredits.total).toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                  {parseFloat(poolAmountEUR) > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">EUR:</span>
+                      <span className="ml-1 font-medium">
+                        €{(parseFloat(poolAmountEUR) / platformCredits.total).toFixed(4)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <Button 
@@ -276,8 +382,10 @@ export function AdminRevenuePool() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Month</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Notes</TableHead>
+                  <TableHead>%</TableHead>
+                  <TableHead>GBP</TableHead>
+                  <TableHead>USD</TableHead>
+                  <TableHead>EUR</TableHead>
                   <TableHead>Updated</TableHead>
                 </TableRow>
               </TableHeader>
@@ -289,19 +397,22 @@ export function AdminRevenuePool() {
                     onClick={() => {
                       setSelectedYear(pool.year);
                       setSelectedMonth(pool.month);
-                      setPoolAmount(pool.pool_amount.toString());
-                      setCurrency(pool.currency);
-                      setNotes(pool.notes || '');
                     }}
                   >
                     <TableCell>
                       {MONTHS[pool.month - 1]} {pool.year}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {pool.currency} {Number(pool.pool_amount).toFixed(2)}
+                      {pool.percentage_of_revenue || 50}%
                     </TableCell>
-                    <TableCell className="text-muted-foreground max-w-xs truncate">
-                      {pool.notes || '-'}
+                    <TableCell>
+                      {formatCurrency(pool.pool_amount_gbp || 0, 'GBP')}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(pool.pool_amount_usd || 0, 'USD')}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(pool.pool_amount_eur || 0, 'EUR')}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(pool.updated_at), 'MMM d, yyyy')}

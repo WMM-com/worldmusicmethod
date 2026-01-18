@@ -22,7 +22,7 @@ interface TrackListProps {
   tracks: MediaTrack[];
   showArtist?: boolean;
   compact?: boolean;
-  variant?: 'grid' | 'list' | 'featured' | 'compact';
+  variant?: 'grid' | 'list' | 'featured' | 'compact' | 'liked';
 }
 
 function formatDuration(seconds: number | null): string {
@@ -33,6 +33,161 @@ function formatDuration(seconds: number | null): string {
 }
 
 // List row component for better UX when viewing many tracks
+// Liked Track Row - displays heart prominently for easy unliking
+function LikedTrackRow({ track, trackList, index, showArtist = true }: { track: MediaTrack; trackList: MediaTrack[]; index: number; showArtist?: boolean }) {
+  const { user } = useAuth();
+  const { currentTrack, isPlaying, playTrack, togglePlay, addToQueue } = useMediaPlayer();
+  const { data: likedTrackIds = [] } = useUserLikes();
+  const { data: playlists = [] } = useUserPlaylists();
+  const toggleLike = useToggleLike();
+  const addToPlaylist = useAddToPlaylist();
+
+  const isCurrentTrack = currentTrack?.id === track.id;
+  const isLiked = likedTrackIds.includes(track.id);
+
+  const handlePlay = () => {
+    if (isCurrentTrack) {
+      togglePlay();
+    } else {
+      playTrack(track, trackList);
+    }
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      toast.error('Sign in to like tracks');
+      return;
+    }
+    toggleLike.mutate({ trackId: track.id, isLiked });
+  };
+
+  const handleAddToQueue = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToQueue(track);
+    toast.success('Added to queue');
+  };
+
+  const handleAddToPlaylist = (playlistId: string) => {
+    addToPlaylist.mutate(
+      { playlistId, trackId: track.id },
+      {
+        onSuccess: () => toast.success('Added to playlist'),
+        onError: () => toast.error('Already in playlist'),
+      }
+    );
+  };
+
+  return (
+    <div 
+      className={cn(
+        "flex items-center gap-3 p-2 pr-3 rounded-lg hover:bg-muted/50 group cursor-pointer transition-colors border border-transparent hover:border-border/50",
+        isCurrentTrack && "bg-muted border-primary/30"
+      )}
+      onClick={handlePlay}
+    >
+      {/* Index number */}
+      <span className="text-sm text-muted-foreground w-6 text-right flex-shrink-0">
+        {index + 1}
+      </span>
+
+      {/* Cover art */}
+      <div className="relative w-10 h-10 flex-shrink-0 rounded-md overflow-hidden">
+        {track.cover_image_url ? (
+          <img 
+            src={track.cover_image_url} 
+            alt={track.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <ListMusic className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
+        <div className={cn(
+          "absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
+          isCurrentTrack && isPlaying && "opacity-100"
+        )}>
+          {isCurrentTrack && isPlaying ? (
+            <Pause className="h-4 w-4 text-white" />
+          ) : (
+            <Play className="h-4 w-4 text-white" />
+          )}
+        </div>
+      </div>
+
+      {/* Track info */}
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "font-medium text-sm truncate",
+          isCurrentTrack && "text-primary"
+        )}>
+          {track.title}
+        </p>
+        {showArtist && (
+          <p className="text-xs text-muted-foreground truncate">
+            {track.artist?.name || 'Unknown Artist'}
+          </p>
+        )}
+      </div>
+
+      {/* Duration */}
+      <span className="text-xs text-muted-foreground tabular-nums hidden sm:block">
+        {formatDuration(track.duration_seconds)}
+      </span>
+
+      {/* Heart icon - always visible for easy unliking */}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 flex-shrink-0"
+        onClick={handleLike}
+      >
+        <Heart className={cn("h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
+      </Button>
+
+      {/* More actions */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handleAddToQueue}>
+            <ListPlus className="h-4 w-4 mr-2" />
+            Add to Queue
+          </DropdownMenuItem>
+          {user && playlists.length > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add to Playlist
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-40">
+                  {playlists.map(playlist => (
+                    <DropdownMenuItem 
+                      key={playlist.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToPlaylist(playlist.id);
+                      }}
+                    >
+                      {playlist.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 function TrackListRow({ track, trackList, showArtist = true }: { track: MediaTrack; trackList: MediaTrack[]; showArtist?: boolean }) {
   const { user } = useAuth();
   const { currentTrack, isPlaying, playTrack, togglePlay, addToQueue } = useMediaPlayer();
@@ -205,7 +360,24 @@ export function TrackList({ tracks, showArtist = true, compact = false, variant 
     );
   }
 
-  // Compact mode (for liked songs, playlists)
+  // Liked mode - shows heart icon for easy unliking
+  if (variant === 'liked') {
+    return (
+      <div className="space-y-1">
+        {tracks.map((track, index) => (
+          <LikedTrackRow 
+            key={track.id} 
+            track={track} 
+            trackList={tracks}
+            index={index}
+            showArtist={showArtist}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Compact mode (for playlists)
   if (compact || variant === 'compact') {
     return (
       <div className="space-y-1">

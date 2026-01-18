@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  TrendingUp, TrendingDown, Music, Podcast, Users, 
+  TrendingUp, TrendingDown, Music, Mic, Users, 
   DollarSign, Calendar, BarChart3, Play, Clock, Percent
 } from 'lucide-react';
 import { 
@@ -95,7 +95,7 @@ export default function ArtistDashboard() {
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const nextPaymentDate = new Date();
   nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
-  nextPaymentDate.setDate(1);
+  nextPaymentDate.setDate(5); // Payment on 5th of each month
 
   return (
     <AppLayout>
@@ -194,7 +194,7 @@ export default function ArtistDashboard() {
                       <p className="text-sm text-muted-foreground">Podcast Plays</p>
                       <p className="text-2xl font-bold">{metrics?.podcastPlays || 0}</p>
                     </div>
-                    <Podcast className="h-8 w-8 text-primary/60" />
+                    <Mic className="h-8 w-8 text-primary/60" />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">0.5 credits each</p>
                 </CardContent>
@@ -297,7 +297,7 @@ export default function ArtistDashboard() {
                               {track.contentType === 'song' ? (
                                 <Music className="h-5 w-5 text-muted-foreground" />
                               ) : (
-                                <Podcast className="h-5 w-5 text-muted-foreground" />
+                                <Mic className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
                           )}
@@ -338,9 +338,11 @@ export default function ArtistDashboard() {
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-sm text-muted-foreground">Revenue Pool</p>
-                    <p className="text-xl font-bold">
-                      {formatCurrency(metrics?.revenuePoolAmount || 0, currency)}
-                    </p>
+                    <div className="flex flex-col sm:items-end gap-1">
+                      {(metrics?.revenuePoolAmount || 0) > 0 && (
+                        <p className="text-lg font-bold">{formatCurrency(metrics?.revenuePoolAmount || 0, currency)}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -407,7 +409,7 @@ export default function ArtistDashboard() {
                             {track.contentType === 'song' ? (
                               <Music className="h-6 w-6 text-muted-foreground" />
                             ) : (
-                              <Podcast className="h-6 w-6 text-muted-foreground" />
+                              <Mic className="h-6 w-6 text-muted-foreground" />
                             )}
                           </div>
                         )}
