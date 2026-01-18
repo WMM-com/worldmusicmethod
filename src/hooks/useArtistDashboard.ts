@@ -10,6 +10,14 @@ export interface ArtistMetrics {
   monthlyPlayCredits: number;
   platformTotalCredits: number;
   artistPercentage: number;
+  // Multi-currency revenue pools
+  revenuePoolGBP: number;
+  revenuePoolUSD: number;
+  revenuePoolEUR: number;
+  artistPaymentGBP: number;
+  artistPaymentUSD: number;
+  artistPaymentEUR: number;
+  // Legacy single currency
   revenuePoolAmount: number;
   artistPaymentAmount: number;
   paymentPerCredit: number;
@@ -234,9 +242,21 @@ export function useArtistDashboard(artistId?: string) {
   // Calculate all metrics
   const monthlyCredits = Number(artistMonthlyCredits?.total_play_credits || 0);
   const platformTotal = platformCredits || 0;
-  const poolAmount = Number(revenuePool?.pool_amount || 0);
+  
+  // Multi-currency pool amounts
+  const poolGBP = Number(revenuePool?.pool_amount_gbp || 0);
+  const poolUSD = Number(revenuePool?.pool_amount_usd || 0);
+  const poolEUR = Number(revenuePool?.pool_amount_eur || 0);
+  const poolAmount = Number(revenuePool?.pool_amount || 0); // Legacy
+  
   const percentage = platformTotal > 0 ? (monthlyCredits / platformTotal) * 100 : 0;
+  
+  // Calculate artist payments in each currency
+  const paymentGBP = poolGBP * (percentage / 100);
+  const paymentUSD = poolUSD * (percentage / 100);
+  const paymentEUR = poolEUR * (percentage / 100);
   const paymentAmount = poolAmount * (percentage / 100);
+  
   const paymentPerCredit = platformTotal > 0 ? poolAmount / platformTotal : 0;
   const previousCredits = lastMonthCredits || 0;
   const growth = previousCredits > 0 
@@ -250,6 +270,12 @@ export function useArtistDashboard(artistId?: string) {
     monthlyPlayCredits: monthlyCredits,
     platformTotalCredits: platformTotal,
     artistPercentage: percentage,
+    revenuePoolGBP: poolGBP,
+    revenuePoolUSD: poolUSD,
+    revenuePoolEUR: poolEUR,
+    artistPaymentGBP: paymentGBP,
+    artistPaymentUSD: paymentUSD,
+    artistPaymentEUR: paymentEUR,
     revenuePoolAmount: poolAmount,
     artistPaymentAmount: paymentAmount,
     paymentPerCredit: paymentPerCredit,

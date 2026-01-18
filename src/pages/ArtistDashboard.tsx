@@ -139,7 +139,7 @@ export default function ArtistDashboard() {
           </TabsList>
 
           <TabsContent value="this-month" className="space-y-6">
-            {/* Main Revenue Card */}
+            {/* Main Revenue Card - Multi-Currency */}
             <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-primary/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -148,9 +148,45 @@ export default function ArtistDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-4xl sm:text-5xl font-bold text-primary mb-4">
-                  {formatCurrency(metrics?.artistPaymentAmount || 0, currency)}
+                {/* Multi-currency earnings display */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  {(metrics?.artistPaymentGBP || 0) > 0 && (
+                    <div className="bg-background/50 rounded-lg p-4 border">
+                      <p className="text-sm text-muted-foreground mb-1">GBP Earnings</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-primary">
+                        {formatCurrency(metrics?.artistPaymentGBP || 0, 'GBP')}
+                      </p>
+                    </div>
+                  )}
+                  {(metrics?.artistPaymentUSD || 0) > 0 && (
+                    <div className="bg-background/50 rounded-lg p-4 border">
+                      <p className="text-sm text-muted-foreground mb-1">USD Earnings</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-primary">
+                        {formatCurrency(metrics?.artistPaymentUSD || 0, 'USD')}
+                      </p>
+                    </div>
+                  )}
+                  {(metrics?.artistPaymentEUR || 0) > 0 && (
+                    <div className="bg-background/50 rounded-lg p-4 border">
+                      <p className="text-sm text-muted-foreground mb-1">EUR Earnings</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-primary">
+                        {formatCurrency(metrics?.artistPaymentEUR || 0, 'EUR')}
+                      </p>
+                    </div>
+                  )}
+                  {/* Fallback if no multi-currency configured */}
+                  {(metrics?.artistPaymentGBP || 0) === 0 && 
+                   (metrics?.artistPaymentUSD || 0) === 0 && 
+                   (metrics?.artistPaymentEUR || 0) === 0 && (
+                    <div className="col-span-full bg-background/50 rounded-lg p-4 border">
+                      <p className="text-sm text-muted-foreground mb-1">Estimated Earnings</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-primary">
+                        {formatCurrency(metrics?.artistPaymentAmount || 0, currency)}
+                      </p>
+                    </div>
+                  )}
                 </div>
+                
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Your Credits</p>
@@ -338,9 +374,20 @@ export default function ArtistDashboard() {
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-sm text-muted-foreground">Revenue Pool</p>
-                    <div className="flex flex-col sm:items-end gap-1">
-                      {(metrics?.revenuePoolAmount || 0) > 0 && (
-                        <p className="text-lg font-bold">{formatCurrency(metrics?.revenuePoolAmount || 0, currency)}</p>
+                    <div className="flex flex-col sm:items-end gap-1 text-sm">
+                      {(metrics?.revenuePoolGBP || 0) > 0 && (
+                        <span className="font-medium">£{metrics?.revenuePoolGBP.toFixed(2)} GBP</span>
+                      )}
+                      {(metrics?.revenuePoolUSD || 0) > 0 && (
+                        <span className="font-medium">${metrics?.revenuePoolUSD.toFixed(2)} USD</span>
+                      )}
+                      {(metrics?.revenuePoolEUR || 0) > 0 && (
+                        <span className="font-medium">€{metrics?.revenuePoolEUR.toFixed(2)} EUR</span>
+                      )}
+                      {(metrics?.revenuePoolGBP || 0) === 0 && 
+                       (metrics?.revenuePoolUSD || 0) === 0 && 
+                       (metrics?.revenuePoolEUR || 0) === 0 && (
+                        <span className="text-muted-foreground">Not yet configured</span>
                       )}
                     </div>
                   </div>
