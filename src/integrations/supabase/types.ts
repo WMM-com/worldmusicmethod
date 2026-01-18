@@ -2154,6 +2154,8 @@ export type Database = {
       media_artists: {
         Row: {
           bio: string | null
+          country: string | null
+          cover_image_url: string | null
           created_at: string
           external_links: Json | null
           id: string
@@ -2164,6 +2166,8 @@ export type Database = {
         }
         Insert: {
           bio?: string | null
+          country?: string | null
+          cover_image_url?: string | null
           created_at?: string
           external_links?: Json | null
           id?: string
@@ -2174,6 +2178,8 @@ export type Database = {
         }
         Update: {
           bio?: string | null
+          country?: string | null
+          cover_image_url?: string | null
           created_at?: string
           external_links?: Json | null
           id?: string
