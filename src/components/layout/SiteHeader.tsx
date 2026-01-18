@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BookOpen, LogOut, User, Settings, Menu, X, Shield, ShoppingCart, ChevronDown, Users, Brain, Home, Calendar, Music, Video, FileText, MessageSquare, Bell, Heart, Star, Folder, Image, Mail, Phone, MapPin } from 'lucide-react';
+import { BookOpen, LogOut, User, Settings, Menu, X, Shield, ShoppingCart, ChevronDown, Users, Brain, Home, Calendar, Music, Video, FileText, MessageSquare, Bell, Heart, Star, Folder, Image, Mail, Phone, MapPin, BarChart3 } from 'lucide-react';
 import { useState, useEffect, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -20,7 +20,7 @@ import wmmLogo from '@/assets/wmm-logo.png';
 // Icon mapping for menu items
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   BookOpen, Users, Brain, User, Settings, Shield, Home, Calendar, Music, Video, 
-  FileText, MessageSquare, Bell, Heart, Star, Folder, Image, Mail, Phone, MapPin
+  FileText, MessageSquare, Bell, Heart, Star, Folder, Image, Mail, Phone, MapPin, BarChart3
 };
 
 interface MenuItem {
@@ -57,6 +57,23 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
       return (data || []) as MenuItem[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Check artist dashboard access
+  const { data: hasArtistDashboardAccess = false } = useQuery({
+    queryKey: ['artist-dashboard-access-check', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data, error } = await supabase
+        .from('artist_dashboard_access')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+      if (error) return false;
+      return (data?.length || 0) > 0;
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -262,6 +279,13 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
+                  {/* Artist Dashboard - only shown for users with access */}
+                  {hasArtistDashboardAccess && (
+                    <DropdownMenuItem onClick={() => navigate('/artist-dashboard')}>
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Artist Dashboard
+                    </DropdownMenuItem>
+                  )}
                   {profileItems.map((item) => {
                     const IconComponent = getIcon(item.icon);
                     // Insert separator before admin items
@@ -330,6 +354,16 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
               
               {user ? (
                 <>
+                  {hasArtistDashboardAccess && (
+                    <Link
+                      to="/artist-dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Artist Dashboard
+                    </Link>
+                  )}
                   {hasAdminAccess && (
                     <Link
                       to="/admin"
