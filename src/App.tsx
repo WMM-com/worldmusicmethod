@@ -38,6 +38,7 @@ import Account from "./pages/Account";
 import Media from "./pages/Media";
 import MediaPlaylist from "./pages/MediaPlaylist";
 import ArtistDashboard from "./pages/ArtistDashboard";
+import ArtistPage from "./pages/ArtistPage";
 
 import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
@@ -133,6 +134,7 @@ function AppContent() {
         <Route path="/tech-spec/:token" element={<SharedTechSpec />} />
         <Route path="/listen" element={<Media />} />
         <Route path="/listen/playlist/:playlistId" element={<MediaPlaylist />} />
+        <Route path="/listen/artist/:artistSlug" element={<ArtistPage />} />
         <Route path="/membership" element={<Membership />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
         <Route path="/artist-dashboard" element={<ProtectedRoute><ArtistDashboard /></ProtectedRoute>} />

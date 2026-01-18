@@ -39,6 +39,8 @@ type Artist = {
   name: string;
   bio: string | null;
   image_url: string | null;
+  cover_image_url: string | null;
+  country: string | null;
   slug: string | null;
 };
 
@@ -95,7 +97,7 @@ export function AdminStreaming() {
   const [uploadingField, setUploadingField] = useState<'audio' | 'cover' | null>(null);
 
   // Form states
-  const [artistForm, setArtistForm] = useState({ name: '', bio: '', image_url: '' });
+  const [artistForm, setArtistForm] = useState({ name: '', bio: '', image_url: '', cover_image_url: '', country: '' });
   const [trackForm, setTrackForm] = useState({
     title: '',
     audio_url: '',
@@ -206,6 +208,8 @@ export function AdminStreaming() {
         name: data.name,
         bio: data.bio || null,
         image_url: data.image_url || null,
+        cover_image_url: data.cover_image_url || null,
+        country: data.country || null,
         slug: data.name.toLowerCase().replace(/\s+/g, '-'),
       });
       if (error) throw error;
@@ -213,7 +217,7 @@ export function AdminStreaming() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-artists'] });
       setArtistDialogOpen(false);
-      setArtistForm({ name: '', bio: '', image_url: '' });
+      setArtistForm({ name: '', bio: '', image_url: '', cover_image_url: '', country: '' });
       toast.success('Artist created');
     },
     onError: (err: any) => toast.error(err.message),
@@ -225,6 +229,8 @@ export function AdminStreaming() {
         name: data.name,
         bio: data.bio || null,
         image_url: data.image_url || null,
+        cover_image_url: data.cover_image_url || null,
+        country: data.country || null,
       }).eq('id', id);
       if (error) throw error;
     },
@@ -232,7 +238,7 @@ export function AdminStreaming() {
       queryClient.invalidateQueries({ queryKey: ['admin-artists'] });
       setArtistDialogOpen(false);
       setEditingArtist(null);
-      setArtistForm({ name: '', bio: '', image_url: '' });
+      setArtistForm({ name: '', bio: '', image_url: '', cover_image_url: '', country: '' });
       toast.success('Artist updated');
     },
     onError: (err: any) => toast.error(err.message),
@@ -431,7 +437,13 @@ export function AdminStreaming() {
 
   const openEditArtist = (artist: Artist) => {
     setEditingArtist(artist);
-    setArtistForm({ name: artist.name, bio: artist.bio || '', image_url: artist.image_url || '' });
+    setArtistForm({ 
+      name: artist.name, 
+      bio: artist.bio || '', 
+      image_url: artist.image_url || '',
+      cover_image_url: artist.cover_image_url || '',
+      country: artist.country || '',
+    });
     setArtistDialogOpen(true);
   };
 
@@ -933,7 +945,7 @@ export function AdminStreaming() {
                 setArtistDialogOpen(open);
                 if (!open) {
                   setEditingArtist(null);
-                  setArtistForm({ name: '', bio: '', image_url: '' });
+                  setArtistForm({ name: '', bio: '', image_url: '', cover_image_url: '', country: '' });
                 }
               }}>
                 <DialogTrigger asChild>
@@ -942,7 +954,7 @@ export function AdminStreaming() {
                     Add Artist
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{editingArtist ? 'Edit Artist' : 'Add Artist'}</DialogTitle>
                   </DialogHeader>
@@ -963,20 +975,39 @@ export function AdminStreaming() {
                       />
                     </div>
                     <div className="space-y-2">
+                      <Label>Country</Label>
+                      <Input
+                        value={artistForm.country}
+                        onChange={(e) => setArtistForm(p => ({ ...p, country: e.target.value }))}
+                        placeholder="e.g. Senegal, Mali, Cuba"
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label>Bio</Label>
                       <Textarea
                         value={artistForm.bio}
                         onChange={(e) => setArtistForm(p => ({ ...p, bio: e.target.value }))}
-                        rows={3}
+                        rows={4}
+                        placeholder="A brief description of the artist..."
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Image URL</Label>
+                      <Label>Profile Image URL</Label>
                       <Input
                         value={artistForm.image_url}
                         onChange={(e) => setArtistForm(p => ({ ...p, image_url: e.target.value }))}
-                        placeholder="https://..."
+                        placeholder="https://... (square/avatar image)"
                       />
+                      <p className="text-xs text-muted-foreground">Used for avatar/profile display</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cover Image URL</Label>
+                      <Input
+                        value={artistForm.cover_image_url}
+                        onChange={(e) => setArtistForm(p => ({ ...p, cover_image_url: e.target.value }))}
+                        placeholder="https://... (widescreen/banner image)"
+                      />
+                      <p className="text-xs text-muted-foreground">Used as header banner on artist page (recommended 16:9 ratio)</p>
                     </div>
                     <Button type="submit" className="w-full">
                       {editingArtist ? 'Update' : 'Create'} Artist

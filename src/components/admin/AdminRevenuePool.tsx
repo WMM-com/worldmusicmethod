@@ -22,8 +22,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { DollarSign, Calendar, Save, Percent, Info } from 'lucide-react';
+import { DollarSign, Calendar, Save, Percent, Info, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   Tooltip,
@@ -49,6 +59,8 @@ export function AdminRevenuePool() {
   const [poolAmountUSD, setPoolAmountUSD] = useState('');
   const [poolAmountEUR, setPoolAmountEUR] = useState('');
   const [notes, setNotes] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [poolToDelete, setPoolToDelete] = useState<{ year: number; month: number; id: string } | null>(null);
 
   // Fetch all revenue pool settings
   const { data: poolSettings, isLoading } = useQuery({
@@ -76,6 +88,25 @@ export function AdminRevenuePool() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+
+  // Get platform credits for each month (for rate per credit in history)
+  const { data: allCredits } = useQuery({
+    queryKey: ['admin-all-platform-credits'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('monthly_artist_credits')
+        .select('year, month, total_play_credits');
+      if (error) throw error;
+      
+      // Group by year-month
+      const creditsByMonth: Record<string, number> = {};
+      data?.forEach(row => {
+        const key = `${row.year}-${row.month}`;
+        creditsByMonth[key] = (creditsByMonth[key] || 0) + Number(row.total_play_credits);
+      });
+      return creditsByMonth;
     },
   });
 
@@ -135,6 +166,27 @@ export function AdminRevenuePool() {
     },
   });
 
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('revenue_pool_settings')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-revenue-pool-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-revenue-pool'] });
+      toast.success('Revenue pool deleted');
+      setDeleteDialogOpen(false);
+      setPoolToDelete(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete revenue pool');
+    },
+  });
+
   // Get platform credits for selected month
   const { data: platformCredits } = useQuery({
     queryKey: ['admin-platform-credits', selectedYear, selectedMonth],
@@ -153,11 +205,38 @@ export function AdminRevenuePool() {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-  const totalPool = (parseFloat(poolAmountGBP) || 0) + (parseFloat(poolAmountUSD) || 0) + (parseFloat(poolAmountEUR) || 0);
-
   const formatCurrency = (amount: number | string, currency: string) => {
     const num = typeof amount === 'string' ? parseFloat(amount) || 0 : amount;
     return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(num);
+  };
+
+  const getRatePerCredit = (pool: any) => {
+    const key = `${pool.year}-${pool.month}`;
+    const totalCredits = allCredits?.[key] || 0;
+    if (totalCredits === 0) return null;
+    
+    const rates: string[] = [];
+    if (pool.pool_amount_gbp > 0) {
+      rates.push(`£${(pool.pool_amount_gbp / totalCredits).toFixed(4)}`);
+    }
+    if (pool.pool_amount_usd > 0) {
+      rates.push(`$${(pool.pool_amount_usd / totalCredits).toFixed(4)}`);
+    }
+    if (pool.pool_amount_eur > 0) {
+      rates.push(`€${(pool.pool_amount_eur / totalCredits).toFixed(4)}`);
+    }
+    return rates.length > 0 ? rates.join(' / ') : '-';
+  };
+
+  const handleEditPool = (pool: any) => {
+    setSelectedYear(pool.year);
+    setSelectedMonth(pool.month);
+    // Form will auto-populate via useEffect
+  };
+
+  const handleDeleteClick = (pool: any) => {
+    setPoolToDelete({ year: pool.year, month: pool.month, id: pool.id });
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -386,19 +465,14 @@ export function AdminRevenuePool() {
                   <TableHead>GBP</TableHead>
                   <TableHead>USD</TableHead>
                   <TableHead>EUR</TableHead>
+                  <TableHead>Rate/Credit</TableHead>
                   <TableHead>Updated</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {poolSettings.map((pool) => (
-                  <TableRow 
-                    key={pool.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => {
-                      setSelectedYear(pool.year);
-                      setSelectedMonth(pool.month);
-                    }}
-                  >
+                  <TableRow key={pool.id}>
                     <TableCell>
                       {MONTHS[pool.month - 1]} {pool.year}
                     </TableCell>
@@ -414,8 +488,29 @@ export function AdminRevenuePool() {
                     <TableCell>
                       {formatCurrency(pool.pool_amount_eur || 0, 'EUR')}
                     </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {getRatePerCredit(pool) || '-'}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(pool.updated_at), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => handleEditPool(pool)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => handleDeleteClick(pool)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -424,6 +519,27 @@ export function AdminRevenuePool() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Revenue Pool</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the revenue pool for {poolToDelete ? `${MONTHS[poolToDelete.month - 1]} ${poolToDelete.year}` : ''}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => poolToDelete && deleteMutation.mutate(poolToDelete.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
