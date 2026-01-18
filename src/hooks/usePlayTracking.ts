@@ -69,7 +69,8 @@ export function usePlayTracking() {
       thresholdMet: false,
       playRegistered: false,
     };
-    lastUpdateTimeRef.current = 0;
+    // Set to -1 to indicate we need to initialize on first timeupdate
+    lastUpdateTimeRef.current = -1;
     
     console.log('[PlayTracking] Started tracking:', {
       contentId,
@@ -90,13 +91,24 @@ export function usePlayTracking() {
       return;
     }
 
+    // Initialize on first timeupdate after startTracking
+    if (lastUpdateTimeRef.current === -1) {
+      lastUpdateTimeRef.current = currentTimeSeconds;
+      return;
+    }
+
     // Calculate delta from last update
     const delta = currentTimeSeconds - lastUpdateTimeRef.current;
     
-    // Only add positive deltas that are reasonable (< 2 seconds to avoid seek jumps)
-    if (delta > 0 && delta < 2) {
+    // Only add positive deltas that are reasonable (< 5 seconds to handle normal timeupdate intervals)
+    // timeupdate fires every 250ms typically, but can vary
+    if (delta > 0 && delta < 5) {
       state.actualPlayTimeSeconds += delta;
+    } else if (delta < 0) {
+      // User seeked backwards - just update the reference point, don't add time
+      // This prevents counting re-listened sections
     }
+    // If delta >= 5, it's likely a seek forward - don't count skipped time
     
     lastUpdateTimeRef.current = currentTimeSeconds;
 

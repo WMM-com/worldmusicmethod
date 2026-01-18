@@ -204,18 +204,55 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     // Finalize tracking for previous track before starting new one
     await finalizeTracking();
     
-    let newQueue = trackList || [track];
-    let newIndex = trackList ? trackList.findIndex(t => t.id === track.id) : 0;
+    // If trackList is provided, use it as the new queue
+    // If not provided, keep existing queue and add track if not already in it
+    let newQueue: MediaTrack[];
+    let newIndex: number;
     
-    setOriginalQueue(newQueue);
-    
-    if (isShuffled && trackList) {
-      const shuffled = shuffleArray(newQueue.filter(t => t.id !== track.id));
-      newQueue = [track, ...shuffled];
-      newIndex = 0;
+    if (trackList) {
+      // A track list was provided - use it as the new queue
+      newQueue = trackList;
+      newIndex = trackList.findIndex(t => t.id === track.id);
+      if (newIndex === -1) newIndex = 0;
+      setOriginalQueue(newQueue);
+      
+      if (isShuffled) {
+        const shuffled = shuffleArray(newQueue.filter(t => t.id !== track.id));
+        newQueue = [track, ...shuffled];
+        newIndex = 0;
+      }
+      
+      setQueue(newQueue);
+    } else {
+      // No track list - check if track is already in queue
+      const existingIndex = queue.findIndex(t => t.id === track.id);
+      
+      if (existingIndex >= 0) {
+        // Track already in queue, just play it at that position
+        newIndex = existingIndex;
+        newQueue = queue;
+      } else if (queue.length === 0) {
+        // Empty queue - start fresh with this track
+        newQueue = [track];
+        newIndex = 0;
+        setQueue(newQueue);
+        setOriginalQueue(newQueue);
+      } else {
+        // Track not in queue but queue has items - insert after current and play
+        const insertPosition = currentIndex + 1;
+        newQueue = [...queue.slice(0, insertPosition), track, ...queue.slice(insertPosition)];
+        newIndex = insertPosition;
+        setQueue(newQueue);
+        setOriginalQueue(prev => {
+          const origInsertPos = prev.findIndex(t => t.id === queue[currentIndex]?.id);
+          if (origInsertPos >= 0) {
+            return [...prev.slice(0, origInsertPos + 1), track, ...prev.slice(origInsertPos + 1)];
+          }
+          return [...prev, track];
+        });
+      }
     }
     
-    setQueue(newQueue);
     setCurrentTrack(track);
     setCurrentIndex(newIndex);
     setPlayRecorded(false);
@@ -231,7 +268,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       audioRef.current.src = track.audio_url;
       audioRef.current.play().catch(console.error);
     }
-  }, [isShuffled, finalizeTracking, startTracking]);
+  }, [isShuffled, queue, currentIndex, finalizeTracking, startTracking]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
