@@ -134,6 +134,7 @@ function AppContent() {
         <Route path="/listen/playlist/:playlistId" element={<MediaPlaylist />} />
         <Route path="/membership" element={<Membership />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
+        <Route path="/artist-dashboard" element={<ProtectedRoute><ArtistDashboard /></ProtectedRoute>} />
         
         <Route path="/left-brain" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
