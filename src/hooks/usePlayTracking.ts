@@ -80,7 +80,7 @@ export function usePlayTracking() {
   }, []);
 
   // Update play time - called on each timeupdate event
-  // deltaSeconds represents actual audio playback time since last update
+  // currentTimeSeconds is the audio element's currentTime
   const updatePlayTime = useCallback((currentTimeSeconds: number, isPlaying: boolean) => {
     const state = trackingStateRef.current;
     if (!state || state.playRegistered) return;
@@ -94,21 +94,26 @@ export function usePlayTracking() {
     // Initialize on first timeupdate after startTracking
     if (lastUpdateTimeRef.current === -1) {
       lastUpdateTimeRef.current = currentTimeSeconds;
+      console.log('[PlayTracking] Initialized at:', currentTimeSeconds);
       return;
     }
 
     // Calculate delta from last update
     const delta = currentTimeSeconds - lastUpdateTimeRef.current;
     
-    // Only add positive deltas that are reasonable (< 5 seconds to handle normal timeupdate intervals)
-    // timeupdate fires every 250ms typically, but can vary
-    if (delta > 0 && delta < 5) {
+    // Only add positive deltas that are reasonable
+    // timeupdate fires every 250ms typically, so max reasonable delta is about 1 second
+    // but we allow up to 2 seconds to account for slower devices
+    if (delta > 0 && delta <= 2) {
       state.actualPlayTimeSeconds += delta;
+      console.log('[PlayTracking] Added delta:', delta.toFixed(2), 'Total:', state.actualPlayTimeSeconds.toFixed(1));
+    } else if (delta > 2) {
+      // Large positive delta likely means a seek forward - just update reference, don't add
+      console.log('[PlayTracking] Seek forward detected, skipping delta:', delta.toFixed(2));
     } else if (delta < 0) {
       // User seeked backwards - just update the reference point, don't add time
-      // This prevents counting re-listened sections
+      console.log('[PlayTracking] Seek backward detected');
     }
-    // If delta >= 5, it's likely a seek forward - don't count skipped time
     
     lastUpdateTimeRef.current = currentTimeSeconds;
 
@@ -120,9 +125,9 @@ export function usePlayTracking() {
         state.thresholdMet = true;
         console.log('[PlayTracking] 50% threshold met:', {
           contentId: state.contentId,
-          actualPlayTime: state.actualPlayTimeSeconds,
+          actualPlayTime: state.actualPlayTimeSeconds.toFixed(1),
           duration: state.contentDurationSeconds,
-          percentPlayed,
+          percentPlayed: percentPlayed.toFixed(1),
         });
       }
     }

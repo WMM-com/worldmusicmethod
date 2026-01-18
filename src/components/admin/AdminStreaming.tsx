@@ -13,7 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X, ListMusic, RefreshCw, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Music, Podcast, Users, Play, Trash2, Edit, BarChart3, Upload, Loader2, X, ListMusic, RefreshCw, GripVertical, ChevronDown, ChevronRight, DollarSign } from 'lucide-react';
+import { AdminRevenuePool } from './AdminRevenuePool';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import {
   DndContext,
@@ -501,6 +502,10 @@ export function AdminStreaming() {
           <TabsTrigger value="analytics" className="gap-2">
             <BarChart3 className="h-4 w-4" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="revenue" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Revenue Pool
           </TabsTrigger>
         </TabsList>
 
@@ -1153,6 +1158,11 @@ export function AdminStreaming() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Revenue Pool Tab */}
+        <TabsContent value="revenue">
+          <AdminRevenuePool />
         </TabsContent>
       </Tabs>
     </div>

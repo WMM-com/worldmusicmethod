@@ -44,6 +44,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTrack, setCurrentTrack] = useState<MediaTrack | null>(null);
   const [queue, setQueue] = useState<MediaTrack[]>([]);
+  const [manualQueue, setManualQueue] = useState<MediaTrack[]>([]); // Tracks added via "Add to Queue"
   const [originalQueue, setOriginalQueue] = useState<MediaTrack[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -182,7 +183,34 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
         audioRef.current.currentTime = 0;
         audioRef.current.play();
       }
-    } else if (currentIndex < queue.length - 1) {
+      return;
+    }
+
+    // Check if there are manually queued tracks to play first
+    if (manualQueue.length > 0) {
+      const nextTrack = manualQueue[0];
+      const remainingManualQueue = manualQueue.slice(1);
+      setManualQueue(remainingManualQueue);
+      
+      // Play the queued track
+      setCurrentTrack(nextTrack);
+      setPlayRecorded(false);
+      
+      startTracking(
+        nextTrack.id,
+        nextTrack.content_type || 'song',
+        nextTrack.duration_seconds || 0
+      );
+      
+      if (audioRef.current) {
+        audioRef.current.src = nextTrack.audio_url;
+        audioRef.current.play().catch(console.error);
+      }
+      return;
+    }
+
+    // No manual queue, continue with regular queue
+    if (currentIndex < queue.length - 1) {
       // Play next track in queue
       playTrackAtIndex(currentIndex + 1);
     } else if (repeatMode === 'all' && queue.length > 0) {
@@ -193,23 +221,37 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       setIsPlaying(false);
       resetTracking();
     }
-  }, [currentTrack, currentIndex, queue, repeatMode, duration, sessionId, playTrackAtIndex, finalizeTracking, startTracking, resetTracking]);
+  }, [currentTrack, currentIndex, queue, manualQueue, repeatMode, duration, sessionId, playTrackAtIndex, finalizeTracking, startTracking, resetTracking]);
 
   // Keep the ref updated with the latest handleTrackEnd
   useEffect(() => {
     handleTrackEndRef.current = handleTrackEnd;
   }, [handleTrackEnd]);
 
-  const playTrack = useCallback(async (track: MediaTrack, trackList?: MediaTrack[], preserveQueue = false) => {
+  const playTrack = useCallback(async (track: MediaTrack, trackList?: MediaTrack[]) => {
     // Finalize tracking for previous track before starting new one
     await finalizeTracking();
     
     let newQueue: MediaTrack[];
     let newIndex: number;
     
-    // If preserveQueue is true, or no trackList provided, we want to keep the existing queue
-    if (preserveQueue || !trackList) {
-      // Check if track is already in queue
+    if (trackList) {
+      // A track list was provided - set it as the new queue
+      newQueue = [...trackList];
+      newIndex = newQueue.findIndex(t => t.id === track.id);
+      if (newIndex === -1) newIndex = 0;
+      
+      setOriginalQueue([...trackList]);
+      
+      if (isShuffled) {
+        const shuffled = shuffleArray(newQueue.filter(t => t.id !== track.id));
+        newQueue = [track, ...shuffled];
+        newIndex = 0;
+      }
+      
+      setQueue(newQueue);
+    } else {
+      // No track list provided - check if track is in current queue
       const existingIndex = queue.findIndex(t => t.id === track.id);
       
       if (existingIndex >= 0) {
@@ -223,47 +265,15 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
         setQueue(newQueue);
         setOriginalQueue(newQueue);
       } else {
-        // Track not in queue but queue has items - insert after current and play
+        // Track not in queue - insert after current and play
         const insertPosition = currentIndex + 1;
         newQueue = [...queue.slice(0, insertPosition), track, ...queue.slice(insertPosition)];
         newIndex = insertPosition;
         setQueue(newQueue);
-        setOriginalQueue(prev => {
-          const origInsertPos = prev.findIndex(t => t.id === queue[currentIndex]?.id);
-          if (origInsertPos >= 0) {
-            return [...prev.slice(0, origInsertPos + 1), track, ...prev.slice(origInsertPos + 1)];
-          }
-          return [...prev, track];
-        });
       }
-    } else {
-      // A track list was provided and we're not preserving queue
-      // Check if there are items in queue that were manually added (not in trackList)
-      const manuallyAddedTracks = queue.filter(qTrack => 
-        !trackList.find(t => t.id === qTrack.id)
-      );
-      
-      // Build the new queue: trackList items first, then append manually added items
-      newQueue = [...trackList];
-      
-      // Append any manually added tracks that aren't in the trackList
-      if (manuallyAddedTracks.length > 0) {
-        newQueue = [...newQueue, ...manuallyAddedTracks];
-      }
-      
-      newIndex = newQueue.findIndex(t => t.id === track.id);
-      if (newIndex === -1) newIndex = 0;
-      
-      setOriginalQueue([...trackList, ...manuallyAddedTracks]);
-      
-      if (isShuffled) {
-        const shuffled = shuffleArray(newQueue.filter(t => t.id !== track.id));
-        newQueue = [track, ...shuffled];
-        newIndex = 0;
-      }
-      
-      setQueue(newQueue);
     }
+    
+    // Note: manual queue is preserved and will play after current track ends
     
     setCurrentTrack(track);
     setCurrentIndex(newIndex);
@@ -392,12 +402,14 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   }, [repeatMode]);
 
   const addToQueue = useCallback((track: MediaTrack) => {
-    setQueue(prev => [...prev, track]);
-    setOriginalQueue(prev => [...prev, track]);
+    // Add to manual queue - these tracks play after current track ends
+    setManualQueue(prev => [...prev, track]);
+    console.log('[Queue] Added to manual queue:', track.title);
   }, []);
 
   const clearQueue = useCallback(() => {
     setQueue([]);
+    setManualQueue([]);
     setOriginalQueue([]);
     setCurrentIndex(-1);
   }, []);
@@ -412,6 +424,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     }
     setCurrentTrack(null);
     setQueue([]);
+    setManualQueue([]);
     setOriginalQueue([]);
     setCurrentIndex(-1);
     setIsPlaying(false);
@@ -420,11 +433,14 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     resetTracking();
   }, [finalizeTracking, resetTracking]);
 
+  // Combine queue + manual queue for display purposes
+  const displayQueue = [...queue.slice(currentIndex + 1), ...manualQueue];
+
   return (
     <MediaPlayerContext.Provider
       value={{
         currentTrack,
-        queue,
+        queue: displayQueue, // Show remaining tracks + manual queue
         isPlaying,
         currentTime,
         duration,
