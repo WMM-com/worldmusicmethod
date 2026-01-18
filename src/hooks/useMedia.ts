@@ -25,6 +25,7 @@ export interface MediaTrack {
   duration_seconds: number | null;
   release_date: string | null;
   genre: string | null;
+  country: string | null;
   description: string | null;
   is_published: boolean;
   play_count: number;
@@ -90,7 +91,7 @@ export function useTracks(contentType?: 'song' | 'podcast_episode') {
   });
 }
 
-// Search tracks (includes searching by artist name and album)
+// Search tracks (includes searching by artist name, album, country, and year)
 export function useSearchTracks(searchQuery: string) {
   return useQuery({
     queryKey: ['media-tracks-search', searchQuery],
@@ -99,7 +100,10 @@ export function useSearchTracks(searchQuery: string) {
       
       const safeQuery = sanitizeSearchQuery(searchQuery);
       
-      // Search tracks by title, album, genre
+      // Check if query looks like a year (4 digits)
+      const yearMatch = safeQuery.match(/^\d{4}$/);
+      
+      // Search tracks by title, album, genre, country
       const { data: trackResults, error: trackError } = await supabase
         .from('media_tracks')
         .select(`
@@ -108,7 +112,7 @@ export function useSearchTracks(searchQuery: string) {
           podcast:media_podcasts(*)
         `)
         .eq('is_published', true)
-        .or(`title.ilike.%${safeQuery}%,album_name.ilike.%${safeQuery}%,genre.ilike.%${safeQuery}%`)
+        .or(`title.ilike.%${safeQuery}%,album_name.ilike.%${safeQuery}%,genre.ilike.%${safeQuery}%,country.ilike.%${safeQuery}%`)
         .order('play_count', { ascending: false })
         .limit(50);
 
@@ -141,8 +145,30 @@ export function useSearchTracks(searchQuery: string) {
         artistTracks = artistTrackResults as MediaTrack[];
       }
       
+      // If query is a year, also search by release_date year
+      let yearTracks: MediaTrack[] = [];
+      if (yearMatch) {
+        const year = yearMatch[0];
+        const { data: yearResults, error: yearError } = await supabase
+          .from('media_tracks')
+          .select(`
+            *,
+            artist:media_artists(*),
+            podcast:media_podcasts(*)
+          `)
+          .eq('is_published', true)
+          .gte('release_date', `${year}-01-01`)
+          .lte('release_date', `${year}-12-31`)
+          .order('play_count', { ascending: false })
+          .limit(50);
+        
+        if (!yearError && yearResults) {
+          yearTracks = yearResults as MediaTrack[];
+        }
+      }
+      
       // Combine and deduplicate results
-      const allTracks = [...(trackResults as MediaTrack[]), ...artistTracks];
+      const allTracks = [...(trackResults as MediaTrack[]), ...artistTracks, ...yearTracks];
       const uniqueTracks = allTracks.filter((track, index, self) => 
         index === self.findIndex(t => t.id === track.id)
       );
