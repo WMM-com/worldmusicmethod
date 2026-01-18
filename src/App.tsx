@@ -37,6 +37,7 @@ import Social from "./pages/Social";
 import Account from "./pages/Account";
 import Media from "./pages/Media";
 import MediaPlaylist from "./pages/MediaPlaylist";
+import ArtistDashboard from "./pages/ArtistDashboard";
 
 import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
