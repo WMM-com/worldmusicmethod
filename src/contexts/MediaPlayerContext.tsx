@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { MediaTrack, useRecordPlay } from '@/hooks/useMedia';
+import { usePlayTracking } from '@/hooks/usePlayTracking';
 
 interface MediaPlayerContextType {
   currentTrack: MediaTrack | null;
@@ -11,6 +12,7 @@ interface MediaPlayerContextType {
   isMuted: boolean;
   isShuffled: boolean;
   repeatMode: 'off' | 'all' | 'one';
+  playTrackingState: ReturnType<ReturnType<typeof usePlayTracking>['getTrackingState']>;
   
   playTrack: (track: MediaTrack, trackList?: MediaTrack[]) => void;
   pause: () => void;
@@ -53,8 +55,18 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
   const [sessionId] = useState(() => crypto.randomUUID());
   const [playRecorded, setPlayRecorded] = useState(false);
+  const [playTrackingState, setPlayTrackingState] = useState<ReturnType<ReturnType<typeof usePlayTracking>['getTrackingState']>>(null);
 
   const recordPlay = useRecordPlay();
+  
+  // Play tracking for credits system
+  const { 
+    startTracking, 
+    updatePlayTime, 
+    finalizeTracking, 
+    resetTracking,
+    getTrackingState 
+  } = usePlayTracking();
 
   // Ref to hold the latest handleTrackEnd function
   const handleTrackEndRef = useRef<() => void>(() => {});
@@ -68,7 +80,13 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
 
     const audio = audioRef.current;
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+      // Update play tracking with actual playback time
+      updatePlayTime(audio.currentTime, !audio.paused);
+      // Update tracking state for UI
+      setPlayTrackingState(getTrackingState());
+    };
     const handleDurationChange = () => setDuration(audio.duration || 0);
     const handleEnded = () => handleTrackEndRef.current();
     const handlePlay = () => setIsPlaying(true);
@@ -87,9 +105,9 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
     };
-  }, []);
+  }, [updatePlayTime, getTrackingState]);
 
-  // Record play after 30 seconds or 50% of track
+  // Record play after 30 seconds or 50% of track (legacy system - keep for backwards compatibility)
   useEffect(() => {
     if (!currentTrack || playRecorded) return;
 
@@ -115,24 +133,37 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     return shuffled;
   };
 
-  const playTrackAtIndex = useCallback((index: number) => {
+  const playTrackAtIndex = useCallback(async (index: number) => {
     if (index < 0 || index >= queue.length) return;
+    
+    // Finalize tracking for current track before switching
+    await finalizeTracking();
     
     const track = queue[index];
     setCurrentTrack(track);
     setCurrentIndex(index);
     setPlayRecorded(false);
     
+    // Start tracking new track
+    startTracking(
+      track.id, 
+      track.content_type || 'song',
+      track.duration_seconds || 0
+    );
+    
     if (audioRef.current) {
       audioRef.current.src = track.audio_url;
       audioRef.current.play().catch(console.error);
     }
-  }, [queue]);
+  }, [queue, finalizeTracking, startTracking]);
 
-  const handleTrackEnd = useCallback(() => {
+  const handleTrackEnd = useCallback(async () => {
     if (!currentTrack) return;
 
-    // Record completed play
+    // Finalize play tracking (registers credits)
+    await finalizeTracking();
+
+    // Record completed play (legacy system)
     recordPlay.mutate({
       trackId: currentTrack.id,
       durationPlayed: Math.floor(duration),
@@ -141,7 +172,12 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     });
 
     if (repeatMode === 'one') {
-      // Repeat the same track
+      // Repeat the same track - start fresh tracking
+      startTracking(
+        currentTrack.id,
+        currentTrack.content_type || 'song',
+        currentTrack.duration_seconds || 0
+      );
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play();
@@ -155,15 +191,19 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     } else {
       // End of queue with no repeat - just stop
       setIsPlaying(false);
+      resetTracking();
     }
-  }, [currentTrack, currentIndex, queue, repeatMode, duration, sessionId, playTrackAtIndex]);
+  }, [currentTrack, currentIndex, queue, repeatMode, duration, sessionId, playTrackAtIndex, finalizeTracking, startTracking, resetTracking]);
 
   // Keep the ref updated with the latest handleTrackEnd
   useEffect(() => {
     handleTrackEndRef.current = handleTrackEnd;
   }, [handleTrackEnd]);
 
-  const playTrack = useCallback((track: MediaTrack, trackList?: MediaTrack[]) => {
+  const playTrack = useCallback(async (track: MediaTrack, trackList?: MediaTrack[]) => {
+    // Finalize tracking for previous track before starting new one
+    await finalizeTracking();
+    
     let newQueue = trackList || [track];
     let newIndex = trackList ? trackList.findIndex(t => t.id === track.id) : 0;
     
@@ -180,11 +220,18 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     setCurrentIndex(newIndex);
     setPlayRecorded(false);
     
+    // Start tracking new track
+    startTracking(
+      track.id,
+      track.content_type || 'song',
+      track.duration_seconds || 0
+    );
+    
     if (audioRef.current) {
       audioRef.current.src = track.audio_url;
       audioRef.current.play().catch(console.error);
     }
-  }, [isShuffled]);
+  }, [isShuffled, finalizeTracking, startTracking]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -305,7 +352,10 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     setCurrentIndex(-1);
   }, []);
 
-  const closePlayer = useCallback(() => {
+  const closePlayer = useCallback(async () => {
+    // Finalize tracking before closing
+    await finalizeTracking();
+    
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
@@ -317,7 +367,8 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
-  }, []);
+    resetTracking();
+  }, [finalizeTracking, resetTracking]);
 
   return (
     <MediaPlayerContext.Provider
@@ -331,6 +382,7 @@ export function MediaPlayerProvider({ children }: { children: React.ReactNode })
         isMuted,
         isShuffled,
         repeatMode,
+        playTrackingState,
         playTrack,
         pause,
         resume,

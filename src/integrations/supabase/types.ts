@@ -2690,6 +2690,50 @@ export type Database = {
           },
         ]
       }
+      monthly_artist_credits: {
+        Row: {
+          artist_id: string
+          id: string
+          month: number
+          podcast_plays: number
+          song_plays: number
+          total_play_credits: number
+          unique_listeners: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          artist_id: string
+          id?: string
+          month: number
+          podcast_plays?: number
+          song_plays?: number
+          total_play_credits?: number
+          unique_listeners?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          artist_id?: string
+          id?: string
+          month?: number
+          podcast_plays?: number
+          song_plays?: number
+          total_play_credits?: number
+          unique_listeners?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_artist_credits_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "media_artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -3101,6 +3145,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      play_events: {
+        Row: {
+          content_duration_seconds: number
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          listen_duration_seconds: number
+          play_credits: number
+          threshold_met: boolean
+          user_id: string | null
+        }
+        Insert: {
+          content_duration_seconds: number
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          listen_duration_seconds?: number
+          play_credits?: number
+          threshold_met?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          content_duration_seconds?: number
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          listen_duration_seconds?: number
+          play_credits?: number
+          threshold_met?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
       }
       posts: {
         Row: {
@@ -4389,6 +4469,15 @@ export type Database = {
       mark_messages_read: {
         Args: { p_conversation_id: string }
         Returns: number
+      }
+      register_play_event: {
+        Args: {
+          p_content_duration_seconds: number
+          p_content_id: string
+          p_content_type: string
+          p_listen_duration_seconds: number
+        }
+        Returns: Json
       }
       repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
       retract_friend_request: {
