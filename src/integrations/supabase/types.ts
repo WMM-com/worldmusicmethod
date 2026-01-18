@@ -89,6 +89,38 @@ export type Database = {
           },
         ]
       }
+      artist_dashboard_access: {
+        Row: {
+          artist_id: string
+          granted_at: string
+          granted_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          artist_id: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          artist_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_dashboard_access_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "media_artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_connections: {
         Row: {
           access_token: string | null
@@ -3785,6 +3817,39 @@ export type Database = {
         }
         Relationships: []
       }
+      revenue_pool_settings: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          month: number
+          notes: string | null
+          pool_amount: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          month: number
+          notes?: string | null
+          pool_amount?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          pool_amount?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       shared_events: {
         Row: {
           acknowledged: boolean | null
@@ -4450,6 +4515,16 @@ export type Database = {
           stage_depth: number
           stage_width: number
         }[]
+      }
+      get_user_artist_ids: {
+        Args: { p_user_id: string }
+        Returns: {
+          artist_id: string
+        }[]
+      }
+      has_artist_dashboard_access: {
+        Args: { p_user_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
