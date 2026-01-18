@@ -296,7 +296,7 @@ export default function Media() {
                 ))}
               </div>
             ) : likedTracks && likedTracks.length > 0 ? (
-              <TrackList tracks={likedTracks} compact />
+              <TrackList tracks={likedTracks} variant="liked" />
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">

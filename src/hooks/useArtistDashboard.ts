@@ -145,7 +145,7 @@ export function useArtistDashboard(artistId?: string) {
 
   // Get artist's tracks with play counts
   const { data: artistTracks } = useQuery({
-    queryKey: ['artist-tracks-performance', selectedArtistId],
+    queryKey: ['artist-tracks-performance', selectedArtistId, currentYear, currentMonth],
     queryFn: async () => {
       // Get all tracks by this artist
       const { data: tracks, error: tracksError } = await supabase
@@ -154,18 +154,24 @@ export function useArtistDashboard(artistId?: string) {
         .eq('artist_id', selectedArtistId!)
         .eq('is_published', true);
       if (tracksError) throw tracksError;
+      if (!tracks || tracks.length === 0) return [];
 
-      // Get play credits for each track this month
+      // Build date range for this month
+      const startOfMonth = new Date(currentYear, currentMonth - 1, 1);
+      const endOfMonth = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+      
+      // Get play credits for each track this month (only qualifying plays)
       const { data: playEvents, error: playsError } = await supabase
         .from('play_events')
-        .select('content_id, play_credits')
-        .in('content_id', tracks?.map(t => t.id) || [])
-        .gte('created_at', `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`);
+        .select('content_id, play_credits, threshold_met')
+        .in('content_id', tracks.map(t => t.id))
+        .gte('created_at', startOfMonth.toISOString())
+        .lte('created_at', endOfMonth.toISOString());
       if (playsError) throw playsError;
 
-      // Aggregate by track
-      const trackStats = tracks?.map(track => {
-        const trackPlays = playEvents?.filter(p => p.content_id === track.id) || [];
+      // Aggregate by track - only count plays that met threshold
+      const trackStats = tracks.map(track => {
+        const trackPlays = playEvents?.filter(p => p.content_id === track.id && p.threshold_met) || [];
         const playCredits = trackPlays.reduce((sum, p) => sum + Number(p.play_credits), 0);
         const playCount = trackPlays.length;
         return {
@@ -176,10 +182,10 @@ export function useArtistDashboard(artistId?: string) {
           playCount,
           coverImageUrl: track.cover_image_url,
         };
-      }) || [];
+      });
 
-      // Sort by credits earned
-      return trackStats.sort((a, b) => b.playCredits - a.playCredits);
+      // Sort by credits earned, filter out tracks with no plays
+      return trackStats.filter(t => t.playCredits > 0).sort((a, b) => b.playCredits - a.playCredits);
     },
     enabled: !!selectedArtistId,
   });

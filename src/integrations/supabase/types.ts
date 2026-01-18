@@ -3824,7 +3824,11 @@ export type Database = {
           id: string
           month: number
           notes: string | null
+          percentage_of_revenue: number | null
           pool_amount: number
+          pool_amount_eur: number | null
+          pool_amount_gbp: number | null
+          pool_amount_usd: number | null
           updated_at: string
           year: number
         }
@@ -3834,7 +3838,11 @@ export type Database = {
           id?: string
           month: number
           notes?: string | null
+          percentage_of_revenue?: number | null
           pool_amount?: number
+          pool_amount_eur?: number | null
+          pool_amount_gbp?: number | null
+          pool_amount_usd?: number | null
           updated_at?: string
           year: number
         }
@@ -3844,7 +3852,11 @@ export type Database = {
           id?: string
           month?: number
           notes?: string | null
+          percentage_of_revenue?: number | null
           pool_amount?: number
+          pool_amount_eur?: number | null
+          pool_amount_gbp?: number | null
+          pool_amount_usd?: number | null
           updated_at?: string
           year?: number
         }
