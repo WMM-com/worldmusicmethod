@@ -17,6 +17,7 @@ import { useUserLikes, useToggleLike, useUserPlaylists, useAddToPlaylist } from 
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface TrackListProps {
   tracks: MediaTrack[];
@@ -126,7 +127,7 @@ function LikedTrackRow({ track, trackList, index, showArtist = true }: { track: 
         </p>
         {showArtist && (
           <p className="text-xs text-muted-foreground truncate">
-            {track.artist?.name || 'Unknown Artist'}
+            <ArtistLink artist={track.artist} />
           </p>
         )}
       </div>
@@ -276,7 +277,7 @@ function TrackListRow({ track, trackList, showArtist = true }: { track: MediaTra
           </p>
           {showArtist && (
             <p className="text-xs text-muted-foreground truncate">
-              {track.artist?.name || 'Unknown Artist'}
+              <ArtistLink artist={track.artist} />
               {track.album_name && <span className="opacity-70"> • {track.album_name}</span>}
             </p>
           )}
