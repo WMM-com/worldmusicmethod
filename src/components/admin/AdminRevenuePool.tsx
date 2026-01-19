@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
@@ -32,9 +31,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { DollarSign, Calendar, Save, Percent, Info, Edit, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { DollarSign, Save, Percent, Info, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Tooltip,
   TooltipContent,
@@ -47,6 +52,9 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+// Beta Membership product ID
+const BETA_MEMBERSHIP_PRODUCT_ID = 'a0e4cee3-0074-4246-8162-f1d9c69b32d8';
+
 export function AdminRevenuePool() {
   const queryClient = useQueryClient();
   const currentYear = new Date().getFullYear();
@@ -55,15 +63,14 @@ export function AdminRevenuePool() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [percentageOfRevenue, setPercentageOfRevenue] = useState(50);
-  const [poolAmountGBP, setPoolAmountGBP] = useState('');
-  const [poolAmountUSD, setPoolAmountUSD] = useState('');
-  const [poolAmountEUR, setPoolAmountEUR] = useState('');
   const [notes, setNotes] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [poolToDelete, setPoolToDelete] = useState<{ year: number; month: number; id: string } | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPool, setEditingPool] = useState<any>(null);
 
   // Fetch all revenue pool settings
-  const { data: poolSettings, isLoading } = useQuery({
+  const { data: poolSettings, isLoading, refetch: refetchSettings } = useQuery({
     queryKey: ['admin-revenue-pool-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -91,6 +98,43 @@ export function AdminRevenuePool() {
     },
   });
 
+  // Fetch Beta Membership revenue for selected month (dynamic calculation)
+  const { data: betaMembershipRevenue, refetch: refetchRevenue } = useQuery({
+    queryKey: ['beta-membership-revenue', selectedYear, selectedMonth],
+    queryFn: async () => {
+      const monthStart = startOfMonth(new Date(selectedYear, selectedMonth - 1));
+      const monthEnd = endOfMonth(new Date(selectedYear, selectedMonth - 1));
+
+      // Fetch orders for Beta Membership product
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('amount, currency, net_amount, stripe_fee, paypal_fee, status')
+        .eq('product_id', BETA_MEMBERSHIP_PRODUCT_ID)
+        .eq('status', 'completed')
+        .gte('created_at', monthStart.toISOString())
+        .lte('created_at', monthEnd.toISOString());
+
+      if (error) throw error;
+
+      // Calculate net revenue by currency (after fees)
+      const revenueByC: Record<string, number> = { GBP: 0, USD: 0, EUR: 0 };
+      
+      orders?.forEach(order => {
+        const currency = (order.currency || 'USD').toUpperCase();
+        // Use net_amount if available, otherwise calculate
+        const netAmount = order.net_amount ?? (
+          order.amount - (order.stripe_fee || 0) - (order.paypal_fee || 0)
+        );
+        
+        if (currency in revenueByC) {
+          revenueByC[currency] += Number(netAmount) || 0;
+        }
+      });
+
+      return revenueByC;
+    },
+  });
+
   // Get platform credits for each month (for rate per credit in history)
   const { data: allCredits } = useQuery({
     queryKey: ['admin-all-platform-credits'],
@@ -114,40 +158,33 @@ export function AdminRevenuePool() {
   useEffect(() => {
     if (currentPool) {
       setPercentageOfRevenue(Number(currentPool.percentage_of_revenue) || 50);
-      setPoolAmountGBP(currentPool.pool_amount_gbp?.toString() || '0');
-      setPoolAmountUSD(currentPool.pool_amount_usd?.toString() || '0');
-      setPoolAmountEUR(currentPool.pool_amount_eur?.toString() || '0');
       setNotes(currentPool.notes || '');
     } else {
       setPercentageOfRevenue(50);
-      setPoolAmountGBP('');
-      setPoolAmountUSD('');
-      setPoolAmountEUR('');
       setNotes('');
     }
   }, [currentPool]);
 
+  // Calculate pool amounts based on percentage
+  const calculatedPoolAmounts = {
+    GBP: ((betaMembershipRevenue?.GBP || 0) * percentageOfRevenue) / 100,
+    USD: ((betaMembershipRevenue?.USD || 0) * percentageOfRevenue) / 100,
+    EUR: ((betaMembershipRevenue?.EUR || 0) * percentageOfRevenue) / 100,
+  };
+
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const gbp = parseFloat(poolAmountGBP) || 0;
-      const usd = parseFloat(poolAmountUSD) || 0;
-      const eur = parseFloat(poolAmountEUR) || 0;
-      
-      if (gbp < 0 || usd < 0 || eur < 0) {
-        throw new Error('Amounts cannot be negative');
-      }
-
       const { error } = await supabase
         .from('revenue_pool_settings')
         .upsert({
           year: selectedYear,
           month: selectedMonth,
           percentage_of_revenue: percentageOfRevenue,
-          pool_amount_gbp: gbp,
-          pool_amount_usd: usd,
-          pool_amount_eur: eur,
-          pool_amount: gbp, // Keep legacy field for backwards compatibility
+          pool_amount_gbp: calculatedPoolAmounts.GBP,
+          pool_amount_usd: calculatedPoolAmounts.USD,
+          pool_amount_eur: calculatedPoolAmounts.EUR,
+          pool_amount: calculatedPoolAmounts.GBP, // Keep legacy field
           currency: 'GBP', // Legacy field
           notes: notes || null,
           updated_at: new Date().toISOString(),
@@ -160,6 +197,58 @@ export function AdminRevenuePool() {
       queryClient.invalidateQueries({ queryKey: ['admin-revenue-pool'] });
       queryClient.invalidateQueries({ queryKey: ['revenue-pool'] });
       toast.success('Revenue pool updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update revenue pool');
+    },
+  });
+
+  // Update mutation for editing existing pools
+  const updatePoolMutation = useMutation({
+    mutationFn: async (pool: { id: string; percentage_of_revenue: number; notes: string }) => {
+      // Recalculate based on historical revenue for that month
+      const monthStart = startOfMonth(new Date(editingPool.year, editingPool.month - 1));
+      const monthEnd = endOfMonth(new Date(editingPool.year, editingPool.month - 1));
+
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('amount, currency, net_amount, stripe_fee, paypal_fee, status')
+        .eq('product_id', BETA_MEMBERSHIP_PRODUCT_ID)
+        .eq('status', 'completed')
+        .gte('created_at', monthStart.toISOString())
+        .lte('created_at', monthEnd.toISOString());
+
+      const revenueByC: Record<string, number> = { GBP: 0, USD: 0, EUR: 0 };
+      orders?.forEach(order => {
+        const currency = (order.currency || 'USD').toUpperCase();
+        const netAmount = order.net_amount ?? (order.amount - (order.stripe_fee || 0) - (order.paypal_fee || 0));
+        if (currency in revenueByC) {
+          revenueByC[currency] += Number(netAmount) || 0;
+        }
+      });
+
+      const { error } = await supabase
+        .from('revenue_pool_settings')
+        .update({
+          percentage_of_revenue: pool.percentage_of_revenue,
+          pool_amount_gbp: (revenueByC.GBP * pool.percentage_of_revenue) / 100,
+          pool_amount_usd: (revenueByC.USD * pool.percentage_of_revenue) / 100,
+          pool_amount_eur: (revenueByC.EUR * pool.percentage_of_revenue) / 100,
+          pool_amount: (revenueByC.GBP * pool.percentage_of_revenue) / 100,
+          notes: pool.notes || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', pool.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-revenue-pool-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-revenue-pool'] });
+      queryClient.invalidateQueries({ queryKey: ['revenue-pool'] });
+      toast.success('Revenue pool updated');
+      setEditDialogOpen(false);
+      setEditingPool(null);
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update revenue pool');
@@ -229,14 +318,23 @@ export function AdminRevenuePool() {
   };
 
   const handleEditPool = (pool: any) => {
-    setSelectedYear(pool.year);
-    setSelectedMonth(pool.month);
-    // Form will auto-populate via useEffect
+    setEditingPool({
+      ...pool,
+      percentage_of_revenue: pool.percentage_of_revenue || 50,
+      notes: pool.notes || '',
+    });
+    setEditDialogOpen(true);
   };
 
   const handleDeleteClick = (pool: any) => {
     setPoolToDelete({ year: pool.year, month: pool.month, id: pool.id });
     setDeleteDialogOpen(true);
+  };
+
+  const handleRefreshRevenue = () => {
+    refetchRevenue();
+    refetchSettings();
+    toast.success('Revenue data refreshed');
   };
 
   return (
@@ -248,7 +346,7 @@ export function AdminRevenuePool() {
             Revenue Pool Configuration
           </CardTitle>
           <CardDescription>
-            Set the monthly revenue pool amounts from Beta Membership revenue to distribute to artists
+            Revenue pool amounts are calculated automatically from Beta Membership sales (after payment fees)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -292,6 +390,31 @@ export function AdminRevenuePool() {
             </div>
           </div>
 
+          {/* Beta Membership Revenue Summary */}
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Beta Membership Net Revenue for {MONTHS[selectedMonth - 1]} {selectedYear}</h4>
+              <Button variant="ghost" size="sm" onClick={handleRefreshRevenue}>
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Refresh
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-muted-foreground">GBP:</span>
+                <span className="ml-2 font-medium">{formatCurrency(betaMembershipRevenue?.GBP || 0, 'GBP')}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">USD:</span>
+                <span className="ml-2 font-medium">{formatCurrency(betaMembershipRevenue?.USD || 0, 'USD')}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">EUR:</span>
+                <span className="ml-2 font-medium">{formatCurrency(betaMembershipRevenue?.EUR || 0, 'EUR')}</span>
+              </div>
+            </div>
+          </div>
+
           {/* Percentage of Revenue */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -323,57 +446,21 @@ export function AdminRevenuePool() {
             </div>
           </div>
 
-          {/* Multi-Currency Pool Amounts */}
+          {/* Calculated Pool Amounts */}
           <div className="space-y-4">
-            <Label>Net Revenue Pool Amounts (after payment fees)</Label>
-            <p className="text-sm text-muted-foreground">
-              Enter the actual amount allocated to the artist pool for each currency
-            </p>
+            <Label>Calculated Artist Pool Amounts ({percentageOfRevenue}% of revenue)</Label>
             <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs">GBP (£)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={poolAmountGBP}
-                    onChange={(e) => setPoolAmountGBP(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground">GBP Pool</p>
+                <p className="text-xl font-bold">{formatCurrency(calculatedPoolAmounts.GBP, 'GBP')}</p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">USD ($)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={poolAmountUSD}
-                    onChange={(e) => setPoolAmountUSD(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground">USD Pool</p>
+                <p className="text-xl font-bold">{formatCurrency(calculatedPoolAmounts.USD, 'USD')}</p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">EUR (€)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={poolAmountEUR}
-                    onChange={(e) => setPoolAmountEUR(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground">EUR Pool</p>
+                <p className="text-xl font-bold">{formatCurrency(calculatedPoolAmounts.EUR, 'EUR')}</p>
               </div>
             </div>
           </div>
@@ -406,27 +493,27 @@ export function AdminRevenuePool() {
               <div className="border-t border-border pt-3 mt-3">
                 <p className="text-sm font-medium mb-2">Rate per Credit:</p>
                 <div className="grid grid-cols-3 gap-2 text-sm">
-                  {parseFloat(poolAmountGBP) > 0 && (
+                  {calculatedPoolAmounts.GBP > 0 && (
                     <div>
                       <span className="text-muted-foreground">GBP:</span>
                       <span className="ml-1 font-medium">
-                        £{(parseFloat(poolAmountGBP) / platformCredits.total).toFixed(4)}
+                        £{(calculatedPoolAmounts.GBP / platformCredits.total).toFixed(4)}
                       </span>
                     </div>
                   )}
-                  {parseFloat(poolAmountUSD) > 0 && (
+                  {calculatedPoolAmounts.USD > 0 && (
                     <div>
                       <span className="text-muted-foreground">USD:</span>
                       <span className="ml-1 font-medium">
-                        ${(parseFloat(poolAmountUSD) / platformCredits.total).toFixed(4)}
+                        ${(calculatedPoolAmounts.USD / platformCredits.total).toFixed(4)}
                       </span>
                     </div>
                   )}
-                  {parseFloat(poolAmountEUR) > 0 && (
+                  {calculatedPoolAmounts.EUR > 0 && (
                     <div>
                       <span className="text-muted-foreground">EUR:</span>
                       <span className="ml-1 font-medium">
-                        €{(parseFloat(poolAmountEUR) / platformCredits.total).toFixed(4)}
+                        €{(calculatedPoolAmounts.EUR / platformCredits.total).toFixed(4)}
                       </span>
                     </div>
                   )}
@@ -519,6 +606,54 @@ export function AdminRevenuePool() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        setEditDialogOpen(open);
+        if (!open) setEditingPool(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Edit Revenue Pool - {editingPool ? `${MONTHS[editingPool.month - 1]} ${editingPool.year}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-4">
+              <Label>Percentage of Revenue</Label>
+              <div className="flex items-center gap-4">
+                <Slider
+                  value={[editingPool?.percentage_of_revenue || 50]}
+                  onValueChange={(v) => setEditingPool((prev: any) => prev ? { ...prev, percentage_of_revenue: v[0] } : null)}
+                  max={100}
+                  min={0}
+                  step={1}
+                  className="flex-1"
+                />
+                <div className="flex items-center gap-1 min-w-[60px]">
+                  <span className="text-2xl font-bold">{editingPool?.percentage_of_revenue || 50}</span>
+                  <Percent className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                value={editingPool?.notes || ''}
+                onChange={(e) => setEditingPool((prev: any) => prev ? { ...prev, notes: e.target.value } : null)}
+              />
+            </div>
+            <Button 
+              onClick={() => editingPool && updatePoolMutation.mutate(editingPool)}
+              disabled={updatePoolMutation.isPending}
+              className="w-full"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Update Revenue Pool
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

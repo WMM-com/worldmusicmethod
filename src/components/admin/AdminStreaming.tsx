@@ -87,6 +87,8 @@ export function AdminStreaming() {
   const { uploadFile, isUploading, progress } = useR2Upload();
   const audioInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const artistProfileInputRef = useRef<HTMLInputElement>(null);
+  const artistCoverInputRef = useRef<HTMLInputElement>(null);
   const [artistDialogOpen, setArtistDialogOpen] = useState(false);
   const [trackDialogOpen, setTrackDialogOpen] = useState(false);
   const [podcastDialogOpen, setPodcastDialogOpen] = useState(false);
@@ -94,7 +96,7 @@ export function AdminStreaming() {
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [playlistDialogOpen, setPlaylistDialogOpen] = useState(false);
-  const [uploadingField, setUploadingField] = useState<'audio' | 'cover' | null>(null);
+  const [uploadingField, setUploadingField] = useState<'audio' | 'cover' | 'artist_profile' | 'artist_cover' | null>(null);
 
   // Form states
   const [artistForm, setArtistForm] = useState({ name: '', bio: '', image_url: '', cover_image_url: '', country: '' });
@@ -992,21 +994,99 @@ export function AdminStreaming() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Profile Image URL</Label>
-                      <Input
-                        value={artistForm.image_url}
-                        onChange={(e) => setArtistForm(p => ({ ...p, image_url: e.target.value }))}
-                        placeholder="https://... (square/avatar image)"
-                      />
+                      <Label>Profile Image</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={artistForm.image_url}
+                          onChange={(e) => setArtistForm(p => ({ ...p, image_url: e.target.value }))}
+                          placeholder="https://... (square/avatar image)"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => artistProfileInputRef.current?.click()}
+                          disabled={isUploading && uploadingField === 'artist_profile'}
+                        >
+                          {isUploading && uploadingField === 'artist_profile' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <input
+                          ref={artistProfileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingField('artist_profile');
+                            const result = await uploadFile(file, {
+                              bucket: 'admin',
+                              folder: 'streaming/artists',
+                              imageOptimization: 'avatar',
+                              trackInDatabase: true,
+                            });
+                            if (result) {
+                              setArtistForm(p => ({ ...p, image_url: result.url }));
+                              toast.success('Profile image uploaded');
+                            }
+                            setUploadingField(null);
+                            if (artistProfileInputRef.current) artistProfileInputRef.current.value = '';
+                          }}
+                        />
+                      </div>
                       <p className="text-xs text-muted-foreground">Used for avatar/profile display</p>
                     </div>
                     <div className="space-y-2">
-                      <Label>Cover Image URL</Label>
-                      <Input
-                        value={artistForm.cover_image_url}
-                        onChange={(e) => setArtistForm(p => ({ ...p, cover_image_url: e.target.value }))}
-                        placeholder="https://... (widescreen/banner image)"
-                      />
+                      <Label>Cover Image</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={artistForm.cover_image_url}
+                          onChange={(e) => setArtistForm(p => ({ ...p, cover_image_url: e.target.value }))}
+                          placeholder="https://... (widescreen/banner image)"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => artistCoverInputRef.current?.click()}
+                          disabled={isUploading && uploadingField === 'artist_cover'}
+                        >
+                          {isUploading && uploadingField === 'artist_cover' ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <input
+                          ref={artistCoverInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingField('artist_cover');
+                            const result = await uploadFile(file, {
+                              bucket: 'admin',
+                              folder: 'streaming/artists',
+                              imageOptimization: 'feed',
+                              trackInDatabase: true,
+                            });
+                            if (result) {
+                              setArtistForm(p => ({ ...p, cover_image_url: result.url }));
+                              toast.success('Cover image uploaded');
+                            }
+                            setUploadingField(null);
+                            if (artistCoverInputRef.current) artistCoverInputRef.current.value = '';
+                          }}
+                        />
+                      </div>
                       <p className="text-xs text-muted-foreground">Used as header banner on artist page (recommended 16:9 ratio)</p>
                     </div>
                     <Button type="submit" className="w-full">
