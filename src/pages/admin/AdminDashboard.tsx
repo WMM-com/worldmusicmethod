@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode, Wallet } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -19,6 +19,7 @@ import { AdminSales } from '@/components/admin/AdminSales';
 import { AdminCoupons } from '@/components/admin/AdminCoupons';
 import { AdminMenuEditor } from '@/components/admin/AdminMenuEditor';
 import { AdminPages } from '@/components/admin/AdminPages';
+import { AdminFinances } from '@/components/admin/AdminFinances';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ const menuItems = [
   { id: 'courses', label: 'Courses', icon: BookOpen },
   { id: 'products', label: 'Products', icon: Package },
   { id: 'sales', label: 'Sales', icon: DollarSign },
+  { id: 'finances', label: 'Finances', icon: Wallet },
   { id: 'coupons', label: 'Coupons', icon: Tag },
   { id: 'media', label: 'Media Library', icon: Image },
   { id: 'streaming', label: 'Streaming', icon: Music },
@@ -106,6 +108,7 @@ export default function AdminDashboard() {
       case 'courses': return <AdminCourses />;
       case 'products': return <AdminProducts />;
       case 'sales': return <AdminSales />;
+      case 'finances': return <AdminFinances />;
       case 'coupons': return <AdminCoupons />;
       case 'media': return <AdminMedia />;
       case 'streaming': return <AdminStreaming />;

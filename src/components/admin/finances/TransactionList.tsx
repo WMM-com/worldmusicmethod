@@ -183,7 +183,7 @@ export function TransactionList({
                             ))}
                           </SelectContent>
                         </Select>
-                        {transaction.is_auto_categorized && (
+                        {(transaction as any).auto_categorized && (
                           <Badge variant="secondary" className="text-xs">Auto</Badge>
                         )}
                       </div>
