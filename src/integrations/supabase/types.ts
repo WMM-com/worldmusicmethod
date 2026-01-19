@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_balances: {
+        Row: {
+          available_balance: number
+          currency: string
+          id: string
+          pending_balance: number | null
+          snapshot_at: string
+          source: string
+        }
+        Insert: {
+          available_balance: number
+          currency: string
+          id?: string
+          pending_balance?: number | null
+          snapshot_at?: string
+          source: string
+        }
+        Update: {
+          available_balance?: number
+          currency?: string
+          id?: string
+          pending_balance?: number | null
+          snapshot_at?: string
+          source?: string
+        }
+        Relationships: []
+      }
       account_deletion_requests: {
         Row: {
           completed_at: string | null
@@ -1376,6 +1403,72 @@ export type Database = {
         }
         Relationships: []
       }
+      exchange_rates: {
+        Row: {
+          fetched_at: string | null
+          from_currency: string
+          id: string
+          rate: number
+          rate_month: string
+          source: string | null
+          to_currency: string
+        }
+        Insert: {
+          fetched_at?: string | null
+          from_currency: string
+          id?: string
+          rate: number
+          rate_month: string
+          source?: string | null
+          to_currency: string
+        }
+        Update: {
+          fetched_at?: string | null
+          from_currency?: string
+          id?: string
+          rate?: number
+          rate_month?: string
+          source?: string | null
+          to_currency?: string
+        }
+        Relationships: []
+      }
+      expense_forecast_settings: {
+        Row: {
+          baseline_amount: number | null
+          baseline_currency: string | null
+          category: Database["public"]["Enums"]["expense_category_uk"]
+          created_at: string
+          expense_type: string
+          frequency: string
+          id: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          baseline_amount?: number | null
+          baseline_currency?: string | null
+          category: Database["public"]["Enums"]["expense_category_uk"]
+          created_at?: string
+          expense_type?: string
+          frequency?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          baseline_amount?: number | null
+          baseline_currency?: string | null
+          category?: Database["public"]["Enums"]["expense_category_uk"]
+          created_at?: string
+          expense_type?: string
+          frequency?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -1434,6 +1527,177 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      financial_sync_log: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          source: string
+          started_at: string
+          status: string
+          sync_details: Json | null
+          sync_type: string
+          transactions_synced: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          source: string
+          started_at?: string
+          status?: string
+          sync_details?: Json | null
+          sync_type?: string
+          transactions_synced?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          source?: string
+          started_at?: string
+          status?: string
+          sync_details?: Json | null
+          sync_type?: string
+          transactions_synced?: number | null
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string | null
+          external_transaction_id: string
+          fee_amount: number | null
+          fee_currency: string | null
+          id: string
+          merchant_name: string | null
+          net_amount: number | null
+          raw_data: Json | null
+          source: string
+          status: string | null
+          transaction_date: string
+          transaction_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          external_transaction_id: string
+          fee_amount?: number | null
+          fee_currency?: string | null
+          id?: string
+          merchant_name?: string | null
+          net_amount?: number | null
+          raw_data?: Json | null
+          source: string
+          status?: string | null
+          transaction_date: string
+          transaction_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          external_transaction_id?: string
+          fee_amount?: number | null
+          fee_currency?: string | null
+          id?: string
+          merchant_name?: string | null
+          net_amount?: number | null
+          raw_data?: Json | null
+          source?: string
+          status?: string | null
+          transaction_date?: string
+          transaction_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      forecast_actuals: {
+        Row: {
+          actual_amount: number | null
+          calculated_at: string | null
+          category: Database["public"]["Enums"]["expense_category_uk"] | null
+          currency: string
+          forecast_type: string
+          forecasted_amount: number
+          id: string
+          month: string
+          variance_amount: number | null
+          variance_percent: number | null
+        }
+        Insert: {
+          actual_amount?: number | null
+          calculated_at?: string | null
+          category?: Database["public"]["Enums"]["expense_category_uk"] | null
+          currency?: string
+          forecast_type: string
+          forecasted_amount: number
+          id?: string
+          month: string
+          variance_amount?: number | null
+          variance_percent?: number | null
+        }
+        Update: {
+          actual_amount?: number | null
+          calculated_at?: string | null
+          category?: Database["public"]["Enums"]["expense_category_uk"] | null
+          currency?: string
+          forecast_type?: string
+          forecasted_amount?: number
+          id?: string
+          month?: string
+          variance_amount?: number | null
+          variance_percent?: number | null
+        }
+        Relationships: []
+      }
+      forecast_overrides: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category_uk"] | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          forecast_month: string
+          id: string
+          is_baseline: boolean | null
+          notes: string | null
+          override_type: string
+        }
+        Insert: {
+          amount: number
+          category?: Database["public"]["Enums"]["expense_category_uk"] | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          forecast_month: string
+          id?: string
+          is_baseline?: boolean | null
+          notes?: string | null
+          override_type: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category_uk"] | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          forecast_month?: string
+          id?: string
+          is_baseline?: boolean | null
+          notes?: string | null
+          override_type?: string
+        }
+        Relationships: []
       }
       friendships: {
         Row: {
@@ -2629,6 +2893,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      merchant_category_rules: {
+        Row: {
+          category: Database["public"]["Enums"]["expense_category_uk"]
+          created_at: string
+          created_by: string | null
+          id: string
+          merchant_name: string
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["expense_category_uk"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          merchant_name: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["expense_category_uk"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          merchant_name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -4177,6 +4468,44 @@ export type Database = {
         }
         Relationships: []
       }
+      transaction_categories: {
+        Row: {
+          categorized_at: string | null
+          categorized_by: string | null
+          category: Database["public"]["Enums"]["expense_category_uk"]
+          id: string
+          is_auto_categorized: boolean | null
+          notes: string | null
+          transaction_id: string
+        }
+        Insert: {
+          categorized_at?: string | null
+          categorized_by?: string | null
+          category: Database["public"]["Enums"]["expense_category_uk"]
+          id?: string
+          is_auto_categorized?: boolean | null
+          notes?: string | null
+          transaction_id: string
+        }
+        Update: {
+          categorized_at?: string | null
+          categorized_by?: string | null
+          category?: Database["public"]["Enums"]["expense_category_uk"]
+          id?: string
+          is_auto_categorized?: boolean | null
+          notes?: string | null
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_categories_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tutor_availability: {
         Row: {
           available_at: string
@@ -4209,6 +4538,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      tutor_commission_payments: {
+        Row: {
+          commission_amount: number
+          commission_rate: number | null
+          created_at: string
+          currency: string
+          id: string
+          order_id: string | null
+          paid_at: string | null
+          payment_reference: string | null
+          status: string
+          tutor_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_amount: number
+          commission_rate?: number | null
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id?: string | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          status?: string
+          tutor_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_amount?: number
+          commission_rate?: number | null
+          created_at?: string
+          currency?: string
+          id?: string
+          order_id?: string | null
+          paid_at?: string | null
+          payment_reference?: string | null
+          status?: string
+          tutor_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tutor_commission_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_blocks: {
         Row: {
@@ -4615,6 +4994,25 @@ export type Database = {
         | "marketing"
         | "software"
         | "other"
+      expense_category_uk:
+        | "directors_employees_subcontractor"
+        | "tutor_commissions"
+        | "legal_professional"
+        | "accountancy_audit"
+        | "consultancy"
+        | "property_costs"
+        | "rent_rates"
+        | "repairs_maintenance"
+        | "advertising_promotions"
+        | "bank_financial_charges"
+        | "travel_subsistence"
+        | "admin_office"
+        | "software_subscriptions"
+        | "donations"
+        | "income_course_sales"
+        | "income_membership_sales"
+        | "internal_transfer"
+        | "ignore"
       group_category:
         | "genre"
         | "instrument"
@@ -4782,6 +5180,26 @@ export const Constants = {
         "marketing",
         "software",
         "other",
+      ],
+      expense_category_uk: [
+        "directors_employees_subcontractor",
+        "tutor_commissions",
+        "legal_professional",
+        "accountancy_audit",
+        "consultancy",
+        "property_costs",
+        "rent_rates",
+        "repairs_maintenance",
+        "advertising_promotions",
+        "bank_financial_charges",
+        "travel_subsistence",
+        "admin_office",
+        "software_subscriptions",
+        "donations",
+        "income_course_sales",
+        "income_membership_sales",
+        "internal_transfer",
+        "ignore",
       ],
       group_category: [
         "genre",
