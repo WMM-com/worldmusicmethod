@@ -1,4 +1,4 @@
-import { MediaTrack } from '@/hooks/useMedia';
+import { MediaTrack, MediaArtist } from '@/hooks/useMedia';
 import { TrackCard } from './TrackCard';
 import { Play, Pause, Heart, MoreHorizontal, ListPlus, Plus, ListMusic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,24 @@ import { useUserLikes, useToggleLike, useUserPlaylists, useAddToPlaylist } from 
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
+// Artist link component for clickable artist names
+function ArtistLink({ artist }: { artist?: MediaArtist }) {
+  if (!artist) return <span>Unknown Artist</span>;
+  
+  const slug = artist.slug || artist.id;
+  
+  return (
+    <Link 
+      to={`/listen/artist/${slug}`}
+      className="hover:underline hover:text-foreground transition-colors"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {artist.name}
+    </Link>
+  );
+}
 interface TrackListProps {
   tracks: MediaTrack[];
   showArtist?: boolean;
