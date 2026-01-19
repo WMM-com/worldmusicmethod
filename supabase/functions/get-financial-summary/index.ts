@@ -72,8 +72,8 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const startDate = body.start_date || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-    const endDate = body.end_date || new Date().toISOString();
+    const startDate = body.startDate || body.start_date || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const endDate = body.endDate || body.end_date || new Date().toISOString();
 
     console.log(`Getting financial summary from ${startDate} to ${endDate}`);
 
@@ -244,28 +244,42 @@ serve(async (req) => {
       }
     }
 
-    const summary: FinancialSummary = {
+    // Convert to simplified format expected by frontend
+    const totalExpenses = expenses.GBP + expenses.USD + expenses.EUR;
+    const expensesByCategoryFlat: Record<string, number> = {};
+    for (const [cat, vals] of Object.entries(expensesByCategory)) {
+      expensesByCategoryFlat[cat] = vals.GBP + vals.USD + vals.EUR;
+    }
+
+    const summary = {
       grossRevenue,
-      fees: {
-        stripe: stripeFees,
-        paypal: paypalFees,
-        conversion: conversionFees,
-        total: totalFees,
-      },
       netRevenue,
-      expenses,
-      profitLoss,
-      revenueBySource,
-      revenueByProduct,
-      balances,
-      expensesByCategory,
+      fees: {
+        paypal: paypalFees.GBP + paypalFees.USD + paypalFees.EUR,
+        stripe: stripeFees.GBP + stripeFees.USD + stripeFees.EUR,
+        conversion: conversionFees.GBP + conversionFees.USD + conversionFees.EUR,
+        total: totalFees.GBP + totalFees.USD + totalFees.EUR,
+      },
+      expenses: {
+        total: totalExpenses,
+        byCategory: expensesByCategoryFlat,
+      },
+      profitLoss: profitLoss.GBP + profitLoss.USD + profitLoss.EUR,
+      accountBalances: {
+        paypal: balances.paypal,
+        wise: balances.wise,
+      },
       membershipMetrics: {
         activeMonthly,
         activeAnnual,
         newThisMonth: newSubs?.length || 0,
         cancelledThisMonth: cancelledSubs?.length || 0,
-        mrr,
+        mrr: mrr.GBP + mrr.USD + mrr.EUR,
+        trialConversionRate: 0, // TODO: Calculate from trial data
+        trialsStarted: 0,
+        trialsConverted: 0,
       },
+      period: { start: startDate, end: endDate },
     };
 
     return new Response(
