@@ -13,8 +13,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useMarkLessonComplete } from '@/hooks/useCourses';
+import { useTestByLesson } from '@/hooks/useTests';
 import { toast } from 'sonner';
 import { SoundsliceEmbed, SoundslicePreset } from './SoundsliceEmbed';
+import { TestPlayer } from './TestPlayer';
 import type { ModuleLesson } from '@/types/course';
 
 interface LessonViewProps {
@@ -95,6 +97,9 @@ export function LessonView({
 }: LessonViewProps) {
   const markComplete = useMarkLessonComplete();
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Check if this lesson has a test
+  const { data: lessonTest, isLoading: testLoading } = useTestByLesson(lesson.id);
 
   // Scroll to top when lesson changes
   useEffect(() => {
@@ -116,6 +121,13 @@ export function LessonView({
       }
     } catch (error) {
       toast.error('Failed to save progress');
+    }
+  };
+
+  const handleTestComplete = () => {
+    // Mark lesson complete after test
+    if (!isCompleted) {
+      handleMarkComplete();
     }
   };
 
@@ -190,8 +202,20 @@ export function LessonView({
           )}
         </motion.div>
 
+        {/* Test Player - if lesson has an associated test */}
+        {lessonTest && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <TestPlayer test={lessonTest} onComplete={handleTestComplete} />
+          </motion.div>
+        )}
+
         {/* Soundslice Embed - if video_url contains soundslice or is a short ID */}
-        {lesson.video_url && (lesson.video_url.includes('soundslice') || (!lesson.video_url.includes('youtube') && !lesson.video_url.includes('vimeo') && !lesson.video_url.includes('.mp4') && !lesson.video_url.includes('spotify.com'))) && (
+        {!lessonTest && lesson.video_url && (lesson.video_url.includes('soundslice') || (!lesson.video_url.includes('youtube') && !lesson.video_url.includes('vimeo') && !lesson.video_url.includes('.mp4') && !lesson.video_url.includes('spotify.com'))) && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}

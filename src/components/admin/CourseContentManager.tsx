@@ -37,12 +37,13 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown, ChevronRight, Edit, Trash2, Plus, ArrowLeft, Video, BookOpen, Music, FileText, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit, Trash2, Plus, ArrowLeft, Video, BookOpen, Music, FileText, GripVertical, ClipboardCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { ModuleEditDialog } from './ModuleEditDialog';
 import { LessonEditDialog } from './LessonEditDialog';
 import { ModuleCreateDialog } from './ModuleCreateDialog';
 import { LessonCreateDialog } from './LessonCreateDialog';
+import { TestEditor } from './TestEditor';
 
 interface CourseContentManagerProps {
   courseId: string;
@@ -161,11 +162,13 @@ function SortableLessonItem({
   lesson, 
   getLessonIcon, 
   onEdit, 
+  onEditTest,
   onDelete 
 }: { 
   lesson: any; 
   getLessonIcon: (type: string) => JSX.Element;
   onEdit: () => void;
+  onEditTest?: () => void;
   onDelete: () => void;
 }) {
   const {
@@ -207,6 +210,17 @@ function SortableLessonItem({
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {lesson.title?.toLowerCase().startsWith('test') && onEditTest && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-primary" 
+            onClick={onEditTest}
+            title="Edit Test"
+          >
+            <ClipboardCheck className="h-3 w-3" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
           <Edit className="h-3 w-3" />
         </Button>
@@ -232,6 +246,7 @@ export function CourseContentManager({ courseId, courseTitle, onBack }: CourseCo
   const [showAddModule, setShowAddModule] = useState(false);
   const [addLessonTarget, setAddLessonTarget] = useState<{ moduleId: string; nextIndex: number } | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingTestLesson, setEditingTestLesson] = useState<{ id: string; title: string } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -361,9 +376,26 @@ export function CourseContentManager({ courseId, courseTitle, onBack }: CourseCo
       case 'video': return <Video className="h-4 w-4" />;
       case 'listening': return <Music className="h-4 w-4" />;
       case 'reading': return <BookOpen className="h-4 w-4" />;
+      case 'test': return <ClipboardCheck className="h-4 w-4" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
+
+  // Check if lesson title starts with "Test" for test editing
+  const isTestLesson = (lesson: any) => {
+    return lesson.title?.toLowerCase().startsWith('test');
+  };
+
+  // If editing a test, show TestEditor
+  if (editingTestLesson) {
+    return (
+      <TestEditor
+        lessonId={editingTestLesson.id}
+        lessonTitle={editingTestLesson.title}
+        onBack={() => setEditingTestLesson(null)}
+      />
+    );
+  }
 
   const handleDelete = () => {
     if (!deleteTarget) return;
@@ -483,6 +515,10 @@ export function CourseContentManager({ courseId, courseTitle, onBack }: CourseCo
                           lesson={lesson}
                           getLessonIcon={getLessonIcon}
                           onEdit={() => setEditingLesson(lesson)}
+                          onEditTest={lesson.title?.toLowerCase().startsWith('test') 
+                            ? () => setEditingTestLesson({ id: lesson.id, title: lesson.title })
+                            : undefined
+                          }
                           onDelete={() => setDeleteTarget({ type: 'lesson', id: lesson.id, title: lesson.title })}
                         />
                       ))}
