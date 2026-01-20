@@ -90,11 +90,16 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
     if (started && currentQuestion?.audio_url && !hasAutoPlayed) {
       const audio = audioRef.current;
       if (audio) {
+        // Reset and load the new audio
+        audio.pause();
         audio.src = currentQuestion.audio_url;
+        audio.load();
+        
         audio.play().then(() => {
           setIsPlaying(true);
           setHasAutoPlayed(true);
-        }).catch(() => {
+        }).catch((err) => {
+          console.log('Autoplay blocked:', err);
           // Autoplay blocked, user will need to click
         });
       }
@@ -104,14 +109,22 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   // Handle audio play/pause
   const toggleAudio = () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !currentQuestion?.audio_url) return;
     
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
     } else {
-      audio.play();
-      setIsPlaying(true);
+      // Ensure src is set
+      if (!audio.src || audio.src !== currentQuestion.audio_url) {
+        audio.src = currentQuestion.audio_url;
+        audio.load();
+      }
+      audio.play().then(() => {
+        setIsPlaying(true);
+      }).catch((err) => {
+        console.error('Audio play failed:', err);
+      });
     }
   };
   
@@ -213,42 +226,42 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   // Pre-test screen
   if (!started) {
     return (
-      <Card className="max-w-2xl mx-auto bg-card border-border">
-        <CardHeader className="text-center bg-muted/50 rounded-t-lg">
-          <CardTitle className="text-2xl">{test.title}</CardTitle>
+      <Card className="max-w-2xl mx-auto bg-black/60 border-white/10 backdrop-blur-sm overflow-hidden">
+        <CardHeader className="text-center bg-black/80 border-b border-white/10">
+          <CardTitle className="text-2xl text-white">{test.title}</CardTitle>
           {test.description && (
-            <p className="text-muted-foreground mt-2">{test.description}</p>
+            <p className="text-white/60 mt-2">{test.description}</p>
           )}
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
+        <CardContent className="space-y-6 pt-6 bg-black/40">
           <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="p-4 bg-muted rounded-lg border border-border">
+            <div className="p-4 bg-black/50 rounded-lg border border-white/10">
               <div className="text-2xl font-bold text-primary">{totalQuestions}</div>
-              <div className="text-sm text-muted-foreground">Questions</div>
+              <div className="text-sm text-white/50">Questions</div>
             </div>
-            <div className="p-4 bg-muted rounded-lg border border-border">
+            <div className="p-4 bg-black/50 rounded-lg border border-white/10">
               <div className="text-2xl font-bold text-primary">{test.passing_score}%</div>
-              <div className="text-sm text-muted-foreground">To Pass</div>
+              <div className="text-sm text-white/50">To Pass</div>
             </div>
           </div>
           
           {previousAttempt && (
-            <div className="p-4 bg-primary/20 rounded-lg text-center border border-primary/30">
-              <p className="text-sm text-muted-foreground">Your best score</p>
+            <div className="p-4 bg-primary/20 rounded-lg text-center border border-primary/40">
+              <p className="text-sm text-white/60">Your best score</p>
               <p className="text-xl font-bold text-primary">
                 {Math.round(previousAttempt.percentage)}%
               </p>
             </div>
           )}
           
-          <div className="text-sm text-muted-foreground space-y-1 bg-muted/30 p-4 rounded-lg">
+          <div className="text-sm text-white/70 space-y-2 bg-black/50 p-4 rounded-lg border border-white/10">
             <p>• Listen to each audio clip and select the correct answer</p>
             <p>• You can replay the audio as many times as you like</p>
-            <p>• If you select a wrong answer, you get one more try for half points</p>
-            <p>• Questions are presented in random order</p>
+            <p>• Wrong answer? Get one more try for half points</p>
+            <p>• Questions are randomized each attempt</p>
           </div>
           
-          <Button onClick={handleStart} className="w-full" size="lg">
+          <Button onClick={handleStart} className="w-full bg-primary hover:bg-primary/90" size="lg">
             Start Test
           </Button>
         </CardContent>
@@ -259,60 +272,62 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   // Completed screen
   if (completed) {
     return (
-      <Card className="max-w-2xl mx-auto bg-card border-border">
-        <CardHeader className="text-center bg-muted/50 rounded-t-lg">
+      <Card className="max-w-2xl mx-auto bg-black/60 border-white/10 backdrop-blur-sm overflow-hidden">
+        <CardHeader className="text-center bg-black/80 border-b border-white/10 py-8">
           <div className={cn(
-            "w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4",
-            passed ? "bg-green-500/20 border border-green-500/30" : "bg-amber-500/20 border border-amber-500/30"
+            "w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-4",
+            passed 
+              ? "bg-gradient-to-br from-green-500/30 to-green-600/10 border-2 border-green-500/50" 
+              : "bg-gradient-to-br from-amber-500/30 to-amber-600/10 border-2 border-amber-500/50"
           )}>
             <Trophy className={cn(
-              "w-10 h-10",
-              passed ? "text-green-500" : "text-amber-500"
+              "w-12 h-12",
+              passed ? "text-green-400" : "text-amber-400"
             )} />
           </div>
-          <CardTitle className="text-2xl">
+          <CardTitle className="text-2xl text-white">
             {passed ? 'Congratulations!' : 'Keep Practicing!'}
           </CardTitle>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-white/60 mt-2">
             {passed 
               ? 'You passed the test!'
               : `You need ${test.passing_score}% to pass. Keep trying!`}
           </p>
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <div className="text-center">
+        <CardContent className="space-y-6 pt-6 bg-black/40">
+          <div className="text-center py-4">
             <div className={cn(
-              "text-5xl font-bold mb-2",
-              passed ? "text-green-500" : "text-amber-500"
+              "text-6xl font-bold mb-2",
+              passed ? "text-green-400" : "text-amber-400"
             )}>
               {percentage}%
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-white/50">
               {score} / {maxScore} points
             </p>
           </div>
           
           <div className="grid grid-cols-2 gap-4 text-center text-sm">
-            <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
-              <div className="font-bold text-green-500">
+            <div className="p-4 bg-green-500/20 border border-green-500/40 rounded-lg">
+              <div className="text-2xl font-bold text-green-400">
                 {Object.values(answers).filter(a => a.correct && a.attempts === 1).length}
               </div>
-              <div className="text-muted-foreground">Correct (1st try)</div>
+              <div className="text-white/50">Correct (1st try)</div>
             </div>
-            <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-lg">
-              <div className="font-bold text-amber-500">
+            <div className="p-4 bg-amber-500/20 border border-amber-500/40 rounded-lg">
+              <div className="text-2xl font-bold text-amber-400">
                 {Object.values(answers).filter(a => a.correct && a.attempts > 1).length}
               </div>
-              <div className="text-muted-foreground">Correct (2nd try)</div>
+              <div className="text-white/50">Correct (2nd try)</div>
             </div>
           </div>
           
-          <div className="flex gap-3">
-            <Button onClick={handleRestart} variant="outline" className="flex-1">
+          <div className="flex gap-3 pt-2">
+            <Button onClick={handleRestart} variant="outline" className="flex-1 border-white/20 text-white hover:bg-white/10">
               <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
             </Button>
-            <Button onClick={onComplete} className="flex-1">
+            <Button onClick={onComplete} className="flex-1 bg-primary hover:bg-primary/90">
               Continue
             </Button>
           </div>
@@ -343,16 +358,15 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
         onEnded={() => setIsPlaying(false)}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
-        crossOrigin="anonymous"
       />
       
       {/* Progress bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-muted-foreground">
+      <div className="space-y-2 bg-black/40 p-4 rounded-xl border border-white/10">
+        <div className="flex justify-between text-sm text-white/70">
           <span>Question {currentIndex + 1} of {totalQuestions}</span>
-          <span>{answeredCount} answered</span>
+          <span>{answeredCount} correct</span>
         </div>
-        <Progress value={((currentIndex + 1) / totalQuestions) * 100} />
+        <Progress value={((currentIndex + 1) / totalQuestions) * 100} className="h-2" />
       </div>
       
       <AnimatePresence mode="wait">
@@ -363,41 +377,48 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="bg-card border-border">
-            <CardHeader className="bg-muted/50 rounded-t-lg">
+          <Card className="bg-black/60 border-white/10 backdrop-blur-sm overflow-hidden">
+            <CardHeader className="bg-black/80 border-b border-white/10">
               <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="bg-primary/20 text-primary">
+                <Badge className="bg-primary/30 text-primary border-primary/50">
                   {currentQuestion?.points} {currentQuestion?.points === 1 ? 'point' : 'points'}
                 </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Question {currentIndex + 1}
+                <span className="text-sm text-white/50">
+                  Q{currentIndex + 1}
                 </span>
               </div>
               {currentQuestion?.question_text && (
-                <CardTitle className="text-lg">{currentQuestion.question_text}</CardTitle>
+                <CardTitle className="text-lg text-white">{currentQuestion.question_text}</CardTitle>
               )}
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
+            <CardContent className="space-y-6 pt-6 bg-black/40">
               {/* Audio player */}
               {currentQuestion?.audio_url && (
-                <div className="flex items-center justify-center gap-4 p-6 bg-muted rounded-lg border border-border">
+                <div className="flex items-center justify-center gap-6 p-8 bg-gradient-to-br from-primary/20 to-black/60 rounded-xl border border-white/10">
                   <Button
-                    variant="default"
                     size="lg"
                     onClick={toggleAudio}
-                    className="w-16 h-16 rounded-full bg-primary hover:bg-primary/90"
+                    className={cn(
+                      "w-20 h-20 rounded-full transition-all shadow-lg",
+                      isPlaying 
+                        ? "bg-white text-black hover:bg-white/90" 
+                        : "bg-primary hover:bg-primary/90"
+                    )}
                   >
                     {isPlaying ? (
-                      <Pause className="w-6 h-6" />
+                      <Pause className="w-8 h-8" />
                     ) : (
-                      <Play className="w-6 h-6 ml-1" />
+                      <Play className="w-8 h-8 ml-1" />
                     )}
                   </Button>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Volume2 className="w-5 h-5" />
-                    <span className="text-sm">
-                      {isPlaying ? 'Playing...' : 'Click to play'}
-                    </span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-white/80">
+                      <Volume2 className="w-5 h-5" />
+                      <span className="font-medium">
+                        {isPlaying ? 'Playing...' : 'Listen'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-white/40">Click to play audio</span>
                   </div>
                 </div>
               )}
@@ -426,19 +447,20 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                       onClick={() => handleSelectAnswer(answer.id)}
                       disabled={disabled}
                       className={cn(
-                        "p-3 text-left rounded-lg border-2 transition-all text-sm",
-                        "hover:border-primary hover:bg-primary/10",
-                        "disabled:cursor-default bg-muted/50",
-                        isSelected && !showFeedback && "border-primary bg-primary/20",
-                        showCorrect && "border-green-500 bg-green-500/20",
-                        showWrong && "border-red-500 bg-red-500/20",
-                        !isSelected && !showCorrect && !showWrong && "border-border"
+                        "p-3 text-left rounded-lg border transition-all text-sm",
+                        "hover:border-primary hover:bg-primary/20",
+                        "disabled:cursor-default",
+                        "bg-black/50 text-white",
+                        isSelected && !showFeedback && "border-primary bg-primary/30 ring-1 ring-primary/50",
+                        showCorrect && "border-green-500 bg-green-500/30 ring-1 ring-green-500/50",
+                        showWrong && "border-red-500 bg-red-500/30 ring-1 ring-red-500/50",
+                        !isSelected && !showCorrect && !showWrong && "border-white/20"
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{answer.answer_text}</span>
-                        {showCorrect && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />}
-                        {showWrong && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                        {showCorrect && <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />}
+                        {showWrong && <XCircle className="w-4 h-4 text-red-400 shrink-0" />}
                       </div>
                     </motion.button>
                   );
@@ -455,8 +477,8 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                     className={cn(
                       "p-4 rounded-lg text-center",
                       currentAnswer?.correct 
-                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                        : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                        ? "bg-green-500/20 text-green-300 border border-green-500/40"
+                        : "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                     )}
                   >
                     {currentAnswer?.correct ? (
@@ -482,31 +504,40 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                 )}
               </AnimatePresence>
               
-              {/* Next Question button - prominent and clear */}
-              {canProceed && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
+              {/* Navigation - always visible */}
+              <div className="flex gap-3 pt-2">
+                {!isLastQuestion && (
                   <Button 
                     onClick={handleNext} 
-                    className="w-full bg-primary hover:bg-primary/90"
+                    variant={canProceed ? "default" : "outline"}
+                    className={cn(
+                      "flex-1",
+                      canProceed 
+                        ? "bg-primary hover:bg-primary/90" 
+                        : "border-white/20 text-white/60 hover:text-white hover:bg-white/10"
+                    )}
                     size="lg"
                   >
-                    {isLastQuestion ? 'Complete Test' : 'Next Question'}
+                    {canProceed ? 'Next Question' : 'Skip'}
                     <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
-                </motion.div>
-              )}
+                )}
+                {isLastQuestion && (
+                  <Button 
+                    onClick={handleNext} 
+                    className="flex-1 bg-primary hover:bg-primary/90"
+                    size="lg"
+                    disabled={!canProceed}
+                  >
+                    Complete Test
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       </AnimatePresence>
-      
-      {/* Note about lesson navigation */}
-      <p className="text-xs text-muted-foreground text-center">
-        Use the button above to navigate between questions. The lesson arrows navigate between lessons.
-      </p>
     </div>
   );
 }
