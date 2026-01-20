@@ -2415,6 +2415,50 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_tests: {
+        Row: {
+          allow_retry: boolean | null
+          created_at: string
+          description: string | null
+          id: string
+          lesson_id: string
+          passing_score: number | null
+          randomize_questions: boolean | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allow_retry?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lesson_id: string
+          passing_score?: number | null
+          randomize_questions?: boolean | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allow_retry?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lesson_id?: string
+          passing_score?: number | null
+          randomize_questions?: boolean | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_tests_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
+            referencedRelation: "module_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_artists: {
         Row: {
           bio: string | null
@@ -4468,6 +4512,82 @@ export type Database = {
         }
         Relationships: []
       }
+      test_answers: {
+        Row: {
+          answer_text: string
+          created_at: string
+          id: string
+          is_correct: boolean
+          order_index: number
+          question_id: string
+        }
+        Insert: {
+          answer_text: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          order_index?: number
+          question_id: string
+        }
+        Update: {
+          answer_text?: string
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          order_index?: number
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "test_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_questions: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          id: string
+          order_index: number
+          points: number | null
+          question_text: string | null
+          test_id: string
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number
+          points?: number | null
+          question_text?: string | null
+          test_id: string
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number
+          points?: number | null
+          question_text?: string | null
+          test_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transaction_categories: {
         Row: {
           categorized_at: string | null
@@ -4792,6 +4912,53 @@ export type Database = {
             columns: ["tag_id"]
             isOneToOne: false
             referencedRelation: "email_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_test_attempts: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          max_score: number
+          percentage: number
+          question_results: Json
+          score: number
+          started_at: string
+          test_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          max_score: number
+          percentage: number
+          question_results?: Json
+          score: number
+          started_at?: string
+          test_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          max_score?: number
+          percentage?: number
+          question_results?: Json
+          score?: number
+          started_at?: string
+          test_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_test_attempts_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_tests"
             referencedColumns: ["id"]
           },
         ]
