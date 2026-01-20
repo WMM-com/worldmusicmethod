@@ -396,22 +396,23 @@ export function LessonView({
           </motion.div>
         )}
 
-        {/* Actions */}
+        {/* Lesson Navigation - clearly labeled */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="flex items-center justify-between gap-2 pt-4 border-t border-gray-200"
+          className="flex items-center justify-between gap-2 pt-4 border-t border-border mt-8"
         >
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onNavigate('prev')}
             disabled={!hasPrev}
             size="sm"
-            className="flex-shrink-0"
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="w-4 h-4 mr-1" />
-            Previous
+            <span className="hidden sm:inline">Previous Lesson</span>
+            <span className="sm:hidden">Prev</span>
           </Button>
 
           {!isCompleted && (
@@ -426,13 +427,14 @@ export function LessonView({
           )}
 
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => onNavigate('next')}
             disabled={!hasNext}
             size="sm"
-            className="flex-shrink-0"
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground"
           >
-            Next
+            <span className="hidden sm:inline">Next Lesson</span>
+            <span className="sm:hidden">Next</span>
             <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </motion.div>

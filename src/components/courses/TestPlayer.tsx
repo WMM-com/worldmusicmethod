@@ -213,27 +213,27 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   // Pre-test screen
   if (!started) {
     return (
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader className="text-center">
+      <Card className="max-w-2xl mx-auto bg-card border-border">
+        <CardHeader className="text-center bg-muted/50 rounded-t-lg">
           <CardTitle className="text-2xl">{test.title}</CardTitle>
           {test.description && (
             <p className="text-muted-foreground mt-2">{test.description}</p>
           )}
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-6">
           <div className="grid grid-cols-2 gap-4 text-center">
-            <div className="p-4 bg-muted rounded-lg">
+            <div className="p-4 bg-muted rounded-lg border border-border">
               <div className="text-2xl font-bold text-primary">{totalQuestions}</div>
               <div className="text-sm text-muted-foreground">Questions</div>
             </div>
-            <div className="p-4 bg-muted rounded-lg">
+            <div className="p-4 bg-muted rounded-lg border border-border">
               <div className="text-2xl font-bold text-primary">{test.passing_score}%</div>
               <div className="text-sm text-muted-foreground">To Pass</div>
             </div>
           </div>
           
           {previousAttempt && (
-            <div className="p-4 bg-primary/10 rounded-lg text-center">
+            <div className="p-4 bg-primary/20 rounded-lg text-center border border-primary/30">
               <p className="text-sm text-muted-foreground">Your best score</p>
               <p className="text-xl font-bold text-primary">
                 {Math.round(previousAttempt.percentage)}%
@@ -241,7 +241,7 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
             </div>
           )}
           
-          <div className="text-sm text-muted-foreground space-y-1">
+          <div className="text-sm text-muted-foreground space-y-1 bg-muted/30 p-4 rounded-lg">
             <p>• Listen to each audio clip and select the correct answer</p>
             <p>• You can replay the audio as many times as you like</p>
             <p>• If you select a wrong answer, you get one more try for half points</p>
@@ -259,15 +259,15 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   // Completed screen
   if (completed) {
     return (
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader className="text-center">
+      <Card className="max-w-2xl mx-auto bg-card border-border">
+        <CardHeader className="text-center bg-muted/50 rounded-t-lg">
           <div className={cn(
             "w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4",
-            passed ? "bg-green-100 dark:bg-green-900" : "bg-amber-100 dark:bg-amber-900"
+            passed ? "bg-green-500/20 border border-green-500/30" : "bg-amber-500/20 border border-amber-500/30"
           )}>
             <Trophy className={cn(
               "w-10 h-10",
-              passed ? "text-green-600" : "text-amber-600"
+              passed ? "text-green-500" : "text-amber-500"
             )} />
           </div>
           <CardTitle className="text-2xl">
@@ -279,11 +279,11 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
               : `You need ${test.passing_score}% to pass. Keep trying!`}
           </p>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-6">
           <div className="text-center">
             <div className={cn(
               "text-5xl font-bold mb-2",
-              passed ? "text-green-600" : "text-amber-600"
+              passed ? "text-green-500" : "text-amber-500"
             )}>
               {percentage}%
             </div>
@@ -293,14 +293,14 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
           </div>
           
           <div className="grid grid-cols-2 gap-4 text-center text-sm">
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <div className="font-bold text-green-600">
+            <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
+              <div className="font-bold text-green-500">
                 {Object.values(answers).filter(a => a.correct && a.attempts === 1).length}
               </div>
               <div className="text-muted-foreground">Correct (1st try)</div>
             </div>
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-              <div className="font-bold text-amber-600">
+            <div className="p-3 bg-amber-500/20 border border-amber-500/30 rounded-lg">
+              <div className="font-bold text-amber-500">
                 {Object.values(answers).filter(a => a.correct && a.attempts > 1).length}
               </div>
               <div className="text-muted-foreground">Correct (2nd try)</div>
@@ -326,14 +326,24 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   const canProceed = currentAnswer?.correct || (currentAnswer?.attempts || 0) >= 2;
   const isLastQuestion = currentIndex === totalQuestions - 1;
   
+  // Group answers into columns for better layout
+  const getAnswerColumns = (answerCount: number) => {
+    if (answerCount <= 4) return 1;
+    if (answerCount <= 8) return 2;
+    return 3;
+  };
+  
+  const columns = currentQuestion ? getAnswerColumns(currentQuestion.answers.length) : 1;
+  
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       {/* Hidden audio element */}
       <audio 
         ref={audioRef} 
         onEnded={() => setIsPlaying(false)}
         onPause={() => setIsPlaying(false)}
         onPlay={() => setIsPlaying(true)}
+        crossOrigin="anonymous"
       />
       
       {/* Progress bar */}
@@ -353,26 +363,29 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.2 }}
         >
-          <Card>
-            <CardHeader>
+          <Card className="bg-card border-border">
+            <CardHeader className="bg-muted/50 rounded-t-lg">
               <div className="flex items-center justify-between">
-                <Badge variant="outline">
+                <Badge variant="secondary" className="bg-primary/20 text-primary">
                   {currentQuestion?.points} {currentQuestion?.points === 1 ? 'point' : 'points'}
                 </Badge>
+                <span className="text-sm text-muted-foreground">
+                  Question {currentIndex + 1}
+                </span>
               </div>
               {currentQuestion?.question_text && (
                 <CardTitle className="text-lg">{currentQuestion.question_text}</CardTitle>
               )}
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
               {/* Audio player */}
               {currentQuestion?.audio_url && (
-                <div className="flex items-center justify-center gap-4 p-6 bg-muted rounded-lg">
+                <div className="flex items-center justify-center gap-4 p-6 bg-muted rounded-lg border border-border">
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="lg"
                     onClick={toggleAudio}
-                    className="w-16 h-16 rounded-full"
+                    className="w-16 h-16 rounded-full bg-primary hover:bg-primary/90"
                   >
                     {isPlaying ? (
                       <Pause className="w-6 h-6" />
@@ -389,8 +402,15 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                 </div>
               )}
               
-              {/* Answer options */}
-              <div className="space-y-3">
+              {/* Answer options in columns */}
+              <div 
+                className={cn(
+                  "grid gap-3",
+                  columns === 1 && "grid-cols-1",
+                  columns === 2 && "grid-cols-2",
+                  columns === 3 && "grid-cols-3"
+                )}
+              >
                 {currentQuestion?.answers.map((answer, idx) => {
                   const isSelected = currentAnswer?.selectedAnswerId === answer.id;
                   const showCorrect = showFeedback && answer.is_correct && currentAnswer?.correct;
@@ -402,23 +422,23 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                       key={answer.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.05 }}
+                      transition={{ delay: idx * 0.03 }}
                       onClick={() => handleSelectAnswer(answer.id)}
                       disabled={disabled}
                       className={cn(
-                        "w-full p-4 text-left rounded-lg border-2 transition-all",
-                        "hover:border-primary hover:bg-primary/5",
-                        "disabled:cursor-default",
-                        isSelected && !showFeedback && "border-primary bg-primary/10",
-                        showCorrect && "border-green-500 bg-green-50 dark:bg-green-950",
-                        showWrong && "border-red-500 bg-red-50 dark:bg-red-950",
-                        !isSelected && !showCorrect && !showWrong && "border-muted"
+                        "p-3 text-left rounded-lg border-2 transition-all text-sm",
+                        "hover:border-primary hover:bg-primary/10",
+                        "disabled:cursor-default bg-muted/50",
+                        isSelected && !showFeedback && "border-primary bg-primary/20",
+                        showCorrect && "border-green-500 bg-green-500/20",
+                        showWrong && "border-red-500 bg-red-500/20",
+                        !isSelected && !showCorrect && !showWrong && "border-border"
                       )}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">{answer.answer_text}</span>
-                        {showCorrect && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-                        {showWrong && <XCircle className="w-5 h-5 text-red-500" />}
+                        {showCorrect && <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />}
+                        {showWrong && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
                       </div>
                     </motion.button>
                   );
@@ -435,8 +455,8 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                     className={cn(
                       "p-4 rounded-lg text-center",
                       currentAnswer?.correct 
-                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                        : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
+                        ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                        : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                     )}
                   >
                     {currentAnswer?.correct ? (
@@ -462,7 +482,7 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                 )}
               </AnimatePresence>
               
-              {/* Next button */}
+              {/* Next Question button - prominent and clear */}
               {canProceed && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -470,7 +490,7 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                 >
                   <Button 
                     onClick={handleNext} 
-                    className="w-full"
+                    className="w-full bg-primary hover:bg-primary/90"
                     size="lg"
                   >
                     {isLastQuestion ? 'Complete Test' : 'Next Question'}
@@ -482,6 +502,11 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
           </Card>
         </motion.div>
       </AnimatePresence>
+      
+      {/* Note about lesson navigation */}
+      <p className="text-xs text-muted-foreground text-center">
+        Use the button above to navigate between questions. The lesson arrows navigate between lessons.
+      </p>
     </div>
   );
 }
