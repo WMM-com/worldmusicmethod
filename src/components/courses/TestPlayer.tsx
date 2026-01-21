@@ -167,8 +167,13 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
     
     setShowFeedback(true);
     
-    // If wrong and can retry, allow selection again after brief feedback
-    if (!isCorrect && canRetry) {
+    // Auto-advance after 2 seconds on correct answer
+    if (isCorrect) {
+      setTimeout(() => {
+        handleNext();
+      }, 2000);
+    } else if (canRetry) {
+      // If wrong and can retry, allow selection again after brief feedback
       setTimeout(() => {
         setShowFeedback(false);
       }, 1000);
@@ -394,14 +399,14 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
             <CardContent className="space-y-6 pt-6 bg-black/40">
               {/* Audio player */}
               {currentQuestion?.audio_url && (
-                <div className="flex items-center justify-center gap-6 p-8 bg-gradient-to-br from-primary/20 to-black/60 rounded-xl border border-white/10">
+                <div className="flex items-center justify-center gap-6 p-8 bg-muted rounded-xl border border-border">
                   <Button
                     size="lg"
                     onClick={toggleAudio}
                     className={cn(
                       "w-20 h-20 rounded-full transition-all shadow-lg",
                       isPlaying 
-                        ? "bg-white text-black hover:bg-white/90" 
+                        ? "bg-foreground text-background hover:bg-foreground/90" 
                         : "bg-primary hover:bg-primary/90"
                     )}
                   >
@@ -412,13 +417,13 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
                     )}
                   </Button>
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-white/80">
+                    <div className="flex items-center gap-2 text-foreground/80">
                       <Volume2 className="w-5 h-5" />
                       <span className="font-medium">
                         {isPlaying ? 'Playing...' : 'Listen'}
                       </span>
                     </div>
-                    <span className="text-xs text-white/40">Click to play audio</span>
+                    <span className="text-xs text-muted-foreground">Click to play audio</span>
                   </div>
                 </div>
               )}
