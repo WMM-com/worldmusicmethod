@@ -209,25 +209,25 @@ function SortableLessonItem({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1">
         {lesson.title?.toLowerCase().startsWith('test') && onEditTest && (
           <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8 text-primary" 
+            variant="outline" 
+            size="sm" 
+            className="h-7 text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20" 
             onClick={onEditTest}
-            title="Edit Test"
           >
-            <ClipboardCheck className="h-3 w-3" />
+            <ClipboardCheck className="h-3 w-3 mr-1" />
+            Edit Quiz
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" onClick={onEdit}>
           <Edit className="h-3 w-3" />
         </Button>
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8 text-destructive hover:text-destructive"
+          className="h-8 w-8 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={onDelete}
         >
           <Trash2 className="h-3 w-3" />
