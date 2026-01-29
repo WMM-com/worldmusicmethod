@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -1040,8 +1041,40 @@ export default function CourseLanding() {
     }
   };
 
+  // SEO meta tags - use course-specific SEO fields with fallbacks
+  const siteUrl = 'https://worldmusicmethod.lovable.app';
+  const pageUrl = `${siteUrl}/courses/${course?.slug || courseId}`;
+  const metaTitle = course?.meta_title || course?.title || 'Course';
+  const metaDescription = course?.meta_description || course?.description || `Learn ${course?.title} with World Music Method`;
+  const metaImage = course?.meta_image || courseConfig?.heroBackground || courseConfig?.courseImage || `${siteUrl}/og-image.png`;
+
   return (
     <>
+      <Helmet>
+        {/* Primary Meta Tags */}
+        <title>{metaTitle} | World Music Method</title>
+        <meta name="title" content={metaTitle} />
+        <meta name="description" content={metaDescription} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:title" content={metaTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={metaImage} />
+        <meta property="og:site_name" content="World Music Method" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={pageUrl} />
+        <meta name="twitter:title" content={metaTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={metaImage} />
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={pageUrl} />
+      </Helmet>
+      
       <SiteHeader />
       <div className="min-h-screen bg-background">
         {/* Mobile Sidebar Overlay with Swipe-to-Close */}
