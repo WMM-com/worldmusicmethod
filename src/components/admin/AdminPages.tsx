@@ -117,6 +117,8 @@ export function AdminPages() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pages'] });
+      // Keep redirect rules in sync for the public redirect handler
+      queryClient.invalidateQueries({ queryKey: ['redirections'] });
       toast.success(editingPage ? 'Page updated' : 'Page created');
       handleCloseDialog();
     },
@@ -133,6 +135,8 @@ export function AdminPages() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-pages'] });
+      // Deleting a redirect page should also refresh redirect rules
+      queryClient.invalidateQueries({ queryKey: ['redirections'] });
       toast.success('Page deleted');
     },
     onError: (error: Error) => {
