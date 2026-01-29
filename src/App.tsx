@@ -12,6 +12,7 @@ import { GeoPricingProvider } from "@/contexts/GeoPricingContext";
 import { ChatPopup } from "@/components/messaging/ChatPopup";
 import { StickyAudioPlayer } from "@/components/media/StickyAudioPlayer";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { useRedirectHandler } from "@/hooks/useRedirections";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
@@ -96,6 +97,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 // Wrapper content
 function AppContent() {
+  // Handle URL redirections from database
+  useRedirectHandler();
+
   return (
     <>
       <ScrollToTop />
