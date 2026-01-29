@@ -50,6 +50,7 @@ import NotFound from "./pages/NotFound";
 import VerifyEmail from "./pages/VerifyEmail";
 import Membership from "./pages/Membership";
 import Unsubscribe from "./pages/Unsubscribe";
+import Sitemap from "./pages/Sitemap";
 
 const queryClient = new QueryClient();
 
@@ -141,6 +142,7 @@ function AppContent() {
         <Route path="/artist-dashboard" element={<ProtectedRoute><ArtistDashboard /></ProtectedRoute>} />
         
         <Route path="/left-brain" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/sitemap.xml" element={<Sitemap />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ChatPopup />
