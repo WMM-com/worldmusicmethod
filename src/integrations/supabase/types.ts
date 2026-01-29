@@ -4125,6 +4125,36 @@ export type Database = {
           },
         ]
       }
+      redirections: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          source_url: string
+          status_code: number
+          target_url: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          source_url: string
+          status_code?: number
+          target_url: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          source_url?: string
+          status_code?: number
+          target_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
