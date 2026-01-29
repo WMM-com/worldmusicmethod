@@ -727,6 +727,9 @@ export type Database = {
           description: string | null
           id: string
           is_published: boolean | null
+          meta_description: string | null
+          meta_image: string | null
+          meta_title: string | null
           region_theme: Json | null
           slug: string | null
           tags: string[] | null
@@ -742,6 +745,9 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean | null
+          meta_description?: string | null
+          meta_image?: string | null
+          meta_title?: string | null
           region_theme?: Json | null
           slug?: string | null
           tags?: string[] | null
@@ -757,6 +763,9 @@ export type Database = {
           description?: string | null
           id?: string
           is_published?: boolean | null
+          meta_description?: string | null
+          meta_image?: string | null
+          meta_title?: string | null
           region_theme?: Json | null
           slug?: string | null
           tags?: string[] | null

@@ -10,6 +10,9 @@ export interface Course {
   is_published: boolean;
   tutor_name: string | null;
   tags: string[] | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  meta_image: string | null;
   created_at: string;
   updated_at: string;
 }
