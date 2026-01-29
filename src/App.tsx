@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { MessagingProvider } from "@/contexts/MessagingContext";
@@ -149,25 +150,27 @@ function AppContent() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <GeoPricingProvider>
-      <AuthProvider>
-        <CartProvider>
-          <MessagingProvider>
-            <MediaPlayerProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <AppContent />
-                </BrowserRouter>
-              </TooltipProvider>
-            </MediaPlayerProvider>
-          </MessagingProvider>
-        </CartProvider>
-      </AuthProvider>
-    </GeoPricingProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <GeoPricingProvider>
+        <AuthProvider>
+          <CartProvider>
+            <MessagingProvider>
+              <MediaPlayerProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <AppContent />
+                  </BrowserRouter>
+                </TooltipProvider>
+              </MediaPlayerProvider>
+            </MessagingProvider>
+          </CartProvider>
+        </AuthProvider>
+      </GeoPricingProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;
