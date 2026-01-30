@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserDetailDialog } from './UserDetailDialog';
+import { TestEmailDialog } from './TestEmailDialog';
 import { format } from 'date-fns';
 import {
   Pagination,
@@ -1214,6 +1215,7 @@ export function AdminUsers() {
                     </TableCell>
                     <TableCell className="py-2" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
+                        <TestEmailDialog userEmail={user.email} userName={user.full_name || ''} />
                         <Dialog open={enrollDialogOpen && selectedUserId === user.id} onOpenChange={(open) => {
                           setEnrollDialogOpen(open);
                           if (!open) {
