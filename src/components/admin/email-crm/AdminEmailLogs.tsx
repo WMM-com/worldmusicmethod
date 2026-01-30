@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,13 +26,38 @@ import {
 const PAGE_SIZE = 30;
 
 export function AdminEmailLogs() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [domainFilter, setDomainFilter] = useState<string>('all');
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('email-logs-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'email_send_log',
+        },
+        () => {
+          // Invalidate and refetch when new logs arrive
+          queryClient.invalidateQueries({ queryKey: ['admin-email-logs'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['admin-email-logs', page, search, statusFilter, typeFilter],
+    queryKey: ['admin-email-logs', page, search, statusFilter, typeFilter, domainFilter],
     queryFn: async () => {
       // Query email_send_log which has the most comprehensive data
       let query = supabase
@@ -46,6 +71,15 @@ export function AdminEmailLogs() {
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter);
+      }
+
+      // Filter by sender domain
+      if (domainFilter !== 'all') {
+        if (domainFilter === 'worldmusicmethod') {
+          query = query.ilike('from_email', '%worldmusicmethod.com%');
+        } else if (domainFilter === 'arts-admin') {
+          query = query.ilike('from_email', '%arts-admin.com%');
+        }
       }
 
       // Filter by email type based on subject patterns
@@ -160,8 +194,8 @@ export function AdminEmailLogs() {
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex items-center gap-4 mb-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by email or subject..."
@@ -173,6 +207,16 @@ export function AdminEmailLogs() {
                 className="pl-9"
               />
             </div>
+            <Select value={domainFilter} onValueChange={(v) => { setDomainFilter(v); setPage(1); }}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="All Domains" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Domains</SelectItem>
+                <SelectItem value="worldmusicmethod">worldmusicmethod.com</SelectItem>
+                <SelectItem value="arts-admin">arts-admin.com</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -203,61 +247,74 @@ export function AdminEmailLogs() {
           </div>
 
           {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Error</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                  </TableCell>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>From</TableHead>
+                  <TableHead>Recipient</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Error</TableHead>
                 </TableRow>
-              ) : data?.data?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No email logs found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data?.data?.map((log) => {
-                  const emailType = getEmailType(log.subject);
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-sm whitespace-nowrap">
-                        {format(new Date(log.sent_at), 'MMM d, yyyy HH:mm')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={emailType.color}>
-                          {emailType.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-sm">
-                        {log.email}
-                      </TableCell>
-                      <TableCell className="max-w-[250px] truncate text-sm font-medium">
-                        {log.subject}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(log.status)}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-xs text-destructive">
-                        {log.error_message || '-'}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    </TableCell>
+                  </TableRow>
+                ) : data?.data?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No email logs found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  data?.data?.map((log: { id: string; sent_at: string; subject: string; from_email?: string; email: string; status: string; error_message?: string }) => {
+                    const emailType = getEmailType(log.subject);
+                    const senderDomain = log.from_email?.includes('arts-admin') 
+                      ? 'Left Brain' 
+                      : log.from_email?.includes('worldmusicmethod') 
+                        ? 'WMM' 
+                        : '-';
+                    return (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-sm whitespace-nowrap">
+                          {format(new Date(log.sent_at), 'MMM d, yyyy HH:mm')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={emailType.color}>
+                            {emailType.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <Badge variant="secondary" className={senderDomain === 'Left Brain' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-800 border-blue-200'}>
+                            {senderDomain}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate text-sm">
+                          {log.email}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-sm font-medium">
+                          {log.subject}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(log.status)}
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate text-xs text-destructive">
+                          {log.error_message || '-'}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Pagination */}
           {data && data.totalPages > 1 && (

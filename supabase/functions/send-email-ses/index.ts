@@ -195,6 +195,34 @@ async function sendEmailViaSES(
   }
 }
 
+// Helper function to log email sends
+async function logEmailSend(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  email: string,
+  fromEmail: string,
+  subject: string,
+  status: 'sent' | 'failed',
+  errorMessage?: string
+): Promise<void> {
+  try {
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    
+    await supabaseAdmin.from('email_send_log').insert({
+      email,
+      from_email: fromEmail,
+      subject,
+      status,
+      error_message: errorMessage || null,
+      sent_at: new Date().toISOString(),
+    });
+  } catch (logError) {
+    console.error('Failed to log email send:', logError);
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -205,6 +233,9 @@ Deno.serve(async (req) => {
     const accessKeyId = Deno.env.get('AWS_SES_ACCESS_KEY_ID');
     const secretAccessKey = Deno.env.get('AWS_SES_SECRET_ACCESS_KEY');
     const region = Deno.env.get('AWS_SES_REGION') || 'eu-west-1';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     if (!accessKeyId || !secretAccessKey) {
       console.error('Missing AWS SES credentials');
@@ -222,9 +253,6 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -268,6 +296,19 @@ Deno.serve(async (req) => {
       secretAccessKey,
       region
     );
+
+    // Log the email send result for each recipient
+    for (const recipient of recipients) {
+      await logEmailSend(
+        supabaseUrl,
+        serviceRoleKey,
+        recipient,
+        fromAddress,
+        subject,
+        result.success ? 'sent' : 'failed',
+        result.error
+      );
+    }
 
     if (!result.success) {
       console.error('Failed to send email:', result.error);
