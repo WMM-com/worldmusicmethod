@@ -985,6 +985,7 @@ export type Database = {
           email: string
           enrollment_id: string | null
           error_message: string | null
+          from_email: string | null
           id: string
           opened_at: string | null
           sent_at: string
@@ -998,6 +999,7 @@ export type Database = {
           email: string
           enrollment_id?: string | null
           error_message?: string | null
+          from_email?: string | null
           id?: string
           opened_at?: string | null
           sent_at?: string
@@ -1011,6 +1013,7 @@ export type Database = {
           email?: string
           enrollment_id?: string | null
           error_message?: string | null
+          from_email?: string | null
           id?: string
           opened_at?: string | null
           sent_at?: string
