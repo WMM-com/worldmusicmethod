@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Mail, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Search, Loader2, RefreshCw, ChevronLeft, ChevronRight, Mail, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -22,8 +22,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const PAGE_SIZE = 30;
+
+interface ErrorLog {
+  email: string;
+  subject: string;
+  error_message: string;
+  sent_at: string;
+}
 
 export function AdminEmailLogs() {
   const queryClient = useQueryClient();
@@ -32,6 +45,8 @@ export function AdminEmailLogs() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [domainFilter, setDomainFilter] = useState<string>('all');
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [selectedError, setSelectedError] = useState<ErrorLog | null>(null);
 
   // Subscribe to realtime updates
   useEffect(() => {
@@ -73,10 +88,11 @@ export function AdminEmailLogs() {
         query = query.eq('status', statusFilter);
       }
 
-      // Filter by sender domain
+      // Filter by sender domain - check for both null and matching patterns
       if (domainFilter !== 'all') {
         if (domainFilter === 'worldmusicmethod') {
-          query = query.ilike('from_email', '%worldmusicmethod.com%');
+          // Match worldmusicmethod.com OR null from_email (legacy emails default to WMM)
+          query = query.or('from_email.ilike.%worldmusicmethod.com%,from_email.is.null');
         } else if (domainFilter === 'arts-admin') {
           query = query.ilike('from_email', '%arts-admin.com%');
         }
@@ -173,8 +189,55 @@ export function AdminEmailLogs() {
     }
   };
 
+  const handleErrorClick = (log: { email: string; subject: string; error_message?: string; sent_at: string }) => {
+    if (log.error_message) {
+      setSelectedError({
+        email: log.email,
+        subject: log.subject,
+        error_message: log.error_message,
+        sent_at: log.sent_at,
+      });
+      setErrorModalOpen(true);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Error Detail Modal */}
+      <Dialog open={errorModalOpen} onOpenChange={setErrorModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Email Delivery Error
+            </DialogTitle>
+          </DialogHeader>
+          {selectedError && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-[100px_1fr] gap-2 text-sm">
+                <span className="font-medium text-muted-foreground">Date:</span>
+                <span>{format(new Date(selectedError.sent_at), 'MMM d, yyyy HH:mm:ss')}</span>
+                
+                <span className="font-medium text-muted-foreground">Recipient:</span>
+                <span className="break-all">{selectedError.email}</span>
+                
+                <span className="font-medium text-muted-foreground">Subject:</span>
+                <span className="break-all">{selectedError.subject}</span>
+              </div>
+              
+              <div className="space-y-2">
+                <span className="font-medium text-sm text-muted-foreground">Error Message:</span>
+                <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                  <p className="text-sm text-destructive whitespace-pre-wrap break-all">
+                    {selectedError.error_message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -305,8 +368,18 @@ export function AdminEmailLogs() {
                         <TableCell>
                           {getStatusBadge(log.status)}
                         </TableCell>
-                        <TableCell className="max-w-[180px] truncate text-xs text-destructive">
-                          {log.error_message || '-'}
+                        <TableCell className="max-w-[180px]">
+                          {log.error_message ? (
+                            <button
+                              onClick={() => handleErrorClick(log)}
+                              className="text-xs text-destructive hover:underline cursor-pointer truncate block max-w-full text-left"
+                              title="Click to view full error"
+                            >
+                              {log.error_message}
+                            </button>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
