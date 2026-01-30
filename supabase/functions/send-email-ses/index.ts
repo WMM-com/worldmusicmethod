@@ -5,12 +5,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Supported sender domains for email separation
+type SenderDomain = 'worldmusicmethod.com' | 'arts-admin.com';
+
+const SENDER_ADDRESSES: Record<SenderDomain, string> = {
+  'worldmusicmethod.com': 'World Music Method <info@worldmusicmethod.com>',
+  'arts-admin.com': 'Left Brain <info@arts-admin.com>',
+};
+
 interface EmailRequest {
   to: string | string[];
   subject: string;
   html: string;
   from?: string;
   replyTo?: string;
+  sender_domain?: SenderDomain; // Optional: defaults to worldmusicmethod.com
 }
 
 // AWS SES API Signature V4 implementation
@@ -231,7 +240,7 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { to, subject, html, from, replyTo }: EmailRequest = await req.json();
+    const { to, subject, html, from, replyTo, sender_domain }: EmailRequest = await req.json();
 
     if (!to || !subject || !html) {
       return new Response(
@@ -241,9 +250,13 @@ Deno.serve(async (req) => {
     }
 
     const recipients = Array.isArray(to) ? to : [to];
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    
+    // Determine the sender address based on sender_domain parameter
+    // Default to worldmusicmethod.com for backward compatibility
+    const domain: SenderDomain = sender_domain === 'arts-admin.com' ? 'arts-admin.com' : 'worldmusicmethod.com';
+    const fromAddress = SENDER_ADDRESSES[domain];
 
-    console.log(`Sending email to ${recipients.join(', ')} from ${fromAddress}`);
+    console.log(`Sending email to ${recipients.join(', ')} from ${fromAddress} (domain: ${domain})`);
 
     const result = await sendEmailViaSES(
       recipients,
