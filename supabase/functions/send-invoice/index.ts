@@ -678,8 +678,8 @@ Deno.serve(async (req) => {
       .single();
 
     const fromName = senderName || profile?.business_name || profile?.full_name || "Left Brain";
-    // Use the SES verified sender address
-    const fromAddress = `${fromName} <info@worldmusicmethod.com>`;
+    // Use arts-admin.com for Left Brain invoice emails to protect main domain reputation
+    const fromAddress = `${fromName} <info@arts-admin.com>`;
     const replyToAddress = senderEmail || user.email;
 
     const emailHtml = generateEmailHtml(invoice, fromName);
