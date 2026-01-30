@@ -110,6 +110,7 @@ function AppContent() {
         <Route path="/" element={<Navigate to="/courses" replace />} />
         <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+        <Route path="/left-brain/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
         <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
         <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
