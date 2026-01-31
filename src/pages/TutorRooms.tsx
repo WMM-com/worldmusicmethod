@@ -299,7 +299,7 @@ export default function TutorRooms() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Room ID</TableHead>
+                        <TableHead>Room Code</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Expires</TableHead>

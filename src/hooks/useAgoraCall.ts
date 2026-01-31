@@ -13,6 +13,8 @@ export interface AgoraCallState {
   localTracks: LocalTracks;
   remoteUsers: IAgoraRTCRemoteUser[];
   error: string | null;
+  mediaPermissionDenied: boolean;
+  mediaPermissionError: string | null;
   isMuted: boolean;
   isVideoOff: boolean;
 }
@@ -30,6 +32,8 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
     localTracks: { audioTrack: null, videoTrack: null },
     remoteUsers: [],
     error: null,
+    mediaPermissionDenied: false,
+    mediaPermissionError: null,
     isMuted: false,
     isVideoOff: false,
   });
@@ -106,25 +110,57 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
         return;
       }
 
-      setState((prev) => ({ ...prev, isConnecting: true, error: null }));
+      setState((prev) => ({
+        ...prev,
+        isConnecting: true,
+        error: null,
+        mediaPermissionDenied: false,
+        mediaPermissionError: null,
+      }));
+
+      const isPermissionDenied = (err: unknown) => {
+        const anyErr = err as any;
+        const message = String(anyErr?.message ?? "");
+        const code = String(anyErr?.code ?? "");
+        return (
+          code === "PERMISSION_DENIED" ||
+          /PERMISSION_DENIED|NotAllowedError|Permission denied/i.test(message)
+        );
+      };
 
       try {
-        // Create local tracks
-        const tracks = await createLocalTracks();
-        tracksRef.current = tracks;
-
         // Join the channel
         await agoraClient.join(appId, channelName, token, uid);
         console.log("[Agora] Joined channel:", channelName);
 
-        // Publish local tracks
-        const tracksToPublish = [tracks.audioTrack, tracks.videoTrack].filter(
-          Boolean
-        ) as (IMicrophoneAudioTrack | ICameraVideoTrack)[];
+        // After joining, attempt to create/publish local tracks.
+        // If the browser denies mic/camera permissions, we still keep the user in the call.
+        let tracks: LocalTracks = { audioTrack: null, videoTrack: null };
+        let mediaPermissionDenied = false;
+        let mediaPermissionError: string | null = null;
 
-        if (tracksToPublish.length > 0) {
-          await agoraClient.publish(tracksToPublish);
-          console.log("[Agora] Published local tracks");
+        try {
+          tracks = await createLocalTracks();
+          tracksRef.current = tracks;
+
+          const tracksToPublish = [tracks.audioTrack, tracks.videoTrack].filter(Boolean) as (
+            | IMicrophoneAudioTrack
+            | ICameraVideoTrack
+          )[];
+
+          if (tracksToPublish.length > 0) {
+            await agoraClient.publish(tracksToPublish);
+            console.log("[Agora] Published local tracks");
+          }
+        } catch (trackErr) {
+          if (isPermissionDenied(trackErr)) {
+            mediaPermissionDenied = true;
+            mediaPermissionError = (trackErr as Error)?.message ?? "Camera/microphone permission denied";
+            tracksRef.current = { audioTrack: null, videoTrack: null };
+            console.warn("[Agora] Joined without mic/camera (permission denied)");
+          } else {
+            throw trackErr;
+          }
         }
 
         setState((prev) => ({
@@ -132,6 +168,8 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
           isJoined: true,
           isConnecting: false,
           localTracks: tracks,
+          mediaPermissionDenied,
+          mediaPermissionError,
         }));
       } catch (error) {
         const err = error as Error;
@@ -147,6 +185,59 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
     },
     [options]
   );
+
+  // Attempt to enable mic/camera after joining (requires user gesture in many browsers)
+  const retryMedia = useCallback(async () => {
+    if (!state.isJoined) return false;
+
+    const isPermissionDenied = (err: unknown) => {
+      const anyErr = err as any;
+      const message = String(anyErr?.message ?? "");
+      const code = String(anyErr?.code ?? "");
+      return (
+        code === "PERMISSION_DENIED" ||
+        /PERMISSION_DENIED|NotAllowedError|Permission denied/i.test(message)
+      );
+    };
+
+    try {
+      const tracks = await createLocalTracks();
+      tracksRef.current = tracks;
+
+      const tracksToPublish = [tracks.audioTrack, tracks.videoTrack].filter(Boolean) as (
+        | IMicrophoneAudioTrack
+        | ICameraVideoTrack
+      )[];
+
+      if (tracksToPublish.length > 0) {
+        await agoraClient.publish(tracksToPublish);
+        console.log("[Agora] Published local tracks");
+      }
+
+      setState((prev) => ({
+        ...prev,
+        localTracks: tracks,
+        mediaPermissionDenied: false,
+        mediaPermissionError: null,
+      }));
+
+      return true;
+    } catch (err) {
+      if (isPermissionDenied(err)) {
+        setState((prev) => ({
+          ...prev,
+          mediaPermissionDenied: true,
+          mediaPermissionError: (err as Error)?.message ?? "Camera/microphone permission denied",
+        }));
+        return false;
+      }
+
+      const e = err as Error;
+      setState((prev) => ({ ...prev, error: e.message }));
+      options.onError?.(e);
+      return false;
+    }
+  }, [options, state.isJoined]);
 
   // Leave the channel
   const leaveChannel = useCallback(async () => {
@@ -166,6 +257,8 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
         remoteUsers: [],
         isMuted: false,
         isVideoOff: false,
+        mediaPermissionDenied: false,
+        mediaPermissionError: null,
       }));
     } catch (error) {
       console.error("[Agora] Error leaving channel:", error);
@@ -230,6 +323,7 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
     ...state,
     joinChannel,
     leaveChannel,
+    retryMedia,
     toggleMute,
     toggleVideo,
     muteRemoteUser,
