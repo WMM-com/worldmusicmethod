@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { IAgoraRTCRemoteUser, ICameraVideoTrack, IMicrophoneAudioTrack } from "agora-rtc-react";
 import {
   agoraClient,
-  AGORA_APP_ID,
   createLocalTracks,
   cleanupTracks,
   LocalTracks,
@@ -98,8 +97,8 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
 
   // Join a channel
   const joinChannel = useCallback(
-    async (channelName: string, token: string | null = null, uid?: string | number) => {
-      if (!AGORA_APP_ID) {
+    async (channelName: string, token: string | null = null, uid?: string | number, appId?: string) => {
+      if (!appId) {
         const error = new Error("Agora App ID is not configured");
         console.error("[Agora]", error.message);
         setState((prev) => ({ ...prev, error: error.message }));
@@ -115,7 +114,7 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
         tracksRef.current = tracks;
 
         // Join the channel
-        await agoraClient.join(AGORA_APP_ID, channelName, token, uid);
+        await agoraClient.join(appId, channelName, token, uid);
         console.log("[Agora] Joined channel:", channelName);
 
         // Publish local tracks
