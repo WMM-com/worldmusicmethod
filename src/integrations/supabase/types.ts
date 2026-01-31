@@ -4245,6 +4245,38 @@ export type Database = {
         }
         Relationships: []
       }
+      room_participants: {
+        Row: {
+          id: string
+          invited_at: string | null
+          joined_at: string | null
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string | null
+          joined_at?: string | null
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string | null
+          joined_at?: string | null
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "video_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shared_events: {
         Row: {
           acknowledged: boolean | null
@@ -5005,6 +5037,39 @@ export type Database = {
           },
         ]
       }
+      video_rooms: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          host_user_id: string
+          id: string
+          is_active: boolean | null
+          room_name: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          host_user_id: string
+          id?: string
+          is_active?: boolean | null
+          room_name: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          host_user_id?: string
+          id?: string
+          is_active?: boolean | null
+          room_name?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_profiles: {
@@ -5076,6 +5141,7 @@ export type Database = {
           price: number
         }[]
       }
+      deactivate_expired_rooms: { Args: never; Returns: undefined }
       email_owns_course: {
         Args: { p_course_id: string; p_email: string }
         Returns: boolean
@@ -5147,6 +5213,15 @@ export type Database = {
         Args: { p_group_id: string; p_user_id: string }
         Returns: boolean
       }
+      is_room_host: {
+        Args: { p_room_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_room_participant: {
+        Args: { p_room_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_tutor: { Args: { p_user_id: string }; Returns: boolean }
       mark_messages_read: {
         Args: { p_conversation_id: string }
         Returns: number
