@@ -8,9 +8,10 @@ import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
 import { NetworkQualityIndicator } from "@/components/video/NetworkQualityIndicator";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { isAuthError, isNetworkError } from "@/lib/agora/errorMessages";
 
 interface VideoRoom {
   id: string;
@@ -166,11 +167,18 @@ export default function VideoCall() {
   // Fetch Agora token when room is loaded
   useEffect(() => {
     if (room && user && !tokenFetched && !tokenLoading) {
-      console.log("[VideoCall] Fetching Agora token for room:", room.room_name);
+      console.log("[VideoCall] === TOKEN FETCH DEBUG ===");
+      console.log("[VideoCall] Room name (channel):", room.room_name);
+      console.log("[VideoCall] User ID:", user.id);
+      console.log("[VideoCall] ===========================");
+      
       fetchToken(room.room_name, "publisher").then((result) => {
         if (result) {
           setTokenFetched(true);
-          console.log("[VideoCall] Token fetched successfully");
+          console.log("[VideoCall] ✓ Token fetched successfully");
+          console.log("[VideoCall] App ID received:", result.appId ? `${result.appId.slice(0, 8)}...` : "NONE");
+        } else {
+          console.error("[VideoCall] ✗ Token fetch failed");
         }
       });
     }
@@ -179,7 +187,13 @@ export default function VideoCall() {
   // Join the call when token is ready
   useEffect(() => {
     if (room && user && agoraToken && dynamicAppId && !isJoined && !isConnecting) {
-      console.log("[VideoCall] Joining channel with secure token and appId");
+      console.log("[VideoCall] === JOINING CHANNEL ===");
+      console.log("[VideoCall] Channel:", room.room_name);
+      console.log("[VideoCall] App ID:", dynamicAppId.slice(0, 8) + "...");
+      console.log("[VideoCall] Token:", agoraToken.slice(0, 20) + "...");
+      console.log("[VideoCall] UID:", user.id);
+      console.log("[VideoCall] =========================");
+      
       joinChannel(room.room_name, agoraToken, user.id, dynamicAppId);
     }
   }, [room, user, agoraToken, dynamicAppId, isJoined, isConnecting, joinChannel]);
@@ -255,17 +269,54 @@ export default function VideoCall() {
     );
   }
 
-  // Agora error
+  // Agora error with helpful troubleshooting
   if (agoraError) {
+    const isAuth = isAuthError({ message: agoraError });
+    const isNetwork = isNetworkError({ message: agoraError });
+    
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md p-6">
           <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
           <h2 className="mt-4 text-xl font-semibold">Connection Error</h2>
           <p className="mt-2 text-muted-foreground">{agoraError}</p>
-          <Button onClick={() => navigate("/")} className="mt-4">
-            Go Home
-          </Button>
+          
+          {/* Troubleshooting hints */}
+          <div className="mt-4 p-4 bg-muted/50 rounded-lg text-left text-sm">
+            <p className="font-medium mb-2">Troubleshooting:</p>
+            <ul className="space-y-1 text-muted-foreground">
+              {isAuth && (
+                <>
+                  <li>• Verify Agora App ID is correct</li>
+                  <li>• Check that App Certificate is enabled</li>
+                  <li>• Ensure project is in "Secured mode"</li>
+                </>
+              )}
+              {isNetwork && (
+                <>
+                  <li>• Check your internet connection</li>
+                  <li>• Try refreshing the page</li>
+                  <li>• Verify Agora services are operational</li>
+                </>
+              )}
+              {!isAuth && !isNetwork && (
+                <>
+                  <li>• Refresh the page and try again</li>
+                  <li>• Check browser console for details</li>
+                </>
+              )}
+            </ul>
+          </div>
+          
+          <div className="flex gap-2 justify-center mt-4">
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+            <Button onClick={() => navigate("/")}>
+              Go Home
+            </Button>
+          </div>
         </div>
       </div>
     );

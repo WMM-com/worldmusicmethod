@@ -6,6 +6,7 @@ import {
   cleanupTracks,
   LocalTracks,
 } from "@/lib/agora/agoraClient";
+import { getAgoraErrorMessage, isAuthError, isNetworkError, isMediaError } from "@/lib/agora/errorMessages";
 
 export interface AgoraCallState {
   isJoined: boolean;
@@ -102,9 +103,17 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
   // Join a channel
   const joinChannel = useCallback(
     async (channelName: string, token: string | null = null, uid?: string | number, appId?: string) => {
+      // Debug logging for troubleshooting
+      console.log("[Agora] === JOIN CHANNEL DEBUG ===");
+      console.log("[Agora] App ID:", appId ? `${appId.slice(0, 8)}...${appId.slice(-4)}` : "NOT SET");
+      console.log("[Agora] Channel:", channelName);
+      console.log("[Agora] UID:", uid);
+      console.log("[Agora] Token:", token ? `${token.slice(0, 20)}...` : "NOT SET");
+      console.log("[Agora] ===========================");
+
       if (!appId) {
-        const error = new Error("Agora App ID is not configured");
-        console.error("[Agora]", error.message);
+        const error = new Error("Agora App ID is not configured. Please check your Agora console settings.");
+        console.error("[Agora] ERROR: Missing App ID");
         setState((prev) => ({ ...prev, error: error.message }));
         options.onError?.(error);
         return;
@@ -118,20 +127,11 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
         mediaPermissionError: null,
       }));
 
-      const isPermissionDenied = (err: unknown) => {
-        const anyErr = err as any;
-        const message = String(anyErr?.message ?? "");
-        const code = String(anyErr?.code ?? "");
-        return (
-          code === "PERMISSION_DENIED" ||
-          /PERMISSION_DENIED|NotAllowedError|Permission denied/i.test(message)
-        );
-      };
-
       try {
-        // Join the channel
+        // Attempt to join the channel
+        console.log("[Agora] Attempting to join channel...");
         await agoraClient.join(appId, channelName, token, uid);
-        console.log("[Agora] Joined channel:", channelName);
+        console.log("[Agora] ✓ Successfully joined channel:", channelName);
 
         // After joining, attempt to create/publish local tracks.
         // If the browser denies mic/camera permissions, we still keep the user in the call.
@@ -153,11 +153,11 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
             console.log("[Agora] Published local tracks");
           }
         } catch (trackErr) {
-          if (isPermissionDenied(trackErr)) {
+          if (isMediaError(trackErr)) {
             mediaPermissionDenied = true;
-            mediaPermissionError = (trackErr as Error)?.message ?? "Camera/microphone permission denied";
+            mediaPermissionError = getAgoraErrorMessage(trackErr);
             tracksRef.current = { audioTrack: null, videoTrack: null };
-            console.warn("[Agora] Joined without mic/camera (permission denied)");
+            console.warn("[Agora] Joined without mic/camera:", mediaPermissionError);
           } else {
             throw trackErr;
           }
@@ -173,13 +173,39 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
         }));
       } catch (error) {
         const err = error as Error;
-        console.error("[Agora] Error joining channel:", err);
+        const friendlyMessage = getAgoraErrorMessage(error);
+        
+        // Enhanced error logging
+        console.error("[Agora] === JOIN ERROR ===");
+        console.error("[Agora] Raw error:", error);
+        console.error("[Agora] Error code:", (error as any)?.code);
+        console.error("[Agora] Error message:", err.message);
+        console.error("[Agora] User-friendly message:", friendlyMessage);
+        
+        if (isAuthError(error)) {
+          console.error("[Agora] ERROR TYPE: Authentication/App ID issue");
+          console.error("[Agora] TROUBLESHOOTING:");
+          console.error("  1. Verify App ID is correct in Agora Console");
+          console.error("  2. Ensure project is in 'Secured mode: APP ID + Token'");
+          console.error("  3. Check that App Certificate is enabled");
+          console.error("  4. Verify token was generated with matching App ID and Certificate");
+        } else if (isNetworkError(error)) {
+          console.error("[Agora] ERROR TYPE: Network/Connection issue");
+          console.error("[Agora] TROUBLESHOOTING:");
+          console.error("  1. Check internet connectivity");
+          console.error("  2. Verify Agora services are operational");
+          console.error("  3. Try from a different network");
+        }
+        console.error("[Agora] ====================");
+        
         setState((prev) => ({
           ...prev,
           isConnecting: false,
-          error: err.message,
+          error: friendlyMessage,
         }));
-        options.onError?.(err);
+        
+        const enhancedError = new Error(friendlyMessage);
+        options.onError?.(enhancedError);
         cleanupTracks(tracksRef.current);
       }
     },
@@ -190,17 +216,8 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
   const retryMedia = useCallback(async () => {
     if (!state.isJoined) return false;
 
-    const isPermissionDenied = (err: unknown) => {
-      const anyErr = err as any;
-      const message = String(anyErr?.message ?? "");
-      const code = String(anyErr?.code ?? "");
-      return (
-        code === "PERMISSION_DENIED" ||
-        /PERMISSION_DENIED|NotAllowedError|Permission denied/i.test(message)
-      );
-    };
-
     try {
+      console.log("[Agora] Retrying media access...");
       const tracks = await createLocalTracks();
       tracksRef.current = tracks;
 
@@ -211,7 +228,7 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
 
       if (tracksToPublish.length > 0) {
         await agoraClient.publish(tracksToPublish);
-        console.log("[Agora] Published local tracks");
+        console.log("[Agora] ✓ Published local tracks");
       }
 
       setState((prev) => ({
@@ -223,18 +240,20 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
 
       return true;
     } catch (err) {
-      if (isPermissionDenied(err)) {
+      const friendlyMessage = getAgoraErrorMessage(err);
+      console.warn("[Agora] Media retry failed:", friendlyMessage);
+      
+      if (isMediaError(err)) {
         setState((prev) => ({
           ...prev,
           mediaPermissionDenied: true,
-          mediaPermissionError: (err as Error)?.message ?? "Camera/microphone permission denied",
+          mediaPermissionError: friendlyMessage,
         }));
         return false;
       }
 
-      const e = err as Error;
-      setState((prev) => ({ ...prev, error: e.message }));
-      options.onError?.(e);
+      setState((prev) => ({ ...prev, error: friendlyMessage }));
+      options.onError?.(new Error(friendlyMessage));
       return false;
     }
   }, [options, state.isJoined]);

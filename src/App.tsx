@@ -153,7 +153,6 @@ function AppContent() {
         <Route path="/meet" element={<ProtectedRoute><Meet /></ProtectedRoute>} />
         <Route path="/meet/:roomId" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
         <Route path="/tutor/rooms" element={<ProtectedRoute><TutorRooms /></ProtectedRoute>} />
-        <Route path="/meet/:roomId" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
         <Route path="/sitemap.xml" element={<Sitemap />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
