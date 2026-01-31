@@ -8,10 +8,13 @@ import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
 import { NetworkQualityIndicator } from "@/components/video/NetworkQualityIndicator";
-import { Loader2, AlertCircle, RefreshCw, Copy, Check } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, Copy, Check, ExternalLink, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { isAuthError, isNetworkError } from "@/lib/agora/errorMessages";
+
+// Import debug utilities (available in window for console debugging)
+import "@/lib/agora/debugUtils";
 
 interface VideoRoom {
   id: string;
@@ -270,45 +273,114 @@ export default function VideoCall() {
   }
 
   // Agora error with helpful troubleshooting
-  if (agoraError) {
-    const isAuth = isAuthError({ message: agoraError });
-    const isNetwork = isNetworkError({ message: agoraError });
+  if (agoraError || tokenError) {
+    const displayError = agoraError || tokenError || "Connection error";
+    const isAuth = isAuthError({ message: displayError });
+    const isNetwork = isNetworkError({ message: displayError });
+    const isInvalidVendorKey = displayError.toLowerCase().includes("invalid vendor key") ||
+                               displayError.toLowerCase().includes("can_not_get_gateway_server");
+    
+    const handleRunDiagnostics = () => {
+      console.log("Running Agora diagnostics...");
+      // @ts-expect-error - debugAgora is attached to window
+      if (typeof window !== "undefined" && window.debugAgora) {
+        // @ts-expect-error - debugAgora is attached to window
+        window.debugAgora(room?.room_name || "test-room");
+      }
+      toast.info("Diagnostics running - check browser console (F12)");
+    };
     
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center max-w-md p-6">
+        <div className="text-center max-w-lg p-6">
           <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
           <h2 className="mt-4 text-xl font-semibold">Connection Error</h2>
-          <p className="mt-2 text-muted-foreground">{agoraError}</p>
+          <p className="mt-2 text-muted-foreground font-mono text-sm break-all">{displayError}</p>
           
-          {/* Troubleshooting hints */}
+          {/* Specific error guidance */}
+          {isInvalidVendorKey && (
+            <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-left">
+              <p className="font-semibold text-destructive flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Invalid Agora App ID Detected
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The Agora SDK cannot authenticate with the provided App ID. This typically means:
+              </p>
+              <ul className="mt-2 text-sm space-y-1 text-muted-foreground list-disc list-inside">
+                <li>App ID is incorrect or has typos</li>
+                <li>The Agora project is disabled or deleted</li>
+                <li>App Certificate is not enabled</li>
+                <li>Token was generated with a different App ID</li>
+              </ul>
+            </div>
+          )}
+          
+          {/* Troubleshooting checklist */}
           <div className="mt-4 p-4 bg-muted/50 rounded-lg text-left text-sm">
-            <p className="font-medium mb-2">Troubleshooting:</p>
-            <ul className="space-y-1 text-muted-foreground">
-              {isAuth && (
+            <p className="font-medium mb-2">Troubleshooting Checklist:</p>
+            <ul className="space-y-2 text-muted-foreground">
+              {(isAuth || isInvalidVendorKey) && (
                 <>
-                  <li>• Verify Agora App ID is correct</li>
-                  <li>• Check that App Certificate is enabled</li>
-                  <li>• Ensure project is in "Secured mode"</li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">1.</span>
+                    <span>
+                      Go to{" "}
+                      <a 
+                        href="https://console.agora.io/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary underline inline-flex items-center gap-1"
+                      >
+                        Agora Console <ExternalLink className="h-3 w-3" />
+                      </a>{" "}
+                      and verify your project is <strong>active</strong>
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">2.</span>
+                    <span>Copy App ID exactly (32 hex characters, no spaces)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">3.</span>
+                    <span>Ensure "App Certificate" is enabled (for token authentication)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">4.</span>
+                    <span>Update <code className="bg-muted px-1 rounded">AGORA_APP_ID</code> and <code className="bg-muted px-1 rounded">AGORA_APP_CERTIFICATE</code> in backend secrets</span>
+                  </li>
                 </>
               )}
               {isNetwork && (
                 <>
-                  <li>• Check your internet connection</li>
-                  <li>• Try refreshing the page</li>
-                  <li>• Verify Agora services are operational</li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Check your internet connection</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Try refreshing the page</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">•</span>
+                    <span>Check if Agora services are operational</span>
+                  </li>
                 </>
               )}
-              {!isAuth && !isNetwork && (
+              {!isAuth && !isNetwork && !isInvalidVendorKey && (
                 <>
                   <li>• Refresh the page and try again</li>
-                  <li>• Check browser console for details</li>
+                  <li>• Check browser console (F12) for details</li>
                 </>
               )}
             </ul>
           </div>
           
-          <div className="flex gap-2 justify-center mt-4">
+          <div className="flex gap-2 justify-center mt-4 flex-wrap">
+            <Button variant="outline" onClick={handleRunDiagnostics}>
+              <Bug className="w-4 h-4 mr-2" />
+              Run Diagnostics
+            </Button>
             <Button variant="outline" onClick={() => window.location.reload()}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
@@ -317,28 +389,32 @@ export default function VideoCall() {
               Go Home
             </Button>
           </div>
+          
+          <p className="mt-4 text-xs text-muted-foreground">
+            Open browser console (F12) and run <code className="bg-muted px-1 rounded">debugAgora("channel-name")</code> for detailed diagnostics
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-900 flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="bg-zinc-800/50 backdrop-blur-sm border-b border-zinc-700 px-4 py-3">
+      <header className="bg-muted/50 backdrop-blur-sm border-b border-border px-4 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <h1 className="text-white font-medium">
+            <h1 className="text-foreground font-medium">
               {room?.type === "1on1" ? "Private Call" : "Group Call"}
             </h1>
             {isConnecting && (
-              <span className="text-xs text-yellow-400 flex items-center gap-1">
+              <span className="text-xs text-amber-500 flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Connecting...
               </span>
             )}
             {isJoined && (
-              <span className="text-xs text-green-400">● Connected</span>
+              <span className="text-xs text-emerald-500">● Connected</span>
             )}
           </div>
           <div className="flex items-center gap-3">
