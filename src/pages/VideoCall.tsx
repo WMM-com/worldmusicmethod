@@ -137,11 +137,11 @@ export default function VideoCall() {
 
   // Join the call when token is ready
   useEffect(() => {
-    if (room && user && agoraToken && !isJoined && !isConnecting) {
-      console.log("[VideoCall] Joining channel with secure token");
-      joinChannel(room.room_name, agoraToken, user.id);
+    if (room && user && agoraToken && dynamicAppId && !isJoined && !isConnecting) {
+      console.log("[VideoCall] Joining channel with secure token and appId");
+      joinChannel(room.room_name, agoraToken, user.id, dynamicAppId);
     }
-  }, [room, user, agoraToken, isJoined, isConnecting, joinChannel]);
+  }, [room, user, agoraToken, dynamicAppId, isJoined, isConnecting, joinChannel]);
 
   // Handle network quality updates
   useEffect(() => {
