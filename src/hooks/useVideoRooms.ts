@@ -10,6 +10,9 @@ interface VideoRoom {
   host_user_id: string;
   created_at: string;
   expires_at: string;
+  token: string | null;
+  status: "pending" | "ready" | "error" | null;
+  last_error: string | null;
 }
 
 interface CreateRoomOptions {
