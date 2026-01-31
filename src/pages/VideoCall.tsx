@@ -87,33 +87,42 @@ export default function VideoCall() {
 
     const fetchRoom = async () => {
       try {
-        const { data, error } = await supabase
-          .from("video_rooms")
-          .select("*")
-          .eq("room_name", roomId)
-          .single();
+        // Use backend function to avoid direct table access issues for non-hosts.
+        const { data, error } = await supabase.functions.invoke("join-video-room", {
+          body: { room_name: roomId },
+        });
 
-        if (error) throw error;
+        if (error) {
+          throw error;
+        }
 
-        if (!data) {
+        if (!data?.success) {
+          setRoomError(data?.error || "Failed to load room details");
+          return;
+        }
+
+        const roomData = data.room as VideoRoom;
+
+        if (!roomData) {
           setRoomError("Room not found");
           return;
         }
 
-        if (!data.is_active) {
+        if (!roomData.is_active) {
           setRoomError("This room is no longer active");
           return;
         }
 
-        if (new Date(data.expires_at) < new Date()) {
+        if (new Date(roomData.expires_at) < new Date()) {
           setRoomError("This room has expired");
           return;
         }
 
-        setRoom(data as VideoRoom);
+        setRoom(roomData);
       } catch (err) {
         console.error("[VideoCall] Error fetching room:", err);
-        setRoomError("Failed to load room details");
+        const message = err instanceof Error ? err.message : "Failed to load room details";
+        setRoomError(message);
       } finally {
         setRoomLoading(false);
       }
