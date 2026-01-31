@@ -12,7 +12,6 @@ import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
 import { NetworkQualityIndicator } from "@/components/video/NetworkQualityIndicator";
 import { ParticipantsSidebar } from "@/components/video/ParticipantsSidebar";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Loader2, AlertCircle, RefreshCw, ExternalLink, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -20,6 +19,7 @@ import { isAuthError, isNetworkError } from "@/lib/agora/errorMessages";
 
 // Import debug utilities (available in window for console debugging)
 import "@/lib/agora/debugUtils";
+
 interface VideoRoom {
   id: string;
   room_name: string;
@@ -526,49 +526,28 @@ export default function VideoCall() {
         </div>
       </header>
 
-      {/* Video Grid - Resizable */}
-      <main className="flex-1 p-4 overflow-hidden">
+      {/* Video Grid */}
+      <main className="flex-1 p-4 relative">
         <div className="max-w-7xl mx-auto h-full">
-          <ResizablePanelGroup direction="vertical" className="h-full">
-            {/* Top spacer panel */}
-            <ResizablePanel defaultSize={5} minSize={0} maxSize={30}>
-              <div className="h-full" />
-            </ResizablePanel>
-            
-            <ResizableHandle withHandle className="bg-border/50 hover:bg-primary/50 transition-colors" />
-            
-            {/* Video container panel */}
-            <ResizablePanel defaultSize={90} minSize={40}>
-              <div className="h-full px-4 relative">
-                {/* Remote Users Grid */}
-                <RemoteVideoGrid 
-                  remoteUsers={remoteUsers} 
-                  networkQuality={networkQuality}
-                  isHost={isHost}
-                  onMuteUser={handleMuteRemoteUser}
-                  speakingByUid={speakingByUid}
-                  displayNameByUid={displayNameByUid}
-                  hostByUid={hostByUid}
-                />
+          {/* Remote Users Grid */}
+          <RemoteVideoGrid 
+            remoteUsers={remoteUsers} 
+            networkQuality={networkQuality}
+            isHost={isHost}
+            onMuteUser={handleMuteRemoteUser}
+            speakingByUid={speakingByUid}
+            displayNameByUid={displayNameByUid}
+            hostByUid={hostByUid}
+          />
 
-                {/* Local Video (Picture-in-Picture style) */}
-                <LocalVideoTile
-                  videoTrack={localTracks.videoTrack}
-                  isMuted={isMuted}
-                  isVideoOff={isVideoOff}
-                  networkQuality={networkQuality}
-                  isSpeaking={isLocalSpeaking}
-                />
-              </div>
-            </ResizablePanel>
-            
-            <ResizableHandle withHandle className="bg-border/50 hover:bg-primary/50 transition-colors" />
-            
-            {/* Bottom spacer panel */}
-            <ResizablePanel defaultSize={5} minSize={0} maxSize={30}>
-              <div className="h-full" />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+          {/* Local Video (Picture-in-Picture style) */}
+          <LocalVideoTile
+            videoTrack={localTracks.videoTrack}
+            isMuted={isMuted}
+            isVideoOff={isVideoOff}
+            networkQuality={networkQuality}
+            isSpeaking={isLocalSpeaking}
+          />
         </div>
       </main>
 
