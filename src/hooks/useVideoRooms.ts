@@ -26,7 +26,9 @@ export function useVideoRooms() {
   // Create a new room via edge function
   const createRoom = useCallback(async (options: CreateRoomOptions = {}) => {
     if (!user) {
-      setError("You must be logged in to create a room");
+      const errMsg = "You must be logged in to create a room";
+      setError(errMsg);
+      console.error("[useVideoRooms]", errMsg);
       return null;
     }
 
@@ -34,6 +36,8 @@ export function useVideoRooms() {
     setError(null);
 
     try {
+      console.log("[useVideoRooms] Creating room:", options);
+      
       const { data, error: fnError } = await supabase.functions.invoke("generate-room-name", {
         body: {
           type: options.type || "group",
@@ -43,11 +47,14 @@ export function useVideoRooms() {
       });
 
       if (fnError) {
-        throw new Error(fnError.message);
+        console.error("[useVideoRooms] Function error:", fnError);
+        throw new Error(fnError.message || "Failed to create room");
       }
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to create room");
+      if (!data?.success) {
+        const errorMsg = data?.error || "Failed to create room - unknown error";
+        console.error("[useVideoRooms] API error:", errorMsg);
+        throw new Error(errorMsg);
       }
 
       console.log("[useVideoRooms] Room created:", data.room);
