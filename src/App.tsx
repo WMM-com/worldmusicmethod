@@ -52,6 +52,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Membership from "./pages/Membership";
 import Unsubscribe from "./pages/Unsubscribe";
 import Sitemap from "./pages/Sitemap";
+import VideoCall from "./pages/VideoCall";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +148,7 @@ function AppContent() {
         <Route path="/artist-dashboard" element={<ProtectedRoute><ArtistDashboard /></ProtectedRoute>} />
         
         <Route path="/left-brain" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/meet/:roomId" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
         <Route path="/sitemap.xml" element={<Sitemap />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
