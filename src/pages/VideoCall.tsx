@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgoraCall } from "@/hooks/useAgoraCall";
 import { useAgoraToken } from "@/hooks/useAgoraToken";
+import { useMediaPreflight } from "@/hooks/useMediaPreflight";
+import { useAgoraVolumeIndicator } from "@/hooks/useAgoraVolumeIndicator";
 import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
@@ -40,10 +42,13 @@ export default function VideoCall() {
   const { 
     token: agoraToken, 
     appId: dynamicAppId,
+    uid: agoraUid,
     loading: tokenLoading, 
     error: tokenError, 
     fetchToken 
   } = useAgoraToken();
+
+  const mediaPreflight = useMediaPreflight();
   
   // Check if current user is the host
   const isHost = room && user ? room.host_user_id === user.id : false;
@@ -75,6 +80,9 @@ export default function VideoCall() {
       toast.error(`Call error: ${error.message}`);
     },
   });
+
+  const { speakingByUid } = useAgoraVolumeIndicator({ enabled: isJoined });
+  const isLocalSpeaking = !!(agoraUid !== null && speakingByUid[String(agoraUid)]);
   
   // Handler for host to mute/unmute remote users
   const handleMuteRemoteUser = async (uid: string | number, mute: boolean) => {
@@ -169,37 +177,44 @@ export default function VideoCall() {
 
   // Fetch Agora token when room is loaded
   useEffect(() => {
+    // Browsers often block permission prompts without a user gesture.
+    // We gate token/join behind a user decision (enable mic/cam or continue without).
+    if (!mediaPreflight.hasDecided) return;
+
     if (room && user && !tokenFetched && !tokenLoading) {
       console.log("[VideoCall] === TOKEN FETCH DEBUG ===");
       console.log("[VideoCall] Room name (channel):", room.room_name);
       console.log("[VideoCall] User ID:", user.id);
+      console.log("[VideoCall] Media preflight:", mediaPreflight.status);
       console.log("[VideoCall] ===========================");
       
-      fetchToken(room.room_name, { role: "publisher", uid: 0 }).then((result) => {
+      // Let backend generate a unique numeric UID for this session.
+      fetchToken(room.room_name, { role: "publisher", uid: null }).then((result) => {
         if (result) {
           setTokenFetched(true);
           console.log("[VideoCall] ✓ Token fetched successfully");
           console.log("[VideoCall] App ID received:", result.appId ? `${result.appId.slice(0, 8)}...` : "NONE");
+          console.log("[VideoCall] UID received:", result.uid);
         } else {
           console.error("[VideoCall] ✗ Token fetch failed");
         }
       });
     }
-  }, [room, user, tokenFetched, tokenLoading, fetchToken]);
+  }, [room, user, tokenFetched, tokenLoading, fetchToken, mediaPreflight.hasDecided, mediaPreflight.status]);
 
   // Join the call when token is ready
   useEffect(() => {
-    if (room && user && agoraToken && dynamicAppId && !isJoined && !isConnecting) {
+    if (room && user && agoraToken && dynamicAppId && agoraUid !== null && !isJoined && !isConnecting) {
       console.log("[VideoCall] === JOINING CHANNEL ===");
       console.log("[VideoCall] Channel:", room.room_name);
       console.log("[VideoCall] App ID:", dynamicAppId.slice(0, 8) + "...");
       console.log("[VideoCall] Token:", agoraToken.slice(0, 20) + "...");
-      console.log("[VideoCall] UID:", user.id);
+      console.log("[VideoCall] UID:", agoraUid);
       console.log("[VideoCall] =========================");
       
-      joinChannel(room.room_name, agoraToken, user.id, dynamicAppId);
+      joinChannel(room.room_name, agoraToken, agoraUid, dynamicAppId);
     }
-  }, [room, user, agoraToken, dynamicAppId, isJoined, isConnecting, joinChannel]);
+  }, [room, user, agoraToken, dynamicAppId, agoraUid, isJoined, isConnecting, joinChannel]);
 
   // Handle network quality updates
   useEffect(() => {
@@ -398,6 +413,40 @@ export default function VideoCall() {
     );
   }
 
+  // Preflight: ask for camera/mic permission before joining (requires user gesture)
+  if (!mediaPreflight.hasDecided) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center max-w-lg p-6">
+          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground" />
+          <h2 className="mt-4 text-xl font-semibold">Enable camera & microphone</h2>
+          <p className="mt-2 text-muted-foreground">
+            To join the call, your browser needs permission to access your camera and microphone.
+          </p>
+
+          {mediaPreflight.error && (
+            <div className="mt-4 p-4 bg-muted/50 rounded-lg text-left text-sm">
+              <p className="font-medium">Permission error</p>
+              <p className="mt-1 text-muted-foreground font-mono break-all">{mediaPreflight.error}</p>
+              <p className="mt-2 text-muted-foreground">
+                If this keeps happening, click the lock icon in your browser address bar and allow Camera/Microphone.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 justify-center mt-6 flex-wrap">
+            <Button onClick={mediaPreflight.request}>
+              Enable camera & mic
+            </Button>
+            <Button variant="outline" onClick={mediaPreflight.skip}>
+              Continue without
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -441,6 +490,7 @@ export default function VideoCall() {
             networkQuality={networkQuality}
             isHost={isHost}
             onMuteUser={handleMuteRemoteUser}
+            speakingByUid={speakingByUid}
           />
 
           {/* Local Video (Picture-in-Picture style) */}
@@ -449,6 +499,7 @@ export default function VideoCall() {
             isMuted={isMuted}
             isVideoOff={isVideoOff}
             networkQuality={networkQuality}
+            isSpeaking={isLocalSpeaking}
           />
         </div>
       </main>
@@ -460,6 +511,7 @@ export default function VideoCall() {
         onToggleMute={toggleMute}
         onToggleVideo={toggleVideo}
         onLeave={handleLeave}
+        isSpeaking={isLocalSpeaking}
       />
     </div>
   );

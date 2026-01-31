@@ -308,8 +308,28 @@ serve(async (req) => {
       );
     }
 
-    // Use uid=0 for auto-assign
-    const agoraUid = uid === undefined || uid === null || uid === 0 ? 0 : parseInt(String(uid), 10) || 0;
+    // IMPORTANT: The token must be generated for the exact UID used in client.join().
+    // If uid is not provided (or 0), generate a unique numeric UID for this session.
+    let agoraUid = 0;
+
+    const generateUid = () => {
+      const rand = crypto.getRandomValues(new Uint32Array(1))[0];
+      // 1..2147483646
+      return (rand % 2147483646) + 1;
+    };
+
+    if (uid === undefined || uid === null || uid === 0) {
+      agoraUid = generateUid();
+      console.log("[AGORA-TOKEN] Auto-generated UID:", agoraUid);
+    } else {
+      const parsed = parseInt(String(uid), 10);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        agoraUid = parsed;
+      } else {
+        agoraUid = generateUid();
+        console.log("[AGORA-TOKEN] Invalid UID provided; auto-generated UID:", agoraUid);
+      }
+    }
     
     // Role: 1 = publisher, 2 = subscriber
     const agoraRole = role === "subscriber" ? 2 : 1;

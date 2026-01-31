@@ -22,7 +22,7 @@ interface UseAgoraTokenReturn {
 
 interface FetchTokenOptions {
   role?: "publisher" | "subscriber";
-  uid?: number;
+  uid?: number | null;
   maxRetries?: number;
   retryDelay?: number;
 }
@@ -47,7 +47,7 @@ export function useAgoraToken(): UseAgoraTokenReturn {
   ): Promise<AgoraTokenResponse | null> => {
     const {
       role = "publisher",
-      uid: requestedUid = 0, // Default to 0 to avoid UID mismatches
+      uid: requestedUid = null, // null => backend auto-generates a unique numeric uid
       maxRetries = DEFAULT_MAX_RETRIES,
       retryDelay = DEFAULT_RETRY_DELAY,
     } = options;
@@ -65,7 +65,7 @@ export function useAgoraToken(): UseAgoraTokenReturn {
       try {
         console.log("[useAgoraToken] Fetching token for channel:", channelName);
         console.log("[useAgoraToken] Attempt:", retryCountRef.current + 1, "of", maxRetries);
-        console.log("[useAgoraToken] UID:", requestedUid, "(0 = auto-assign)");
+        console.log("[useAgoraToken] UID:", requestedUid ?? "(auto-generated)");
 
         const { data, error: fnError } = await supabase.functions.invoke("generate-agora-token", {
           body: {

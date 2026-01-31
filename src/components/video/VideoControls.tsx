@@ -13,6 +13,7 @@ interface VideoControlsProps {
   onToggleMute: () => Promise<void>;
   onToggleVideo: () => Promise<void>;
   onLeave: () => void;
+  isSpeaking?: boolean;
 }
 
 export function VideoControls({
@@ -21,6 +22,7 @@ export function VideoControls({
   onToggleMute,
   onToggleVideo,
   onLeave,
+  isSpeaking = false,
 }: VideoControlsProps) {
   return (
     <footer className="bg-zinc-800/80 backdrop-blur-sm border-t border-zinc-700 px-4 py-4">
@@ -36,7 +38,10 @@ export function VideoControls({
                 "w-14 h-14 rounded-full transition-all",
                 isMuted
                   ? "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                  : "bg-zinc-700 hover:bg-zinc-600 text-white"
+                  : cn(
+                      "bg-zinc-700 hover:bg-zinc-600 text-white",
+                      isSpeaking ? "ring-2 ring-primary/60 ring-offset-2 ring-offset-background" : ""
+                    )
               )}
             >
               {isMuted ? (
