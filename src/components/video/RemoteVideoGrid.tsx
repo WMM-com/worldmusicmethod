@@ -52,6 +52,12 @@ function RemoteVideoTile({
     
     // Play the video track in the container
     try {
+      // Ensure we don't have an old attachment lingering on re-renders
+      try {
+        videoTrack.stop();
+      } catch (err) {
+        // Ignore if it wasn't playing
+      }
       videoTrack.play(container);
       setVideoPlaying(true);
       console.log("[RemoteVideoTile] ✓ Video playing for user:", user.uid);
@@ -99,8 +105,8 @@ function RemoteVideoTile({
 
   const hasAudio = user.hasAudio && user.audioTrack;
   const isSpeaking = !!speakingByUid?.[String(user.uid)];
-  // Show video container when we have a video track OR are expecting one
-  const showVideo = videoPlaying || (user.hasVideo && user.videoTrack);
+  // Show video container when we have a video track (don't rely on hasVideo, which can lag)
+  const showVideo = videoPlaying || !!user.videoTrack;
 
   const handleMuteToggle = async () => {
     if (!onMuteUser) return;
@@ -124,9 +130,9 @@ function RemoteVideoTile({
       <div 
         ref={videoRef} 
         className={cn(
-          "absolute inset-0 w-full h-full",
+          "absolute inset-0 w-full h-full transition-opacity",
           "[&_video]:w-full [&_video]:h-full [&_video]:object-cover",
-          showVideo ? "block" : "hidden"
+          showVideo ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
       />
       

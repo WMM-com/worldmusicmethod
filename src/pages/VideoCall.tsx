@@ -463,13 +463,13 @@ export default function VideoCall() {
               {room?.type === "1on1" ? "Private Call" : "Group Call"}
             </h1>
             {isConnecting && (
-              <span className="text-xs text-amber-500 flex items-center gap-1">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Connecting...
               </span>
             )}
             {isJoined && (
-              <span className="text-xs text-emerald-500">● Connected</span>
+              <span className="text-xs text-primary">● Connected</span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -488,8 +488,8 @@ export default function VideoCall() {
       </header>
 
       {/* Video Grid - fills available space */}
-      <main className="flex-1 p-4 relative overflow-hidden">
-        <div className="h-full w-full">
+      <main className="flex-1 min-h-0 p-4 relative overflow-hidden">
+        <div className="h-full w-full min-h-0">
           {/* Remote Users Grid */}
           <RemoteVideoGrid 
             remoteUsers={remoteUsers} 
