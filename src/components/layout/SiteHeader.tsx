@@ -286,6 +286,18 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                       Artist Dashboard
                     </DropdownMenuItem>
                   )}
+                  {/* Tutor Rooms - only shown for admins/tutors */}
+                  {hasAdminAccess && (
+                    <DropdownMenuItem onClick={() => navigate('/tutor/rooms')}>
+                      <Video className="mr-2 h-4 w-4" />
+                      Tutor Rooms
+                    </DropdownMenuItem>
+                  )}
+                  {/* Join Meeting - for all authenticated users */}
+                  <DropdownMenuItem onClick={() => navigate('/meet')}>
+                    <Video className="mr-2 h-4 w-4" />
+                    Join Meeting
+                  </DropdownMenuItem>
                   {profileItems.map((item) => {
                     const IconComponent = getIcon(item.icon);
                     // Insert separator before admin items
@@ -365,14 +377,33 @@ export function SiteHeader({ rightAddon }: { rightAddon?: ReactNode }) {
                     </Link>
                   )}
                   {hasAdminAccess && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      Admin Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        to="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                      >
+                        <Shield className="h-4 w-4" />
+                        Admin Dashboard
+                      </Link>
+                      <Link
+                        to="/tutor/rooms"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                      >
+                        <Video className="h-4 w-4" />
+                        Tutor Rooms
+                      </Link>
+                    </>
                   )}
+                  <Link
+                    to="/meet"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-2 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                  >
+                    <Video className="h-4 w-4" />
+                    Join Meeting
+                  </Link>
                   <Button
                     variant="ghost"
                     className="justify-start px-2"
