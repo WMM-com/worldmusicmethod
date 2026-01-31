@@ -193,6 +193,31 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
     }
   }, [state.isVideoOff]);
 
+  // Mute/unmute remote user (host only)
+  const muteRemoteUser = useCallback(async (uid: string | number, mute: boolean) => {
+    const remoteUser = state.remoteUsers.find((u) => u.uid === uid);
+    if (!remoteUser) {
+      throw new Error(`Remote user ${uid} not found`);
+    }
+
+    if (!remoteUser.audioTrack) {
+      throw new Error(`Remote user ${uid} has no audio track`);
+    }
+
+    try {
+      // Stop or play the audio track based on mute state
+      if (mute) {
+        remoteUser.audioTrack.stop();
+      } else {
+        remoteUser.audioTrack.play();
+      }
+      console.log(`[Agora] Remote user ${uid} audio ${mute ? "muted" : "unmuted"}`);
+    } catch (error) {
+      console.error("[Agora] Error muting remote user:", error);
+      throw error;
+    }
+  }, [state.remoteUsers]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -208,5 +233,6 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
     leaveChannel,
     toggleMute,
     toggleVideo,
+    muteRemoteUser,
   };
 }
