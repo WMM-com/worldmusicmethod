@@ -30,28 +30,77 @@ function RemoteVideoTile({
   const videoRef = useRef<HTMLDivElement>(null);
   const [isRemoteMuted, setIsRemoteMuted] = useState(false);
   const [isMuting, setIsMuting] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(false);
 
+  // Play video track when available and container is ready
   useEffect(() => {
-    if (user.videoTrack && videoRef.current) {
-      user.videoTrack.play(videoRef.current);
+    const container = videoRef.current;
+    const videoTrack = user.videoTrack;
+    
+    if (!container) {
+      console.log("[RemoteVideoTile] No container ref for user:", user.uid);
+      return;
     }
-    return () => {
-      user.videoTrack?.stop();
-    };
-  }, [user.videoTrack]);
+    
+    if (!videoTrack) {
+      console.log("[RemoteVideoTile] No video track for user:", user.uid);
+      setVideoPlaying(false);
+      return;
+    }
 
+    console.log("[RemoteVideoTile] Playing video for user:", user.uid);
+    
+    // Play the video track in the container
+    try {
+      videoTrack.play(container);
+      setVideoPlaying(true);
+      console.log("[RemoteVideoTile] ✓ Video playing for user:", user.uid);
+    } catch (err) {
+      console.error("[RemoteVideoTile] Failed to play video for user:", user.uid, err);
+      setVideoPlaying(false);
+    }
+
+    return () => {
+      console.log("[RemoteVideoTile] Stopping video for user:", user.uid);
+      try {
+        videoTrack.stop();
+      } catch (err) {
+        // Track may already be stopped
+      }
+      setVideoPlaying(false);
+    };
+  }, [user.uid, user.videoTrack]);
+
+  // Play audio track when available
   useEffect(() => {
-    if (user.audioTrack && !isRemoteMuted) {
-      user.audioTrack.play();
+    const audioTrack = user.audioTrack;
+    
+    if (!audioTrack) {
+      return;
     }
-    return () => {
-      user.audioTrack?.stop();
-    };
-  }, [user.audioTrack, isRemoteMuted]);
 
-  const hasVideo = user.hasVideo && user.videoTrack;
+    if (!isRemoteMuted) {
+      console.log("[RemoteVideoTile] Playing audio for user:", user.uid);
+      try {
+        audioTrack.play();
+      } catch (err) {
+        console.error("[RemoteVideoTile] Failed to play audio:", err);
+      }
+    }
+
+    return () => {
+      try {
+        audioTrack.stop();
+      } catch (err) {
+        // Track may already be stopped
+      }
+    };
+  }, [user.uid, user.audioTrack, isRemoteMuted]);
+
   const hasAudio = user.hasAudio && user.audioTrack;
   const isSpeaking = !!speakingByUid?.[String(user.uid)];
+  // Show video container when we have a video track OR are expecting one
+  const showVideo = videoPlaying || (user.hasVideo && user.videoTrack);
 
   const handleMuteToggle = async () => {
     if (!onMuteUser) return;
@@ -70,14 +119,21 @@ function RemoteVideoTile({
   };
 
   return (
-    <div className="relative w-full h-full rounded-xl overflow-hidden bg-zinc-800 shadow-lg group">
-      {/* Video or Avatar */}
-      {hasVideo ? (
-        <div ref={videoRef} className="w-full h-full object-cover" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-800">
-          <div className="w-24 h-24 rounded-full bg-zinc-600 flex items-center justify-center">
-            <User className="w-12 h-12 text-zinc-400" />
+    <div className="relative w-full h-full rounded-xl overflow-hidden bg-muted shadow-lg group min-h-[200px]">
+      {/* Video container - always present so track can play into it */}
+      <div 
+        ref={videoRef} 
+        className={cn(
+          "w-full h-full",
+          showVideo ? "block" : "hidden"
+        )}
+      />
+      
+      {/* Avatar fallback when no video */}
+      {!showVideo && (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
+          <div className="w-24 h-24 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+            <User className="w-12 h-12 text-muted-foreground" />
           </div>
         </div>
       )}
@@ -96,8 +152,8 @@ function RemoteVideoTile({
             className={cn(
               "w-10 h-10 rounded-full p-0",
               isRemoteMuted
-                ? "bg-red-500/80 hover:bg-red-500 text-white"
-                : "bg-zinc-700/80 hover:bg-zinc-600 text-white"
+                ? "bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+                : "bg-muted/80 hover:bg-muted text-foreground"
             )}
             title={isRemoteMuted ? "Unmute user" : "Mute user"}
           >
@@ -112,11 +168,11 @@ function RemoteVideoTile({
 
       {/* User info bar */}
       <div className="absolute bottom-0 left-0 right-0 px-3 py-2 flex items-center justify-between">
-        <span className="text-sm text-white font-medium truncate">
+        <span className="text-sm text-foreground font-medium truncate">
           User {String(user.uid).slice(0, 8)}
         </span>
         <div className="flex items-center gap-2">
-          {(!hasAudio || isRemoteMuted) && <MicOff className="w-4 h-4 text-red-400" />}
+          {(!hasAudio || isRemoteMuted) && <MicOff className="w-4 h-4 text-destructive" />}
           <NetworkQualityBars quality={networkQuality} size="sm" />
         </div>
       </div>
@@ -124,13 +180,13 @@ function RemoteVideoTile({
       {/* Speaking indicator */}
       {hasAudio && !isRemoteMuted && isSpeaking && (
         <div className="absolute top-3 left-3">
-          <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+          <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
         </div>
       )}
 
       {/* Muted by host indicator */}
       {isRemoteMuted && (
-        <div className="absolute top-3 left-3 bg-red-500/80 rounded-full px-2 py-1 text-xs text-white flex items-center gap-1">
+        <div className="absolute top-3 left-3 bg-destructive/80 rounded-full px-2 py-1 text-xs text-destructive-foreground flex items-center gap-1">
           <VolumeX className="w-3 h-3" />
           Muted
         </div>
@@ -161,8 +217,8 @@ export function RemoteVideoGrid({
   if (userCount === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center text-zinc-400">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-zinc-800 flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
             <User className="w-12 h-12" />
           </div>
           <p className="text-lg font-medium">Waiting for others to join...</p>
