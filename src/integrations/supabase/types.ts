@@ -5044,7 +5044,10 @@ export type Database = {
           host_user_id: string
           id: string
           is_active: boolean | null
+          last_error: string | null
           room_name: string
+          status: string | null
+          token: string | null
           type: string
           updated_at: string | null
         }
@@ -5054,7 +5057,10 @@ export type Database = {
           host_user_id: string
           id?: string
           is_active?: boolean | null
+          last_error?: string | null
           room_name: string
+          status?: string | null
+          token?: string | null
           type: string
           updated_at?: string | null
         }
@@ -5064,7 +5070,10 @@ export type Database = {
           host_user_id?: string
           id?: string
           is_active?: boolean | null
+          last_error?: string | null
           room_name?: string
+          status?: string | null
+          token?: string | null
           type?: string
           updated_at?: string | null
         }

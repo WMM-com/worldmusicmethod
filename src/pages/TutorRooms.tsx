@@ -71,6 +71,9 @@ interface VideoRoom {
   host_user_id: string;
   created_at: string;
   expires_at: string;
+  token: string | null;
+  status: "pending" | "ready" | "error" | null;
+  last_error: string | null;
 }
 
 interface CreateRoomFormData {
@@ -125,37 +128,83 @@ export default function TutorRooms() {
     }
   }, [user, hasTutorAccess, loadRooms]);
 
-  const generateTestToken = async (roomName: string) => {
+  const generateAndSaveToken = async (roomId: string, roomName: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log("[TutorRooms] Generating test token for room:", roomName);
+      console.log("[TutorRooms] Generating token for room:", roomName);
       
       const { data, error } = await supabase.functions.invoke("generate-agora-token", {
         body: {
           channelName: roomName,
-          uid: user?.id || "0",
+          uid: 0, // Use 0 for consistency
           role: "publisher",
         },
       });
 
       if (error) {
         console.error("[TutorRooms] Token generation error:", error);
-        return null;
+        // Update room with error status
+        await supabase
+          .from("video_rooms")
+          .update({ 
+            status: "error", 
+            last_error: error.message || "Token generation failed" 
+          })
+          .eq("id", roomId);
+        return { success: false, error: error.message };
+      }
+
+      if (data?.error) {
+        console.error("[TutorRooms] Token API returned error:", data.error);
+        await supabase
+          .from("video_rooms")
+          .update({ 
+            status: "error", 
+            last_error: data.error 
+          })
+          .eq("id", roomId);
+        return { success: false, error: data.error };
       }
 
       if (data?.token) {
-        console.log("[TutorRooms] === TEST TOKEN GENERATED ===");
+        console.log("[TutorRooms] === TOKEN GENERATED ===");
         console.log("[TutorRooms] Channel:", roomName);
         console.log("[TutorRooms] App ID:", data.appId);
-        console.log("[TutorRooms] Token:", data.token);
+        console.log("[TutorRooms] Token:", data.token.slice(0, 30) + "...");
         console.log("[TutorRooms] Expires in:", data.expiresIn, "seconds");
         console.log("[TutorRooms] =============================");
-        return data;
+        
+        // Update room with token and ready status
+        const { error: updateError } = await supabase
+          .from("video_rooms")
+          .update({ 
+            token: data.token, 
+            status: "ready", 
+            last_error: null 
+          })
+          .eq("id", roomId);
+
+        if (updateError) {
+          console.error("[TutorRooms] Failed to save token to room:", updateError);
+          return { success: false, error: "Failed to save token" };
+        }
+
+        return { success: true };
       }
 
-      return null;
+      return { success: false, error: "No token returned" };
     } catch (err) {
-      console.error("[TutorRooms] Token generation failed:", err);
-      return null;
+      const message = err instanceof Error ? err.message : "Token generation failed";
+      console.error("[TutorRooms] Token generation exception:", err);
+      
+      await supabase
+        .from("video_rooms")
+        .update({ 
+          status: "error", 
+          last_error: message 
+        })
+        .eq("id", roomId);
+      
+      return { success: false, error: message };
     }
   };
 
@@ -170,23 +219,44 @@ export default function TutorRooms() {
       if (room) {
         console.log("[TutorRooms] Room created successfully:", room);
         
-        // Optionally generate test token
-        if (data.generateTestToken) {
-          const tokenData = await generateTestToken(room.room_name);
-          if (tokenData) {
+        // Always generate and save a token for the room
+        const tokenResult = await generateAndSaveToken(room.id, room.room_name);
+        
+        if (tokenResult.success) {
+          if (data.generateTestToken) {
             toast.success(
               <div className="space-y-1">
-                <p>Room created! Test token logged to console.</p>
+                <p>Room created! Token generated and saved.</p>
                 <p className="text-xs text-muted-foreground font-mono">
                   Check browser DevTools for token details
                 </p>
               </div>
             );
           } else {
-            toast.success("Room created! (Token generation failed - check console)");
+            toast.success("Room created and ready!");
           }
         } else {
-          toast.success("Room created successfully!");
+          // Room created but token failed
+          const isAppIdError = tokenResult.error?.toLowerCase().includes("app id") ||
+                               tokenResult.error?.toLowerCase().includes("vendor key");
+          
+          if (isAppIdError) {
+            toast.error(
+              <div className="space-y-1">
+                <p className="font-medium">Room created but Agora configuration error!</p>
+                <p className="text-xs">{tokenResult.error}</p>
+                <p className="text-xs text-muted-foreground">Check AGORA_APP_ID and AGORA_APP_CERTIFICATE secrets</p>
+              </div>,
+              { duration: 10000 }
+            );
+          } else {
+            toast.warning(
+              <div className="space-y-1">
+                <p>Room created but token generation failed.</p>
+                <p className="text-xs text-muted-foreground">{tokenResult.error}</p>
+              </div>
+            );
+          }
         }
         
         setIsCreateDialogOpen(false);
@@ -423,6 +493,7 @@ export default function TutorRooms() {
                       <TableRow>
                         <TableHead>Room Code</TableHead>
                         <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Expires</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -444,6 +515,24 @@ export default function TutorRooms() {
                               {room.type === "group" ? "Group" : "1-on-1"}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            {room.status === "ready" && (
+                              <Badge variant="default" className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
+                                Ready
+                              </Badge>
+                            )}
+                            {room.status === "error" && (
+                              <Badge variant="destructive" className="gap-1" title={room.last_error || "Token generation failed"}>
+                                <AlertCircle className="h-3 w-3" />
+                                Error
+                              </Badge>
+                            )}
+                            {(room.status === "pending" || !room.status) && (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Pending
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell className="text-muted-foreground">
                             {format(new Date(room.created_at), "MMM d, HH:mm")}
                           </TableCell>
@@ -455,12 +544,12 @@ export default function TutorRooms() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {/* Generate test token */}
+                              {/* Regenerate token */}
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => generateTestToken(room.room_name)}
-                                title="Generate test token (logs to console)"
+                                onClick={() => generateAndSaveToken(room.id, room.room_name)}
+                                title="Regenerate token"
                               >
                                 <Key className="h-4 w-4" />
                               </Button>
@@ -473,7 +562,7 @@ export default function TutorRooms() {
                                 title="Copy link"
                               >
                                 {copiedRoomId === room.id ? (
-                                  <Check className="h-4 w-4 text-green-500" />
+                                  <Check className="h-4 w-4 text-emerald-500" />
                                 ) : (
                                   <Copy className="h-4 w-4" />
                                 )}
