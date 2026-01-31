@@ -87,21 +87,27 @@ export default function VideoCall() {
 
     const fetchRoom = async () => {
       try {
+        console.log("[VideoCall] Fetching room:", roomId);
         // Use backend function to avoid direct table access issues for non-hosts.
         const { data, error } = await supabase.functions.invoke("join-video-room", {
           body: { room_name: roomId },
         });
 
+        console.log("[VideoCall] Response:", { data, error });
+
         if (error) {
+          console.error("[VideoCall] Function invoke error:", error);
           throw error;
         }
 
         if (!data?.success) {
+          console.error("[VideoCall] API returned failure:", data);
           setRoomError(data?.error || "Failed to load room details");
           return;
         }
 
         const roomData = data.room as VideoRoom;
+        console.log("[VideoCall] Room data:", roomData);
 
         if (!roomData) {
           setRoomError("Room not found");
