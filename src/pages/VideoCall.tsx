@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAgoraCall } from "@/hooks/useAgoraCall";
+import { useAgoraToken } from "@/hooks/useAgoraToken";
 import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
@@ -29,6 +30,16 @@ export default function VideoCall() {
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [networkQuality, setNetworkQuality] = useState<number>(0);
+  const [tokenFetched, setTokenFetched] = useState(false);
+  
+  // Agora token hook
+  const { 
+    token: agoraToken, 
+    appId: dynamicAppId,
+    loading: tokenLoading, 
+    error: tokenError, 
+    fetchToken 
+  } = useAgoraToken();
   
   // Check if current user is the host
   const isHost = room && user ? room.host_user_id === user.id : false;
@@ -111,14 +122,26 @@ export default function VideoCall() {
     fetchRoom();
   }, [roomId]);
 
-  // Join the call when room is loaded and user is authenticated
+  // Fetch Agora token when room is loaded
   useEffect(() => {
-    if (room && user && !isJoined && !isConnecting) {
-      // For testing, we use null token (requires Agora app to allow no auth)
-      // In production, generate token server-side
-      joinChannel(room.room_name, null, user.id);
+    if (room && user && !tokenFetched && !tokenLoading) {
+      console.log("[VideoCall] Fetching Agora token for room:", room.room_name);
+      fetchToken(room.room_name, "publisher").then((result) => {
+        if (result) {
+          setTokenFetched(true);
+          console.log("[VideoCall] Token fetched successfully");
+        }
+      });
     }
-  }, [room, user, isJoined, isConnecting, joinChannel]);
+  }, [room, user, tokenFetched, tokenLoading, fetchToken]);
+
+  // Join the call when token is ready
+  useEffect(() => {
+    if (room && user && agoraToken && !isJoined && !isConnecting) {
+      console.log("[VideoCall] Joining channel with secure token");
+      joinChannel(room.room_name, agoraToken, user.id);
+    }
+  }, [room, user, agoraToken, isJoined, isConnecting, joinChannel]);
 
   // Handle network quality updates
   useEffect(() => {

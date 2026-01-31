@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.generate-room-name]
 verify_jwt = false
+
+[functions.generate-agora-token]
+verify_jwt = false
