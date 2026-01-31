@@ -48,6 +48,13 @@ export function getAgoraErrorMessage(error: unknown): string {
   const anyError = error as any;
   const code = String(anyError?.code ?? "");
   const message = String(anyError?.message ?? "");
+
+  // IMPORTANT: Some Agora auth/config failures are reported with a network-ish code
+  // (e.g. CAN_NOT_GET_GATEWAY_SERVER) but the *message* clearly indicates App ID issues.
+  // Prefer message-based detection for these cases to avoid misleading "check internet" prompts.
+  if (/invalid\s*vendor\s*key|can\s*not\s*find\s*appid/i.test(message)) {
+    return "Invalid Agora App ID / project configuration. Ensure you are using an RTC (Video Call) App ID and that the project is active.";
+  }
   
   // Check for exact code match
   if (AGORA_ERROR_MESSAGES[code]) {
@@ -66,7 +73,8 @@ export function getAgoraErrorMessage(error: unknown): string {
     return AGORA_ERROR_MESSAGES["INVALID_VENDOR_KEY"];
   }
   if (/gateway.*server/i.test(message)) {
-    return AGORA_ERROR_MESSAGES["CAN_NOT_GET_GATEWAY_SERVER"];
+    // This is often a config issue (invalid App ID / disabled project) and only sometimes real networking.
+    return "Cannot connect to Agora gateway. This is commonly caused by an invalid App ID / disabled project (and less commonly by network issues).";
   }
   if (/permission.*denied|not.*allowed/i.test(message)) {
     return AGORA_ERROR_MESSAGES["PERMISSION_DENIED"];
@@ -111,6 +119,11 @@ export function isNetworkError(error: unknown): boolean {
   const anyError = error as any;
   const code = String(anyError?.code ?? "");
   const message = String(anyError?.message ?? "");
+
+  // If Agora explicitly says it can't find the App ID, treat this as auth/config (not network).
+  if (/invalid\s*vendor\s*key|can\s*not\s*find\s*appid/i.test(message)) {
+    return false;
+  }
   
   const networkPatterns = [
     "GATEWAY_SERVER",
