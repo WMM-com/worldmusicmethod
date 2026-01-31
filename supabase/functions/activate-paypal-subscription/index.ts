@@ -30,7 +30,7 @@ serve(async (req) => {
   }
 
   try {
-    const { subscriptionId, dbSubscriptionId, password } = await req.json();
+    const { subscriptionId, dbSubscriptionId } = await req.json();
     if (!subscriptionId) throw new Error("subscriptionId is required");
 
     const supabaseClient = createClient(
@@ -150,11 +150,15 @@ serve(async (req) => {
 
     // Determine / create user
     let userId: string | null = authedUserId || (profileByEmail?.id ?? null);
+    let authToken: string | null = null;
 
-    if (!userId && password) {
+    if (!userId) {
+      // Create new user with a random secure password (user will reset via email if needed)
+      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
         email,
-        password,
+        password: randomPassword,
         email_confirm: true,
         user_metadata: { full_name: customerName || email },
       });
@@ -200,9 +204,14 @@ serve(async (req) => {
         if (!upsertError) {
           logStep("Email verified set via upsert", { userId });
         } else {
-          logStep("CRITICAL: Could not set email_verified", { userId, error: upsertError });
+        logStep("CRITICAL: Could not set email_verified", { userId, error: upsertError });
         }
       }
+      
+      // Generate one-time auth token for auto sign-in
+      const { data: tokenResult } = await supabaseClient.rpc('create_payment_auth_token', { p_user_id: userId });
+      authToken = tokenResult;
+      logStep("Auth token generated", { userId });
     }
 
     // Compute period start/end
@@ -494,7 +503,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, subscriptionId: dbSub.id, userId }),
+      JSON.stringify({ success: true, subscriptionId: dbSub.id, userId, authToken }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

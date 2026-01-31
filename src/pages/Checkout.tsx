@@ -58,10 +58,8 @@ const PayPalButton = ({
 
     setIsLoading(true);
     try {
-      // Store credentials for auto sign-in after PayPal return (non-popup fallback)
-      if (email && password) {
-        sessionStorage.setItem('paypal_auth_credentials', JSON.stringify({ email, password }));
-      }
+      // Note: We no longer store credentials in sessionStorage
+      // The server will generate a one-time auth token after payment
       
       const isSubscription = productType === 'subscription' || productType === 'membership';
       
@@ -109,27 +107,30 @@ const PayPalButton = ({
                 const parsed = JSON.parse(successData);
                 try {
                   // Activate the subscription in the database
-                  const { error: activateError } = await supabase.functions.invoke('activate-paypal-subscription', {
+                  const { data: activateData, error: activateError } = await supabase.functions.invoke('activate-paypal-subscription', {
                     body: { 
                       subscriptionId: parsed.subscriptionId || paypalSubscriptionId,
                       dbSubscriptionId,
-                      password,
                     },
                   });
                   if (activateError) throw activateError;
                   
-                  // Auto sign-in the user after successful PayPal subscription
-                  if (email && password) {
-                    // Small delay to ensure profile is ready
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    const { error: signInError } = await supabase.auth.signInWithPassword({
-                      email,
-                      password,
-                    });
-                    if (signInError) {
-                      console.warn('[PayPal] Auto sign-in failed:', signInError.message);
-                    } else {
-                      console.log('[PayPal] Auto sign-in successful');
+                  // Auto sign-in using one-time auth token
+                  if (activateData?.authToken) {
+                    try {
+                      const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
+                        body: { token: activateData.authToken },
+                      });
+                      if (tokenData?.tokenHash && tokenData?.email) {
+                        await supabase.auth.verifyOtp({
+                          email: tokenData.email,
+                          token: tokenData.tokenHash,
+                          type: 'magiclink',
+                        });
+                        console.log('[PayPal] Auto sign-in successful via token');
+                      }
+                    } catch (signInErr) {
+                      console.warn('[PayPal] Auto sign-in failed:', signInErr);
                     }
                   }
                   
@@ -196,23 +197,27 @@ const PayPalButton = ({
                 const parsed = JSON.parse(successData);
                 const captureOrderId = parsed.orderId || paypalOrderId;
                 try {
-                  const { error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
-                    body: { orderId: captureOrderId, password },
+                  const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
+                    body: { orderId: captureOrderId },
                   });
                   if (captureError) throw captureError;
                   
-                  // Auto sign-in the user after successful PayPal payment
-                  if (email && password) {
-                    // Small delay to ensure profile is ready
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    const { error: signInError } = await supabase.auth.signInWithPassword({
-                      email,
-                      password,
-                    });
-                    if (signInError) {
-                      console.warn('[PayPal] Auto sign-in failed:', signInError.message);
-                    } else {
-                      console.log('[PayPal] Auto sign-in successful');
+                  // Auto sign-in using one-time auth token
+                  if (captureData?.authToken) {
+                    try {
+                      const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
+                        body: { token: captureData.authToken },
+                      });
+                      if (tokenData?.tokenHash && tokenData?.email) {
+                        await supabase.auth.verifyOtp({
+                          email: tokenData.email,
+                          token: tokenData.tokenHash,
+                          type: 'magiclink',
+                        });
+                        console.log('[PayPal] Auto sign-in successful via token');
+                      }
+                    } catch (signInErr) {
+                      console.warn('[PayPal] Auto sign-in failed:', signInErr);
                     }
                   }
                   
