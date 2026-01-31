@@ -10,7 +10,8 @@ import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
 import { NetworkQualityIndicator } from "@/components/video/NetworkQualityIndicator";
-import { Loader2, AlertCircle, RefreshCw, Copy, Check, ExternalLink, Bug } from "lucide-react";
+import { ParticipantsSidebar } from "@/components/video/ParticipantsSidebar";
+import { Loader2, AlertCircle, RefreshCw, ExternalLink, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { isAuthError, isNetworkError } from "@/lib/agora/errorMessages";
@@ -36,6 +37,7 @@ export default function VideoCall() {
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [networkQuality, setNetworkQuality] = useState<number>(0);
+  const [showParticipants, setShowParticipants] = useState(false);
   const [tokenFetched, setTokenFetched] = useState(false);
   
   // Agora token hook
@@ -517,7 +519,24 @@ export default function VideoCall() {
         onToggleMute={toggleMute}
         onToggleVideo={toggleVideo}
         onLeave={handleLeave}
+        onToggleParticipants={() => setShowParticipants((prev) => !prev)}
+        participantCount={remoteUsers.length + 1}
         isSpeaking={isLocalSpeaking}
+      />
+
+      {/* Participants Sidebar */}
+      <ParticipantsSidebar
+        open={showParticipants}
+        onClose={() => setShowParticipants(false)}
+        remoteUsers={remoteUsers}
+        localUser={{
+          uid: agoraUid,
+          isHost: isHost,
+          isMuted: isMuted,
+          isVideoOff: isVideoOff,
+          isSpeaking: isLocalSpeaking,
+        }}
+        speakingByUid={speakingByUid}
       />
     </div>
   );
