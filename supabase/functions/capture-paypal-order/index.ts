@@ -36,7 +36,7 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, password } = await req.json();
+    const { orderId } = await req.json();
     
     console.log("[CAPTURE-PAYPAL-ORDER] Starting", { orderId });
 
@@ -105,6 +105,7 @@ serve(async (req) => {
     const user = existingUser?.users?.find(u => u.email === email);
 
     let userId: string;
+    let authToken: string | null = null;
 
     if (user) {
       userId = user.id;
@@ -119,11 +120,17 @@ serve(async (req) => {
       if (verifyError) {
         console.log("[CAPTURE-PAYPAL-ORDER] Profile verification update failed", { error: verifyError });
       }
+      
+      // Generate one-time auth token for existing user
+      const { data: tokenResult } = await supabaseClient.rpc('create_payment_auth_token', { p_user_id: userId });
+      authToken = tokenResult;
     } else {
-      // Create new user
+      // Create new user with a random secure password (user will reset via email if needed)
+      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
         email,
-        password,
+        password: randomPassword,
         email_confirm: true,
         user_metadata: { full_name },
       });
@@ -174,6 +181,10 @@ serve(async (req) => {
           console.log("[CAPTURE-PAYPAL-ORDER] CRITICAL: Could not set email_verified", { userId, error: upsertError });
         }
       }
+      
+      // Generate one-time auth token for new user
+      const { data: tokenResult } = await supabaseClient.rpc('create_payment_auth_token', { p_user_id: userId });
+      authToken = tokenResult;
     }
 
     // Get all product details
@@ -318,6 +329,7 @@ serve(async (req) => {
         userId,
         courseIds: enrolledCourseIds,
         orderIds,
+        authToken,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

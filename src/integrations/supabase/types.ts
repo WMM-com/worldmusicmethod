@@ -3433,6 +3433,33 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_auth_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       paypal_pending_orders: {
         Row: {
           captured_at: string | null
@@ -5149,6 +5176,11 @@ export type Database = {
           discount_percentage: number
           price: number
         }[]
+      }
+      consume_payment_auth_token: { Args: { p_token: string }; Returns: string }
+      create_payment_auth_token: {
+        Args: { p_user_id: string }
+        Returns: string
       }
       deactivate_expired_rooms: { Args: never; Returns: undefined }
       email_owns_course: {

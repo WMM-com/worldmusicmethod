@@ -82,19 +82,10 @@ export default function PaymentSuccess() {
     if (method === 'paypal' && paypalToken && !window.opener && !paypalProcessed) {
       setIsProcessingPaypal(true);
 
-      // Get stored credentials for auto sign-in
-      let storedCredentials: { email?: string; password?: string } | null = null;
-      try {
-        const raw = sessionStorage.getItem('paypal_auth_credentials');
-        storedCredentials = raw ? JSON.parse(raw) : null;
-      } catch {
-        storedCredentials = null;
-      }
-
       // Capture the PayPal order directly
       supabase.functions.invoke('capture-paypal-order', {
-        body: { orderId: paypalToken, password: storedCredentials?.password },
-      }).then(async ({ error }) => {
+        body: { orderId: paypalToken },
+      }).then(async ({ data, error }) => {
         sessionStorage.removeItem('paypal_return_params_v1');
         
         if (error) {
@@ -102,20 +93,23 @@ export default function PaymentSuccess() {
           setIsProcessingPaypal(false);
           setPaypalProcessed(true);
         } else {
-          // Auto sign-in the user after successful PayPal payment
-          if (storedCredentials?.email && storedCredentials?.password) {
-            // Small delay to ensure profile is ready
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const { error: signInError } = await supabase.auth.signInWithPassword({
-              email: storedCredentials.email,
-              password: storedCredentials.password,
-            });
-            if (signInError) {
-              console.warn('[PayPal] Auto sign-in failed:', signInError.message);
-            } else {
-              console.log('[PayPal] Auto sign-in successful');
+          // Auto sign-in the user using one-time auth token
+          if (data?.authToken) {
+            try {
+              const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
+                body: { token: data.authToken },
+              });
+              if (tokenData?.tokenHash && tokenData?.email) {
+                await supabase.auth.verifyOtp({
+                  email: tokenData.email,
+                  token: tokenData.tokenHash,
+                  type: 'magiclink',
+                });
+                console.log('[PayPal] Auto sign-in successful via token');
+              }
+            } catch (signInErr) {
+              console.warn('[PayPal] Auto sign-in failed:', signInErr);
             }
-            sessionStorage.removeItem('paypal_auth_credentials');
           }
           
           setIsProcessingPaypal(false);
