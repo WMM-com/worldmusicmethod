@@ -292,8 +292,14 @@ export default function VideoCall() {
     const displayError = agoraError || tokenError || "Connection error";
     const isAuth = isAuthError({ message: displayError });
     const isNetwork = isNetworkError({ message: displayError });
-    const isInvalidVendorKey = displayError.toLowerCase().includes("invalid vendor key") ||
-                               displayError.toLowerCase().includes("can_not_get_gateway_server");
+    const lower = displayError.toLowerCase();
+    const isInvalidVendorKey =
+      lower.includes("invalid vendor key") ||
+      lower.includes("can not find appid") ||
+      lower.includes("invalid app id") ||
+      lower.includes("invalid agora app id") ||
+      lower.includes("project configuration") ||
+      lower.includes("can_not_get_gateway_server");
     
     const handleRunDiagnostics = () => {
       console.log("Running Agora diagnostics...");
