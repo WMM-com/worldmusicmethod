@@ -41,26 +41,68 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
 
   const tracksRef = useRef<LocalTracks>({ audioTrack: null, videoTrack: null });
 
+  // Track which users we've already notified about joining
+  const notifiedUsersRef = useRef<Set<string | number>>(new Set());
+
   // Handle remote user events
   useEffect(() => {
-    const handleUserPublished = async (user: IAgoraRTCRemoteUser, mediaType: "audio" | "video") => {
-      await agoraClient.subscribe(user, mediaType);
-      console.log("[Agora] Subscribed to user:", user.uid, "mediaType:", mediaType);
+    // Fires when a user joins the channel (even without publishing media)
+    const handleUserJoined = (user: IAgoraRTCRemoteUser) => {
+      console.log("[Agora] User joined channel:", user.uid);
+      
+      // Add user to remote users list immediately (even without media)
+      setState((prev) => {
+        const exists = prev.remoteUsers.some((u) => u.uid === user.uid);
+        if (exists) return prev;
+        return {
+          ...prev,
+          remoteUsers: [...prev.remoteUsers, user],
+        };
+      });
 
-      if (mediaType === "audio") {
-        user.audioTrack?.play();
+      // Notify only once per user
+      if (!notifiedUsersRef.current.has(user.uid)) {
+        notifiedUsersRef.current.add(user.uid);
+        options.onUserJoined?.(user);
       }
+    };
 
-      setState((prev) => ({
-        ...prev,
-        remoteUsers: [...prev.remoteUsers.filter((u) => u.uid !== user.uid), user],
-      }));
+    const handleUserPublished = async (user: IAgoraRTCRemoteUser, mediaType: "audio" | "video") => {
+      console.log("[Agora] User published:", user.uid, "mediaType:", mediaType);
+      
+      try {
+        await agoraClient.subscribe(user, mediaType);
+        console.log("[Agora] ✓ Subscribed to user:", user.uid, "mediaType:", mediaType);
 
-      options.onUserJoined?.(user);
+        // Play audio track immediately after subscription
+        if (mediaType === "audio" && user.audioTrack) {
+          user.audioTrack.play();
+          console.log("[Agora] ✓ Playing audio for user:", user.uid);
+        }
+
+        // Update the user in remoteUsers to trigger re-render with new tracks
+        setState((prev) => ({
+          ...prev,
+          remoteUsers: prev.remoteUsers.map((u) => (u.uid === user.uid ? user : u)),
+        }));
+
+        // Also ensure user is in the list if they weren't added by user-joined
+        setState((prev) => {
+          const exists = prev.remoteUsers.some((u) => u.uid === user.uid);
+          if (exists) return prev;
+          return {
+            ...prev,
+            remoteUsers: [...prev.remoteUsers, user],
+          };
+        });
+      } catch (err) {
+        console.error("[Agora] Failed to subscribe to", user.uid, mediaType, err);
+      }
     };
 
     const handleUserUnpublished = (user: IAgoraRTCRemoteUser, mediaType: "audio" | "video") => {
       console.log("[Agora] User unpublished:", user.uid, "mediaType:", mediaType);
+      // Update user object to reflect removed track
       setState((prev) => ({
         ...prev,
         remoteUsers: prev.remoteUsers.map((u) => (u.uid === user.uid ? user : u)),
@@ -69,6 +111,7 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
 
     const handleUserLeft = (user: IAgoraRTCRemoteUser) => {
       console.log("[Agora] User left:", user.uid);
+      notifiedUsersRef.current.delete(user.uid);
       setState((prev) => ({
         ...prev,
         remoteUsers: prev.remoteUsers.filter((u) => u.uid !== user.uid),
@@ -83,16 +126,19 @@ export function useAgoraCall(options: UseAgoraCallOptions = {}) {
     ) => {
       console.log("[Agora] Connection state:", prevState, "->", curState, reason);
       if (curState === "DISCONNECTED") {
-        setState((prev) => ({ ...prev, isJoined: false, isConnecting: false }));
+        notifiedUsersRef.current.clear();
+        setState((prev) => ({ ...prev, isJoined: false, isConnecting: false, remoteUsers: [] }));
       }
     };
 
+    agoraClient.on("user-joined", handleUserJoined);
     agoraClient.on("user-published", handleUserPublished);
     agoraClient.on("user-unpublished", handleUserUnpublished);
     agoraClient.on("user-left", handleUserLeft);
     agoraClient.on("connection-state-change", handleConnectionStateChange);
 
     return () => {
+      agoraClient.off("user-joined", handleUserJoined);
       agoraClient.off("user-published", handleUserPublished);
       agoraClient.off("user-unpublished", handleUserUnpublished);
       agoraClient.off("user-left", handleUserLeft);
