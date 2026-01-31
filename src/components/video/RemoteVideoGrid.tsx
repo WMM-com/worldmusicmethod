@@ -11,6 +11,7 @@ interface RemoteVideoGridProps {
   networkQuality: number;
   isHost?: boolean;
   onMuteUser?: (uid: string | number, mute: boolean) => Promise<void>;
+  speakingByUid?: Record<string, boolean>;
 }
 
 function RemoteVideoTile({ 
@@ -18,11 +19,13 @@ function RemoteVideoTile({
   networkQuality,
   isHost,
   onMuteUser,
+  speakingByUid,
 }: { 
   user: IAgoraRTCRemoteUser; 
   networkQuality: number;
   isHost?: boolean;
   onMuteUser?: (uid: string | number, mute: boolean) => Promise<void>;
+  speakingByUid?: Record<string, boolean>;
 }) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isRemoteMuted, setIsRemoteMuted] = useState(false);
@@ -48,6 +51,7 @@ function RemoteVideoTile({
 
   const hasVideo = user.hasVideo && user.videoTrack;
   const hasAudio = user.hasAudio && user.audioTrack;
+  const isSpeaking = !!speakingByUid?.[String(user.uid)];
 
   const handleMuteToggle = async () => {
     if (!onMuteUser) return;
@@ -118,7 +122,7 @@ function RemoteVideoTile({
       </div>
 
       {/* Speaking indicator */}
-      {hasAudio && !isRemoteMuted && (
+      {hasAudio && !isRemoteMuted && isSpeaking && (
         <div className="absolute top-3 left-3">
           <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
         </div>
@@ -140,6 +144,7 @@ export function RemoteVideoGrid({
   networkQuality,
   isHost,
   onMuteUser,
+  speakingByUid,
 }: RemoteVideoGridProps) {
   const userCount = remoteUsers.length;
 
@@ -181,6 +186,7 @@ export function RemoteVideoGrid({
           networkQuality={networkQuality}
           isHost={isHost}
           onMuteUser={onMuteUser}
+          speakingByUid={speakingByUid}
         />
       ))}
     </div>

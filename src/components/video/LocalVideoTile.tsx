@@ -9,6 +9,7 @@ interface LocalVideoTileProps {
   isMuted: boolean;
   isVideoOff: boolean;
   networkQuality: number;
+  isSpeaking?: boolean;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export function LocalVideoTile({
   isMuted,
   isVideoOff,
   networkQuality,
+  isSpeaking = false,
   className,
 }: LocalVideoTileProps) {
   const videoRef = useRef<HTMLDivElement>(null);
@@ -58,7 +60,12 @@ export function LocalVideoTile({
           {isMuted ? (
             <MicOff className="w-3.5 h-3.5 text-red-400" />
           ) : (
-            <Mic className="w-3.5 h-3.5 text-white" />
+            <div className="relative">
+              <Mic className={cn("w-3.5 h-3.5", isSpeaking ? "text-primary animate-pulse" : "text-white")} />
+              {isSpeaking && (
+                <span className="absolute -inset-1 rounded-full border border-primary/50 animate-ping" />
+              )}
+            </div>
           )}
           {isVideoOff ? (
             <VideoOff className="w-3.5 h-3.5 text-red-400" />
