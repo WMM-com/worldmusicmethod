@@ -1,4 +1,4 @@
-import { Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +13,8 @@ interface VideoControlsProps {
   onToggleMute: () => Promise<void>;
   onToggleVideo: () => Promise<void>;
   onLeave: () => void;
+  onToggleParticipants?: () => void;
+  participantCount?: number;
   isSpeaking?: boolean;
 }
 
@@ -22,11 +24,13 @@ export function VideoControls({
   onToggleMute,
   onToggleVideo,
   onLeave,
+  onToggleParticipants,
+  participantCount = 1,
   isSpeaking = false,
 }: VideoControlsProps) {
   return (
-    <footer className="bg-zinc-800/80 backdrop-blur-sm border-t border-zinc-700 px-4 py-4">
-      <div className="flex items-center justify-center gap-4 max-w-md mx-auto">
+    <footer className="bg-muted/80 backdrop-blur-sm border-t border-border px-4 py-4">
+      <div className="flex items-center justify-center gap-4 max-w-lg mx-auto">
         {/* Mic Toggle */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -37,9 +41,9 @@ export function VideoControls({
               className={cn(
                 "w-14 h-14 rounded-full transition-all",
                 isMuted
-                  ? "bg-red-500/20 hover:bg-red-500/30 text-red-400"
+                  ? "bg-destructive/20 hover:bg-destructive/30 text-destructive"
                   : cn(
-                      "bg-zinc-700 hover:bg-zinc-600 text-white",
+                      "bg-muted-foreground/20 hover:bg-muted-foreground/30 text-foreground",
                       isSpeaking ? "ring-2 ring-primary/60 ring-offset-2 ring-offset-background" : ""
                     )
               )}
@@ -66,8 +70,8 @@ export function VideoControls({
               className={cn(
                 "w-14 h-14 rounded-full transition-all",
                 isVideoOff
-                  ? "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                  : "bg-zinc-700 hover:bg-zinc-600 text-white"
+                  ? "bg-destructive/20 hover:bg-destructive/30 text-destructive"
+                  : "bg-muted-foreground/20 hover:bg-muted-foreground/30 text-foreground"
               )}
             >
               {isVideoOff ? (
@@ -82,6 +86,28 @@ export function VideoControls({
           </TooltipContent>
         </Tooltip>
 
+        {/* Participants Toggle */}
+        {onToggleParticipants && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={onToggleParticipants}
+                className="w-14 h-14 rounded-full bg-muted-foreground/20 hover:bg-muted-foreground/30 text-foreground transition-all relative"
+              >
+                <Users className="w-6 h-6" />
+                {participantCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
+                    {participantCount}
+                  </span>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Participants</TooltipContent>
+          </Tooltip>
+        )}
+
         {/* Leave Call */}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -89,7 +115,7 @@ export function VideoControls({
               variant="destructive"
               size="lg"
               onClick={onLeave}
-              className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700"
+              className="w-14 h-14 rounded-full"
             >
               <PhoneOff className="w-6 h-6" />
             </Button>
