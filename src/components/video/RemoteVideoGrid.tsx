@@ -12,6 +12,10 @@ interface RemoteVideoGridProps {
   isHost?: boolean;
   onMuteUser?: (uid: string | number, mute: boolean) => Promise<void>;
   speakingByUid?: Record<string, boolean>;
+  /** Map of Agora UID -> display name from presence */
+  displayNameByUid?: Record<string, string>;
+  /** Map of Agora UID -> isHost from presence */
+  hostByUid?: Record<string, boolean>;
 }
 
 function RemoteVideoTile({ 
@@ -20,12 +24,16 @@ function RemoteVideoTile({
   isHost,
   onMuteUser,
   speakingByUid,
+  displayName,
+  isRemoteHost,
 }: { 
   user: IAgoraRTCRemoteUser; 
   networkQuality: number;
   isHost?: boolean;
   onMuteUser?: (uid: string | number, mute: boolean) => Promise<void>;
   speakingByUid?: Record<string, boolean>;
+  displayName?: string;
+  isRemoteHost?: boolean;
 }) {
   const videoRef = useRef<HTMLDivElement>(null);
   const [isRemoteMuted, setIsRemoteMuted] = useState(false);
@@ -168,10 +176,17 @@ function RemoteVideoTile({
 
       {/* User info bar */}
       <div className="absolute bottom-0 left-0 right-0 px-3 py-2 flex items-center justify-between">
-        <span className="text-sm text-foreground font-medium truncate">
-          User {String(user.uid).slice(0, 8)}
-        </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm text-foreground font-medium truncate">
+            {displayName || `User ${String(user.uid).slice(0, 8)}`}
+          </span>
+          {isRemoteHost && (
+            <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+              Host
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {(!hasAudio || isRemoteMuted) && <MicOff className="w-4 h-4 text-destructive" />}
           <NetworkQualityBars quality={networkQuality} size="sm" />
         </div>
@@ -201,6 +216,8 @@ export function RemoteVideoGrid({
   isHost,
   onMuteUser,
   speakingByUid,
+  displayNameByUid = {},
+  hostByUid = {},
 }: RemoteVideoGridProps) {
   const userCount = remoteUsers.length;
 
@@ -235,16 +252,21 @@ export function RemoteVideoGrid({
         getGridClass()
       )}
     >
-      {remoteUsers.map((user) => (
-        <RemoteVideoTile
-          key={user.uid}
-          user={user}
-          networkQuality={networkQuality}
-          isHost={isHost}
-          onMuteUser={onMuteUser}
-          speakingByUid={speakingByUid}
-        />
-      ))}
+      {remoteUsers.map((user) => {
+        const uidStr = String(user.uid);
+        return (
+          <RemoteVideoTile
+            key={user.uid}
+            user={user}
+            networkQuality={networkQuality}
+            isHost={isHost}
+            onMuteUser={onMuteUser}
+            speakingByUid={speakingByUid}
+            displayName={displayNameByUid[uidStr]}
+            isRemoteHost={hostByUid[uidStr]}
+          />
+        );
+      })}
     </div>
   );
 }
