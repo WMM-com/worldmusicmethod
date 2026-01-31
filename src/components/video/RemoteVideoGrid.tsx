@@ -119,19 +119,20 @@ function RemoteVideoTile({
   };
 
   return (
-    <div className="relative w-full h-full rounded-xl overflow-hidden bg-muted shadow-lg group min-h-[200px]">
+    <div className="relative w-full h-full rounded-xl overflow-hidden bg-muted shadow-lg group">
       {/* Video container - always present so track can play into it */}
       <div 
         ref={videoRef} 
         className={cn(
-          "w-full h-full",
+          "absolute inset-0 w-full h-full",
+          "[&_video]:w-full [&_video]:h-full [&_video]:object-cover",
           showVideo ? "block" : "hidden"
         )}
       />
       
       {/* Avatar fallback when no video */}
       {!showVideo && (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-muted/80">
           <div className="w-24 h-24 rounded-full bg-muted-foreground/20 flex items-center justify-center">
             <User className="w-12 h-12 text-muted-foreground" />
           </div>
@@ -231,7 +232,7 @@ export function RemoteVideoGrid({
   return (
     <div
       className={cn(
-        "grid gap-4 h-full auto-rows-fr",
+        "grid gap-4 w-full h-full",
         getGridClass()
       )}
     >

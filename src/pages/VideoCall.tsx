@@ -487,9 +487,9 @@ export default function VideoCall() {
         </div>
       </header>
 
-      {/* Video Grid */}
-      <main className="flex-1 p-4 relative">
-        <div className="max-w-7xl mx-auto h-full">
+      {/* Video Grid - fills available space */}
+      <main className="flex-1 p-4 relative overflow-hidden">
+        <div className="h-full w-full">
           {/* Remote Users Grid */}
           <RemoteVideoGrid 
             remoteUsers={remoteUsers} 
