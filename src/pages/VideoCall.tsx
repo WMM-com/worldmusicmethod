@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +50,8 @@ export default function VideoCall() {
     localTracks,
     remoteUsers,
     error: agoraError,
+    mediaPermissionDenied,
+    mediaPermissionError,
     isMuted,
     isVideoOff,
     joinChannel,
@@ -57,6 +59,7 @@ export default function VideoCall() {
     toggleMute,
     toggleVideo,
     muteRemoteUser,
+    retryMedia,
   } = useAgoraCall({
     onUserJoined: (user) => {
       toast.info(`User ${user.uid} joined the call`);
@@ -76,6 +79,29 @@ export default function VideoCall() {
     }
     await muteRemoteUser(uid, mute);
   };
+
+  const hasShownMediaPermissionToast = useRef(false);
+
+  useEffect(() => {
+    if (mediaPermissionDenied && !hasShownMediaPermissionToast.current) {
+      hasShownMediaPermissionToast.current = true;
+      toast.warning(
+        "Camera/microphone permission blocked. You joined the room, but you may need to allow permissions to speak/share video."
+      );
+      if (mediaPermissionError) {
+        console.warn("[VideoCall] mediaPermissionError:", mediaPermissionError);
+      }
+    }
+  }, [mediaPermissionDenied, mediaPermissionError]);
+
+  const handleRetryMedia = useCallback(async () => {
+    const ok = await retryMedia();
+    if (ok) {
+      toast.success("Camera/microphone enabled");
+    } else {
+      toast.error("Camera/microphone still blocked. Please allow permissions in your browser settings.");
+    }
+  }, [retryMedia]);
 
   // Fetch room details
   useEffect(() => {
@@ -264,7 +290,18 @@ export default function VideoCall() {
               <span className="text-xs text-green-400">● Connected</span>
             )}
           </div>
-          <NetworkQualityIndicator quality={networkQuality} />
+          <div className="flex items-center gap-3">
+            {mediaPermissionDenied && (
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Camera/mic blocked</span>
+                <Button variant="secondary" size="sm" onClick={handleRetryMedia}>
+                  Try again
+                </Button>
+              </div>
+            )}
+            <NetworkQualityIndicator quality={networkQuality} />
+          </div>
         </div>
       </header>
 
