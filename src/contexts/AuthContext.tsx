@@ -8,6 +8,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  isExpert: boolean;
+  isTutor: boolean; // Alias for isExpert for clarity
   loading: boolean;
   emailVerified: boolean;
   signUp: (email: string, password: string, fullName: string, firstName?: string, lastName?: string) => Promise<{ error: Error | null; userId?: string }>;
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isExpert, setIsExpert] = useState(false);
   const [loading, setLoading] = useState(true);
   const [emailVerified, setEmailVerified] = useState(false);
 
@@ -38,11 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         setTimeout(() => {
           fetchProfile(session.user.id);
-          checkAdminRole(session.user.id);
+          checkUserRoles(session.user.id);
         }, 0);
       } else {
         setProfile(null);
         setIsAdmin(false);
+        setIsExpert(false);
         setEmailVerified(false);
       }
     });
@@ -52,10 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await Promise.all([fetchProfile(session.user.id), checkAdminRole(session.user.id)]);
+        await Promise.all([fetchProfile(session.user.id), checkUserRoles(session.user.id)]);
       } else {
         setProfile(null);
         setIsAdmin(false);
+        setIsExpert(false);
         setEmailVerified(false);
       }
 
@@ -78,9 +83,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const checkAdminRole = async (userId: string) => {
-    const { data } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
-    setIsAdmin(data === true);
+  const checkUserRoles = async (userId: string) => {
+    // Check admin role
+    const { data: adminData } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
+    setIsAdmin(adminData === true);
+    
+    // Check expert/tutor role
+    const { data: expertData } = await supabase.rpc('has_role', { _user_id: userId, _role: 'expert' });
+    setIsExpert(expertData === true);
   };
 
   const signUp = async (
@@ -137,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setProfile(null);
       setIsAdmin(false);
+      setIsExpert(false);
       setEmailVerified(false);
 
       // Fire-and-forget: send email and sign out in background
@@ -198,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setProfile(null);
       setIsAdmin(false);
+      setIsExpert(false);
       setEmailVerified(false);
 
       return {
@@ -218,6 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setProfile(null);
     setIsAdmin(false);
+    setIsExpert(false);
     setEmailVerified(false);
   };
 
@@ -249,6 +262,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         profile,
         isAdmin,
+        isExpert,
+        isTutor: isExpert, // Alias for clarity
         loading,
         emailVerified,
         signUp,

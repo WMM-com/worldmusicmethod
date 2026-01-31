@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { useAuth } from "@/contexts/AuthContext";
 import { useVideoRooms } from "@/hooks/useVideoRooms";
+import { supabase } from "@/integrations/supabase/client";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,9 @@ import {
   ExternalLink,
   RefreshCw,
   Clock,
+  Check,
+  Key,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -71,74 +75,161 @@ interface VideoRoom {
 
 interface CreateRoomFormData {
   type: "group" | "1on1";
+  generateTestToken: boolean;
 }
 
 export default function TutorRooms() {
   const navigate = useNavigate();
-  const { user, isAdmin, loading: authLoading } = useAuth();
-  const { createRoom, fetchRooms, deactivateRoom, loading } = useVideoRooms();
+  const { user, isAdmin, isTutor, loading: authLoading } = useAuth();
+  const { createRoom, fetchRooms, deactivateRoom, loading, error: hookError } = useVideoRooms();
   
   const [rooms, setRooms] = useState<VideoRoom[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const form = useForm<CreateRoomFormData>({
     defaultValues: {
       type: "group",
+      generateTestToken: false,
     },
   });
 
   const siteUrl = window.location.origin;
 
+  // Check if user has tutor access (admin or expert role)
+  const hasTutorAccess = isAdmin || isTutor;
+
   const loadRooms = useCallback(async () => {
+    if (!user) return;
+    
     setIsRefreshing(true);
-    const data = await fetchRooms();
-    // Filter to only show rooms hosted by current user
-    const myRooms = data.filter((room) => room.host_user_id === user?.id);
-    setRooms(myRooms);
-    setIsRefreshing(false);
-  }, [fetchRooms, user?.id]);
+    try {
+      const data = await fetchRooms();
+      // Filter to only show rooms hosted by current user
+      const myRooms = data.filter((room) => room.host_user_id === user.id);
+      setRooms(myRooms);
+    } catch (err) {
+      console.error("[TutorRooms] Error loading rooms:", err);
+      toast.error("Failed to load rooms");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchRooms, user]);
 
   useEffect(() => {
-    if (user && isAdmin) {
+    if (user && hasTutorAccess) {
       loadRooms();
     }
-  }, [user, isAdmin, loadRooms]);
+  }, [user, hasTutorAccess, loadRooms]);
+
+  const generateTestToken = async (roomName: string) => {
+    try {
+      console.log("[TutorRooms] Generating test token for room:", roomName);
+      
+      const { data, error } = await supabase.functions.invoke("generate-agora-token", {
+        body: {
+          channelName: roomName,
+          uid: user?.id || "0",
+          role: "publisher",
+        },
+      });
+
+      if (error) {
+        console.error("[TutorRooms] Token generation error:", error);
+        return null;
+      }
+
+      if (data?.token) {
+        console.log("[TutorRooms] === TEST TOKEN GENERATED ===");
+        console.log("[TutorRooms] Channel:", roomName);
+        console.log("[TutorRooms] App ID:", data.appId);
+        console.log("[TutorRooms] Token:", data.token);
+        console.log("[TutorRooms] Expires in:", data.expiresIn, "seconds");
+        console.log("[TutorRooms] =============================");
+        return data;
+      }
+
+      return null;
+    } catch (err) {
+      console.error("[TutorRooms] Token generation failed:", err);
+      return null;
+    }
+  };
 
   const handleCreateRoom = async (data: CreateRoomFormData) => {
     setIsCreating(true);
+    setCreateError(null);
+    
     try {
+      console.log("[TutorRooms] Creating room with type:", data.type);
       const room = await createRoom({ type: data.type });
+      
       if (room) {
-        toast.success("Room created successfully!");
+        console.log("[TutorRooms] Room created successfully:", room);
+        
+        // Optionally generate test token
+        if (data.generateTestToken) {
+          const tokenData = await generateTestToken(room.room_name);
+          if (tokenData) {
+            toast.success(
+              <div className="space-y-1">
+                <p>Room created! Test token logged to console.</p>
+                <p className="text-xs text-muted-foreground font-mono">
+                  Check browser DevTools for token details
+                </p>
+              </div>
+            );
+          } else {
+            toast.success("Room created! (Token generation failed - check console)");
+          }
+        } else {
+          toast.success("Room created successfully!");
+        }
+        
         setIsCreateDialogOpen(false);
         form.reset();
         await loadRooms();
       } else {
-        toast.error("Failed to create room");
+        const errorMsg = hookError || "Failed to create room. Please try again.";
+        setCreateError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
-      toast.error("Failed to create room");
+      const message = err instanceof Error ? err.message : "Failed to create room";
+      console.error("[TutorRooms] Create room error:", err);
+      setCreateError(message);
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleDeactivateRoom = async (roomId: string) => {
-    const success = await deactivateRoom(roomId);
-    if (success) {
-      toast.success("Room deactivated");
-      await loadRooms();
-    } else {
+    try {
+      const success = await deactivateRoom(roomId);
+      if (success) {
+        toast.success("Room deactivated");
+        await loadRooms();
+      } else {
+        toast.error("Failed to deactivate room. You may not have permission.");
+      }
+    } catch (err) {
+      console.error("[TutorRooms] Deactivate error:", err);
       toast.error("Failed to deactivate room");
     }
   };
 
-  const copyRoomLink = (roomName: string) => {
+  const copyRoomLink = (roomName: string, roomId: string) => {
     const link = `${siteUrl}/meet/${roomName}`;
     navigator.clipboard.writeText(link);
+    setCopiedRoomId(roomId);
     toast.success("Room link copied to clipboard!");
+    
+    // Reset copied state after 2 seconds
+    setTimeout(() => setCopiedRoomId(null), 2000);
   };
 
   const openRoom = (roomName: string) => {
@@ -157,7 +248,7 @@ export default function TutorRooms() {
   }
 
   // Access denied for non-tutors
-  if (!user || !isAdmin) {
+  if (!user || !hasTutorAccess) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-16">
@@ -165,7 +256,7 @@ export default function TutorRooms() {
             <Video className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
             <p className="text-muted-foreground mb-6">
-              This page is only accessible to tutors.
+              This page is only accessible to tutors and administrators.
             </p>
             <Button onClick={() => navigate("/meet")}>Go to Meeting Lobby</Button>
           </div>
@@ -201,7 +292,13 @@ export default function TutorRooms() {
                 Refresh
               </Button>
 
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+                setIsCreateDialogOpen(open);
+                if (!open) {
+                  setCreateError(null);
+                  form.reset();
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -218,6 +315,14 @@ export default function TutorRooms() {
                     </DialogHeader>
 
                     <div className="py-6 space-y-4">
+                      {/* Error display */}
+                      {createError && (
+                        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                          <p className="text-sm text-destructive">{createError}</p>
+                        </div>
+                      )}
+
                       <div className="space-y-2">
                         <Label htmlFor="roomType">Room Type</Label>
                         <Select
@@ -242,6 +347,23 @@ export default function TutorRooms() {
                             </SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      {/* Test token option */}
+                      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="testToken" className="text-sm font-medium">
+                            Generate Test Token
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Log an Agora token to console for debugging
+                          </p>
+                        </div>
+                        <Switch
+                          id="testToken"
+                          checked={form.watch("generateTestToken")}
+                          onCheckedChange={(checked) => form.setValue("generateTestToken", checked)}
+                        />
                       </div>
                     </div>
 
@@ -333,14 +455,31 @@ export default function TutorRooms() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
+                              {/* Generate test token */}
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => copyRoomLink(room.room_name)}
+                                onClick={() => generateTestToken(room.room_name)}
+                                title="Generate test token (logs to console)"
+                              >
+                                <Key className="h-4 w-4" />
+                              </Button>
+                              
+                              {/* Copy link */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => copyRoomLink(room.room_name, room.id)}
                                 title="Copy link"
                               >
-                                <Copy className="h-4 w-4" />
+                                {copiedRoomId === room.id ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
                               </Button>
+                              
+                              {/* Join room */}
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -349,6 +488,8 @@ export default function TutorRooms() {
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
+                              
+                              {/* Deactivate */}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
@@ -399,6 +540,7 @@ export default function TutorRooms() {
                 <li>• Rooms automatically expire after 24 hours</li>
                 <li>• As the host, you can mute participants during the call</li>
                 <li>• Use 1-on-1 rooms for private tutoring sessions</li>
+                <li>• Click the key icon to generate a test token (check browser console)</li>
               </ul>
             </CardContent>
           </Card>
