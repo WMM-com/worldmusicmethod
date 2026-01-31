@@ -29,6 +29,10 @@ interface ParticipantsSidebarProps {
     isSpeaking?: boolean;
   };
   speakingByUid?: Record<string, boolean>;
+  /** Map of Agora UID -> display name from presence */
+  displayNameByUid?: Record<string, string>;
+  /** Map of Agora UID -> isHost from presence */
+  hostByUid?: Record<string, boolean>;
 }
 
 function ParticipantItem({ 
@@ -101,6 +105,8 @@ export function ParticipantsSidebar({
   remoteUsers,
   localUser,
   speakingByUid = {},
+  displayNameByUid = {},
+  hostByUid = {},
 }: ParticipantsSidebarProps) {
   const totalParticipants = remoteUsers.length + 1; // +1 for local user
 
@@ -114,15 +120,18 @@ export function ParticipantsSidebar({
     isSpeaking: localUser.isSpeaking,
   };
 
-  // Build remote participants
-  const remoteParticipants: Participant[] = remoteUsers.map((user) => ({
-    uid: user.uid,
-    displayName: undefined, // Could be enhanced with presence data
-    isHost: false,
-    hasAudio: user.hasAudio,
-    hasVideo: user.hasVideo,
-    isSpeaking: speakingByUid[String(user.uid)] ?? false,
-  }));
+  // Build remote participants with display names from presence
+  const remoteParticipants: Participant[] = remoteUsers.map((user) => {
+    const uidStr = String(user.uid);
+    return {
+      uid: user.uid,
+      displayName: displayNameByUid[uidStr],
+      isHost: hostByUid[uidStr] ?? false,
+      hasAudio: user.hasAudio,
+      hasVideo: user.hasVideo,
+      isSpeaking: speakingByUid[uidStr] ?? false,
+    };
+  });
 
   return (
     <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,7 @@ import { useAgoraCall } from "@/hooks/useAgoraCall";
 import { useAgoraToken } from "@/hooks/useAgoraToken";
 import { useMediaPreflight } from "@/hooks/useMediaPreflight";
 import { useAgoraVolumeIndicator } from "@/hooks/useAgoraVolumeIndicator";
+import { useVideoPresence } from "@/hooks/useVideoPresence";
 import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
@@ -31,7 +32,7 @@ interface VideoRoom {
 export default function VideoCall() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   
   const [room, setRoom] = useState<VideoRoom | null>(null);
   const [roomLoading, setRoomLoading] = useState(true);
@@ -85,6 +86,42 @@ export default function VideoCall() {
 
   const { speakingByUid } = useAgoraVolumeIndicator({ enabled: isJoined });
   const isLocalSpeaking = !!(agoraUid !== null && speakingByUid[String(agoraUid)]);
+
+  // Get display name for local user
+  const localDisplayName = useMemo(() => {
+    if (profile?.full_name) return profile.full_name;
+    if (user?.user_metadata?.full_name) return user.user_metadata.full_name;
+    return user?.email?.split("@")[0] || "You";
+  }, [profile, user]);
+
+  // Presence for syncing display names across participants
+  const { participants, getDisplayName, isUserHost } = useVideoPresence({
+    roomName: room?.room_name ?? null,
+    enabled: isJoined && !!user,
+    localUser: {
+      supabaseUserId: user?.id ?? "",
+      agoraUid: agoraUid,
+      displayName: localDisplayName,
+      isHost: isHost,
+    },
+  });
+
+  // Build maps of UID -> displayName and UID -> isHost for remote users
+  const displayNameByUid = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of Object.values(participants)) {
+      map[String(p.agora_uid)] = p.displayName;
+    }
+    return map;
+  }, [participants]);
+
+  const hostByUid = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const p of Object.values(participants)) {
+      map[String(p.agora_uid)] = p.isHost;
+    }
+    return map;
+  }, [participants]);
   
   // Handler for host to mute/unmute remote users
   const handleMuteRemoteUser = async (uid: string | number, mute: boolean) => {
@@ -499,6 +536,8 @@ export default function VideoCall() {
             isHost={isHost}
             onMuteUser={handleMuteRemoteUser}
             speakingByUid={speakingByUid}
+            displayNameByUid={displayNameByUid}
+            hostByUid={hostByUid}
           />
 
           {/* Local Video (Picture-in-Picture style) */}
@@ -531,12 +570,15 @@ export default function VideoCall() {
         remoteUsers={remoteUsers}
         localUser={{
           uid: agoraUid,
+          displayName: localDisplayName,
           isHost: isHost,
           isMuted: isMuted,
           isVideoOff: isVideoOff,
           isSpeaking: isLocalSpeaking,
         }}
         speakingByUid={speakingByUid}
+        displayNameByUid={displayNameByUid}
+        hostByUid={hostByUid}
       />
     </div>
   );
