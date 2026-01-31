@@ -1,71 +1,66 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { deflate } from "npm:pako@2.1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Agora Access Token 2 (007) implementation for Deno
-// Based on the official Agora token specification
+// Agora AccessToken2 (007) implementation for Deno
+// MUST match Agora official algorithm:
+// token = "007" + base64(zlib.compress(packString(signature) + signingInfo))
 
 const VERSION = "007";
-const VERSION_LENGTH = 3;
 
 // Service types
-const ServiceRtc = 1;
+const SERVICE_RTC = 1;
 
 // RTC privileges
-const PrivilegeJoinChannel = 1;
-const PrivilegePublishAudioStream = 2;
-const PrivilegePublishVideoStream = 3;
-const PrivilegePublishDataStream = 4;
+const PRIVILEGE_JOIN_CHANNEL = 1;
+const PRIVILEGE_PUBLISH_AUDIO = 2;
+const PRIVILEGE_PUBLISH_VIDEO = 3;
+const PRIVILEGE_PUBLISH_DATA = 4;
 
-class ByteBuf {
-  private buffer: number[] = [];
+function packUint16(v: number): Uint8Array {
+  const buf = new Uint8Array(2);
+  buf[0] = v & 0xff;
+  buf[1] = (v >> 8) & 0xff;
+  return buf;
+}
 
-  putUint16(v: number): this {
-    this.buffer.push(v & 0xff);
-    this.buffer.push((v >> 8) & 0xff);
-    return this;
+function packUint32(v: number): Uint8Array {
+  const buf = new Uint8Array(4);
+  buf[0] = v & 0xff;
+  buf[1] = (v >> 8) & 0xff;
+  buf[2] = (v >> 16) & 0xff;
+  buf[3] = (v >> 24) & 0xff;
+  return buf;
+}
+
+function packString(bytes: Uint8Array): Uint8Array {
+  return concatBytes([packUint16(bytes.length), bytes]);
+}
+
+function packMapUint32(map: Map<number, number>): Uint8Array {
+  const entries = [...map.entries()].sort((a, b) => a[0] - b[0]);
+  const out: Uint8Array[] = [packUint16(entries.length)];
+  for (const [k, v] of entries) {
+    out.push(packUint16(k));
+    out.push(packUint32(v));
   }
+  return concatBytes(out);
+}
 
-  putUint32(v: number): this {
-    this.buffer.push(v & 0xff);
-    this.buffer.push((v >> 8) & 0xff);
-    this.buffer.push((v >> 16) & 0xff);
-    this.buffer.push((v >> 24) & 0xff);
-    return this;
+function concatBytes(parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, p) => sum + p.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const p of parts) {
+    out.set(p, offset);
+    offset += p.length;
   }
-
-  putBytes(bytes: Uint8Array): this {
-    for (let i = 0; i < bytes.length; i++) {
-      this.buffer.push(bytes[i]);
-    }
-    return this;
-  }
-
-  putString(str: string): this {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(str);
-    this.putUint16(bytes.length);
-    return this.putBytes(bytes);
-  }
-
-  putTreeMapUint32(map: Map<number, number>): this {
-    // Sort by key for deterministic output
-    const sortedEntries = [...map.entries()].sort((a, b) => a[0] - b[0]);
-    this.putUint16(sortedEntries.length);
-    for (const [key, value] of sortedEntries) {
-      this.putUint16(key);
-      this.putUint32(value);
-    }
-    return this;
-  }
-
-  pack(): Uint8Array {
-    return new Uint8Array(this.buffer);
-  }
+  return out;
 }
 
 async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
@@ -88,108 +83,35 @@ async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array
 }
 
 function encodeBase64(data: Uint8Array): string {
+  // Avoid call stack limits by chunking.
   let binary = "";
-  for (let i = 0; i < data.length; i++) {
-    binary += String.fromCharCode(data[i]);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
   }
   return btoa(binary);
 }
 
-class AccessToken {
-  appId: string;
-  appCertificate: string;
-  issueTs: number;
-  expire: number;
-  salt: number;
-  services: Map<number, Service>;
-
-  constructor(appId: string, appCertificate: string, expire: number) {
-    this.appId = appId;
-    this.appCertificate = appCertificate;
-    this.issueTs = Math.floor(Date.now() / 1000);
-    this.expire = expire;
-    this.salt = Math.floor(Math.random() * 0xffffffff);
-    this.services = new Map();
-  }
-
-  addService(service: Service): void {
-    this.services.set(service.getServiceType(), service);
-  }
-
-  private packSigning(): Uint8Array {
-    const buf = new ByteBuf();
-    buf.putUint32(this.salt);
-    buf.putUint32(this.issueTs);
-    buf.putUint32(this.expire);
-    
-    // Pack services count
-    buf.putUint16(this.services.size);
-    
-    // Sort services by type for deterministic output
-    const sortedServices = [...this.services.entries()].sort((a, b) => a[0] - b[0]);
-    
-    for (const [serviceType, service] of sortedServices) {
-      buf.putUint16(serviceType);
-      const serviceData = service.pack();
-      buf.putUint16(serviceData.length);
-      buf.putBytes(serviceData);
-    }
-    
-    return buf.pack();
-  }
-
-  async build(): Promise<string> {
-    const encoder = new TextEncoder();
-    const signing = this.packSigning();
-    
-    // Build signature: HMAC chain
-    // sign = HMAC(HMAC(appCertificate, appId), signing)
-    const step1 = await hmacSha256(encoder.encode(this.appCertificate), encoder.encode(this.appId));
-    const signature = await hmacSha256(step1, signing);
-    
-    // Pack final token
-    const buf = new ByteBuf();
-    buf.putBytes(signature);
-    buf.putUint32(this.salt);
-    buf.putUint32(this.issueTs);
-    buf.putUint32(this.expire);
-    
-    // Pack services
-    buf.putUint16(this.services.size);
-    const sortedServices = [...this.services.entries()].sort((a, b) => a[0] - b[0]);
-    
-    for (const [serviceType, service] of sortedServices) {
-      buf.putUint16(serviceType);
-      const serviceData = service.pack();
-      buf.putUint16(serviceData.length);
-      buf.putBytes(serviceData);
-    }
-    
-    const content = buf.pack();
-    const contentBase64 = encodeBase64(content);
-    
-    return VERSION + this.appId + contentBase64;
-  }
-}
-
 interface Service {
-  getServiceType(): number;
+  serviceType(): number;
   pack(): Uint8Array;
 }
 
-class ServiceRtcImpl implements Service {
-  channelName: string;
-  uid: string;
-  privileges: Map<number, number>;
+class ServiceRtc implements Service {
+  private channelNameBytes: Uint8Array;
+  private uidBytes: Uint8Array;
+  private privileges = new Map<number, number>();
 
-  constructor(channelName: string, uid: string) {
-    this.channelName = channelName;
-    this.uid = uid;
-    this.privileges = new Map();
+  constructor(channelName: string, uid: number) {
+    const encoder = new TextEncoder();
+    this.channelNameBytes = encoder.encode(channelName);
+    // Agora spec: uid==0 means empty string uid
+    this.uidBytes = uid === 0 ? new Uint8Array() : encoder.encode(String(uid));
   }
 
-  getServiceType(): number {
-    return ServiceRtc;
+  serviceType(): number {
+    return SERVICE_RTC;
   }
 
   addPrivilege(privilege: number, expireTimestamp: number): void {
@@ -197,11 +119,79 @@ class ServiceRtcImpl implements Service {
   }
 
   pack(): Uint8Array {
-    const buf = new ByteBuf();
-    buf.putString(this.channelName);
-    buf.putString(this.uid);
-    buf.putTreeMapUint32(this.privileges);
-    return buf.pack();
+    // Service.pack() + pack_string(channel) + pack_string(uid)
+    return concatBytes([
+      packUint16(this.serviceType()),
+      packMapUint32(this.privileges),
+      packString(this.channelNameBytes),
+      packString(this.uidBytes),
+    ]);
+  }
+}
+
+class AccessToken2 {
+  private appId: string;
+  private appCertificate: string;
+  private issueTs: number;
+  private expire: number;
+  private salt: number;
+  private services = new Map<number, Service>();
+
+  constructor(appId: string, appCertificate: string, expire: number) {
+    this.appId = appId;
+    this.appCertificate = appCertificate;
+    this.issueTs = Math.floor(Date.now() / 1000);
+    this.expire = expire;
+    // Match Agora tools: random int 1..99999999
+    this.salt = (crypto.getRandomValues(new Uint32Array(1))[0] % 99999999) + 1;
+  }
+
+  addService(service: Service): void {
+    this.services.set(service.serviceType(), service);
+  }
+
+  private async signing(): Promise<Uint8Array> {
+    // signing = HMAC(key=pack_uint32(issue_ts), msg=app_cert)
+    // signing = HMAC(key=pack_uint32(salt), msg=signing)
+    const encoder = new TextEncoder();
+    const step1 = await hmacSha256(packUint32(this.issueTs), encoder.encode(this.appCertificate));
+    return hmacSha256(packUint32(this.salt), step1);
+  }
+
+  async build(): Promise<string> {
+    const encoder = new TextEncoder();
+
+    // Basic validation
+    if (!/^[a-f0-9]{32}$/i.test(this.appId) || !/^[a-f0-9]{32}$/i.test(this.appCertificate)) {
+      return "";
+    }
+    if (this.services.size === 0) {
+      return "";
+    }
+
+    const signing = await this.signing();
+
+    // signing_info = pack_string(app_id) + issue_ts + expire + salt + service_count + services
+    const signingInfoParts: Uint8Array[] = [
+      packString(encoder.encode(this.appId)),
+      packUint32(this.issueTs),
+      packUint32(this.expire),
+      packUint32(this.salt),
+      packUint16(this.services.size),
+    ];
+
+    const sortedServiceTypes = [...this.services.keys()].sort((a, b) => a - b);
+    for (const t of sortedServiceTypes) {
+      signingInfoParts.push(this.services.get(t)!.pack());
+    }
+    const signingInfo = concatBytes(signingInfoParts);
+
+    const signature = await hmacSha256(signing, signingInfo);
+    const content = concatBytes([packString(signature), signingInfo]);
+
+    // AccessToken2 uses zlib compression + base64
+    const compressed = deflate(content);
+    return VERSION + encodeBase64(compressed);
   }
 }
 
@@ -214,24 +204,22 @@ function buildTokenWithUid(
   tokenExpire: number,
   privilegeExpire: number
 ): Promise<string> {
-  const accessToken = new AccessToken(appId, appCertificate, tokenExpire);
-  
-  const uidStr = uid === 0 ? "" : String(uid);
-  const serviceRtc = new ServiceRtcImpl(channelName, uidStr);
-  
+  const accessToken = new AccessToken2(appId, appCertificate, tokenExpire);
+
+  const serviceRtc = new ServiceRtc(channelName, uid);
+
   const currentTs = Math.floor(Date.now() / 1000);
   const privilegeExpireTs = currentTs + privilegeExpire;
-  
-  serviceRtc.addPrivilege(PrivilegeJoinChannel, privilegeExpireTs);
-  
-  if (role === 1) { // Publisher
-    serviceRtc.addPrivilege(PrivilegePublishAudioStream, privilegeExpireTs);
-    serviceRtc.addPrivilege(PrivilegePublishVideoStream, privilegeExpireTs);
-    serviceRtc.addPrivilege(PrivilegePublishDataStream, privilegeExpireTs);
+
+  serviceRtc.addPrivilege(PRIVILEGE_JOIN_CHANNEL, privilegeExpireTs);
+
+  if (role === 1) {
+    serviceRtc.addPrivilege(PRIVILEGE_PUBLISH_AUDIO, privilegeExpireTs);
+    serviceRtc.addPrivilege(PRIVILEGE_PUBLISH_VIDEO, privilegeExpireTs);
+    serviceRtc.addPrivilege(PRIVILEGE_PUBLISH_DATA, privilegeExpireTs);
   }
-  
+
   accessToken.addService(serviceRtc);
-  
   return accessToken.build();
 }
 
