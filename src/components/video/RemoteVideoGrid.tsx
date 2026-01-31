@@ -232,7 +232,7 @@ export function RemoteVideoGrid({
   return (
     <div
       className={cn(
-        "grid gap-4 w-full h-full",
+        "grid gap-4 w-full h-full auto-rows-fr",
         getGridClass()
       )}
     >
