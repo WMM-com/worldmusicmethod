@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,11 +6,13 @@ import { useAgoraCall } from "@/hooks/useAgoraCall";
 import { useAgoraToken } from "@/hooks/useAgoraToken";
 import { useMediaPreflight } from "@/hooks/useMediaPreflight";
 import { useAgoraVolumeIndicator } from "@/hooks/useAgoraVolumeIndicator";
+import { useRoomPresence } from "@/hooks/useRoomPresence";
 import { LocalVideoTile } from "@/components/video/LocalVideoTile";
 import { RemoteVideoGrid } from "@/components/video/RemoteVideoGrid";
 import { VideoControls } from "@/components/video/VideoControls";
 import { NetworkQualityIndicator } from "@/components/video/NetworkQualityIndicator";
-import { Loader2, AlertCircle, RefreshCw, Copy, Check, ExternalLink, Bug } from "lucide-react";
+import { ParticipantsSheet } from "@/components/video/ParticipantsSheet";
+import { Loader2, AlertCircle, RefreshCw, ExternalLink, Bug, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { isAuthError, isNetworkError } from "@/lib/agora/errorMessages";
@@ -37,6 +39,8 @@ export default function VideoCall() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [networkQuality, setNetworkQuality] = useState<number>(0);
   const [tokenFetched, setTokenFetched] = useState(false);
+  const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [profileMeta, setProfileMeta] = useState<{ full_name: string; profile_type?: string | null; tags?: string[] | null } | null>(null);
   
   // Agora token hook
   const { 
@@ -83,6 +87,67 @@ export default function VideoCall() {
 
   const { speakingByUid } = useAgoraVolumeIndicator({ enabled: isJoined });
   const isLocalSpeaking = !!(agoraUid !== null && speakingByUid[String(agoraUid)]);
+
+  // Fetch minimal profile metadata for names/tags.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, profile_type, tags")
+        .eq("id", user.id)
+        .single();
+
+      if (cancelled) return;
+      if (error) {
+        console.warn("[VideoCall] Failed to load profile meta:", error);
+        // Fallback to auth metadata.
+        setProfileMeta({
+          full_name: (user.user_metadata as any)?.full_name || user.email,
+          profile_type: null,
+          tags: null,
+        });
+        return;
+      }
+
+      setProfileMeta({
+        full_name: data?.full_name || (user.user_metadata as any)?.full_name || user.email,
+        profile_type: (data as any)?.profile_type ?? null,
+        tags: (data as any)?.tags ?? null,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const selfPresence = useMemo(() => {
+    if (!user || !agoraUid || !profileMeta) return null;
+    return {
+      userId: user.id,
+      agoraUid,
+      displayName: profileMeta.full_name,
+      profileType: profileMeta.profile_type,
+      tags: profileMeta.tags,
+      isHost,
+      isMuted,
+      isVideoOff,
+    };
+  }, [agoraUid, isHost, isMuted, isVideoOff, profileMeta, user]);
+
+  const presence = useRoomPresence({
+    enabled: isJoined && !!room?.room_name && !!selfPresence,
+    roomName: room?.room_name ?? null,
+    self: selfPresence,
+  });
+
+  // Keep presence state in sync with local mic/cam toggles.
+  useEffect(() => {
+    if (!isJoined) return;
+    presence.updateSelf({ is_muted: isMuted, is_video_off: isVideoOff });
+  }, [isJoined, isMuted, isVideoOff]);
   
   // Handler for host to mute/unmute remote users
   const handleMuteRemoteUser = async (uid: string | number, mute: boolean) => {
@@ -473,6 +538,17 @@ export default function VideoCall() {
             )}
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setParticipantsOpen(true)}
+              className="gap-2"
+              title="View participants"
+            >
+              <Users className="h-4 w-4" />
+              Participants
+              <span className="text-muted-foreground">({presence.participantCount || 0})</span>
+            </Button>
             {mediaPermissionDenied && (
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-muted-foreground" />
@@ -497,6 +573,7 @@ export default function VideoCall() {
             isHost={isHost}
             onMuteUser={handleMuteRemoteUser}
             speakingByUid={speakingByUid}
+            presenceByAgoraUid={presence.byAgoraUid}
           />
 
           {/* Local Video (Picture-in-Picture style) */}
@@ -518,6 +595,14 @@ export default function VideoCall() {
         onToggleVideo={toggleVideo}
         onLeave={handleLeave}
         isSpeaking={isLocalSpeaking}
+      />
+
+      <ParticipantsSheet
+        open={participantsOpen}
+        onOpenChange={setParticipantsOpen}
+        participants={presence.participants}
+        participantCount={presence.participantCount}
+        onLeave={handleLeave}
       />
     </div>
   );
