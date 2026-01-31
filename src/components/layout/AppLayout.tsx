@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music } from 'lucide-react';
+import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music, Video } from 'lucide-react';
 import { useState } from 'react';
 import { SiteHeader } from './SiteHeader';
 
@@ -36,6 +36,11 @@ const documentNavItems = [
 // Tech Specs section  
 const techSpecNavItems = [
   { href: '/tech-specs', label: 'Tech Specs', icon: Music },
+];
+
+// Tutor section
+const tutorNavItems = [
+  { href: '/tutor/rooms', label: 'Tutor Rooms', icon: Video },
 ];
 
 // Settings
@@ -136,6 +141,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
           
+          {/* Tutor Section */}
+          <div className="pt-2">
+            <p className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tutor</p>
+            <div className="space-y-1">
+              {tutorNavItems.map(renderNavItem)}
+            </div>
+          </div>
+          
           {/* Settings Section */}
           <div className="pt-2">
             <div className="space-y-1">
@@ -200,6 +213,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stage & Tech</p>
               <div className="space-y-1">
                 {techSpecNavItems.map(renderMobileNavItem)}
+              </div>
+            </div>
+            
+            {/* Tutor Section */}
+            <div className="pt-2">
+              <p className="px-4 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tutor</p>
+              <div className="space-y-1">
+                {tutorNavItems.map(renderMobileNavItem)}
               </div>
             </div>
             
