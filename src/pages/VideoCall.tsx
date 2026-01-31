@@ -29,6 +29,9 @@ export default function VideoCall() {
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [networkQuality, setNetworkQuality] = useState<number>(0);
+  
+  // Check if current user is the host
+  const isHost = room && user ? room.host_user_id === user.id : false;
 
   const {
     isJoined,
@@ -42,6 +45,7 @@ export default function VideoCall() {
     leaveChannel,
     toggleMute,
     toggleVideo,
+    muteRemoteUser,
   } = useAgoraCall({
     onUserJoined: (user) => {
       toast.info(`User ${user.uid} joined the call`);
@@ -53,6 +57,14 @@ export default function VideoCall() {
       toast.error(`Call error: ${error.message}`);
     },
   });
+  
+  // Handler for host to mute/unmute remote users
+  const handleMuteRemoteUser = async (uid: string | number, mute: boolean) => {
+    if (!isHost) {
+      throw new Error("Only the host can mute participants");
+    }
+    await muteRemoteUser(uid, mute);
+  };
 
   // Fetch room details
   useEffect(() => {
@@ -225,6 +237,8 @@ export default function VideoCall() {
           <RemoteVideoGrid 
             remoteUsers={remoteUsers} 
             networkQuality={networkQuality}
+            isHost={isHost}
+            onMuteUser={handleMuteRemoteUser}
           />
 
           {/* Local Video (Picture-in-Picture style) */}
