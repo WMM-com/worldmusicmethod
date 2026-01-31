@@ -258,6 +258,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
+    // Use service role for room lookups
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
     // Validate the JWT and get claims
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
@@ -270,7 +276,7 @@ serve(async (req) => {
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = claimsData.claims.sub as string;
     console.log("[AGORA-TOKEN] Authenticated user:", userId);
 
     // Parse request body
@@ -282,6 +288,62 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // SECURITY: Verify user has access to this channel/room
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('video_rooms')
+      .select('id, host_user_id, is_active')
+      .eq('room_name', channelName)
+      .maybeSingle();
+
+    if (roomError) {
+      console.log("[AGORA-TOKEN] Room lookup error:", roomError.message);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify room access" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!room) {
+      console.log("[AGORA-TOKEN] Room not found:", channelName);
+      return new Response(
+        JSON.stringify({ error: "Room not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!room.is_active) {
+      console.log("[AGORA-TOKEN] Room is not active:", channelName);
+      return new Response(
+        JSON.stringify({ error: "Room is no longer active" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if user is host or an invited participant
+    const isHost = room.host_user_id === userId;
+    
+    let isParticipant = false;
+    if (!isHost) {
+      const { data: participant } = await supabaseAdmin
+        .from('room_participants')
+        .select('id')
+        .eq('room_id', room.id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      isParticipant = !!participant;
+    }
+
+    if (!isHost && !isParticipant) {
+      console.log("[AGORA-TOKEN] User not authorized for room:", { userId, channelName, roomId: room.id });
+      return new Response(
+        JSON.stringify({ error: "Not authorized to join this room" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[AGORA-TOKEN] Room access verified:", { isHost, isParticipant, roomId: room.id });
 
     // Get Agora credentials from environment
     const appId = Deno.env.get("AGORA_APP_ID");
