@@ -94,6 +94,8 @@ export function isAuthError(error: unknown): boolean {
     "invalid.*vendor.*key",
     "invalid.*token",
     "token.*expired",
+    "can.*not.*find.*appid",
+    "appid",
   ];
   
   return authPatterns.some(pattern => {
