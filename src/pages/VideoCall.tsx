@@ -172,7 +172,7 @@ export default function VideoCall() {
       console.log("[VideoCall] User ID:", user.id);
       console.log("[VideoCall] ===========================");
       
-      fetchToken(room.room_name, "publisher").then((result) => {
+      fetchToken(room.room_name, { role: "publisher", uid: 0 }).then((result) => {
         if (result) {
           setTokenFetched(true);
           console.log("[VideoCall] ✓ Token fetched successfully");

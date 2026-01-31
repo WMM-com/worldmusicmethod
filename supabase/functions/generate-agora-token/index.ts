@@ -1,182 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { RtcTokenBuilder, RtcRole } from "https://esm.sh/agora-token@2.0.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-// Agora token privileges
-const Privileges = {
-  kJoinChannel: 1,
-  kPublishAudioStream: 2,
-  kPublishVideoStream: 3,
-  kPublishDataStream: 4,
-};
-
-// Simple token builder implementation for RTC tokens
-// Based on Agora's token generation algorithm
-function buildToken(
-  appId: string,
-  appCertificate: string,
-  channelName: string,
-  uid: string,
-  role: number,
-  privilegeExpiredTs: number
-): string {
-  const version = "007";
-  const randomInt = Math.floor(Math.random() * 0xFFFFFFFF);
-  const timestamp = Math.floor(Date.now() / 1000);
-  
-  // Build the message
-  const message = buildMessage(uid, timestamp, randomInt, privilegeExpiredTs, role);
-  
-  // Sign the message
-  const signature = sign(appCertificate, appId, channelName, uid, message);
-  
-  // Pack the token
-  const content = packContent(signature, randomInt, timestamp, message);
-  
-  return version + base64Encode(content);
-}
-
-function buildMessage(
-  uid: string,
-  timestamp: number,
-  salt: number,
-  privilegeExpiredTs: number,
-  role: number
-): Uint8Array {
-  const buffer = new ArrayBuffer(256);
-  const view = new DataView(buffer);
-  let offset = 0;
-  
-  // Salt
-  view.setUint32(offset, salt, true);
-  offset += 4;
-  
-  // Timestamp
-  view.setUint32(offset, timestamp, true);
-  offset += 4;
-  
-  // Privilege map size (4 privileges for publisher)
-  const privileges: Record<number, number> = {};
-  privileges[Privileges.kJoinChannel] = privilegeExpiredTs;
-  if (role === 1) { // Publisher
-    privileges[Privileges.kPublishAudioStream] = privilegeExpiredTs;
-    privileges[Privileges.kPublishVideoStream] = privilegeExpiredTs;
-    privileges[Privileges.kPublishDataStream] = privilegeExpiredTs;
-  }
-  
-  const privilegeCount = Object.keys(privileges).length;
-  view.setUint16(offset, privilegeCount, true);
-  offset += 2;
-  
-  // Write privileges
-  for (const [key, value] of Object.entries(privileges)) {
-    view.setUint16(offset, parseInt(key), true);
-    offset += 2;
-    view.setUint32(offset, value, true);
-    offset += 4;
-  }
-  
-  return new Uint8Array(buffer, 0, offset);
-}
-
-async function hmacSha256(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    key.buffer as ArrayBuffer,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, data.buffer as ArrayBuffer);
-  return new Uint8Array(signature);
-}
-
-function sign(
-  appCertificate: string,
-  appId: string,
-  channelName: string,
-  uid: string,
-  message: Uint8Array
-): Promise<Uint8Array> {
-  const encoder = new TextEncoder();
-  const content = new Uint8Array([
-    ...encoder.encode(appId),
-    ...encoder.encode(channelName),
-    ...encoder.encode(uid),
-    ...message,
-  ]);
-  return hmacSha256(encoder.encode(appCertificate), content);
-}
-
-async function packContent(
-  signaturePromise: Promise<Uint8Array>,
-  salt: number,
-  timestamp: number,
-  message: Uint8Array
-): Promise<Uint8Array> {
-  const signature = await signaturePromise;
-  const buffer = new ArrayBuffer(512);
-  const view = new DataView(buffer);
-  let offset = 0;
-  
-  // Signature length and data
-  view.setUint16(offset, signature.length, true);
-  offset += 2;
-  new Uint8Array(buffer, offset, signature.length).set(signature);
-  offset += signature.length;
-  
-  // Salt
-  view.setUint32(offset, salt, true);
-  offset += 4;
-  
-  // Timestamp
-  view.setUint32(offset, timestamp, true);
-  offset += 4;
-  
-  // Message length and data
-  view.setUint16(offset, message.length, true);
-  offset += 2;
-  new Uint8Array(buffer, offset, message.length).set(message);
-  offset += message.length;
-  
-  return new Uint8Array(buffer, 0, offset);
-}
-
-function base64Encode(data: Uint8Array | Promise<Uint8Array>): string | Promise<string> {
-  if (data instanceof Promise) {
-    return data.then(d => btoa(String.fromCharCode(...d)));
-  }
-  return btoa(String.fromCharCode(...data));
-}
-
-// Alternative: Use AccessToken2 format which is more widely supported
-function generateRtcToken(
-  appId: string,
-  appCertificate: string,
-  channelName: string,
-  uid: string,
-  role: "publisher" | "subscriber",
-  tokenExpirationInSeconds: number
-): Promise<string> {
-  const roleValue = role === "publisher" ? 1 : 2;
-  const privilegeExpiredTs = Math.floor(Date.now() / 1000) + tokenExpirationInSeconds;
-  
-  return (async () => {
-    const version = "007";
-    const randomInt = Math.floor(Math.random() * 0xFFFFFFFF);
-    const timestamp = Math.floor(Date.now() / 1000);
-    
-    const message = buildMessage(uid, timestamp, randomInt, privilegeExpiredTs, roleValue);
-    const signature = await sign(appCertificate, appId, channelName, uid, message);
-    const content = await packContent(Promise.resolve(signature), randomInt, timestamp, message);
-    
-    return version + btoa(String.fromCharCode(...content));
-  })();
-}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -230,33 +59,67 @@ serve(async (req) => {
     const appId = Deno.env.get("AGORA_APP_ID");
     const appCertificate = Deno.env.get("AGORA_APP_CERTIFICATE");
 
-    if (!appId || !appCertificate) {
-      console.error("[AGORA-TOKEN] Missing Agora credentials");
+    // Validate App ID format (32 hex characters)
+    if (!appId || !/^[a-f0-9]{32}$/i.test(appId)) {
+      console.error("[AGORA-TOKEN] Invalid or missing App ID");
+      console.error("[AGORA-TOKEN] App ID length:", appId?.length);
+      console.error("[AGORA-TOKEN] TROUBLESHOOTING:");
+      console.error("  1. Go to Agora Console > Project Management");
+      console.error("  2. Copy the exact App ID (32 hex characters)");
+      console.error("  3. Update AGORA_APP_ID secret in Supabase");
       return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
+        JSON.stringify({ 
+          error: "Invalid Agora App ID configuration",
+          details: "App ID must be a 32-character hexadecimal string"
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Use the user's Supabase ID as the UID if not provided
-    const agoraUid = uid || userId;
+    if (!appCertificate) {
+      console.error("[AGORA-TOKEN] Missing App Certificate");
+      console.error("[AGORA-TOKEN] TROUBLESHOOTING:");
+      console.error("  1. Go to Agora Console > Project Management");
+      console.error("  2. Click on your project > Features > App Certificate");
+      console.error("  3. Enable Primary Certificate and copy the value");
+      console.error("  4. Update AGORA_APP_CERTIFICATE secret in Supabase");
+      return new Response(
+        JSON.stringify({ error: "Missing Agora App Certificate" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use uid=0 for simplicity (avoids UID mismatch errors) or convert user ID to uint
+    // When uid is 0, Agora generates a random UID on join
+    const agoraUid = uid === undefined || uid === null || uid === 0 ? 0 : parseInt(String(uid), 10) || 0;
+    
+    // Determine role
+    const agoraRole = role === "subscriber" ? RtcRole.SUBSCRIBER : RtcRole.PUBLISHER;
     
     // Token expires in 1 hour (3600 seconds)
     const tokenExpirationInSeconds = 3600;
+    const privilegeExpiredTs = Math.floor(Date.now() / 1000) + tokenExpirationInSeconds;
 
-    console.log("[AGORA-TOKEN] Generating token for channel:", channelName, "uid:", agoraUid, "role:", role);
+    console.log("[AGORA-TOKEN] === TOKEN GENERATION ===");
+    console.log("[AGORA-TOKEN] App ID:", `${appId.slice(0, 8)}...${appId.slice(-4)}`);
+    console.log("[AGORA-TOKEN] Channel:", channelName);
+    console.log("[AGORA-TOKEN] UID:", agoraUid);
+    console.log("[AGORA-TOKEN] Role:", role);
+    console.log("[AGORA-TOKEN] Expires:", new Date(privilegeExpiredTs * 1000).toISOString());
 
-    // Generate the token
-    const rtcToken = await generateRtcToken(
+    // Generate the RTC token using official Agora library
+    const rtcToken = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCertificate,
       channelName,
-      String(agoraUid),
-      role as "publisher" | "subscriber",
-      tokenExpirationInSeconds
+      agoraUid,
+      agoraRole,
+      tokenExpirationInSeconds,  // Token expiration
+      tokenExpirationInSeconds   // Privilege expiration
     );
 
-    console.log("[AGORA-TOKEN] Token generated successfully");
+    console.log("[AGORA-TOKEN] ✓ Token generated successfully");
+    console.log("[AGORA-TOKEN] Token preview:", `${rtcToken.slice(0, 20)}...`);
 
     return new Response(
       JSON.stringify({
@@ -271,6 +134,7 @@ serve(async (req) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[AGORA-TOKEN] Error:", message);
+    console.error("[AGORA-TOKEN] Stack:", error instanceof Error ? error.stack : "N/A");
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
