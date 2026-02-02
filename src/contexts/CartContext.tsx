@@ -3,12 +3,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 export interface CartItem {
   productId: string;
   name: string;
-  price: number;
+  price: number; // Base price or PWYF selected price
   currency: string;
   quantity: number;
   courseId?: string;
   productType: string;
-  customPrice?: number; // For PWYF products
+  customPrice?: number; // For PWYF products - the user-selected price
+  isPwyf?: boolean; // Flag to identify PWYF products
+  minPrice?: number; // Min price for validation
+  maxPrice?: number; // Max price for validation
 }
 
 interface CartContextType {
@@ -22,6 +25,7 @@ interface CartContextType {
   getItemCount: () => number;
   hasSubscription: () => boolean;
   hasOneTimeProduct: () => boolean;
+  hasPwyfProduct: () => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -43,9 +47,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const hasSubscription = () => items.some(i => isSubscriptionType(i.productType));
   const hasOneTimeProduct = () => items.some(i => !isSubscriptionType(i.productType));
+  const hasPwyfProduct = () => items.some(i => i.isPwyf);
 
   const addToCart = (item: Omit<CartItem, 'quantity'>): boolean => {
     const isNewItemSubscription = isSubscriptionType(item.productType);
+    
+    // Validate PWYF price
+    if (item.isPwyf && item.customPrice !== undefined) {
+      const minPrice = item.minPrice || 0;
+      const maxPrice = item.maxPrice || Infinity;
+      if (item.customPrice < minPrice || item.customPrice > maxPrice) {
+        console.error('[Cart] PWYF price out of range:', { customPrice: item.customPrice, minPrice, maxPrice });
+        return false;
+      }
+    }
     
     setItems(prev => {
       // EXCLUSIVE CART: If adding different product type - clear cart and add new item
@@ -61,8 +76,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       
       const existing = prev.find(i => i.productId === item.productId);
       if (existing) {
-        // For courses/subscriptions, don't increase quantity
-        if (item.productType === 'course' || isSubscriptionType(item.productType)) {
+        // For courses/subscriptions/PWYF, don't increase quantity, just update price
+        if (item.productType === 'course' || isSubscriptionType(item.productType) || item.isPwyf) {
           // Update custom price if provided
           if (item.customPrice !== undefined) {
             return prev.map(i => 
@@ -79,7 +94,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             : i
         );
       }
-      return [...prev, { ...item, quantity: 1 }];
+      
+      // For PWYF products, use customPrice as the price
+      const finalItem = item.isPwyf && item.customPrice !== undefined
+        ? { ...item, price: item.customPrice, quantity: 1 }
+        : { ...item, quantity: 1 };
+        
+      return [...prev, finalItem];
     });
     return true;
   };
@@ -99,11 +120,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateCustomPrice = (productId: string, customPrice: number) => {
-    setItems(prev => prev.map(i => 
-      i.productId === productId 
-        ? { ...i, customPrice, price: customPrice }
-        : i
-    ));
+    setItems(prev => prev.map(i => {
+      if (i.productId !== productId) return i;
+      
+      // Validate PWYF price range
+      const minPrice = i.minPrice || 0;
+      const maxPrice = i.maxPrice || Infinity;
+      if (customPrice < minPrice || customPrice > maxPrice) {
+        console.warn('[Cart] Custom price out of range:', { customPrice, minPrice, maxPrice });
+        return i;
+      }
+      
+      return { ...i, customPrice, price: customPrice };
+    }));
   };
 
   const clearCart = () => {
@@ -112,7 +141,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const getTotal = () => {
     return items.reduce((sum, item) => {
-      const price = item.customPrice ?? item.price;
+      // For PWYF products, always use customPrice if set
+      const price = item.isPwyf && item.customPrice !== undefined 
+        ? item.customPrice 
+        : (item.customPrice ?? item.price);
       return sum + price * item.quantity;
     }, 0);
   };
@@ -133,6 +165,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       getItemCount,
       hasSubscription,
       hasOneTimeProduct,
+      hasPwyfProduct,
     }}>
       {children}
     </CartContext.Provider>

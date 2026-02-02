@@ -43,12 +43,19 @@ export default function Cart() {
                 <Card key={item.productId} className="p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="font-semibold">{item.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{item.name}</h3>
+                        {item.isPwyf && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                            Pay What You Feel
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-muted-foreground capitalize">{item.productType}</p>
                     </div>
 
                     <p className="font-semibold w-24 text-right">
-                      {formatPrice(item.price, item.currency || 'USD')}
+                      {formatPrice(item.customPrice ?? item.price, item.currency || 'USD')}
                     </p>
 
                     <Button

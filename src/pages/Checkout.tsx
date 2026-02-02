@@ -324,7 +324,7 @@ function CheckoutContent() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { user, signIn } = useAuth();
-  const { items: cartItems, clearCart, removeFromCart } = useCart();
+  const { items: cartItems, clearCart, removeFromCart, hasPwyfProduct, updateCustomPrice } = useCart();
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<{ 
     code: string; 
@@ -546,25 +546,41 @@ function CheckoutContent() {
   const pwyfMax = product?.max_price || 100;
   const pwyfSuggested = product?.suggested_price || pwyfMin;
   
+  // Check if cart contains PWYF products
+  const cartHasPwyf = isCartMode && hasPwyfProduct();
+  
   // Get currency symbol for current region
   const getCurrencySymbol = (curr: string) => {
     const symbols: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
     return symbols[curr] || '$';
   };
 
+  // Calculate geo-adjusted PWYF bounds
+  const geoRatio = productPriceInfo && product?.base_price_usd 
+    ? productPriceInfo.price / product.base_price_usd 
+    : 1;
+  const geoPwyfMin = Math.round(pwyfMin * geoRatio);
+  const geoPwyfMax = Math.round(pwyfMax * geoRatio);
+  const geoPwyfSuggested = Math.round(pwyfSuggested * geoRatio);
+
   // Initialize PWYF price to suggested price when product loads
   useEffect(() => {
     if (isPwyfProduct && pwyfPrice === null) {
-      // Apply geo pricing ratio to PWYF prices
-      const ratio = productPriceInfo ? productPriceInfo.price / product.base_price_usd : 1;
-      setPwyfPrice(Math.round(pwyfSuggested * ratio));
+      setPwyfPrice(geoPwyfSuggested);
     }
-  }, [isPwyfProduct, pwyfSuggested, pwyfPrice, productPriceInfo, product?.base_price_usd]);
+  }, [isPwyfProduct, geoPwyfSuggested, pwyfPrice]);
+  
+  // Validate PWYF price
+  const isPwyfPriceValid = !isPwyfProduct || (
+    pwyfPrice !== null && 
+    pwyfPrice >= geoPwyfMin && 
+    pwyfPrice <= geoPwyfMax
+  );
   
   // Calculate actual base price (either PWYF or regular)
   const effectiveBasePrice = isPwyfProduct && pwyfPrice !== null 
     ? pwyfPrice 
-    : (isCartMode ? cartItems.reduce((sum, item) => sum + item.price, 0) : productPriceInfo?.price || 0);
+    : (isCartMode ? cartItems.reduce((sum, item) => sum + (item.customPrice ?? item.price), 0) : productPriceInfo?.price || 0);
   
   const basePrice = effectiveBasePrice;
   const currency = isCartMode
@@ -833,12 +849,17 @@ function CheckoutContent() {
                           <PwyfSlider
                             value={pwyfPrice}
                             onChange={setPwyfPrice}
-                            min={Math.round((pwyfMin * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
-                            max={Math.round((pwyfMax * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
-                            suggested={Math.round((pwyfSuggested * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
+                            min={geoPwyfMin}
+                            max={geoPwyfMax}
+                            suggested={geoPwyfSuggested}
                             currency={currency}
                             currencySymbol={getCurrencySymbol(currency)}
                           />
+                          {!isPwyfPriceValid && (
+                            <p className="text-xs text-destructive mt-2">
+                              Please select a price between {getCurrencySymbol(currency)}{geoPwyfMin} and {getCurrencySymbol(currency)}{geoPwyfMax}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -965,54 +986,70 @@ function CheckoutContent() {
                   )}
                 </div>
 
-                {/* Payment method selection */}
+                {/* Payment method selection - Hide PayPal for PWYF products */}
                 <div className="py-4 border-b border-border">
                   <Label className="mb-3 block">Payment Method</Label>
-                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('card')}
-                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
-                        paymentMethod === 'card'
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-muted-foreground'
-                      }`}
-                    >
-                      <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="font-medium text-sm sm:text-base">Card</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('paypal')}
-                      className={`p-2 sm:p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-0.5 sm:gap-2 ${
-                        paymentMethod === 'paypal'
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-muted-foreground'
-                      }`}
-                    >
-                      <span className="text-[#003087] font-bold italic text-sm sm:text-base">Pay</span>
-                      <span className="text-[#009CDE] font-bold italic text-sm sm:text-base">Pal</span>
-                    </button>
-                  </div>
+                  {(isPwyfProduct || cartHasPwyf) ? (
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-lg border-2 border-primary bg-primary/5 flex items-center justify-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        <span className="font-medium">Card Payment</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Pay What You Feel products require card payment
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`p-2 sm:p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-1.5 sm:gap-2 ${
+                          paymentMethod === 'card'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-muted-foreground'
+                        }`}
+                      >
+                        <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="font-medium text-sm sm:text-base">Card</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('paypal')}
+                        className={`p-2 sm:p-3 rounded-lg border-2 transition-all flex items-center justify-center gap-0.5 sm:gap-2 ${
+                          paymentMethod === 'paypal'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-muted-foreground'
+                        }`}
+                      >
+                        <span className="text-[#003087] font-bold italic text-sm sm:text-base">Pay</span>
+                        <span className="text-[#009CDE] font-bold italic text-sm sm:text-base">Pal</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment form */}
                 <div className="py-4 sm:py-6">
-                  {paymentMethod === 'card' ? (
+                  {(paymentMethod === 'card' || isPwyfProduct || cartHasPwyf) ? (
                     <StripeCardFields
                       productIds={isCartMode ? cartItems.map(item => item.productId) : [productId || '']}
                       amounts={
                         // Pass coupon-discounted AND card-discounted amounts to the backend
-                        // The 2% card discount must be included so Stripe charges the correct amount
+                        // For PWYF products, use the custom price (pwyfPrice)
                         isCartMode 
                           ? cartItems.map(item => {
+                              // Use customPrice for PWYF items, otherwise regular price
+                              const itemPrice = item.isPwyf && item.customPrice !== undefined
+                                ? item.customPrice
+                                : item.price;
                               // Apply proportional coupon discount to each item
-                              const itemRatio = item.price / basePrice;
-                              const afterCoupon = item.price - (couponDiscount * itemRatio);
+                              const itemRatio = basePrice > 0 ? itemPrice / basePrice : 1;
+                              const afterCoupon = itemPrice - (couponDiscount * itemRatio);
                               // Apply 2% card discount
                               return afterCoupon - (afterCoupon * 0.02);
                             }) 
-                          : [cardPrice]  // cardPrice already includes coupon + 2% card discount
+                          : [cardPrice]  // cardPrice already includes coupon + 2% card discount (and PWYF price)
                       }
                       email={user?.email || email}
                       fullName={fullName || user?.email || email}
@@ -1023,6 +1060,8 @@ function CheckoutContent() {
                       onSuccess={handleSuccess}
                       debugEnabled={debugEnabled}
                       isLoggedIn={!!user}
+                      isPwyf={isPwyfProduct || cartHasPwyf}
+                      pwyfValid={isPwyfPriceValid}
                     />
                   ) : (
                     <div className="space-y-4">
