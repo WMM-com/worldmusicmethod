@@ -3751,16 +3751,16 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_pwyf: boolean | null
+          max_price: number | null
+          min_price: number | null
           name: string
           product_type: string
           purchase_tag_id: string | null
-          pwyf_enabled: boolean | null
-          pwyf_max_price_usd: number | null
-          pwyf_min_price_usd: number | null
-          pwyf_suggested_price_usd: number | null
           refund_remove_tag: boolean | null
           sale_ends_at: string | null
           sale_price_usd: number | null
+          suggested_price: number | null
           trial_enabled: boolean | null
           trial_length_days: number | null
           trial_price_usd: number | null
@@ -3775,16 +3775,16 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_pwyf?: boolean | null
+          max_price?: number | null
+          min_price?: number | null
           name: string
           product_type?: string
           purchase_tag_id?: string | null
-          pwyf_enabled?: boolean | null
-          pwyf_max_price_usd?: number | null
-          pwyf_min_price_usd?: number | null
-          pwyf_suggested_price_usd?: number | null
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
+          suggested_price?: number | null
           trial_enabled?: boolean | null
           trial_length_days?: number | null
           trial_price_usd?: number | null
@@ -3799,16 +3799,16 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_pwyf?: boolean | null
+          max_price?: number | null
+          min_price?: number | null
           name?: string
           product_type?: string
           purchase_tag_id?: string | null
-          pwyf_enabled?: boolean | null
-          pwyf_max_price_usd?: number | null
-          pwyf_min_price_usd?: number | null
-          pwyf_suggested_price_usd?: number | null
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
+          suggested_price?: number | null
           trial_enabled?: boolean | null
           trial_length_days?: number | null
           trial_price_usd?: number | null

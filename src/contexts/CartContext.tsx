@@ -8,6 +8,7 @@ export interface CartItem {
   quantity: number;
   courseId?: string;
   productType: string;
+  customPrice?: number; // For PWYF products
 }
 
 interface CartContextType {
@@ -15,6 +16,7 @@ interface CartContextType {
   addToCart: (item: Omit<CartItem, 'quantity'>) => boolean;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  updateCustomPrice: (productId: string, customPrice: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -46,7 +48,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const isNewItemSubscription = isSubscriptionType(item.productType);
     
     setItems(prev => {
-      // Check if adding different product type - clear cart if so
+      // EXCLUSIVE CART: If adding different product type - clear cart and add new item
       if (prev.length > 0) {
         const cartHasSubscription = prev.some(i => isSubscriptionType(i.productType));
         const cartHasOneTime = prev.some(i => !isSubscriptionType(i.productType));
@@ -61,6 +63,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         // For courses/subscriptions, don't increase quantity
         if (item.productType === 'course' || isSubscriptionType(item.productType)) {
+          // Update custom price if provided
+          if (item.customPrice !== undefined) {
+            return prev.map(i => 
+              i.productId === item.productId 
+                ? { ...i, customPrice: item.customPrice, price: item.customPrice }
+                : i
+            );
+          }
           return prev;
         }
         return prev.map(i => 
@@ -88,12 +98,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     ));
   };
 
+  const updateCustomPrice = (productId: string, customPrice: number) => {
+    setItems(prev => prev.map(i => 
+      i.productId === productId 
+        ? { ...i, customPrice, price: customPrice }
+        : i
+    ));
+  };
+
   const clearCart = () => {
     setItems([]);
   };
 
   const getTotal = () => {
-    return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return items.reduce((sum, item) => {
+      const price = item.customPrice ?? item.price;
+      return sum + price * item.quantity;
+    }, 0);
   };
 
   const getItemCount = () => {
@@ -106,6 +127,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       addToCart,
       removeFromCart,
       updateQuantity,
+      updateCustomPrice,
       clearCart,
       getTotal,
       getItemCount,

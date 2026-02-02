@@ -16,7 +16,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { StripeCardFields } from '@/components/checkout/StripeCardFields';
 import { SubscriptionDetails } from '@/components/checkout/SubscriptionDetails';
-import { PriceSlider } from '@/components/checkout/PriceSlider';
+import { PwyfSlider } from '@/components/checkout/PwyfSlider';
 
 type PaymentMethod = 'card' | 'paypal';
 
@@ -541,10 +541,10 @@ function CheckoutContent() {
   const productPriceInfo = product ? calculatePrice(product.base_price_usd, productRegionalPricing || []) : null;
   
   // Check if product has PWYF pricing
-  const isPwyf = product?.pwyf_enabled && product?.pwyf_min_price_usd != null;
-  const pwyfMin = product?.pwyf_min_price_usd || 0;
-  const pwyfMax = product?.pwyf_max_price_usd || 100;
-  const pwyfSuggested = product?.pwyf_suggested_price_usd || pwyfMin;
+  const isPwyfProduct = product?.is_pwyf && product?.min_price != null;
+  const pwyfMin = product?.min_price || 0;
+  const pwyfMax = product?.max_price || 100;
+  const pwyfSuggested = product?.suggested_price || pwyfMin;
   
   // Get currency symbol for current region
   const getCurrencySymbol = (curr: string) => {
@@ -554,15 +554,15 @@ function CheckoutContent() {
 
   // Initialize PWYF price to suggested price when product loads
   useEffect(() => {
-    if (isPwyf && pwyfPrice === null) {
+    if (isPwyfProduct && pwyfPrice === null) {
       // Apply geo pricing ratio to PWYF prices
       const ratio = productPriceInfo ? productPriceInfo.price / product.base_price_usd : 1;
       setPwyfPrice(Math.round(pwyfSuggested * ratio));
     }
-  }, [isPwyf, pwyfSuggested, pwyfPrice, productPriceInfo, product?.base_price_usd]);
+  }, [isPwyfProduct, pwyfSuggested, pwyfPrice, productPriceInfo, product?.base_price_usd]);
   
   // Calculate actual base price (either PWYF or regular)
-  const effectiveBasePrice = isPwyf && pwyfPrice !== null 
+  const effectiveBasePrice = isPwyfProduct && pwyfPrice !== null 
     ? pwyfPrice 
     : (isCartMode ? cartItems.reduce((sum, item) => sum + item.price, 0) : productPriceInfo?.price || 0);
   
@@ -824,13 +824,13 @@ function CheckoutContent() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-start">
                         <p className="font-medium">{product?.name}</p>
-                        {!isPwyf && <p className="font-semibold">{formatPrice(basePrice, currency)}</p>}
+                        {!isPwyfProduct && <p className="font-semibold">{formatPrice(basePrice, currency)}</p>}
                       </div>
                       
                       {/* Pay What You Feel Slider */}
-                      {isPwyf && pwyfPrice !== null && (
+                      {isPwyfProduct && pwyfPrice !== null && (
                         <div className="pt-2">
-                          <PriceSlider
+                          <PwyfSlider
                             value={pwyfPrice}
                             onChange={setPwyfPrice}
                             min={Math.round((pwyfMin * (productPriceInfo?.price || product?.base_price_usd || 1)) / (product?.base_price_usd || 1))}
