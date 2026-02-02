@@ -60,10 +60,10 @@ interface Product {
   is_active: boolean;
   purchase_tag_id: string | null;
   refund_remove_tag: boolean | null;
-  pwyf_enabled?: boolean | null;
-  pwyf_min_price_usd?: number | null;
-  pwyf_max_price_usd?: number | null;
-  pwyf_suggested_price_usd?: number | null;
+  is_pwyf?: boolean | null;
+  min_price?: number | null;
+  max_price?: number | null;
+  suggested_price?: number | null;
 }
 
 interface EmailTag {
@@ -617,10 +617,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
   const [expertAttributions, setExpertAttributions] = useState<ExpertAttribution[]>([]);
   
   // Pay What You Feel pricing
-  const [pwyfEnabled, setPwyfEnabled] = useState(false);
-  const [pwyfMinPrice, setPwyfMinPrice] = useState('');
-  const [pwyfMaxPrice, setPwyfMaxPrice] = useState('');
-  const [pwyfSuggestedPrice, setPwyfSuggestedPrice] = useState('');
+  const [isPwyf, setIsPwyf] = useState(false);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [suggestedPrice, setSuggestedPrice] = useState('');
 
   const { data: courses } = useQuery({
     queryKey: ['admin-courses-for-products'],
@@ -683,10 +683,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
       setRefundRemoveTag(product.refund_remove_tag ?? true);
       
       // Load PWYF settings
-      setPwyfEnabled(product.pwyf_enabled || false);
-      setPwyfMinPrice(product.pwyf_min_price_usd?.toString() || '');
-      setPwyfMaxPrice(product.pwyf_max_price_usd?.toString() || '');
-      setPwyfSuggestedPrice(product.pwyf_suggested_price_usd?.toString() || '');
+      setIsPwyf(product.is_pwyf || false);
+      setMinPrice(product.min_price?.toString() || '');
+      setMaxPrice(product.max_price?.toString() || '');
+      setSuggestedPrice(product.suggested_price?.toString() || '');
     }
   }, [product]);
 
@@ -732,10 +732,10 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
           is_active: isActive,
           purchase_tag_id: purchaseTagId || null,
           refund_remove_tag: refundRemoveTag,
-          pwyf_enabled: pwyfEnabled,
-          pwyf_min_price_usd: pwyfEnabled ? (parseFloat(pwyfMinPrice) || null) : null,
-          pwyf_max_price_usd: pwyfEnabled ? (parseFloat(pwyfMaxPrice) || null) : null,
-          pwyf_suggested_price_usd: pwyfEnabled ? (parseFloat(pwyfSuggestedPrice) || null) : null,
+          is_pwyf: isPwyf,
+          min_price: isPwyf ? (parseFloat(minPrice) || null) : null,
+          max_price: isPwyf ? (parseFloat(maxPrice) || null) : null,
+          suggested_price: isPwyf ? (parseFloat(suggestedPrice) || null) : null,
         })
         .eq('id', product.id);
       if (error) throw error;
@@ -961,47 +961,47 @@ export function ProductEditDialog({ product, open, onOpenChange }: ProductEditDi
               <div className="space-y-4 p-4 rounded-lg border bg-primary/5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="pwyfEnabled" className="font-medium">Pay What You Feel</Label>
+                    <Label htmlFor="isPwyf" className="font-medium">Pay What You Feel</Label>
                     <p className="text-xs text-muted-foreground">Let customers choose their price</p>
                   </div>
-                  <Switch id="pwyfEnabled" checked={pwyfEnabled} onCheckedChange={setPwyfEnabled} />
+                  <Switch id="isPwyf" checked={isPwyf} onCheckedChange={setIsPwyf} />
                 </div>
                 
-                {pwyfEnabled && (
+                {isPwyf && (
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="pwyfMin">Min Price (USD)</Label>
+                      <Label htmlFor="minPrice">Min Price (USD)</Label>
                       <Input 
-                        id="pwyfMin" 
+                        id="minPrice" 
                         type="number" 
                         min="0" 
                         step="1" 
-                        value={pwyfMinPrice} 
-                        onChange={(e) => setPwyfMinPrice(e.target.value)} 
+                        value={minPrice} 
+                        onChange={(e) => setMinPrice(e.target.value)} 
                         placeholder="5"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pwyfSuggested">Suggested (USD)</Label>
+                      <Label htmlFor="suggestedPrice">Suggested (USD)</Label>
                       <Input 
-                        id="pwyfSuggested" 
+                        id="suggestedPrice" 
                         type="number" 
                         min="0" 
                         step="1" 
-                        value={pwyfSuggestedPrice} 
-                        onChange={(e) => setPwyfSuggestedPrice(e.target.value)} 
+                        value={suggestedPrice} 
+                        onChange={(e) => setSuggestedPrice(e.target.value)} 
                         placeholder="10"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pwyfMax">Max Price (USD)</Label>
+                      <Label htmlFor="maxPrice">Max Price (USD)</Label>
                       <Input 
-                        id="pwyfMax" 
+                        id="maxPrice" 
                         type="number" 
                         min="0" 
                         step="1" 
-                        value={pwyfMaxPrice} 
-                        onChange={(e) => setPwyfMaxPrice(e.target.value)} 
+                        value={maxPrice} 
+                        onChange={(e) => setMaxPrice(e.target.value)} 
                         placeholder="100"
                       />
                     </div>

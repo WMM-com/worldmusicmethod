@@ -337,7 +337,7 @@ export function UserSubscriptions() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*, products(name, product_type, pwyf_enabled, pwyf_min_price_usd, pwyf_max_price_usd, pwyf_suggested_price_usd)')
+        .select('*, products(name, product_type, is_pwyf, min_price, max_price, suggested_price)')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
       
@@ -538,7 +538,7 @@ export function UserSubscriptions() {
 
                       <div className="flex items-center gap-2 flex-wrap">
                         {/* Change Price button - only for PWYF subscriptions */}
-                        {(sub.status === 'active' || sub.status === 'trialing') && sub.products?.pwyf_enabled && (
+                        {(sub.status === 'active' || sub.status === 'trialing') && sub.products?.is_pwyf && (
                           <Button
                             variant="outline"
                             size="sm"
