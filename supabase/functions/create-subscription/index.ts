@@ -38,6 +38,7 @@ serve(async (req) => {
       currency,
       returnUrl,
       trialAmount, // Geo-priced trial amount (optional)
+      isPwyf, // Flag for PWYF products
     } = await req.json();
 
     logStep("Starting subscription creation", { productId, email, fullName, paymentMethod });
@@ -62,11 +63,15 @@ serve(async (req) => {
       throw new Error("Product is not a subscription");
     }
 
+    // Check if this is a PWYF product
+    const productIsPwyf = product.is_pwyf || isPwyf;
+    
     logStep("Product found", { 
       name: product.name, 
       interval: product.billing_interval,
       price: product.base_price_usd,
-      trialEnabled: product.trial_enabled 
+      trialEnabled: product.trial_enabled,
+      isPwyf: productIsPwyf
     });
 
     // Map billing interval to Stripe interval
@@ -110,10 +115,24 @@ serve(async (req) => {
       }
 
       // Use geo-adjusted currency and amount passed from frontend
+      // For PWYF products, the amount is the custom price selected by the user
       const geoCurrency = (currency || 'USD').toLowerCase();
-      const geoAmount = (typeof amount === 'number' && isFinite(amount))
+      let geoAmount = (typeof amount === 'number' && isFinite(amount))
         ? amount
         : (product.base_price_usd || 0);
+
+      // Validate PWYF price bounds
+      if (productIsPwyf && product.min_price != null && product.max_price != null) {
+        if (geoAmount < product.min_price * 0.9 || geoAmount > product.max_price * 1.1) {
+          logStep("PWYF price out of range, using suggested", { 
+            amount: geoAmount, 
+            min: product.min_price, 
+            max: product.max_price 
+          });
+          geoAmount = product.suggested_price || product.min_price;
+        }
+      }
+
       const priceAmount = Math.round(geoAmount * 100);
 
       // IMPORTANT: Stripe Prices are immutable.

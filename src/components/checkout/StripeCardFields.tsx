@@ -40,6 +40,8 @@ interface StripeCardFieldsProps {
   onSuccess: () => void;
   debugEnabled?: boolean;
   isLoggedIn?: boolean;
+  isPwyf?: boolean; // Flag for PWYF products
+  pwyfValid?: boolean; // Flag if PWYF price is valid
 }
 
 export function StripeCardFields({
@@ -54,6 +56,8 @@ export function StripeCardFields({
   onSuccess,
   debugEnabled = false,
   isLoggedIn = false,
+  isPwyf = false,
+  pwyfValid = true,
 }: StripeCardFieldsProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -289,9 +293,9 @@ export function StripeCardFields({
     }
   };
 
-  // Form is valid when: Stripe ready + email valid + (logged in OR password valid) + all card fields complete
+  // Form is valid when: Stripe ready + email valid + (logged in OR password valid) + all card fields complete + PWYF price valid
   const isCardValid = cardComplete.number && cardComplete.expiry && cardComplete.cvc;
-  const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8)) && isCardValid;
+  const isFormValid = stripe && email && email.includes('@') && (isLoggedIn || (password && password.length >= 8)) && isCardValid && pwyfValid;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

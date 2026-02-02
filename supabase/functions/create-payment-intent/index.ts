@@ -30,7 +30,7 @@ serve(async (req) => {
       throw new Error("No products provided");
     }
 
-    // Get all product details including trial information
+    // Get all product details including trial information and PWYF settings
     const { data: products, error: productsError } = await supabaseClient
       .from("products")
       .select("*")
@@ -79,26 +79,59 @@ serve(async (req) => {
     const paymentCurrency = (currency || 'USD').toLowerCase();
     
     // Calculate total amount from the amounts passed by frontend (already geo-priced AND coupon-discounted)
+    // For PWYF products, the amount will be the custom price selected by the user
     let totalAmount = 0;
     let originalAmount = 0;
-    const productDetails: { id: string; name: string; course_id: string | null; amount: number; product_type?: string }[] = [];
+    const productDetails: { id: string; name: string; course_id: string | null; amount: number; product_type?: string; is_pwyf?: boolean }[] = [];
     
     for (let i = 0; i < productIdList.length; i++) {
       const product = products.find(p => p.id === productIdList[i]);
       if (product) {
-        // Check if this product has a paid trial
-        let productAmount = amountList[i] || product.base_price_usd;
+        // Use the amount from frontend (which includes PWYF custom price if applicable)
+        let productAmount = amountList[i];
+        
+        // Validate PWYF products - ensure price is within bounds
+        if (product.is_pwyf && product.min_price != null && product.max_price != null) {
+          const minPrice = product.min_price;
+          const maxPrice = product.max_price;
+          
+          // Validate the custom price is within the allowed range
+          // Note: We allow some tolerance for currency conversion rounding
+          if (productAmount < minPrice * 0.9 || productAmount > maxPrice * 1.1) {
+            console.warn("[CREATE-PAYMENT-INTENT] PWYF price out of range", { 
+              productId: product.id,
+              amount: productAmount,
+              minPrice,
+              maxPrice 
+            });
+            // Use suggested price if out of range
+            productAmount = product.suggested_price || minPrice;
+          }
+          
+          console.log("[CREATE-PAYMENT-INTENT] PWYF product detected", { 
+            productId: product.id, 
+            customPrice: productAmount,
+            minPrice,
+            maxPrice
+          });
+        }
         
         // For subscription/membership with PAID trial, charge the trial price instead
         if ((product.product_type === 'subscription' || product.product_type === 'membership') &&
             product.trial_enabled && 
             product.trial_price_usd && 
-            product.trial_price_usd > 0) {
+            product.trial_price_usd > 0 &&
+            !product.is_pwyf) { // Don't override PWYF custom prices
           productAmount = product.trial_price_usd;
           console.log("[CREATE-PAYMENT-INTENT] Using trial price for product", { 
             productId: product.id, 
             trialPrice: product.trial_price_usd 
           });
+        }
+        
+        // Fallback to base price if no amount provided
+        if (typeof productAmount !== 'number' || isNaN(productAmount)) {
+          productAmount = product.base_price_usd || 0;
         }
         
         totalAmount += productAmount;
@@ -110,6 +143,7 @@ serve(async (req) => {
           course_id: product.course_id,
           amount: productAmount,
           product_type: product.product_type,
+          is_pwyf: product.is_pwyf || false,
         });
       }
     }
@@ -118,6 +152,7 @@ serve(async (req) => {
     const couponDiscount = originalAmount > totalAmount ? originalAmount - totalAmount : 0;
 
     // Apply 2% discount for card payments (Stripe incentive)
+    // Note: For PWYF products, the discount is already included in the amount from frontend
     const stripeDiscount = totalAmount * 0.02;
     const finalPrice = totalAmount - stripeDiscount;
     const amountInCents = Math.round(finalPrice * 100);
@@ -154,6 +189,7 @@ serve(async (req) => {
     }
 
     // Create payment intent with the correct currency
+    // For PWYF products, we use price_data with custom unit_amount
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: paymentCurrency,
@@ -171,6 +207,7 @@ serve(async (req) => {
         currency: paymentCurrency.toUpperCase(),
         original_amount: originalAmount.toFixed(2),
         final_amount: finalPrice.toFixed(2),
+        has_pwyf: productDetails.some(p => p.is_pwyf).toString(),
       },
     });
 
