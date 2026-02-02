@@ -181,12 +181,24 @@ export default function Membership() {
 
   const handleStartTrial = () => {
     if (product && priceInfo) {
+      // Calculate PWYF bounds with geo pricing
+      const geoRatio = product.base_price_usd ? priceInfo.price / product.base_price_usd : 1;
+      const isPwyf = product.is_pwyf && product.min_price != null;
+      const geoPwyfMin = isPwyf ? Math.round((product.min_price || 0) * geoRatio) : undefined;
+      const geoPwyfMax = isPwyf ? Math.round((product.max_price || 100) * geoRatio) : undefined;
+      const geoPwyfSuggested = isPwyf ? Math.round((product.suggested_price || product.min_price || 0) * geoRatio) : undefined;
+      
       const added = addToCart({
         productId: product.id,
         name: product.name,
         price: priceInfo.price,
         currency: priceInfo.currency,
         productType: product.product_type,
+        // PWYF fields
+        isPwyf,
+        customPrice: isPwyf ? geoPwyfSuggested : undefined,
+        minPrice: geoPwyfMin,
+        maxPrice: geoPwyfMax,
       });
       if (!added) {
         toast.error('Cannot mix subscriptions and one-time purchases in the same cart. Please clear your cart first.');

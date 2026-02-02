@@ -818,21 +818,40 @@ function CheckoutContent() {
                   {isCartMode ? (
                     <>
                       {cartItems.map((item) => (
-                        <div key={item.productId} className="flex justify-between items-start gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{item.name}</p>
+                        <div key={item.productId} className="space-y-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{item.name}</p>
+                              {item.isPwyf && (
+                                <span className="text-xs text-primary">Pay What You Feel</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold">{formatPrice(item.customPrice ?? item.price, item.currency || 'USD')}</p>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeFromCart(item.productId)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold">{formatPrice(item.price, item.currency || 'USD')}</p>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={() => removeFromCart(item.productId)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          {/* PWYF Slider for cart items */}
+                          {item.isPwyf && item.minPrice !== undefined && item.maxPrice !== undefined && (
+                            <div className="pt-2 pb-2">
+                              <PwyfSlider
+                                value={item.customPrice ?? item.price}
+                                onChange={(newPrice) => updateCustomPrice(item.productId, newPrice)}
+                                min={item.minPrice}
+                                max={item.maxPrice}
+                                suggested={Math.round((item.minPrice + item.maxPrice) / 2)}
+                                currency={item.currency || 'USD'}
+                                currencySymbol={getCurrencySymbol(item.currency || 'USD')}
+                              />
+                            </div>
+                          )}
                         </div>
                       ))}
                     </>
