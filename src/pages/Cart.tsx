@@ -6,10 +6,17 @@ import { Card } from '@/components/ui/card';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useCart } from '@/contexts/CartContext';
 import { formatPrice } from '@/hooks/useGeoPricing';
+import { PwyfSlider } from '@/components/checkout/PwyfSlider';
+
+// Get currency symbol helper
+const getCurrencySymbol = (currency: string) => {
+  const symbols: Record<string, string> = { USD: '$', GBP: '£', EUR: '€' };
+  return symbols[currency] || '$';
+};
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { items, removeFromCart, getTotal, clearCart } = useCart();
+  const { items, removeFromCart, getTotal, clearCart, updateCustomPrice } = useCart();
 
   if (items.length === 0) {
     return (
@@ -54,9 +61,24 @@ export default function Cart() {
                       <p className="text-sm text-muted-foreground capitalize">{item.productType}</p>
                     </div>
 
-                    <p className="font-semibold w-24 text-right">
-                      {formatPrice(item.customPrice ?? item.price, item.currency || 'USD')}
-                    </p>
+                    {/* Show price or PWYF slider */}
+                    {item.isPwyf && item.minPrice !== undefined && item.maxPrice !== undefined ? (
+                      <div className="w-64">
+                        <PwyfSlider
+                          value={item.customPrice ?? item.price}
+                          onChange={(newPrice) => updateCustomPrice(item.productId, newPrice)}
+                          min={item.minPrice}
+                          max={item.maxPrice}
+                          suggested={Math.round((item.minPrice + item.maxPrice) / 2)}
+                          currency={item.currency || 'USD'}
+                          currencySymbol={getCurrencySymbol(item.currency || 'USD')}
+                        />
+                      </div>
+                    ) : (
+                      <p className="font-semibold w-24 text-right">
+                        {formatPrice(item.customPrice ?? item.price, item.currency || 'USD')}
+                      </p>
+                    )}
 
                     <Button
                       variant="ghost"
