@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { CartConflictDialog } from '@/components/cart/CartConflictDialog';
 
 export interface CartItem {
   productId: string;
@@ -12,6 +13,11 @@ export interface CartItem {
   isPwyf?: boolean; // Flag to identify PWYF products
   minPrice?: number; // Min price for validation
   maxPrice?: number; // Max price for validation
+}
+
+interface PendingItem {
+  item: Omit<CartItem, 'quantity'>;
+  isAddingSubscription: boolean;
 }
 
 interface CartContextType {
@@ -37,6 +43,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem(CART_STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
   });
+  
+  // State for conflict dialog
+  const [pendingItem, setPendingItem] = useState<PendingItem | null>(null);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
@@ -49,9 +59,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const hasOneTimeProduct = () => items.some(i => !isSubscriptionType(i.productType));
   const hasPwyfProduct = () => items.some(i => i.isPwyf);
 
-  const addToCart = (item: Omit<CartItem, 'quantity'>): boolean => {
-    const isNewItemSubscription = isSubscriptionType(item.productType);
-    
+  // Internal function to actually add item (after confirmation if needed)
+  const performAddToCart = useCallback((item: Omit<CartItem, 'quantity'>, clearFirst: boolean): boolean => {
     // Validate PWYF price
     if (item.isPwyf && item.customPrice !== undefined) {
       const minPrice = item.minPrice || 0;
@@ -63,15 +72,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     
     setItems(prev => {
-      // EXCLUSIVE CART: If adding different product type - clear cart and add new item
-      if (prev.length > 0) {
-        const cartHasSubscription = prev.some(i => isSubscriptionType(i.productType));
-        const cartHasOneTime = prev.some(i => !isSubscriptionType(i.productType));
-        
-        // If mixing types, clear cart and start fresh with new item
-        if ((isNewItemSubscription && cartHasOneTime) || (!isNewItemSubscription && cartHasSubscription)) {
-          return [{ ...item, quantity: 1 }];
-        }
+      // If we need to clear first due to type conflict
+      if (clearFirst) {
+        const finalItem = item.isPwyf && item.customPrice !== undefined
+          ? { ...item, price: item.customPrice, quantity: 1 }
+          : { ...item, quantity: 1 };
+        return [finalItem];
       }
       
       const existing = prev.find(i => i.productId === item.productId);
@@ -103,7 +109,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return [...prev, finalItem];
     });
     return true;
-  };
+  }, []);
+
+  const addToCart = useCallback((item: Omit<CartItem, 'quantity'>): boolean => {
+    const isNewItemSubscription = isSubscriptionType(item.productType);
+    
+    // Check for cart type conflict
+    if (items.length > 0) {
+      const cartHasSubscription = items.some(i => isSubscriptionType(i.productType));
+      const cartHasOneTime = items.some(i => !isSubscriptionType(i.productType));
+      
+      // If mixing types, show confirmation dialog
+      if ((isNewItemSubscription && cartHasOneTime) || (!isNewItemSubscription && cartHasSubscription)) {
+        setPendingItem({ item, isAddingSubscription: isNewItemSubscription });
+        setShowConflictDialog(true);
+        return false; // Return false - item not added yet, pending confirmation
+      }
+    }
+    
+    // No conflict, add directly
+    return performAddToCart(item, false);
+  }, [items, performAddToCart]);
+
+  const handleConflictConfirm = useCallback(() => {
+    if (pendingItem) {
+      performAddToCart(pendingItem.item, true);
+    }
+    setPendingItem(null);
+    setShowConflictDialog(false);
+  }, [pendingItem, performAddToCart]);
+
+  const handleConflictCancel = useCallback(() => {
+    setPendingItem(null);
+    setShowConflictDialog(false);
+  }, []);
 
   const removeFromCart = (productId: string) => {
     setItems(prev => prev.filter(i => i.productId !== productId));
@@ -168,6 +207,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       hasPwyfProduct,
     }}>
       {children}
+      <CartConflictDialog
+        open={showConflictDialog}
+        onConfirm={handleConflictConfirm}
+        onCancel={handleConflictCancel}
+        isAddingSubscription={pendingItem?.isAddingSubscription ?? false}
+      />
     </CartContext.Provider>
   );
 }
