@@ -12,6 +12,7 @@ import { GeoPricingProvider } from "@/contexts/GeoPricingContext";
 import { ChatPopup } from "@/components/messaging/ChatPopup";
 import { StickyAudioPlayer } from "@/components/media/StickyAudioPlayer";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import { ReferralTracker } from "@/components/layout/ReferralTracker";
 import { useRedirectHandler } from "@/hooks/useRedirections";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -106,6 +107,7 @@ function AppContent() {
   return (
     <>
       <ScrollToTop />
+      <ReferralTracker />
       <Routes>
         <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
