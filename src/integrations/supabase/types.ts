@@ -5258,6 +5258,16 @@ export type Database = {
         Args: { user1_id: string; user2_id: string }
         Returns: boolean
       }
+      award_referral_credit: {
+        Args: {
+          p_amount: number
+          p_description: string
+          p_reference_id: string
+          p_referred_user_id: string
+          p_referrer_id: string
+        }
+        Returns: Json
+      }
       bulk_import_student_tags: { Args: { student_data: Json }; Returns: Json }
       calculate_regional_price: {
         Args: {
