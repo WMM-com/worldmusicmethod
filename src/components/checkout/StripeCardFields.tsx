@@ -42,6 +42,8 @@ interface StripeCardFieldsProps {
   isLoggedIn?: boolean;
   isPwyf?: boolean; // Flag for PWYF products
   pwyfValid?: boolean; // Flag if PWYF price is valid
+  creditAmountUsed?: number; // Credits to apply in cents
+  onFreeCheckout?: (data: { productIds: string[]; email: string; fullName: string; password: string; creditAmountUsed: number }) => Promise<void>;
 }
 
 export function StripeCardFields({
@@ -58,6 +60,8 @@ export function StripeCardFields({
   isLoggedIn = false,
   isPwyf = false,
   pwyfValid = true,
+  creditAmountUsed = 0,
+  onFreeCheckout,
 }: StripeCardFieldsProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -100,7 +104,7 @@ export function StripeCardFields({
       }
 
       // Create payment intent with geo-priced currency and amounts
-      console.log('[StripeCardFields] Creating payment intent...', { productIds, amounts, currency });
+      console.log('[StripeCardFields] Creating payment intent...', { productIds, amounts, currency, creditAmountUsed });
       const { data: intentData, error: intentError } = await supabase.functions.invoke('create-payment-intent', {
         body: {
           productIds,
@@ -109,10 +113,28 @@ export function StripeCardFields({
           fullName: fullName || email.split('@')[0],
           couponCode,
           currency,
+          creditAmountUsed,
         },
       });
 
       if (intentError) throw intentError;
+      
+      // Check if this is a free checkout covered by credits
+      if (intentData?.freeCheckout) {
+        console.log('[StripeCardFields] Free checkout with credits detected');
+        if (onFreeCheckout) {
+          await onFreeCheckout({
+            productIds,
+            email,
+            fullName: fullName || email.split('@')[0],
+            password,
+            creditAmountUsed,
+          });
+        }
+        toast.success('Order completed with referral credits!');
+        onSuccess();
+        return;
+      }
       
       // Check if this is a free trial product (no payment required)
       if (intentData?.freeTrialMode) {

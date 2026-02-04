@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.link-referral]
 verify_jwt = false
+
+[functions.complete-free-credit-checkout]
+verify_jwt = false
