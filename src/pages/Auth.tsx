@@ -13,7 +13,7 @@ import wmmLogo from '@/assets/wmm-logo.png';
 import { HoneypotField, useHoneypotValidator } from '@/components/ui/honeypot-field';
 import { usePersistentRateLimiter } from '@/hooks/useRateLimiter';
 import { Turnstile, useTurnstileVerification } from '@/components/ui/turnstile';
-import { getReferralCode, clearReferralCode } from '@/lib/referralCookies';
+import { getReferralCode } from '@/lib/referralCookies';
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
 
@@ -130,8 +130,7 @@ export default function Auth() {
             toast.error(error.message);
           }
         } else {
-          // Clear referral cookie after successful signup
-          clearReferralCode();
+          // Referral linking and cookie clearing is now handled in AuthContext.signUp
           // Show email verification notice instead of redirecting
           setSignupNotice({ email: email.trim().toLowerCase() });
           setPassword('');

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/database';
+import { linkReferralOnSignup } from '@/hooks/useLinkReferral';
 
 interface AuthContextType {
   user: User | null;
@@ -149,6 +150,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAdmin(false);
       setIsExpert(false);
       setEmailVerified(false);
+
+      // Link referral if user signed up via referral link (fire-and-forget)
+      linkReferralOnSignup(userId)
+        .then(result => {
+          if (result.referrer_id) {
+            console.log('User linked to referrer:', result.referrer_id);
+          }
+        })
+        .catch(err => console.error('Error linking referral:', err));
 
       // Fire-and-forget: send email and sign out in background
       supabase.functions.invoke('send-verification-email', {
