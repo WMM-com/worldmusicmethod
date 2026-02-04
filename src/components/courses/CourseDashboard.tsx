@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Target, CheckCircle2, BookOpen, Play } from 'lucide-react';
+import { Target, CheckCircle2, BookOpen, Play, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { WriteReviewModal } from '@/components/courses/WriteReviewModal';
+import { useUserReview, useUserEnrollment } from '@/hooks/useReviews';
 import type { CourseWithModules } from '@/types/course';
 
 interface CourseDashboardProps {
@@ -18,10 +21,18 @@ export function CourseDashboard({
   onStartLearning,
   onModuleSelect
 }: CourseDashboardProps) {
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  
+  const { data: existingReview } = useUserReview(course.id);
+  const { data: enrollment } = useUserEnrollment(course.id);
+  
   const modules = course.modules || [];
   const totalLessons = modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0);
   const completedCount = completedLessons.size;
   const progressPercent = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0;
+  
+  const canReview = !!enrollment?.is_active;
+  const hasReviewed = !!existingReview;
 
   const totalDuration = modules.reduce((sum, m) => 
     sum + (m.lessons || []).reduce((s, l) => s + (l.duration_seconds || 0), 0), 0
@@ -70,14 +81,36 @@ export function CourseDashboard({
             </div>
 
             {/* CTA */}
-            {next && (
-              <Button size="lg" onClick={onStartLearning} className="mt-6">
-                <Play className="w-4 h-4 mr-2" />
-                {completedCount > 0 ? 'Continue Learning' : 'Start Course'}
-              </Button>
-            )}
+            <div className="mt-6 flex flex-wrap gap-3">
+              {next && (
+                <Button size="lg" onClick={onStartLearning}>
+                  <Play className="w-4 h-4 mr-2" />
+                  {completedCount > 0 ? 'Continue Learning' : 'Start Course'}
+                </Button>
+              )}
+              
+              {/* Review button - only show if enrolled */}
+              {canReview && (
+                <Button 
+                  size="lg" 
+                  variant={hasReviewed ? "outline" : "secondary"}
+                  onClick={() => setReviewModalOpen(true)}
+                >
+                  <Star className="w-4 h-4 mr-2" />
+                  {hasReviewed ? 'View Your Review' : 'Write a Review'}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Write Review Modal */}
+        <WriteReviewModal
+          open={reviewModalOpen}
+          onOpenChange={setReviewModalOpen}
+          courseId={course.id}
+          courseTitle={course.title}
+        />
 
 
         {/* Continue where you left off */}
