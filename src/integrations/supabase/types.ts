@@ -776,6 +776,36 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_campaigns: {
         Row: {
           body_html: string
@@ -4185,6 +4215,48 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          clicked_at: string
+          converted_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          referral_code: string
+          referred_user_id: string | null
+          referrer_id: string
+          signed_up_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          clicked_at?: string
+          converted_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          referral_code: string
+          referred_user_id?: string | null
+          referrer_id: string
+          signed_up_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          clicked_at?: string
+          converted_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          referral_code?: string
+          referred_user_id?: string | null
+          referrer_id?: string
+          signed_up_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
@@ -4828,6 +4900,27 @@ export type Database = {
           blocker_id?: string
           created_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          balance: number
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
