@@ -221,7 +221,12 @@ export function useUpdateReview() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42501') {
+          throw new Error('You can only edit reviews within 3 days of posting');
+        }
+        throw error;
+      }
       return data as Review;
     },
     onSuccess: (data) => {
@@ -240,4 +245,69 @@ export function useUpdateReview() {
       });
     },
   });
+}
+
+export function useDeleteReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, courseId }: { id: string; courseId: string }) => {
+      const { error } = await supabase
+        .from('reviews')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        if (error.code === '42501') {
+          throw new Error('You can only delete reviews within 3 days of posting');
+        }
+        throw error;
+      }
+      return { courseId };
+    },
+    onSuccess: ({ courseId }) => {
+      queryClient.invalidateQueries({ queryKey: ['user-review', courseId] });
+      queryClient.invalidateQueries({ queryKey: ['course-reviews', courseId] });
+      queryClient.invalidateQueries({ queryKey: ['course-avg-rating', courseId] });
+      queryClient.invalidateQueries({ queryKey: ['course-reviews-count', courseId] });
+      toast({
+        title: 'Review deleted',
+        description: 'You can now submit a new review for this course.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to delete review',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+// Helper to check if review is within edit window (3 days)
+export function isWithinEditWindow(createdAt: string): boolean {
+  const created = new Date(createdAt);
+  const now = new Date();
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+  return now.getTime() - created.getTime() < threeDaysMs;
+}
+
+// Helper to get remaining edit time
+export function getRemainingEditTime(createdAt: string): string {
+  const created = new Date(createdAt);
+  const deadline = new Date(created.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const remainingMs = deadline.getTime() - now.getTime();
+  
+  if (remainingMs <= 0) return 'expired';
+  
+  const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  
+  if (days > 0) {
+    return `${days}d ${remainingHours}h left to edit`;
+  }
+  return `${remainingHours}h left to edit`;
 }

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Star } from 'lucide-react';
+import { Star, Pencil, Trash2, Clock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useCreateReview, useUserReview, useUserEnrollment } from '@/hooks/useReviews';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { 
+  useCreateReview, 
+  useUpdateReview, 
+  useDeleteReview, 
+  useUserReview, 
+  useUserEnrollment,
+  isWithinEditWindow,
+  getRemainingEditTime,
+} from '@/hooks/useReviews';
 import { cn } from '@/lib/utils';
 
 interface WriteReviewModalProps {
@@ -90,17 +108,21 @@ export function WriteReviewModal({
 }: WriteReviewModalProps) {
   const [rating, setRating] = useState(0);
   const [selectedPrompt, setSelectedPrompt] = useState<string>('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
-  const { data: existingReview } = useUserReview(courseId);
+  const { data: existingReview, refetch: refetchReview } = useUserReview(courseId);
   const { data: enrollment } = useUserEnrollment(courseId);
   const createReview = useCreateReview();
+  const updateReview = useUpdateReview();
+  const deleteReview = useDeleteReview();
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
-    formState: { errors },
+    setValue,
   } = useForm<FormData>({
     defaultValues: {
       promptAnswer: '',
@@ -113,6 +135,18 @@ export function WriteReviewModal({
 
   const hasAccess = !!enrollment?.is_active;
   const hasExistingReview = !!existingReview;
+  const canEdit = hasExistingReview && isWithinEditWindow(existingReview.created_at);
+  const editTimeRemaining = hasExistingReview ? getRemainingEditTime(existingReview.created_at) : '';
+
+  // Populate form when entering edit mode
+  useEffect(() => {
+    if (isEditMode && existingReview) {
+      setRating(existingReview.rating);
+      setSelectedPrompt(existingReview.prompt_question || '');
+      setValue('promptAnswer', existingReview.prompt_answer || '');
+      setValue('reviewText', existingReview.review_text || '');
+    }
+  }, [isEditMode, existingReview, setValue]);
 
   // Validation: prompt required for ≤4 stars, review text required for 5 stars
   const isPromptRequired = rating >= 1 && rating <= 4;
@@ -131,13 +165,24 @@ export function WriteReviewModal({
       return;
     }
 
-    await createReview.mutateAsync({
-      course_id: courseId,
-      rating,
-      review_text: data.reviewText || undefined,
-      prompt_question: selectedPrompt || undefined,
-      prompt_answer: data.promptAnswer || undefined,
-    });
+    if (isEditMode && existingReview) {
+      await updateReview.mutateAsync({
+        id: existingReview.id,
+        rating,
+        review_text: data.reviewText || undefined,
+        prompt_question: selectedPrompt || undefined,
+        prompt_answer: data.promptAnswer || undefined,
+      });
+      setIsEditMode(false);
+    } else {
+      await createReview.mutateAsync({
+        course_id: courseId,
+        rating,
+        review_text: data.reviewText || undefined,
+        prompt_question: selectedPrompt || undefined,
+        prompt_answer: data.promptAnswer || undefined,
+      });
+    }
 
     // Reset form and close modal
     reset();
@@ -146,11 +191,40 @@ export function WriteReviewModal({
     onOpenChange(false);
   };
 
+  const handleDelete = async () => {
+    if (!existingReview) return;
+    
+    await deleteReview.mutateAsync({ 
+      id: existingReview.id, 
+      courseId 
+    });
+    
+    setShowDeleteConfirm(false);
+    reset();
+    setRating(0);
+    setSelectedPrompt('');
+    setIsEditMode(false);
+    // Refetch to clear existing review state
+    refetchReview();
+  };
+
   const handleClose = () => {
     reset();
     setRating(0);
     setSelectedPrompt('');
+    setIsEditMode(false);
     onOpenChange(false);
+  };
+
+  const handleStartEdit = () => {
+    setIsEditMode(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    reset();
+    setRating(0);
+    setSelectedPrompt('');
   };
 
   // Don't render if user doesn't have access or already reviewed
@@ -174,72 +248,136 @@ export function WriteReviewModal({
     );
   }
 
-  if (hasExistingReview) {
+  if (hasExistingReview && !isEditMode) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Your Review</DialogTitle>
-            <DialogDescription>
-              You've already reviewed "{courseTitle}"
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* Rating Display */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Your rating:</span>
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={cn(
-                      'w-5 h-5',
-                      existingReview.rating >= star
-                        ? 'fill-secondary text-secondary'
-                        : 'text-muted-foreground'
-                    )}
-                  />
-                ))}
+      <>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Your Review</DialogTitle>
+              <DialogDescription>
+                You've already reviewed "{courseTitle}"
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Edit time remaining indicator */}
+              {canEdit && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                  <Clock className="w-4 h-4" />
+                  <span>{editTimeRemaining}</span>
+                </div>
+              )}
+
+              {/* Rating Display */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Your rating:</span>
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={cn(
+                        'w-5 h-5',
+                        existingReview.rating >= star
+                          ? 'fill-secondary text-secondary'
+                          : 'text-muted-foreground'
+                      )}
+                    />
+                  ))}
+                </div>
               </div>
+
+              {/* Prompt Q&A */}
+              {existingReview.prompt_question && existingReview.prompt_answer && (
+                <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+                  <p className="text-sm italic text-muted-foreground">
+                    "{existingReview.prompt_question}"
+                  </p>
+                  <p className="text-sm">{existingReview.prompt_answer}</p>
+                </div>
+              )}
+
+              {/* Review Text */}
+              {existingReview.review_text && (
+                <div className="space-y-1.5">
+                  <span className="text-sm font-medium text-muted-foreground">Additional comments:</span>
+                  <p className="text-sm">{existingReview.review_text}</p>
+                </div>
+              )}
             </div>
 
-            {/* Prompt Q&A */}
-            {existingReview.prompt_question && existingReview.prompt_answer && (
-              <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
-                <p className="text-sm italic text-muted-foreground">
-                  "{existingReview.prompt_question}"
-                </p>
-                <p className="text-sm">{existingReview.prompt_answer}</p>
-              </div>
-            )}
+            <div className="flex justify-between gap-2">
+              {canEdit ? (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleStartEdit}
+                    className="gap-1.5"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="gap-1.5 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">
+                  Edit period has expired
+                </div>
+              )}
+              <Button variant="outline" onClick={handleClose}>
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-            {/* Review Text */}
-            {existingReview.review_text && (
-              <div className="space-y-1.5">
-                <span className="text-sm font-medium text-muted-foreground">Additional comments:</span>
-                <p className="text-sm">{existingReview.review_text}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={handleClose}>
-              Close
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your review?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. You'll be able to submit a new review for this course after deletion.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteReview.isPending}
+              >
+                {deleteReview.isPending ? 'Deleting...' : 'Delete Review'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
+
+  // Show form for new review OR edit mode
+  const isSubmitting = createReview.isPending || updateReview.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Write a Review</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Edit Your Review' : 'Write a Review'}</DialogTitle>
           <DialogDescription>
-            Share your experience with "{courseTitle}"
+            {isEditMode 
+              ? `Update your review for "${courseTitle}"` 
+              : `Share your experience with "${courseTitle}"`
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -313,26 +451,35 @@ export function WriteReviewModal({
             )}
           </div>
 
-          {/* Gamification hint */}
-          <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-            💡 <strong>Tip:</strong> Write reviews for your first 5 courses to earn 50 bonus points each!
-          </div>
+          {/* Gamification hint - only show for new reviews */}
+          {!isEditMode && (
+            <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+              💡 <strong>Tip:</strong> Write reviews for your first 5 courses to earn 50 bonus points each!
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3">
-            <Button type="button" variant="outline" onClick={handleClose}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={isEditMode ? handleCancelEdit : handleClose}
+            >
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={
                 rating === 0 || 
-                createReview.isPending ||
+                isSubmitting ||
                 (isPromptRequired && (!selectedPrompt || !promptAnswerValue?.trim())) ||
                 (isReviewTextRequired && !reviewTextValue?.trim())
               }
             >
-              {createReview.isPending ? 'Submitting...' : 'Submit Review'}
+              {isSubmitting 
+                ? (isEditMode ? 'Saving...' : 'Submitting...') 
+                : (isEditMode ? 'Save Changes' : 'Submit Review')
+              }
             </Button>
           </div>
         </form>
