@@ -99,6 +99,7 @@ export function WriteReviewModal({
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     defaultValues: {
@@ -107,11 +108,26 @@ export function WriteReviewModal({
     },
   });
 
+  const promptAnswerValue = watch('promptAnswer');
+  const reviewTextValue = watch('reviewText');
+
   const hasAccess = !!enrollment?.is_active;
   const hasExistingReview = !!existingReview;
 
+  // Validation: prompt required for ≤4 stars, review text required for 5 stars
+  const isPromptRequired = rating >= 1 && rating <= 4;
+  const isReviewTextRequired = rating === 5;
+
   const onSubmit = async (data: FormData) => {
     if (rating === 0) {
+      return;
+    }
+
+    // Validate based on rating
+    if (isPromptRequired && (!selectedPrompt || !data.promptAnswer?.trim())) {
+      return;
+    }
+    if (isReviewTextRequired && !data.reviewText?.trim()) {
       return;
     }
 
@@ -221,10 +237,10 @@ export function WriteReviewModal({
           {/* Prompt Dropdown */}
           <div className="space-y-2">
             <Label htmlFor="prompt" className="text-base font-medium">
-              Answer a Question (optional)
+              Answer a Question {isPromptRequired && <span className="text-destructive">*</span>}
             </Label>
             <Select value={selectedPrompt} onValueChange={setSelectedPrompt}>
-              <SelectTrigger id="prompt">
+              <SelectTrigger id="prompt" className={isPromptRequired && !selectedPrompt ? 'border-destructive' : ''}>
                 <SelectValue placeholder="Choose a question to answer..." />
               </SelectTrigger>
               <SelectContent>
@@ -235,34 +251,43 @@ export function WriteReviewModal({
                 ))}
               </SelectContent>
             </Select>
+            {isPromptRequired && !selectedPrompt && (
+              <p className="text-sm text-destructive">Please select a question to answer</p>
+            )}
           </div>
 
           {/* Prompt Answer */}
           {selectedPrompt && (
             <div className="space-y-2">
               <Label htmlFor="promptAnswer" className="text-sm font-medium text-muted-foreground">
-                {selectedPrompt}
+                {selectedPrompt} {isPromptRequired && <span className="text-destructive">*</span>}
               </Label>
               <Textarea
                 id="promptAnswer"
                 placeholder="Share your thoughts..."
-                className="min-h-[100px] resize-none"
+                className={cn("min-h-[100px] resize-none", isPromptRequired && !promptAnswerValue?.trim() ? 'border-destructive' : '')}
                 {...register('promptAnswer')}
               />
+              {isPromptRequired && !promptAnswerValue?.trim() && (
+                <p className="text-sm text-destructive">Please provide an answer</p>
+              )}
             </div>
           )}
 
           {/* General Review Text */}
           <div className="space-y-2">
             <Label htmlFor="reviewText" className="text-base font-medium">
-              Additional Comments (optional)
+              Additional Comments {isReviewTextRequired ? <span className="text-destructive">*</span> : '(optional)'}
             </Label>
             <Textarea
               id="reviewText"
               placeholder="Any other thoughts about the course..."
-              className="min-h-[80px] resize-none"
+              className={cn("min-h-[80px] resize-none", isReviewTextRequired && !reviewTextValue?.trim() ? 'border-destructive' : '')}
               {...register('reviewText')}
             />
+            {isReviewTextRequired && !reviewTextValue?.trim() && (
+              <p className="text-sm text-destructive">Please share your thoughts for a 5-star review</p>
+            )}
           </div>
 
           {/* Gamification hint */}
@@ -277,7 +302,12 @@ export function WriteReviewModal({
             </Button>
             <Button 
               type="submit" 
-              disabled={rating === 0 || createReview.isPending}
+              disabled={
+                rating === 0 || 
+                createReview.isPending ||
+                (isPromptRequired && (!selectedPrompt || !promptAnswerValue?.trim())) ||
+                (isReviewTextRequired && !reviewTextValue?.trim())
+              }
             >
               {createReview.isPending ? 'Submitting...' : 'Submit Review'}
             </Button>
