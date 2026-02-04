@@ -45,6 +45,32 @@ Deno.serve(async (req) => {
 
     console.log('Referral link result:', data)
 
+    // If successfully linked, check and award signup milestones to the referrer
+    if (data?.success && data?.referrer_id) {
+      console.log('Checking signup milestones for referrer:', data.referrer_id)
+      
+      const { data: milestoneResult, error: milestoneError } = await supabase.rpc(
+        'check_and_award_signup_milestone',
+        { p_referrer_id: data.referrer_id }
+      )
+
+      if (milestoneError) {
+        console.error('Error checking milestones:', milestoneError)
+        // Don't fail the response, milestone check is supplementary
+      } else if (milestoneResult?.any_awarded) {
+        console.log('Milestones awarded:', milestoneResult.milestones_awarded)
+      }
+
+      // Include milestone info in response
+      return new Response(
+        JSON.stringify({
+          ...data,
+          milestone_check: milestoneResult
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     return new Response(
       JSON.stringify(data),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

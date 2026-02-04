@@ -5280,6 +5280,10 @@ export type Database = {
           price: number
         }[]
       }
+      check_and_award_signup_milestone: {
+        Args: { p_referrer_id: string }
+        Returns: Json
+      }
       consume_payment_auth_token: { Args: { p_token: string }; Returns: string }
       create_payment_auth_token: {
         Args: { p_user_id: string }
