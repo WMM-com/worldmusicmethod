@@ -13,13 +13,23 @@ serve(async (req) => {
   }
 
   try {
-    const { productIds, email, fullName, couponCode, currency, amounts } = await req.json();
+    const { productIds, email, fullName, couponCode, currency, amounts, creditAmountUsed } = await req.json();
     
     // Support both single productId (legacy) and multiple productIds
     const productIdList = productIds || [];
     const amountList = amounts || [];
+    // Credit amount is in cents from the frontend
+    const creditToUse = creditAmountUsed || 0;
     
-    console.log("[CREATE-PAYMENT-INTENT] Starting", { productIds: productIdList, email, fullName, couponCode, currency, amounts: amountList });
+    console.log("[CREATE-PAYMENT-INTENT] Starting", { 
+      productIds: productIdList, 
+      email, 
+      fullName, 
+      couponCode, 
+      currency, 
+      amounts: amountList,
+      creditAmountUsed: creditToUse 
+    });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -154,7 +164,12 @@ serve(async (req) => {
     // Apply 2% discount for card payments (Stripe incentive)
     // Note: For PWYF products, the discount is already included in the amount from frontend
     const stripeDiscount = totalAmount * 0.02;
-    const finalPrice = totalAmount - stripeDiscount;
+    let finalPrice = totalAmount - stripeDiscount;
+    
+    // Apply referral credit discount (creditToUse is in cents, convert to dollars)
+    const creditDiscountDollars = creditToUse / 100;
+    finalPrice = Math.max(0, finalPrice - creditDiscountDollars);
+    
     const amountInCents = Math.round(finalPrice * 100);
 
     console.log("[CREATE-PAYMENT-INTENT] Price calculated", { 
@@ -163,10 +178,29 @@ serve(async (req) => {
       couponDiscount,
       couponCode,
       stripeDiscount, 
+      creditDiscountDollars,
       finalPrice, 
       amountInCents, 
       currency: paymentCurrency 
     });
+
+    // If the entire amount is covered by credits, we need to handle this specially
+    // We'll still create a $0 payment intent or handle free checkout
+    if (amountInCents === 0) {
+      console.log("[CREATE-PAYMENT-INTENT] Amount is $0 after credits - free checkout");
+      return new Response(
+        JSON.stringify({
+          freeCheckout: true,
+          creditAmountUsed: creditToUse,
+          productIds: productIdList,
+          productDetails,
+          email,
+          fullName,
+          message: "Order fully covered by referral credits"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -204,6 +238,7 @@ serve(async (req) => {
         coupon_code: couponCode || "",
         coupon_discount: couponDiscount.toFixed(2),
         stripe_discount: stripeDiscount.toFixed(2),
+        credit_amount_used: creditToUse.toString(), // Store credit used in cents
         currency: paymentCurrency.toUpperCase(),
         original_amount: originalAmount.toFixed(2),
         final_amount: finalPrice.toFixed(2),
@@ -224,6 +259,7 @@ serve(async (req) => {
         amount: finalPrice,
         originalAmount: totalAmount,
         discount: stripeDiscount,
+        creditAmountUsed: creditToUse,
         currency: paymentCurrency.toUpperCase(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

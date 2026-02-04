@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ShieldCheck, CreditCard, Loader2, Tag, Eye, EyeOff, Lock, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Elements } from '@stripe/react-stripe-js';
 import { StripeCardFields } from '@/components/checkout/StripeCardFields';
 import { SubscriptionDetails } from '@/components/checkout/SubscriptionDetails';
 import { PwyfSlider } from '@/components/checkout/PwyfSlider';
+import { CreditPaymentSection } from '@/components/checkout/CreditPaymentSection';
 
 type PaymentMethod = 'card' | 'paypal';
 
@@ -348,6 +349,10 @@ function CheckoutContent() {
   
   // Pay What You Feel pricing
   const [pwyfPrice, setPwyfPrice] = useState<number | null>(null);
+  
+  // Referral credits state
+  const [useCredits, setUseCredits] = useState(false);
+  const [creditAmountUsed, setCreditAmountUsed] = useState(0);
 
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
 
@@ -402,6 +407,30 @@ function CheckoutContent() {
     },
     enabled: !!subscriptionCartItem?.productId,
   });
+
+  // Fetch user's credit balance
+  const { data: userCredits } = useQuery({
+    queryKey: ['user-credits-checkout', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('user_credits')
+        .select('balance')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+  
+  const creditBalance = userCredits?.balance || 0;
+
+  // Handle credit usage changes
+  const handleCreditUsageChange = useCallback((useCreds: boolean, amount: number) => {
+    setUseCredits(useCreds);
+    setCreditAmountUsed(amount);
+  }, []);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -602,7 +631,12 @@ function CheckoutContent() {
 
   const priceAfterCoupon = basePrice - couponDiscount;
   const stripeDiscount = priceAfterCoupon * 0.02;
-  const cardPrice = priceAfterCoupon - stripeDiscount;
+  const cardPriceBeforeCredits = priceAfterCoupon - stripeDiscount;
+  
+  // Calculate price after applying referral credits
+  const creditDiscountInDollars = useCredits ? creditAmountUsed / 100 : 0;
+  const cardPrice = Math.max(0, cardPriceBeforeCredits - creditDiscountInDollars);
+  const isFullyCoveredByCredits = useCredits && creditAmountUsed / 100 >= cardPriceBeforeCredits;
   const isCourse = isCartMode
     ? cartItems.some((item) => item.productType === 'course')
     : product?.product_type === 'course';
@@ -952,14 +986,20 @@ function CheckoutContent() {
                       )}
                     </div>
                     <div className="text-right">
-                      {couponDiscount > 0 && (
+                      {(couponDiscount > 0 || useCredits) && (
                         <p className="text-sm text-muted-foreground line-through">
                           {formatPrice(basePrice, currency)}
                         </p>
                       )}
-                      <p className="font-bold text-lg">
-                        {formatPrice(paymentMethod === 'card' ? cardPrice : priceAfterCoupon, currency)}
-                      </p>
+                      {isFullyCoveredByCredits ? (
+                        <p className="font-bold text-lg text-primary">
+                          Free with Credits!
+                        </p>
+                      ) : (
+                        <p className="font-bold text-lg">
+                          {formatPrice(paymentMethod === 'card' ? cardPrice : priceAfterCoupon, currency)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1004,6 +1044,16 @@ function CheckoutContent() {
                     </div>
                   )}
                 </div>
+
+                {/* Referral Credits section - only show for logged in users with credits */}
+                {user && creditBalance > 0 && (
+                  <CreditPaymentSection
+                    creditBalance={creditBalance}
+                    cartTotal={cardPriceBeforeCredits}
+                    currency={currency}
+                    onCreditUsageChange={handleCreditUsageChange}
+                  />
+                )}
 
                 {/* Payment method selection - Hide PayPal for PWYF products */}
                 <div className="py-4 border-b border-border">
@@ -1081,6 +1131,28 @@ function CheckoutContent() {
                       isLoggedIn={!!user}
                       isPwyf={isPwyfProduct || cartHasPwyf}
                       pwyfValid={isPwyfPriceValid}
+                      creditAmountUsed={useCredits ? creditAmountUsed : 0}
+                      onFreeCheckout={async (data) => {
+                        try {
+                          const { data: result, error } = await supabase.functions.invoke('complete-free-credit-checkout', {
+                            body: {
+                              productIds: data.productIds,
+                              email: data.email,
+                              fullName: data.fullName,
+                              password: data.password,
+                              creditAmountUsed: data.creditAmountUsed,
+                              productDetails: isCartMode 
+                                ? cartItems.map(item => ({ id: item.productId, name: item.name }))
+                                : [{ id: productId, name: product?.name }],
+                            },
+                          });
+                          if (error) throw error;
+                          console.log('[Checkout] Free credit checkout completed', result);
+                        } catch (err: any) {
+                          console.error('[Checkout] Free credit checkout failed:', err);
+                          throw err;
+                        }
+                      }}
                     />
                   ) : (
                     <div className="space-y-4">
