@@ -5357,6 +5357,10 @@ export type Database = {
         Returns: boolean
       }
       is_tutor: { Args: { p_user_id: string }; Returns: boolean }
+      link_referred_signup: {
+        Args: { p_referral_code: string; p_referred_user_id: string }
+        Returns: Json
+      }
       mark_messages_read: {
         Args: { p_conversation_id: string }
         Returns: number
