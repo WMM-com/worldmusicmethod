@@ -72,7 +72,7 @@ function StarRating({
               sizeClasses[size],
               'transition-colors',
               (hoverRating || rating) >= star
-                ? 'fill-amber-400 text-amber-400'
+                ? 'fill-secondary text-secondary'
                 : 'text-muted-foreground'
             )}
           />
@@ -179,27 +179,50 @@ export function WriteReviewModal({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Already Reviewed</DialogTitle>
+            <DialogTitle>Your Review</DialogTitle>
             <DialogDescription>
-              You have already submitted a review for this course. Thank you for your feedback!
+              You've already reviewed "{courseTitle}"
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-2 py-4">
-            <span className="text-sm text-muted-foreground">Your rating:</span>
-            <div className="flex gap-0.5">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className={cn(
-                    'w-5 h-5',
-                    existingReview.rating >= star
-                      ? 'fill-amber-400 text-amber-400'
-                      : 'text-muted-foreground'
-                  )}
-                />
-              ))}
+          
+          <div className="space-y-4 py-4">
+            {/* Rating Display */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Your rating:</span>
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    className={cn(
+                      'w-5 h-5',
+                      existingReview.rating >= star
+                        ? 'fill-secondary text-secondary'
+                        : 'text-muted-foreground'
+                    )}
+                  />
+                ))}
+              </div>
             </div>
+
+            {/* Prompt Q&A */}
+            {existingReview.prompt_question && existingReview.prompt_answer && (
+              <div className="space-y-1.5 p-3 rounded-lg bg-muted/50">
+                <p className="text-sm italic text-muted-foreground">
+                  "{existingReview.prompt_question}"
+                </p>
+                <p className="text-sm">{existingReview.prompt_answer}</p>
+              </div>
+            )}
+
+            {/* Review Text */}
+            {existingReview.review_text && (
+              <div className="space-y-1.5">
+                <span className="text-sm font-medium text-muted-foreground">Additional comments:</span>
+                <p className="text-sm">{existingReview.review_text}</p>
+              </div>
+            )}
           </div>
+
           <div className="flex justify-end">
             <Button variant="outline" onClick={handleClose}>
               Close

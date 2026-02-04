@@ -39,6 +39,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import DOMPurify from 'dompurify';
+import { ReviewsSection } from '@/components/courses/ReviewsSection';
 
 // Helper function to get smart module display - either extracted number or icon for special modules
 const getModuleDisplay = (title: string, index: number): { type: 'number' | 'icon'; value: number | React.ReactNode; IconComponent?: React.ComponentType<{ className?: string }> } => {
@@ -1741,6 +1742,21 @@ export default function CourseLanding() {
                       </motion.div>
                     ))}
                   </div>
+                </motion.div>
+              </div>
+            </section>
+          )}
+
+          {/* Reviews Section */}
+          {course?.id && (
+            <section className="py-20 bg-muted/30 border-t border-border/30">
+              <div className="max-w-6xl mx-auto px-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                >
+                  <ReviewsSection courseId={course.id} courseTitle={course.title} />
                 </motion.div>
               </div>
             </section>

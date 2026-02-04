@@ -14,6 +14,13 @@ interface Review {
   created_at: string;
 }
 
+interface ReviewWithProfile extends Review {
+  profiles: {
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
 interface CreateReviewInput {
   course_id: string;
   rating: number;
@@ -44,20 +51,82 @@ export function useUserReview(courseId: string | undefined) {
   });
 }
 
-export function useCourseReviews(courseId: string | undefined) {
+export function useCourseReviews(courseId: string | undefined, limit?: number) {
   return useQuery({
-    queryKey: ['course-reviews', courseId],
+    queryKey: ['course-reviews', courseId, limit],
     queryFn: async () => {
       if (!courseId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('reviews')
         .select('*')
         .eq('course_id', courseId)
         .order('created_at', { ascending: false });
 
+      if (limit) {
+        query = query.limit(limit);
+      }
+
+      const { data: reviews, error } = await query;
+
       if (error) throw error;
-      return data as Review[];
+      if (!reviews || reviews.length === 0) return [];
+
+      // Fetch profiles for all reviewers
+      const userIds = [...new Set(reviews.map(r => r.user_id))];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) ?? []);
+
+      return reviews.map(review => ({
+        ...review,
+        profiles: profileMap.get(review.user_id) ?? null,
+      })) as ReviewWithProfile[];
+    },
+    enabled: !!courseId,
+  });
+}
+
+export function useCourseReviewsCount(courseId: string | undefined) {
+  return useQuery({
+    queryKey: ['course-reviews-count', courseId],
+    queryFn: async () => {
+      if (!courseId) return 0;
+
+      const { count, error } = await supabase
+        .from('reviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', courseId);
+
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!courseId,
+  });
+}
+
+export function useCourseAverageRating(courseId: string | undefined) {
+  return useQuery({
+    queryKey: ['course-avg-rating', courseId],
+    queryFn: async () => {
+      if (!courseId) return null;
+
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('course_id', courseId);
+
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+
+      const sum = data.reduce((acc, r) => acc + r.rating, 0);
+      return {
+        average: sum / data.length,
+        count: data.length,
+      };
     },
     enabled: !!courseId,
   });
