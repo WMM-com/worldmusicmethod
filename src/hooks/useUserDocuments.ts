@@ -127,10 +127,18 @@ export function useUserDocuments() {
     }
 
     // Also try to delete from storage if it's in our bucket
-    if (doc?.file_url && doc.file_url.includes('user-documents')) {
+    if (doc?.file_url) {
       try {
-        const path = doc.file_url.split('/user-documents/')[1];
+        // Handle both public URL format and direct path format
+        let path = '';
+        if (doc.file_url.includes('/user-documents/')) {
+          path = doc.file_url.split('/user-documents/')[1];
+        } else if (doc.file_url.includes('user-documents')) {
+          path = doc.file_url.split('user-documents/')[1];
+        }
         if (path) {
+          // Remove query params if present (from signed URLs)
+          path = path.split('?')[0];
           await supabase.storage.from('user-documents').remove([path]);
         }
       } catch (e) {

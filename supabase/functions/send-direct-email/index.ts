@@ -127,10 +127,38 @@ serve(async (req) => {
     logStep("Function started");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabase = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+    // 1. Verify authentication - require Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      logStep("ERROR", { message: "Missing authorization header" });
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Validate JWT and get user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !user) {
+      logStep("ERROR", { message: "Unauthorized - invalid token", error: userError?.message });
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    logStep("User authenticated", { userId: user.id, email: user.email });
+
+    // Use service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const accessKeyId = Deno.env.get("AWS_SES_ACCESS_KEY_ID") || "";
     const secretAccessKey = Deno.env.get("AWS_SES_SECRET_ACCESS_KEY") || "";
@@ -140,15 +168,16 @@ serve(async (req) => {
       throw new Error("AWS SES credentials not configured");
     }
 
-    const { to, subject, body, senderEmail } = await req.json();
-    logStep("Email request", { to, subject });
+    const { to, subject, body } = await req.json();
+    logStep("Email request", { to, subject, userId: user.id });
 
     if (!to || !subject || !body) {
       throw new Error("to, subject, and body are required");
     }
 
     const url = new URL(`https://email.${region}.amazonaws.com/`);
-    const from = senderEmail || 'World Music Method <info@worldmusicmethod.com>';
+    // Fixed sender - do not allow custom senderEmail to prevent spoofing
+    const from = 'World Music Method <info@worldmusicmethod.com>';
     
     const params = new URLSearchParams();
     params.append('Action', 'SendEmail');
@@ -161,9 +190,9 @@ serve(async (req) => {
     params.append('Message.Body.Html.Charset', 'UTF-8');
 
     const requestBody = params.toString();
-    const headers = await signRequest('POST', url, requestBody, accessKeyId, secretAccessKey, region, 'ses');
+    const sesHeaders = await signRequest('POST', url, requestBody, accessKeyId, secretAccessKey, region, 'ses');
 
-    const response = await fetch(url.toString(), { method: 'POST', headers, body: requestBody });
+    const response = await fetch(url.toString(), { method: 'POST', headers: sesHeaders, body: requestBody });
     
     if (!response.ok) {
       const text = await response.text();
@@ -171,14 +200,14 @@ serve(async (req) => {
       throw new Error(`SES error: ${text}`);
     }
 
-    // Log the email send
+    // Log the email send with user context
     await supabase.from("email_send_log").insert({
       email: to,
       subject: subject,
       status: "sent",
     });
 
-    logStep("Email sent successfully");
+    logStep("Email sent successfully", { to, userId: user.id });
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
