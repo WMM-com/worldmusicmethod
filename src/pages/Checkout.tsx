@@ -634,9 +634,10 @@ function CheckoutContent() {
   const cardPriceBeforeCredits = priceAfterCoupon - stripeDiscount;
   
   // Calculate price after applying referral credits
-  const creditDiscountInDollars = useCredits ? creditAmountUsed / 100 : 0;
-  const cardPrice = Math.max(0, cardPriceBeforeCredits - creditDiscountInDollars);
-  const isFullyCoveredByCredits = useCredits && creditAmountUsed / 100 >= cardPriceBeforeCredits;
+  // creditAmountUsed is in USD cents, convert to regional currency for display
+  const creditDiscountInRegionalCurrency = useCredits ? (creditAmountUsed / 100) * geoRatio : 0;
+  const cardPrice = Math.max(0, cardPriceBeforeCredits - creditDiscountInRegionalCurrency);
+  const isFullyCoveredByCredits = useCredits && creditDiscountInRegionalCurrency >= cardPriceBeforeCredits;
   const isCourse = isCartMode
     ? cartItems.some((item) => item.productType === 'course')
     : product?.product_type === 'course';
@@ -1051,6 +1052,7 @@ function CheckoutContent() {
                     creditBalance={creditBalance}
                     cartTotal={cardPriceBeforeCredits}
                     currency={currency}
+                    geoConversionRate={geoRatio}
                     onCreditUsageChange={handleCreditUsageChange}
                   />
                 )}
