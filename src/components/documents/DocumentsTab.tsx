@@ -46,6 +46,7 @@ export function DocumentsTab() {
   const [shareEmail, setShareEmail] = useState('');
   const [shareMessage, setShareMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
 
   // Upload form state
   const [file, setFile] = useState<File | null>(null);
@@ -61,6 +62,55 @@ export function DocumentsTab() {
     setDescription('');
     setCategory('');
     setUploadProgress(0);
+  };
+
+  // Get signed URL for private document access
+  const getSignedUrl = async (fileUrl: string): Promise<string | null> => {
+    try {
+      // Extract path from stored URL
+      let path = '';
+      if (fileUrl.includes('/user-documents/')) {
+        path = fileUrl.split('/user-documents/')[1];
+      } else if (fileUrl.includes('user-documents/')) {
+        path = fileUrl.split('user-documents/')[1];
+      } else {
+        // Assume it's already just the path
+        path = fileUrl;
+      }
+      
+      // Remove query params if present
+      path = path.split('?')[0];
+      
+      if (!path) return null;
+      
+      const { data, error } = await supabase.storage
+        .from('user-documents')
+        .createSignedUrl(path, 3600); // 1 hour expiry
+      
+      if (error) {
+        console.error('Failed to get signed URL:', error);
+        return null;
+      }
+      
+      return data?.signedUrl || null;
+    } catch (err) {
+      console.error('Error getting signed URL:', err);
+      return null;
+    }
+  };
+
+  const handleViewDocument = async (doc: UserDocument) => {
+    setLoadingDocId(doc.id);
+    try {
+      const signedUrl = await getSignedUrl(doc.file_url);
+      if (signedUrl) {
+        window.open(signedUrl, '_blank');
+      } else {
+        toast.error('Failed to access document');
+      }
+    } finally {
+      setLoadingDocId(null);
+    }
   };
 
   const handleUpload = async () => {
@@ -84,17 +134,15 @@ export function DocumentsTab() {
 
       setUploadProgress(70);
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('user-documents')
-        .getPublicUrl(fileName);
+      // Store the path for signed URL generation (not public URL since bucket is private)
+      const storagePath = fileName;
 
       setUploadProgress(90);
 
-      // Save to database
+      // Save to database with the storage path
       await createDocument(
         title.trim(),
-        urlData.publicUrl,
+        storagePath,
         file.name,
         file.type,
         file.size,
@@ -149,19 +197,42 @@ export function DocumentsTab() {
     
     setSending(true);
     try {
+      // Generate a signed URL for sharing (24 hour expiry for shared links)
+      let signedUrl = '';
+      try {
+        let path = shareDialogDoc.file_url;
+        if (path.includes('/user-documents/')) {
+          path = path.split('/user-documents/')[1];
+        } else if (path.includes('user-documents/')) {
+          path = path.split('user-documents/')[1];
+        }
+        path = path.split('?')[0];
+        
+        const { data } = await supabase.storage
+          .from('user-documents')
+          .createSignedUrl(path, 86400); // 24 hour expiry for shared links
+        
+        signedUrl = data?.signedUrl || shareDialogDoc.file_url;
+      } catch {
+        signedUrl = shareDialogDoc.file_url;
+      }
+
       const { error } = await supabase.functions.invoke('send-direct-email', {
         body: {
           to: shareEmail,
           subject: `${profile?.full_name || 'Document'} - Document Sharing`,
-          html: `
+          body: `
             <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2>Document Shared With You</h2>
               <p>${shareMessage.replace(/\n/g, '<br/>')}</p>
               <p style="margin-top: 20px;">
-                <a href="${shareDialogDoc.file_url}" 
+                <a href="${signedUrl}" 
                    style="background: #8B5CF6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">
                   View Document
                 </a>
+              </p>
+              <p style="margin-top: 16px; font-size: 12px; color: #666;">
+                Note: This link will expire in 24 hours.
               </p>
             </div>
           `,
@@ -358,10 +429,11 @@ export function DocumentsTab() {
                     variant="ghost"
                     size="sm"
                     className="flex-1"
-                    onClick={() => window.open(doc.file_url, '_blank')}
+                    disabled={loadingDocId === doc.id}
+                    onClick={() => handleViewDocument(doc)}
                   >
                     <ExternalLink className="h-4 w-4 mr-1" />
-                    View
+                    {loadingDocId === doc.id ? 'Loading...' : 'View'}
                   </Button>
                   <Button
                     variant="ghost"
