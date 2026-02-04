@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PostCard } from '@/components/social/PostCard';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { ReferralSection } from '@/components/profile/ReferralSection';
 import { BioSection } from '@/components/profile/sections/BioSection';
 import { SpotifyEmbed } from '@/components/profile/sections/SpotifyEmbed';
 import { YouTubeEmbed } from '@/components/profile/sections/YouTubeEmbed';
@@ -598,6 +599,9 @@ export default function Profile() {
                     {extendedProfile && (
                       <BioSection profile={extendedProfile} isEditing={isEditing} />
                     )}
+                    
+                    {/* Referral Section - only show on own profile */}
+                    {isOwnProfile && <ReferralSection />}
                     
                     {/* Mobile: Show sidebar sections here */}
                     <div className="lg:hidden space-y-6">
