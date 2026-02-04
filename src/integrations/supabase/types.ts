@@ -3624,6 +3624,33 @@ export type Database = {
         }
         Relationships: []
       }
+      point_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          points: number
+          reason: string
+          reference_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points: number
+          reason: string
+          reference_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points?: number
+          reason?: string
+          reference_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           content: string
@@ -4344,6 +4371,50 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          prompt_answer: string | null
+          prompt_question: string | null
+          rating: number
+          review_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          prompt_answer?: string | null
+          prompt_question?: string | null
+          rating: number
+          review_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          prompt_answer?: string | null
+          prompt_question?: string | null
+          rating?: number
+          review_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_participants: {
         Row: {
           id: string
@@ -5009,6 +5080,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_points: {
+        Row: {
+          created_at: string
+          id: string
+          total_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          total_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_practice_scores: {
         Row: {
