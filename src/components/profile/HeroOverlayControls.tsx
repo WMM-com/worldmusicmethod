@@ -32,6 +32,9 @@ interface HeroOverlayControlsProps {
   onRemoveCover?: () => void;
 }
 
+// Check if the template uses background images
+const templateUsesBackgroundImage = (type: HeroType) => type === 'standard';
+
 const heightOptions = [
   { value: 'small', label: 'Small', pixels: '192px' },
   { value: 'medium', label: 'Medium', pixels: '256px' },
@@ -95,6 +98,7 @@ export function HeroOverlayControls({
   };
 
   const hasCoverImage = heroConfig.backgroundImage || coverImageUrl;
+  const showCoverControls = templateUsesBackgroundImage(heroType);
 
   return (
     <>
@@ -107,8 +111,8 @@ export function HeroOverlayControls({
         onChange={handleCoverUpload}
       />
 
-      {/* Icon CTA for adding cover image - centered (only shown when no cover) */}
-      {!hasCoverImage && (
+      {/* Icon CTA for adding cover image - centered (only shown when no cover and standard template) */}
+      {showCoverControls && !hasCoverImage && (
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
@@ -124,8 +128,8 @@ export function HeroOverlayControls({
         </button>
       )}
 
-      {/* Top-left: Cover settings icon when cover exists */}
-      {hasCoverImage && (
+      {/* Top-left: Cover settings icon when cover exists (only for standard template) */}
+      {showCoverControls && hasCoverImage && (
         <div className="absolute top-4 left-4 z-20 flex gap-2">
           {/* Change cover button */}
           <button
