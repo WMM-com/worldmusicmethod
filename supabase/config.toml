@@ -194,3 +194,6 @@ verify_jwt = false
 
 [functions.create-digital-product-paypal-order]
 verify_jwt = false
+
+[functions.ensure-home-page]
+verify_jwt = true
