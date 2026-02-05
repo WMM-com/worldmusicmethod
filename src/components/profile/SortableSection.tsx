@@ -1,7 +1,7 @@
+import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
-import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
 import { LayoutSelector } from './LayoutSelector';
@@ -11,7 +11,7 @@ interface SortableSectionProps {
   id: string;
   layout?: string | null;
   isEditing: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
   onLayoutChange?: (layout: LayoutType) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -19,7 +19,7 @@ interface SortableSectionProps {
   isLast?: boolean;
 }
 
-export function SortableSection({ 
+function SortableSectionComponent({ 
   id, 
   layout, 
   isEditing, 
@@ -115,3 +115,6 @@ export function SortableSection({
     </div>
   );
 }
+
+// Named export for compatibility
+export const SortableSection = SortableSectionComponent;
