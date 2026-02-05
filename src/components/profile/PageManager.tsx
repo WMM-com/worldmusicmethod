@@ -134,28 +134,26 @@ function SortablePageItem({
           )}
         </Button>
 
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8"
+          onClick={() => onEdit(page)}
+          title="Edit page"
+        >
+          <Edit2 className="h-4 w-4" />
+        </Button>
+        
         {!page.is_home && (
-          <>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8"
-              onClick={() => onEdit(page)}
-              title="Edit page"
-            >
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 text-destructive"
-              onClick={() => onDelete(page)}
-              title="Delete page"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-destructive"
+            onClick={() => onDelete(page)}
+            title="Delete page"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         )}
       </div>
     </div>
