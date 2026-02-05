@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -14,10 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Settings2, Edit2, Image, Trash2 } from 'lucide-react';
+import { Settings2, Edit2, Camera, Trash2, Loader2 } from 'lucide-react';
 import { HeroEditor } from './HeroEditor';
 import { HeroType, HeroConfig } from './HeroSection';
 import { CoverSettings } from '@/hooks/useHeroSettings';
+import { useR2Upload } from '@/hooks/useR2Upload';
+import { toast } from 'sonner';
 
 interface HeroOverlayControlsProps {
   heroType: HeroType;
@@ -26,6 +28,7 @@ interface HeroOverlayControlsProps {
   coverImageUrl?: string | null;
   onUpdateHero: (type: HeroType, config: HeroConfig) => void;
   onUpdateCoverSettings: (settings: CoverSettings) => void;
+  onUpdateCoverImage?: (url: string) => Promise<void>;
   onRemoveCover?: () => void;
 }
 
@@ -42,9 +45,12 @@ export function HeroOverlayControls({
   coverImageUrl,
   onUpdateHero,
   onUpdateCoverSettings,
+  onUpdateCoverImage,
   onRemoveCover,
 }: HeroOverlayControlsProps) {
   const [localSettings, setLocalSettings] = useState<CoverSettings>(coverSettings);
+  const { uploadFile, isUploading } = useR2Upload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleHeightChange = (value: string) => {
     const newSettings = { ...localSettings, height: value as CoverSettings['height'] };
@@ -59,115 +65,165 @@ export function HeroOverlayControls({
     onUpdateCoverSettings(newSettings);
   };
 
-  // Check if we're using standard hero with cover image (the most common case)
-  const isStandardWithCover = heroType === 'standard' && (heroConfig.backgroundImage || coverImageUrl);
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onUpdateCoverImage) return;
+
+    const result = await uploadFile(file, {
+      bucket: 'user',
+      folder: 'covers',
+      imageOptimization: 'media',
+      trackInDatabase: true,
+    });
+
+    if (result) {
+      await onUpdateCoverImage(result.url);
+      toast.success('Cover image updated');
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const hasCoverImage = heroConfig.backgroundImage || coverImageUrl;
 
   return (
-    <div className="absolute top-4 right-4 z-20 flex gap-2">
-      {/* Hero Editor */}
-      <HeroEditor
-        heroType={heroType}
-        heroConfig={heroConfig}
-        onSave={onUpdateHero}
-        trigger={
-          <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
-            <Edit2 className="h-4 w-4" />
-            Edit Hero
-          </Button>
-        }
+    <>
+      {/* Hidden file input for cover upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleCoverUpload}
       />
 
-      {/* Cover/Background Settings - only show if there's a background image */}
-      {(heroConfig.backgroundImage || coverImageUrl) && (
-        <Popover>
-          <PopoverTrigger asChild>
+      {/* Icon CTA for adding/updating cover image - positioned in the hero area */}
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isUploading}
+        className="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
+        title={hasCoverImage ? 'Change cover image' : 'Add cover image'}
+      >
+        {isUploading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Camera className="h-4 w-4" />
+        )}
+        <span className="text-sm font-medium">
+          {hasCoverImage ? 'Change Cover' : 'Add Cover'}
+        </span>
+      </button>
+
+      {/* Top-right controls */}
+      <div className="absolute top-4 right-4 z-20 flex gap-2">
+        {/* Hero Editor */}
+        <HeroEditor
+          heroType={heroType}
+          heroConfig={heroConfig}
+          onSave={onUpdateHero}
+          trigger={
             <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
-              <Settings2 className="h-4 w-4" />
-              Cover Settings
+              <Edit2 className="h-4 w-4" />
+              Edit Hero
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Cover Height</Label>
-                <Select 
-                  value={localSettings.height || 'medium'} 
-                  onValueChange={handleHeightChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {heightOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label} ({opt.pixels})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          }
+        />
 
-              <div className="space-y-2">
-                <Label>Horizontal Focus ({localSettings.focalPointX ?? 50}%)</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Left</span>
-                  <Slider
-                    value={[localSettings.focalPointX ?? 50]}
-                    onValueChange={(v) => handleFocalPointChange('X', v)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">Right</span>
+        {/* Cover/Background Settings - only show if there's a background image */}
+        {hasCoverImage && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
+                <Settings2 className="h-4 w-4" />
+                Cover Settings
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Cover Height</Label>
+                  <Select 
+                    value={localSettings.height || 'medium'} 
+                    onValueChange={handleHeightChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {heightOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label} ({opt.pixels})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Vertical Focus ({localSettings.focalPointY ?? 50}%)</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Top</span>
-                  <Slider
-                    value={[localSettings.focalPointY ?? 50]}
-                    onValueChange={(v) => handleFocalPointChange('Y', v)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-xs text-muted-foreground">Bottom</span>
+                <div className="space-y-2">
+                  <Label>Horizontal Focus ({localSettings.focalPointX ?? 50}%)</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Left</span>
+                    <Slider
+                      value={[localSettings.focalPointX ?? 50]}
+                      onValueChange={(v) => handleFocalPointChange('X', v)}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-muted-foreground">Right</span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Preview */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Preview</Label>
-                <div 
-                  className="w-full h-20 rounded-md overflow-hidden border"
-                  style={{
-                    backgroundImage: `url(${heroConfig.backgroundImage || coverImageUrl})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: `${localSettings.focalPointX ?? 50}% ${localSettings.focalPointY ?? 50}%`,
-                  }}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label>Vertical Focus ({localSettings.focalPointY ?? 50}%)</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Top</span>
+                    <Slider
+                      value={[localSettings.focalPointY ?? 50]}
+                      onValueChange={(v) => handleFocalPointChange('Y', v)}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="flex-1"
+                    />
+                    <span className="text-xs text-muted-foreground">Bottom</span>
+                  </div>
+                </div>
 
-              {/* Remove Cover option */}
-              {onRemoveCover && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={onRemoveCover}
-                  className="w-full text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Cover Image
-                </Button>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
+                {/* Preview */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Preview</Label>
+                  <div 
+                    className="w-full h-20 rounded-md overflow-hidden border"
+                    style={{
+                      backgroundImage: `url(${heroConfig.backgroundImage || coverImageUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: `${localSettings.focalPointX ?? 50}% ${localSettings.focalPointY ?? 50}%`,
+                    }}
+                  />
+                </div>
+
+                {/* Remove Cover option */}
+                {onRemoveCover && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={onRemoveCover}
+                    className="w-full text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove Cover Image
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+    </>
   );
 }
