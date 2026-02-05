@@ -842,43 +842,61 @@ export default function Profile() {
                     {isOwnProfile && <ReferralSection />}
                     
                     {/* Main Content Sections - 12-column grid for flexible layouts */}
-                    {isEditing && isOwnProfile ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={mainSections.map(s => s.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
+                    {mainSections.length === 0 && isProfileRoute ? (
+                      <div className="col-span-full py-12 text-center text-muted-foreground">
+                        <p className="mb-4">This page is empty.</p>
+                        {isOwnProfile && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsEditing(true)}
+                          >
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Edit Profile
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        {isEditing && isOwnProfile ? (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext
+                              items={mainSections.map(s => s.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="grid grid-cols-12 gap-4">
+                                {mainSections.map((section, index) => (
+                                  <SortableSection
+                                    key={section.id}
+                                    id={section.id}
+                                    layout={section.layout}
+                                    isEditing={isEditing}
+                                    onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                    onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
+                                    onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
+                                    isFirst={index === 0}
+                                    isLast={index === mainSections.length - 1}
+                                  >
+                                    {renderSection(section, false)}
+                                  </SortableSection>
+                                ))}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        ) : (
                           <div className="grid grid-cols-12 gap-4">
-                            {mainSections.map((section, index) => (
-                              <SortableSection
-                                key={section.id}
-                                id={section.id}
-                                layout={section.layout}
-                                isEditing={isEditing}
-                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
-                                onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
-                                isFirst={index === 0}
-                                isLast={index === mainSections.length - 1}
-                              >
+                            {mainSections.map(section => (
+                              <div key={section.id} className={getLayoutClass(section.layout)}>
                                 {renderSection(section, false)}
-                              </SortableSection>
+                              </div>
                             ))}
                           </div>
-                        </SortableContext>
-                      </DndContext>
-                    ) : (
-                      <div className="grid grid-cols-12 gap-4">
-                        {mainSections.map(section => (
-                          <div key={section.id} className={getLayoutClass(section.layout)}>
-                            {renderSection(section, false)}
-                          </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     )}
                     
                     {/* Mobile: Show sidebar sections here */}
