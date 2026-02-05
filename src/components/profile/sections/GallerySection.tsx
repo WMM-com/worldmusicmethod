@@ -13,11 +13,14 @@ import { useR2Upload } from '@/hooks/useR2Upload';
 import { Images, Plus, Trash2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface GallerySectionProps {
+  section?: any;
   userId: string;
   isEditing: boolean;
+  onUpdate?: (content: Record<string, any>) => void;
+  onDelete?: () => void;
 }
 
-export function GallerySection({ userId, isEditing }: GallerySectionProps) {
+export function GallerySection({ section, userId, isEditing, onUpdate, onDelete }: GallerySectionProps) {
   const { data: gallery = [] } = useProfileGallery(userId);
   const addItem = useAddGalleryItem();
   const deleteItem = useDeleteGalleryItem();

@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { 
   Type, Settings, Trash2, AlignLeft, AlignCenter, AlignRight,
-  Heading1, Heading2
+  Heading1, Heading2, Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface TextBlockProps {
   section: ProfileSection;
@@ -37,11 +38,14 @@ export function TextBlock({ section, isEditing, onUpdate, onDelete }: TextBlockP
   };
 
   const [localContent, setLocalContent] = useState(content);
+  const [inlineEdit, setInlineEdit] = useState(false);
   const textAlign = localContent.textAlign || 'left';
   const headingLevel = localContent.headingLevel || 'h1';
 
   const handleSave = () => {
     onUpdate(localContent);
+    setInlineEdit(false);
+    toast.success('Text block saved');
   };
 
   const handleChange = (field: string, value: string) => {
@@ -54,10 +58,17 @@ export function TextBlock({ section, isEditing, onUpdate, onDelete }: TextBlockP
     right: 'text-right',
   }[textAlign];
 
-  if (!isEditing) {
-    // View mode
+  const showEditMode = isEditing || inlineEdit;
+
+  // View mode with hover edit
+  if (!showEditMode) {
+    // Don't render if empty
+    if (!localContent.heading && !localContent.subheading && !localContent.body) {
+      return null;
+    }
+
     return (
-      <div className={cn('py-6', alignClass)}>
+      <div className={cn('py-6 relative group', alignClass)}>
         {localContent.heading && (
           headingLevel === 'h1' ? (
             <h1 className="text-3xl md:text-4xl font-bold mb-2">{localContent.heading}</h1>
@@ -73,6 +84,15 @@ export function TextBlock({ section, isEditing, onUpdate, onDelete }: TextBlockP
         {localContent.body && (
           <p className="text-base leading-relaxed whitespace-pre-wrap">{localContent.body}</p>
         )}
+        {/* Hover edit button for owners */}
+        <Button
+          variant="secondary"
+          size="icon"
+          className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => setInlineEdit(true)}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
       </div>
     );
   }

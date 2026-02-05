@@ -4,14 +4,22 @@ import { Badge } from '@/components/ui/badge';
 import { Crown } from 'lucide-react';
 import { 
   FileText, Image, Layout, Share2, DollarSign, ShoppingBag, 
-  Headphones, Video, Music, Code, Calendar 
+  Headphones, Video, Music, Code, Heading, MousePointer2, 
+  Minus, MoveVertical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // All available section types with descriptions
 const ALL_SECTION_TYPES = [
-  // Main content sections
-  { type: 'text_block', label: 'Text Block', icon: FileText, description: 'Add formatted text content', category: 'content' },
+  // Layout sections (new)
+  { type: 'heading', label: 'Heading', icon: Heading, description: 'H1-H5 heading styles', category: 'layout' },
+  { type: 'text_block', label: 'Text Block', icon: FileText, description: 'Heading, subheading, and body text', category: 'layout' },
+  { type: 'image_block', label: 'Image', icon: Image, description: 'Single image with styling options', category: 'layout' },
+  { type: 'button_block', label: 'Button', icon: MousePointer2, description: 'Call-to-action button with link', category: 'layout' },
+  { type: 'divider', label: 'Divider', icon: Minus, description: 'Horizontal line separator', category: 'layout' },
+  { type: 'spacer', label: 'Spacer', icon: MoveVertical, description: 'Adjustable vertical space', category: 'layout' },
+  
+  // Content sections
   { type: 'gallery', label: 'Gallery', icon: Image, description: 'Showcase images in a grid', category: 'content' },
   { type: 'projects', label: 'Projects', icon: Layout, description: 'Display portfolio projects', category: 'content' },
   { type: 'custom_tabs', label: 'Info Tabs', icon: FileText, description: 'Tabbed information sections', category: 'content' },
@@ -51,6 +59,7 @@ export function AddSectionModal({
     onOpenChange(false);
   };
 
+  const layoutSections = ALL_SECTION_TYPES.filter(s => s.category === 'layout');
   const contentSections = ALL_SECTION_TYPES.filter(s => s.category === 'content');
   const embedSections = ALL_SECTION_TYPES.filter(s => s.category === 'embed');
   const commerceSections = ALL_SECTION_TYPES.filter(s => s.category === 'commerce');
@@ -63,6 +72,33 @@ export function AddSectionModal({
         </DialogHeader>
         
         <div className="space-y-6 py-4">
+          {/* Layout Sections */}
+          <div>
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Layout</h3>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {layoutSections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <Card 
+                    key={section.type}
+                    className={cn(
+                      "cursor-pointer transition-all hover:border-primary hover:shadow-md",
+                      "group"
+                    )}
+                    onClick={() => handleSelect(section.type, false)}
+                  >
+                    <CardContent className="p-3 text-center">
+                      <div className="w-8 h-8 mx-auto mb-1 rounded-lg bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                        <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                      </div>
+                      <h4 className="font-medium text-xs">{section.label}</h4>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Content Sections */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Content</h3>

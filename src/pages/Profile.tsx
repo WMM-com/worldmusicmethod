@@ -36,6 +36,11 @@ import { AddSectionModal } from '@/components/profile/AddSectionModal';
 import { TextBlock } from '@/components/profile/sections/TextBlock';
 import { DonationBlock } from '@/components/profile/sections/DonationBlock';
 import { AudioBlock } from '@/components/profile/sections/AudioBlock';
+import { ImageBlock } from '@/components/profile/sections/ImageBlock';
+import { ButtonBlock } from '@/components/profile/sections/ButtonBlock';
+import { DividerBlock } from '@/components/profile/sections/DividerBlock';
+import { SpacerBlock } from '@/components/profile/sections/SpacerBlock';
+import { HeadingBlock } from '@/components/profile/sections/HeadingBlock';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -108,7 +113,7 @@ const MAIN_SECTION_TYPES = [
 
 export default function Profile() {
   const { userId, slug } = useParams<{ userId: string; slug?: string }>();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isProfileRoute = location.pathname.startsWith('/@');
@@ -226,8 +231,9 @@ export default function Profile() {
     toast.success(`Profile visibility: ${labels[newVisibility]}`);
   };
 
-  // Premium check
-  const { isPremium, canAddMoreSections } = usePremiumCheck(extendedProfile?.profile_tier);
+  // Premium check - admins bypass premium restrictions
+  const { isPremium: isPremiumTier, canAddMoreSections } = usePremiumCheck(extendedProfile?.profile_tier);
+  const isPremium = isPremiumTier || isAdmin;
   
   // Count custom sections (gallery, projects, custom_tabs)
   const customSectionCount = (sections || []).filter(s => 
@@ -235,14 +241,14 @@ export default function Profile() {
   ).length;
 
   const handleAddSection = async (sectionType: string, pageId?: string | null) => {
-    // Check premium gates
-    if (PREMIUM_SECTION_TYPES.includes(sectionType) && !isPremium) {
+    // Check premium gates - admins bypass
+    if (!isAdmin && PREMIUM_SECTION_TYPES.includes(sectionType) && !isPremiumTier) {
       toast.error('Upgrade to Premium to add commerce blocks');
       return;
     }
     
-    // Check section limit for custom sections
-    if (['gallery', 'projects', 'custom_tabs'].includes(sectionType) && !canAddMoreSections(customSectionCount)) {
+    // Check section limit for custom sections - admins bypass
+    if (!isAdmin && ['gallery', 'projects', 'custom_tabs'].includes(sectionType) && !canAddMoreSections(customSectionCount)) {
       toast.error('Upgrade to Premium to add more than 3 custom sections');
       return;
     }
@@ -261,6 +267,11 @@ export default function Profile() {
       text_block: 'Text Block',
       donation: 'Tip Jar',
       audio_player: 'Audio',
+      image_block: 'Image',
+      button_block: 'Button',
+      divider: 'Divider',
+      spacer: 'Spacer',
+      heading: 'Heading',
     };
     
     await createSection.mutateAsync({
@@ -342,26 +353,30 @@ export default function Profile() {
   const isInvalidSlug = isProfileRoute && normalizedSlug && pages.length > 0 && !currentPage;
 
   // All sections sorted by order_index, filtered by current page
+  // STRICT: Hide sections with null page_id until assigned
   const sortedSections = useMemo(() => {
     let filtered = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
     
     // Always filter by page_id when multi-page features are active
     if (showMultiPageFeatures) {
       if (currentPage) {
-        // Show only sections for the current page
+        // Show only sections for the current page (strict match)
         filtered = filtered.filter(s => s.page_id === currentPage.id);
       } else if (pages.length > 0) {
-        // If no current page but pages exist (shouldn't happen), show nothing
-        // This prevents showing all sections across all pages
+        // If no current page but pages exist, show nothing to prevent leakage
         filtered = [];
       }
       // If pages haven't loaded yet (pages.length === 0), show nothing while loading
+    } else {
+      // Legacy mode: hide null page_id sections entirely until assigned
+      filtered = filtered.filter(s => s.page_id !== null);
     }
     
     return filtered;
   }, [sections, showMultiPageFeatures, currentPage, pages.length]);
+  
   const mainSections = sortedSections.filter(s => 
-    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
+    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player', 'image_block', 'button_block', 'divider', 'spacer', 'heading'].includes(s.section_type)
   );
   
   const sidebarSections = sortedSections.filter(s => 
@@ -403,6 +418,16 @@ export default function Profile() {
         return <DonationBlock key={section.id} {...props} userId={profileId!} />;
       case 'audio_player':
         return <AudioBlock key={section.id} {...props} userId={profileId!} />;
+      case 'image_block':
+        return <ImageBlock key={section.id} {...props} />;
+      case 'button_block':
+        return <ButtonBlock key={section.id} {...props} />;
+      case 'divider':
+        return <DividerBlock key={section.id} {...props} />;
+      case 'spacer':
+        return <SpacerBlock key={section.id} {...props} />;
+      case 'heading':
+        return <HeadingBlock key={section.id} {...props} />;
       default:
         return null;
     }
