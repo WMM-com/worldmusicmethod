@@ -12,6 +12,7 @@ export interface ProfileSection {
   order_index: number;
   is_visible: boolean;
   layout: string | null;
+  page_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -108,21 +109,32 @@ export function usePublicProfile(username: string) {
   });
 }
 
-// Profile sections
-export function useProfileSections(userId?: string) {
+// Profile sections - now accepts optional pageId filter
+export function useProfileSections(userId?: string, pageId?: string | null) {
   const { user } = useAuth();
   const targetId = userId || user?.id;
 
   return useQuery({
-    queryKey: ['profile-sections', targetId],
+    queryKey: ['profile-sections', targetId, pageId],
     queryFn: async () => {
       if (!targetId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('profile_sections')
         .select('*')
         .eq('user_id', targetId)
         .order('order_index', { ascending: true });
+
+      // Filter by page_id if provided
+      if (pageId !== undefined) {
+        if (pageId === null) {
+          query = query.is('page_id', null);
+        } else {
+          query = query.eq('page_id', pageId);
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as ProfileSection[];
@@ -139,22 +151,29 @@ export function useCreateSection() {
     mutationFn: async ({ 
       section_type, 
       title, 
-      content = {} 
+      content = {},
+      page_id
     }: { 
       section_type: string; 
       title?: string; 
       content?: Record<string, any>;
+      page_id?: string | null;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Get max order_index
-      const { data: existing } = await supabase
+      // Get max order_index for this page
+      let orderQuery = supabase
         .from('profile_sections')
         .select('order_index')
         .eq('user_id', user.id)
         .order('order_index', { ascending: false })
         .limit(1);
+      
+      if (page_id) {
+        orderQuery = orderQuery.eq('page_id', page_id);
+      }
 
+      const { data: existing } = await orderQuery;
       const order_index = (existing?.[0]?.order_index ?? -1) + 1;
 
       const { data, error } = await supabase
@@ -165,6 +184,7 @@ export function useCreateSection() {
           title,
           content,
           order_index,
+          page_id: page_id || null,
         })
         .select()
         .single();
@@ -174,6 +194,7 @@ export function useCreateSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile-sections'] });
+      queryClient.invalidateQueries({ queryKey: ['page-section-counts'] });
       toast.success('Section added');
     },
     onError: (error: any) => {
@@ -199,6 +220,7 @@ export function useUpdateSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile-sections'] });
+      queryClient.invalidateQueries({ queryKey: ['page-section-counts'] });
     },
   });
 }
@@ -217,6 +239,7 @@ export function useDeleteSection() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile-sections'] });
+      queryClient.invalidateQueries({ queryKey: ['page-section-counts'] });
       toast.success('Section removed');
     },
   });
