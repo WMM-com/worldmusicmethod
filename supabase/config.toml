@@ -176,3 +176,12 @@ verify_jwt = false
 
 [functions.complete-free-credit-checkout]
 verify_jwt = false
+
+[functions.stripe-connect-onboard]
+verify_jwt = false
+
+[functions.flutterwave-subaccount-create]
+verify_jwt = false
+
+[functions.paypal-connect]
+verify_jwt = false

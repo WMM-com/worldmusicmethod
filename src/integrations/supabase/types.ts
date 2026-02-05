@@ -3493,6 +3493,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_accounts: {
+        Row: {
+          account_email: string | null
+          account_id: string | null
+          account_status: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          onboarding_complete: boolean | null
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_email?: string | null
+          account_id?: string | null
+          account_status?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          onboarding_complete?: boolean | null
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_email?: string | null
+          account_id?: string | null
+          account_status?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          onboarding_complete?: boolean | null
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_auth_tokens: {
         Row: {
           created_at: string
