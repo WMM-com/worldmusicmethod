@@ -123,17 +123,6 @@ export function HeroSection({
           backgroundColor: backgroundColor || 'hsl(var(--muted))',
         }}
       >
-        {/* Background pattern or gradient */}
-        {actualBackgroundImage && (
-          <div
-            className="absolute inset-0 bg-cover opacity-20"
-            style={{ 
-              backgroundImage: `url(${actualBackgroundImage})`,
-              backgroundPosition: focalPoint,
-            }}
-          />
-        )}
-        
         <div className={cn(
           'relative z-10 flex flex-col md:flex-row items-center justify-between h-full p-6 md:p-10 lg:p-12 gap-8',
           heroHeightClass,
