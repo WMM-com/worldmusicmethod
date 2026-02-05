@@ -522,15 +522,6 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Multi-page Navigation - show on profile route or own profile with pages */}
-        {showMultiPageFeatures && pages.length > 0 && (
-          <ProfileNav 
-            userId={profileId!} 
-            brandColor={heroSettings?.brand_color}
-            isOwnProfile={isOwnProfile}
-          />
-        )}
-
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Header Card - overlapping cover */}
           <div className="-mt-16 sm:-mt-20 relative z-10">
@@ -874,6 +865,17 @@ export default function Profile() {
 
           {/* Main Content with Tabs */}
           <div className="py-8">
+            {/* Multi-page Navigation - show on profile route or own profile with pages */}
+            {showMultiPageFeatures && pages.length > 0 && (
+              <div className="mb-6">
+                <ProfileNav 
+                  userId={profileId!} 
+                  brandColor={heroSettings?.brand_color}
+                  isOwnProfile={isOwnProfile}
+                />
+              </div>
+            )}
+            
             <Tabs defaultValue="about" className="w-full">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                 <TabsList>
