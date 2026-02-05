@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PostCard } from '@/components/social/PostCard';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
@@ -110,8 +111,11 @@ export default function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
   const isProfileRoute = location.pathname.startsWith('/@');
+  const isProfileManageRoute =
+    location.pathname === '/profile' || location.pathname.startsWith('/profile/pages');
   
   const isOwnProfile = !userId || userId === user?.id;
+  const isOwnProfileManageRoute = isProfileManageRoute && isOwnProfile;
   const profileId = userId || user?.id;
 
   const { data: profile, isLoading: profileLoading } = useUserProfile(profileId);
@@ -135,7 +139,8 @@ export default function Profile() {
   const reorderSections = useReorderSections();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState('about');
+  const [activeTab, setActiveTab] = useState(() => (isOwnProfileManageRoute ? 'page' : 'about'));
+  const [inviteFriendsOpen, setInviteFriendsOpen] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
@@ -627,7 +632,12 @@ export default function Profile() {
                             </>
                           )}
                         </Button>
-                        <Button variant="outline" onClick={() => navigate('/settings')}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setInviteFriendsOpen(true)}
+                          aria-label="Invite friends"
+                        >
                           <Settings className="h-4 w-4" />
                         </Button>
                       </>
@@ -678,12 +688,22 @@ export default function Profile() {
                       </Button>
                     )}
                   </div>
-                </div>
 
-                {/* Edit Mode Controls */}
-                {isOwnProfile && isEditing && (
-                  <div className="mt-6 pt-6 border-t border-border">
-                    <div className="flex flex-wrap gap-4 items-center">
+                  {isOwnProfile && (
+                    <Dialog open={inviteFriendsOpen} onOpenChange={setInviteFriendsOpen}>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Invite Friends</DialogTitle>
+                        </DialogHeader>
+                        <ReferralSection />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {/* Edit Mode Controls */}
+                  {isOwnProfile && isEditing && (
+                    <div className="mt-6 pt-6 border-t border-border">
+                      <div className="flex flex-wrap gap-4 items-center">
                       {/* Hero Editor - for quick access */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
