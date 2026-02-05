@@ -1234,13 +1234,13 @@ export default function Profile() {
                </TabsContent>
 
               {/* Page Tab - for edit mode custom pages */}
-              {showMultiPageFeatures && currentPage && (
+              {showMultiPageFeatures && (
                 <TabsContent value="page">
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Left Column - Main content sections */}
                     <div className="w-full lg:max-w-2xl space-y-6">
                       {mainSections.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-muted-foreground">
+                        <div className="py-12 text-center text-muted-foreground">
                           <p className="mb-4">This page is empty.</p>
                           {isOwnProfile && (
                             <Button
