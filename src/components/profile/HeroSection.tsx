@@ -70,7 +70,7 @@ export function HeroSection({
     right: 'text-right items-end',
   }[textAlign];
 
-  // Standard: Full background image with overlay text
+  // Standard: Full background image (cover image only, no text overlay)
   if (heroType === 'standard') {
     return (
       <section
@@ -94,38 +94,13 @@ export function HeroSection({
           />
         )}
         
-        {/* Gradient Overlay - ensures text readability */}
+        {/* Subtle gradient at bottom for visual polish */}
         <div 
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            background: backgroundColor 
-              ? `linear-gradient(to top, ${backgroundColor} 0%, ${backgroundColor}cc 40%, ${backgroundColor}66 70%, transparent 100%)`
-              : 'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.85) 40%, hsl(var(--background) / 0.5) 70%, transparent 100%)'
+            background: 'linear-gradient(to top, hsl(var(--background) / 0.3) 0%, transparent 30%)'
           }}
         />
-        
-        {/* Content */}
-        <div className={cn(
-          'relative z-10 flex flex-col justify-end h-full p-6 md:p-10 lg:p-12',
-          heroHeightClass,
-          textAlignClass
-        )}>
-          {subtitle && (
-            <p className="text-sm md:text-base font-medium text-white/80 mb-2 uppercase tracking-widest drop-shadow-md">
-              {subtitle}
-            </p>
-          )}
-          {(title || fallbackName) && (
-            <h1 className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 text-white drop-shadow-lg">
-              {displayTitle}
-            </h1>
-          )}
-          {description && (
-            <p className="text-base md:text-lg lg:text-xl text-white/90 max-w-2xl drop-shadow-md leading-relaxed">
-              {description}
-            </p>
-          )}
-        </div>
       </section>
     );
   }

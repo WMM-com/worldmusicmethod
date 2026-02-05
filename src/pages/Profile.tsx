@@ -7,7 +7,7 @@ import { useUserProfile, useUserPosts, useUserStats, useUpdateBio, useUploadAvat
 import { useFriendships, useSendFriendRequest } from '@/hooks/useSocial';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
-import { useR2Upload } from '@/hooks/useR2Upload';
+// useR2Upload moved to HeroOverlayControls for cover uploads
 import { 
   useExtendedProfile, 
   useUpdateExtendedProfile, 
@@ -23,7 +23,7 @@ import { useHeroSettings, useUpdateHeroSettings, CoverSettings } from '@/hooks/u
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
 import { HeroOverlayControls } from '@/components/profile/HeroOverlayControls';
-import { CoverImageUploader } from '@/components/profile/CoverImageUploader';
+// CoverImageUploader removed - cover upload now handled by HeroOverlayControls
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
@@ -131,9 +131,9 @@ export default function Profile() {
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
-  const [cropType, setCropType] = useState<'avatar' | 'cover'>('avatar');
+  // cropType removed - only avatar uses cropper now
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
+  // coverInputRef removed - cover upload now handled by HeroOverlayControls
 
   // DnD sensors
   const sensors = useSensors(
@@ -156,54 +156,27 @@ export default function Profile() {
 
   const handleAvatarClick = () => {
     if (isOwnProfile && isEditing) {
-      setCropType('avatar');
       fileInputRef.current?.click();
     }
   };
 
-  const handleCoverClick = () => {
-    if (isOwnProfile && isEditing) {
-      setCropType('cover');
-      coverInputRef.current?.click();
-    }
-  };
+  // handleCoverClick removed - cover upload now handled by HeroOverlayControls
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setCropImageSrc(imageUrl);
-      setCropType(type);
       setCropperOpen(true);
     }
-    if (type === 'avatar' && fileInputRef.current) {
+    if (fileInputRef.current) {
       fileInputRef.current.value = '';
-    }
-    if (type === 'cover' && coverInputRef.current) {
-      coverInputRef.current.value = '';
     }
   };
 
-  const { uploadFile } = useR2Upload();
-  
   const handleCropComplete = async (croppedBlob: Blob) => {
-    const file = new File([croppedBlob], `${cropType}.jpg`, { type: 'image/jpeg' });
-    if (cropType === 'avatar') {
-      await uploadAvatar.mutateAsync(file);
-    } else {
-      // Upload cover image to R2 and update profile
-      const result = await uploadFile(file, {
-        bucket: 'user',
-        folder: 'covers',
-        imageOptimization: 'media',
-        trackInDatabase: true,
-        altText: `Cover image`,
-      });
-      if (result) {
-        await updateExtendedProfile.mutateAsync({ cover_image_url: result.url });
-        toast.success('Cover image updated');
-      }
-    }
+    const file = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+    await uploadAvatar.mutateAsync(file);
     URL.revokeObjectURL(cropImageSrc);
     setCropImageSrc('');
   };
@@ -466,6 +439,9 @@ export default function Profile() {
               coverImageUrl={heroSettings?.hero_config?.backgroundImage || extendedProfile?.cover_image_url}
               onUpdateHero={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
               onUpdateCoverSettings={(settings) => updateHeroSettings.mutate({ cover_settings: settings })}
+              onUpdateCoverImage={async (url) => {
+                await updateExtendedProfile.mutateAsync({ cover_image_url: url });
+              }}
               onRemoveCover={async () => {
                 // Clear the background image from hero config
                 await updateHeroSettings.mutateAsync({ 
@@ -477,15 +453,6 @@ export default function Profile() {
               }}
             />
           )}
-          
-          {/* Hidden file input for cover image upload */}
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => handleFileChange(e, 'cover')}
-          />
         </div>
 
         <div className="max-w-6xl mx-auto px-4">
@@ -520,7 +487,7 @@ export default function Profile() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => handleFileChange(e, 'avatar')}
+                      onChange={handleFileChange}
                     />
                   </div>
 
@@ -649,27 +616,7 @@ export default function Profile() {
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
-                      {/* Cover Image Uploader - separate from Hero */}
-                      <CoverImageUploader
-                        currentCoverUrl={extendedProfile?.cover_image_url}
-                        hasHeroConfigured={!!(
-                          heroSettings?.hero_config?.title || 
-                          heroSettings?.hero_config?.backgroundImage || 
-                          heroSettings?.hero_config?.cutoutImage
-                        )}
-                        onUpload={async (url) => {
-                          await updateExtendedProfile.mutateAsync({ cover_image_url: url });
-                        }}
-                        onReplaceHero={async () => {
-                          // Clear hero settings when replacing with cover image
-                          await updateHeroSettings.mutateAsync({ 
-                            hero_type: 'standard', 
-                            hero_config: {} 
-                          });
-                        }}
-                      />
-                      
-                      {/* Hero Editor - duplicated here for quick access */}
+                      {/* Hero Editor - for quick access */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
                         heroConfig={heroSettings?.hero_config || {}}
@@ -1181,9 +1128,9 @@ export default function Profile() {
           }}
           imageSrc={cropImageSrc}
           onCropComplete={handleCropComplete}
-          aspectRatio={cropType === 'avatar' ? 1 : 16/5}
-          circularCrop={cropType === 'avatar'}
-          title={cropType === 'avatar' ? 'Crop Profile Picture' : 'Crop Cover Image'}
+          aspectRatio={1}
+          circularCrop={true}
+          title="Crop Profile Picture"
         />
       </div>
     </>
