@@ -23,7 +23,7 @@ import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings'
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
 import { SortableSection } from '@/components/profile/SortableSection';
-import { LayoutSelector } from '@/components/profile/LayoutSelector';
+import { getLayoutClass } from '@/components/profile/GridLayout';
 import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
 import { TextBlock } from '@/components/profile/sections/TextBlock';
 import { DonationBlock } from '@/components/profile/sections/DonationBlock';
@@ -856,7 +856,7 @@ export default function Profile() {
                     {/* Referral Section - only show on own profile */}
                     {isOwnProfile && <ReferralSection />}
                     
-                    {/* Main Content Sections (Digital Products, Gallery, Projects, etc.) */}
+                    {/* Main Content Sections - 12-column grid for flexible layouts */}
                     {isEditing && isOwnProfile ? (
                       <DndContext
                         sensors={sensors}
@@ -867,7 +867,7 @@ export default function Profile() {
                           items={mainSections.map(s => s.id)}
                           strategy={verticalListSortingStrategy}
                         >
-                          <div className="space-y-6">
+                          <div className="grid grid-cols-12 gap-4">
                             {mainSections.map((section, index) => (
                               <SortableSection
                                 key={section.id}
@@ -887,7 +887,13 @@ export default function Profile() {
                         </SortableContext>
                       </DndContext>
                     ) : (
-                      mainSections.map(section => renderSection(section, false))
+                      <div className="grid grid-cols-12 gap-4">
+                        {mainSections.map(section => (
+                          <div key={section.id} className={getLayoutClass(section.layout)}>
+                            {renderSection(section, false)}
+                          </div>
+                        ))}
+                      </div>
                     )}
                     
                     {/* Mobile: Show sidebar sections here */}

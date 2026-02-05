@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
-import { ReactNode } from 'react';
+import { ReactNode, forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
 import { LayoutSelector } from './LayoutSelector';
@@ -19,7 +19,7 @@ interface SortableSectionProps {
   isLast?: boolean;
 }
 
-export function SortableSection({ 
+export const SortableSection = forwardRef<HTMLDivElement, SortableSectionProps>(({ 
   id, 
   layout, 
   isEditing, 
@@ -29,7 +29,7 @@ export function SortableSection({
   onMoveDown,
   isFirst,
   isLast,
-}: SortableSectionProps) {
+}, ref) => {
   const {
     attributes,
     listeners,
@@ -44,9 +44,19 @@ export function SortableSection({
     transition,
   };
 
+  // Combine the sortable ref with any forwarded ref
+  const combinedRef = (node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  };
+
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       style={style}
       className={cn(
         getLayoutClass(layout),
@@ -114,4 +124,6 @@ export function SortableSection({
       {children}
     </div>
   );
-}
+});
+
+SortableSection.displayName = 'SortableSection';
