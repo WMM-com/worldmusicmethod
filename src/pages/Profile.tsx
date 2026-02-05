@@ -44,11 +44,12 @@ import { ProjectsSection } from '@/components/profile/sections/ProjectsSection';
 import { EventsEmbed } from '@/components/profile/sections/EventsEmbed';
 import { SocialFeedEmbed } from '@/components/profile/sections/SocialFeedEmbed';
 import { CustomTabsSection } from '@/components/profile/sections/CustomTabsSection';
+import { DigitalProductsSection } from '@/components/profile/sections/DigitalProductsSection';
 import { 
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
   Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code,
-  Newspaper, UsersRound, UserSearch
+  Newspaper, UsersRound, UserSearch, ShoppingBag
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -67,6 +68,15 @@ const SIDEBAR_SECTION_TYPES = [
   { type: 'spotify', label: 'Spotify', icon: Music },
   { type: 'soundcloud', label: 'SoundCloud', icon: Headphones },
   { type: 'generic', label: 'Other Embed', icon: Code },
+];
+
+// Main content sections
+const MAIN_SECTION_TYPES = [
+  { type: 'gallery', label: 'Gallery', icon: Image },
+  { type: 'projects', label: 'Projects', icon: Layout },
+  { type: 'custom_tabs', label: 'Info Tabs', icon: FileText },
+  { type: 'social_feed', label: 'Social Feed', icon: Share2 },
+  { type: 'digital_products', label: 'Digital Products', icon: ShoppingBag },
 ];
 
 export default function Profile() {
@@ -202,6 +212,7 @@ export default function Profile() {
       projects: 'Projects',
       custom_tabs: 'Info',
       generic: 'Embed',
+      digital_products: 'Digital Products',
     };
     
     await createSection.mutateAsync({
@@ -240,7 +251,7 @@ export default function Profile() {
   
   // Categorize sections for layout
   const mainSections = sortedSections.filter(s => 
-    ['gallery', 'projects', 'custom_tabs', 'social_feed'].includes(s.section_type)
+    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products'].includes(s.section_type)
   );
   
   const sidebarSections = sortedSections.filter(s => 
@@ -274,6 +285,8 @@ export default function Profile() {
         return <ProjectsSection key={section.id} {...props} userId={profileId!} />;
       case 'custom_tabs':
         return <CustomTabsSection key={section.id} {...props} userId={profileId!} />;
+      case 'digital_products':
+        return <DigitalProductsSection key={section.id} {...props} userId={profileId!} />;
       default:
         return null;
     }
@@ -618,6 +631,23 @@ export default function Profile() {
                           ))}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Section
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {MAIN_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
+                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
+                              <Icon className="h-4 w-4 mr-2" />
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 )}
@@ -654,6 +684,35 @@ export default function Profile() {
                     
                     {/* Referral Section - only show on own profile */}
                     {isOwnProfile && <ReferralSection />}
+                    
+                    {/* Main Content Sections (Digital Products, Gallery, Projects, etc.) */}
+                    {isEditing && isOwnProfile ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={mainSections.map(s => s.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-6">
+                            {mainSections.map(section => (
+                              <SortableSection
+                                key={section.id}
+                                id={section.id}
+                                layout={section.layout}
+                                isEditing={isEditing}
+                              >
+                                {renderSection(section, false)}
+                              </SortableSection>
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      mainSections.map(section => renderSection(section, false))
+                    )}
                     
                     {/* Mobile: Show sidebar sections here */}
                     <div className="lg:hidden space-y-6">

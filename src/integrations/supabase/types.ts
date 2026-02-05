@@ -806,6 +806,54 @@ export type Database = {
         }
         Relationships: []
       }
+      digital_products: {
+        Row: {
+          base_price: number
+          created_at: string
+          currency: string
+          description: string | null
+          file_url: string
+          geo_pricing: Json | null
+          id: string
+          is_active: boolean | null
+          min_price: number | null
+          price_type: string
+          seller_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          file_url: string
+          geo_pricing?: Json | null
+          id?: string
+          is_active?: boolean | null
+          min_price?: number | null
+          price_type?: string
+          seller_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          file_url?: string
+          geo_pricing?: Json | null
+          id?: string
+          is_active?: boolean | null
+          min_price?: number | null
+          price_type?: string
+          seller_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_campaigns: {
         Row: {
           body_html: string
