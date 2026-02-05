@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useR2Upload } from '@/hooks/useR2Upload';
@@ -125,11 +125,14 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                       <h3 className="font-medium">{label}</h3>
                       <p className="text-sm text-muted-foreground">{description}</p>
                     </div>
-                    <RadioGroupItem 
-                      value={type} 
-                      checked={selectedType === type}
-                      className="h-5 w-5"
-                    />
+                    <div className={cn(
+                      'h-5 w-5 rounded-full border-2 flex items-center justify-center',
+                      selectedType === type 
+                        ? 'border-primary bg-primary text-primary-foreground' 
+                        : 'border-muted-foreground'
+                    )}>
+                      {selectedType === type && <Check className="h-3 w-3" />}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
