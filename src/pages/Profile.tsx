@@ -288,20 +288,32 @@ export default function Profile() {
     reorderSections.mutate(newOrderArray);
   }, [reorderSections]);
 
+  // Normalize slug: treat 'home' the same as no slug (show home page)
+  const normalizedSlug = (!slug || slug === 'home') ? null : slug;
+  
+  // Find the current page based on slug
+  const currentPage = useMemo(() => {
+    if (!isProfileRoute || pages.length === 0) return null;
+    if (normalizedSlug) {
+      return pages.find(p => p.slug === normalizedSlug) || null;
+    }
+    return pages.find(p => p.is_home) || null;
+  }, [isProfileRoute, pages, normalizedSlug]);
+  
+  // Check if we have an invalid slug (slug provided but page not found)
+  const isInvalidSlug = isProfileRoute && normalizedSlug && pages.length > 0 && !currentPage;
+
   // All sections sorted by order_index
   const sortedSections = useMemo(() => {
     let filtered = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
     
     // If on a profile page route, filter by page_id
-    if (isProfileRoute && pages.length > 0) {
-      const currentPage = slug ? pages.find(p => p.slug === slug) : pages.find(p => p.is_home);
-      if (currentPage) {
-        filtered = filtered.filter(s => s.page_id === currentPage.id);
-      }
+    if (isProfileRoute && currentPage) {
+      filtered = filtered.filter(s => s.page_id === currentPage.id);
     }
     
     return filtered;
-  }, [sections, isProfileRoute, slug, pages]);
+  }, [sections, isProfileRoute, currentPage]);
   const mainSections = sortedSections.filter(s => 
     ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
   );
@@ -374,6 +386,30 @@ export default function Profile() {
             <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h1 className="text-2xl font-bold mb-2">User Not Found</h1>
             <p className="text-muted-foreground">This profile doesn't exist.</p>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Show 404 for invalid page slug
+  if (isInvalidSlug) {
+    return (
+      <>
+        <SiteHeader className="header-non-sticky" />
+        <div className="min-h-screen bg-background">
+          <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+            <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Page Not Found</h1>
+            <p className="text-muted-foreground mb-6">
+              This page doesn't exist on {profile?.full_name || 'this profile'}.
+            </p>
+            <Button
+              onClick={() => navigate(`/@${extendedProfile?.username || userId}`)}
+              variant="outline"
+            >
+              Go to Home
+            </Button>
           </div>
         </div>
       </>
