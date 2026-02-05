@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useUserProfile, useUserPosts, useUserStats, useUpdateBio, useUploadAvatar } from '@/hooks/useProfile';
 import { useFriendships, useSendFriendRequest } from '@/hooks/useSocial';
@@ -14,8 +16,10 @@ import {
   useUpdateSection, 
   useDeleteSection,
   useReorderSections,
-  useProfileGallery
+  useProfileGallery,
+  ProfileSection
 } from '@/hooks/useProfilePortfolio';
+import { SortableSection } from '@/components/profile/SortableSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -86,6 +90,7 @@ export default function Profile() {
   const createSection = useCreateSection();
   const updateSection = useUpdateSection();
   const deleteSection = useDeleteSection();
+  const reorderSections = useReorderSections();
 
   const [isEditing, setIsEditing] = useState(false);
   const [cropperOpen, setCropperOpen] = useState(false);
@@ -93,6 +98,18 @@ export default function Profile() {
   const [cropType, setCropType] = useState<'avatar' | 'cover'>('avatar');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const isFriend = friendships?.friends.some(
     f => f.user_id === profileId || f.friend_id === profileId
@@ -198,14 +215,33 @@ export default function Profile() {
     toast.success('Section removed');
   };
 
-  // Categorize sections for layout
-  const mainSections = sections?.filter(s => 
-    ['gallery', 'projects', 'custom_tabs', 'social_feed'].includes(s.section_type)
-  ) || [];
+  // Handle drag end for reordering sections
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id || !sections) return;
+
+    const oldIndex = sections.findIndex(s => s.id === active.id);
+    const newIndex = sections.findIndex(s => s.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reorderedSections = arrayMove(sections, oldIndex, newIndex);
+      const newOrderArray = reorderedSections.map(s => s.id);
+      reorderSections.mutate(newOrderArray);
+    }
+  }, [sections, reorderSections]);
+
+  // All sections sorted by order_index
+  const sortedSections = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
   
-  const sidebarSections = sections?.filter(s => 
+  // Categorize sections for layout
+  const mainSections = sortedSections.filter(s => 
+    ['gallery', 'projects', 'custom_tabs', 'social_feed'].includes(s.section_type)
+  );
+  
+  const sidebarSections = sortedSections.filter(s => 
     ['youtube', 'spotify', 'soundcloud', 'events', 'generic'].includes(s.section_type)
-  ) || [];
+  );
 
   const renderSection = (section: any, isSidebar = false) => {
     const props = {
@@ -605,7 +641,33 @@ export default function Profile() {
                     
                     {/* Mobile: Show sidebar sections here */}
                     <div className="lg:hidden space-y-6">
-                      {sidebarSections.map(section => renderSection(section, true))}
+                      {isEditing && isOwnProfile ? (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={sidebarSections.map(s => s.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-6">
+                              {sidebarSections.map(section => (
+                                <SortableSection
+                                  key={section.id}
+                                  id={section.id}
+                                  layout={section.layout}
+                                  isEditing={isEditing}
+                                >
+                                  {renderSection(section, true)}
+                                </SortableSection>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      ) : (
+                        sidebarSections.map(section => renderSection(section, true))
+                      )}
                       
                       {/* Social Links - mobile */}
                       {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
@@ -664,7 +726,33 @@ export default function Profile() {
                   {/* Right Column - Embeds & Info (desktop only) */}
                   <div className="hidden lg:block flex-1 space-y-6">
                     {/* Sidebar Embed Sections */}
-                    {sidebarSections.map(section => renderSection(section, true))}
+                    {isEditing && isOwnProfile ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={sidebarSections.map(s => s.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-6">
+                            {sidebarSections.map(section => (
+                              <SortableSection
+                                key={section.id}
+                                id={section.id}
+                                layout={section.layout}
+                                isEditing={isEditing}
+                              >
+                                {renderSection(section, true)}
+                              </SortableSection>
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      sidebarSections.map(section => renderSection(section, true))
+                    )}
 
                     {/* Social Links */}
                     {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
