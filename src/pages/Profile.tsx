@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { useParams, useLocation } from 'react-router-dom';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -19,10 +19,12 @@ import {
   useProfileGallery,
   ProfileSection
 } from '@/hooks/useProfilePortfolio';
+import { useProfilePages } from '@/hooks/useProfilePages';
 import { useHeroSettings, useUpdateHeroSettings, CoverSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
 import { HeroOverlayControls } from '@/components/profile/HeroOverlayControls';
+import { ProfileNav } from '@/components/profile/ProfileNav';
 // CoverImageUploader removed - cover upload now handled by HeroOverlayControls
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
@@ -101,9 +103,11 @@ const MAIN_SECTION_TYPES = [
 ];
 
 export default function Profile() {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId, slug } = useParams<{ userId: string; slug?: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isProfileRoute = location.pathname.startsWith('/@');
   
   const isOwnProfile = !userId || userId === user?.id;
   const profileId = userId || user?.id;
@@ -111,6 +115,7 @@ export default function Profile() {
   const { data: profile, isLoading: profileLoading } = useUserProfile(profileId);
   const { data: extendedProfile } = useExtendedProfile(profileId);
   const { data: heroSettings } = useHeroSettings(profileId);
+  const { data: pages = [] } = useProfilePages(profileId);
   const { data: posts, isLoading: postsLoading } = useUserPosts(profileId!);
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
@@ -284,9 +289,19 @@ export default function Profile() {
   }, [reorderSections]);
 
   // All sections sorted by order_index
-  const sortedSections = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
-  
-  // Categorize sections for layout
+  const sortedSections = useMemo(() => {
+    let filtered = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
+    
+    // If on a profile page route, filter by page_id
+    if (isProfileRoute && pages.length > 0) {
+      const currentPage = slug ? pages.find(p => p.slug === slug) : pages.find(p => p.is_home);
+      if (currentPage) {
+        filtered = filtered.filter(s => s.page_id === currentPage.id);
+      }
+    }
+    
+    return filtered;
+  }, [sections, isProfileRoute, slug, pages]);
   const mainSections = sortedSections.filter(s => 
     ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
   );
@@ -363,6 +378,8 @@ export default function Profile() {
         </div>
       </>
     );
+      </>
+    );
   }
 
   // Get max-width constraint for device preview
@@ -370,7 +387,7 @@ export default function Profile() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader className={isProfileRoute ? 'header-non-sticky' : ''} />
       <div 
         className="min-h-screen bg-background overflow-x-hidden transition-all duration-300"
         style={{
