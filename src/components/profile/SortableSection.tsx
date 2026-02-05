@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { GripVertical, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
 import { LayoutSelector } from './LayoutSelector';
@@ -15,6 +15,7 @@ interface SortableSectionProps {
   onLayoutChange?: (layout: LayoutType) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
+  onDelete?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
 }
@@ -27,6 +28,7 @@ function SortableSectionComponent({
   onLayoutChange,
   onMoveUp,
   onMoveDown,
+  onDelete,
   isFirst,
   isLast,
 }: SortableSectionProps) {
@@ -91,7 +93,7 @@ function SortableSectionComponent({
             onClick={onMoveDown}
             disabled={isLast}
             className={cn(
-              'p-1 rounded-b-md bg-background border border-border border-t-0 shadow-sm',
+              'p-1 bg-background border-x border-border shadow-sm',
               'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
               isLast && 'opacity-40 cursor-not-allowed'
             )}
@@ -99,6 +101,21 @@ function SortableSectionComponent({
           >
             <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </button>
+          
+          {/* Delete Button */}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className={cn(
+                'p-1 rounded-b-md bg-background border border-border border-t-0 shadow-sm',
+                'hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive'
+              )}
+              aria-label="Delete section"
+            >
+              <Trash2 className="h-3 w-3 text-destructive" />
+            </button>
+          )}
           
           {/* Layout Selector */}
           {onLayoutChange && (
