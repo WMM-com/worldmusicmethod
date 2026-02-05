@@ -324,15 +324,16 @@ export default function Profile() {
   // Show multi-page features on profile route OR own profile on /profile
   const showMultiPageFeatures = isProfileRoute || isOwnProfile;
   
-  // Find the current page based on slug
+  // Find the current page based on slug - also check for home page on /profile route
   const currentPage = useMemo(() => {
-    if (pages.length === 0) return null;
     // On public profile route or own profile, find the current page
     if (showMultiPageFeatures) {
       if (normalizedSlug) {
         return pages.find(p => p.slug === normalizedSlug) || null;
       }
-      return pages.find(p => p.is_home) || null;
+      // Find home page for /profile or /@username routes without slug
+      const homePage = pages.find(p => p.is_home);
+      return homePage || null;
     }
     return null;
   }, [showMultiPageFeatures, pages, normalizedSlug]);
@@ -1253,7 +1254,7 @@ export default function Profile() {
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Left Column - Main content sections */}
                     <div className="w-full lg:max-w-2xl space-y-6">
-                      {mainSections.length === 0 && (
+                      {mainSections.length === 0 ? (
                         <div className="py-12 text-center text-muted-foreground">
                           <p className="mb-4">This page is empty.</p>
                           {isOwnProfile && (
@@ -1267,8 +1268,7 @@ export default function Profile() {
                             </Button>
                           )}
                         </div>
-                      )}
-                      {isEditing && isOwnProfile ? (
+                      ) : isEditing && isOwnProfile ? (
                         <DndContext
                           sensors={sensors}
                           collisionDetection={closestCenter}
@@ -1304,6 +1304,20 @@ export default function Profile() {
                               {renderSection(section, false)}
                             </div>
                           ))}
+                        </div>
+                      )}
+                      
+                      {/* Always show Add Content button after sections */}
+                      {isOwnProfile && mainSections.length > 0 && (
+                        <div className="text-center pt-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAddSectionOpen(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Content
+                          </Button>
                         </div>
                       )}
 
