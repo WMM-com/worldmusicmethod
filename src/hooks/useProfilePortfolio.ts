@@ -66,6 +66,7 @@ export interface ExtendedProfile {
   tip_jar_enabled: boolean;
   social_links: Record<string, string>;
   profile_layout: string[];
+  profile_tier: 'basic' | 'premium' | null;
   created_at: string;
 }
 

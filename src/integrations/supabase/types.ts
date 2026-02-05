@@ -4181,6 +4181,7 @@ export type Database = {
           paypal_email: string | null
           phone: string | null
           profile_layout: Json | null
+          profile_tier: string | null
           profile_type: string | null
           social_links: Json | null
           tagline: string | null
@@ -4235,6 +4236,7 @@ export type Database = {
           paypal_email?: string | null
           phone?: string | null
           profile_layout?: Json | null
+          profile_tier?: string | null
           profile_type?: string | null
           social_links?: Json | null
           tagline?: string | null
@@ -4289,6 +4291,7 @@ export type Database = {
           paypal_email?: string | null
           phone?: string | null
           profile_layout?: Json | null
+          profile_tier?: string | null
           profile_type?: string | null
           social_links?: Json | null
           tagline?: string | null
