@@ -40,3 +40,8 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Remove sticky positioning for header on profile routes */
+.header-non-sticky header {
+  position: relative;
+}

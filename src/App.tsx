@@ -139,6 +139,9 @@ function AppContent() {
         <Route path="/community/groups/:groupId" element={<GroupDetail />} />
 
         {/* Profiles: public profiles at /profile/:userId, own profile at /profile (requires login) */}
+        {/* Multi-page profiles at /@username and /@username/:slug */}
+        <Route path="/@:userId" element={<Profile />} />
+        <Route path="/@:userId/:slug" element={<Profile />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/:userId" element={<Profile />} />
 
