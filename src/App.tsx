@@ -56,6 +56,7 @@ import Sitemap from "./pages/Sitemap";
 import VideoCall from "./pages/VideoCall";
 import Meet from "./pages/Meet";
 import TutorRooms from "./pages/TutorRooms";
+import Download from "./pages/Download";
 
 const queryClient = new QueryClient();
 
@@ -155,6 +156,7 @@ function AppContent() {
         <Route path="/meet" element={<ProtectedRoute><Meet /></ProtectedRoute>} />
         <Route path="/meet/:roomId" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
         <Route path="/tutor/rooms" element={<ProtectedRoute><TutorRooms /></ProtectedRoute>} />
+        <Route path="/download/:token" element={<Download />} />
         <Route path="/sitemap.xml" element={<Sitemap />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

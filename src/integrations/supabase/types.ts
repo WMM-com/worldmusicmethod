@@ -806,6 +806,71 @@ export type Database = {
         }
         Relationships: []
       }
+      digital_product_purchases: {
+        Row: {
+          amount: number
+          buyer_email: string
+          buyer_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          currency: string
+          download_count: number | null
+          download_expires_at: string | null
+          download_token: string | null
+          id: string
+          max_downloads: number | null
+          payment_provider: string
+          product_id: string | null
+          provider_payment_id: string | null
+          seller_id: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          buyer_email: string
+          buyer_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string
+          download_count?: number | null
+          download_expires_at?: string | null
+          download_token?: string | null
+          id?: string
+          max_downloads?: number | null
+          payment_provider: string
+          product_id?: string | null
+          provider_payment_id?: string | null
+          seller_id: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          buyer_email?: string
+          buyer_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          currency?: string
+          download_count?: number | null
+          download_expires_at?: string | null
+          download_token?: string | null
+          id?: string
+          max_downloads?: number | null
+          payment_provider?: string
+          product_id?: string | null
+          provider_payment_id?: string | null
+          seller_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_product_purchases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "digital_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digital_products: {
         Row: {
           base_price: number
@@ -5624,6 +5689,16 @@ export type Database = {
       user_owns_course: {
         Args: { p_course_id: string; p_user_id: string }
         Returns: boolean
+      }
+      validate_download_token: {
+        Args: { p_token: string }
+        Returns: {
+          can_download: boolean
+          file_url: string
+          product_id: string
+          reason: string
+          title: string
+        }[]
       }
       verify_email_token: {
         Args: { p_token: string }

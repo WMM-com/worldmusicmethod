@@ -100,6 +100,47 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     isSubscription = session.mode === 'subscription'
     paymentId = session.id
 
+    // Check if this is a digital product purchase
+    const metadata = session.metadata || {}
+    if (metadata.product_type === 'digital_product') {
+      logStep('Digital product purchase detected', {
+        productId: metadata.product_id,
+        sellerId: metadata.seller_id,
+        buyerId: metadata.buyer_id,
+      })
+
+      // Complete the digital product purchase
+      try {
+        const { data: completeResult, error: completeError } = await supabase.functions.invoke(
+          'complete-digital-product-purchase',
+          {
+            body: {
+              productId: metadata.product_id,
+              buyerId: metadata.buyer_id || null,
+              buyerEmail: customerEmail,
+              sellerId: metadata.seller_id,
+              amount: amountPaid / 100, // Convert cents to dollars
+              currency: currency.toUpperCase(),
+              paymentProvider: 'stripe',
+              providerPaymentId: session.id,
+            },
+          }
+        )
+
+        if (completeError) {
+          logStep('Failed to complete digital product purchase', { error: completeError.message })
+        } else {
+          logStep('Digital product purchase completed', { result: completeResult })
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err)
+        logStep('Error completing digital product purchase', { error: errMsg })
+      }
+
+      // Don't process referral credits for digital products
+      return
+    }
+
     // Get product details from line items
     if (session.line_items?.data?.[0]?.price?.product) {
       const product = await stripe.products.retrieve(
