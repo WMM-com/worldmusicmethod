@@ -1005,6 +1005,8 @@ export default function Profile() {
                 isOwnProfile={isOwnProfile}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                isEditing={isEditing}
+                onExitEditMode={() => setIsEditing(false)}
               />
               
               {/* Device Preview Toggle - only in edit mode */}
