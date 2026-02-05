@@ -1570,6 +1570,36 @@ export type Database = {
           },
         ]
       }
+      extended_profiles: {
+        Row: {
+          brand_color: string | null
+          created_at: string | null
+          hero_config: Json | null
+          hero_type: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          brand_color?: string | null
+          created_at?: string | null
+          hero_config?: Json | null
+          hero_type?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          brand_color?: string | null
+          created_at?: string | null
+          hero_config?: Json | null
+          hero_type?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       financial_sync_log: {
         Row: {
           completed_at: string | null
