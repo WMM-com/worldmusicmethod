@@ -57,6 +57,16 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
   const [config, setConfig] = useState<HeroConfig>(heroConfig || {});
   const { uploadFile, isUploading, progress } = useR2Upload();
 
+  // Sync state when props change (e.g., after save and refetch)
+  const handleOpenChange = (isOpen: boolean) => {
+    if (isOpen) {
+      // Reset to current saved values when opening
+      setSelectedType(heroType || 'standard');
+      setConfig(heroConfig || {});
+    }
+    setOpen(isOpen);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'backgroundImage' | 'cutoutImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -77,11 +87,10 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
   const handleSave = () => {
     onSave(selectedType, config);
     setOpen(false);
-    toast.success('Hero section updated');
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" className="gap-2">
