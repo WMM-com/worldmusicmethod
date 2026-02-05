@@ -3958,6 +3958,7 @@ export type Database = {
           created_at: string
           id: string
           is_visible: boolean | null
+          layout: string | null
           order_index: number
           section_type: string
           title: string | null
@@ -3969,6 +3970,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_visible?: boolean | null
+          layout?: string | null
           order_index?: number
           section_type: string
           title?: string | null
@@ -3980,6 +3982,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_visible?: boolean | null
+          layout?: string | null
           order_index?: number
           section_type?: string
           title?: string | null

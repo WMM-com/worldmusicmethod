@@ -11,6 +11,7 @@ export interface ProfileSection {
   content: Record<string, any>;
   order_index: number;
   is_visible: boolean;
+  layout: string | null;
   created_at: string;
   updated_at: string;
 }
