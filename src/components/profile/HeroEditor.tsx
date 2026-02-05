@@ -67,7 +67,7 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
     setOpen(isOpen);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'backgroundImage' | 'cutoutImage' | 'coverImage') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'backgroundImage' | 'cutoutImage') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -221,63 +221,16 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
               </div>
             </div>
 
-            {/* Cover Image (primary hero image for all templates) */}
-            <div className="space-y-3">
-              <Label>Cover Image</Label>
-              <p className="text-xs text-muted-foreground">Main hero image displayed prominently</p>
-              {config.coverImage ? (
-                <div className="relative rounded-lg overflow-hidden">
-                  <img 
-                    src={config.coverImage} 
-                    alt="Cover" 
-                    className="w-full h-40 object-cover"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="absolute top-2 right-2"
-                    onClick={() => setConfig(prev => ({ ...prev, coverImage: undefined }))}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    id="hero-cover-upload"
-                    onChange={(e) => handleImageUpload(e, 'coverImage')}
-                  />
-                  <label htmlFor="hero-cover-upload" className="cursor-pointer">
-                    {isUploading ? (
-                      <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
-                    ) : (
-                      <>
-                        <Image className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload cover image
-                        </p>
-                      </>
-                    )}
-                  </label>
-                </div>
-              )}
-            </div>
-
-            {/* Background Image (secondary/pattern for cut-out) */}
-            {selectedType === 'cut-out' && (
+            {/* Background Image (for standard & cut-out) */}
+            {(selectedType === 'standard' || selectedType === 'cut-out') && (
               <div className="space-y-3">
-                <Label>Background Pattern (Optional)</Label>
-                <p className="text-xs text-muted-foreground">Subtle background texture behind the cutout</p>
+                <Label>Background Image</Label>
                 {config.backgroundImage ? (
                   <div className="relative rounded-lg overflow-hidden">
                     <img 
                       src={config.backgroundImage} 
                       alt="Background" 
-                      className="w-full h-24 object-cover opacity-50"
+                      className="w-full h-32 object-cover"
                     />
                     <Button
                       type="button"
@@ -290,7 +243,7 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                     </Button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
                     <input
                       type="file"
                       accept="image/*"
@@ -300,12 +253,12 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                     />
                     <label htmlFor="hero-bg-upload" className="cursor-pointer">
                       {isUploading ? (
-                        <Loader2 className="h-6 w-6 mx-auto animate-spin text-muted-foreground" />
+                        <Loader2 className="h-8 w-8 mx-auto animate-spin text-muted-foreground" />
                       ) : (
                         <>
-                          <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-                          <p className="text-xs text-muted-foreground">
-                            Upload background pattern
+                          <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            Click to upload background
                           </p>
                         </>
                       )}

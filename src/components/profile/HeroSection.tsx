@@ -9,7 +9,6 @@ export interface HeroConfig {
   textAlign?: 'left' | 'center' | 'right';
   backgroundColor?: string;
   backgroundImage?: string;
-  coverImage?: string;
   cutoutImage?: string;
 }
 
@@ -33,12 +32,10 @@ export function HeroSection({
     textAlign = 'center',
     backgroundColor,
     backgroundImage,
-    coverImage,
     cutoutImage,
   } = heroConfig;
 
   const displayTitle = title || fallbackName || 'Welcome';
-  const heroImage = coverImage || backgroundImage;
 
   const textAlignClass = {
     left: 'text-left items-start',
@@ -59,10 +56,10 @@ export function HeroSection({
         }}
       >
         {/* Background Image */}
-        {heroImage && (
+        {backgroundImage && (
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${heroImage})` }}
+            style={{ backgroundImage: `url(${backgroundImage})` }}
           />
         )}
         
@@ -112,10 +109,10 @@ export function HeroSection({
         }}
       >
         {/* Background pattern or gradient */}
-        {heroImage && (
+        {backgroundImage && (
           <div
             className="absolute inset-0 bg-cover bg-center opacity-20"
-            style={{ backgroundImage: `url(${heroImage})` }}
+            style={{ backgroundImage: `url(${backgroundImage})` }}
           />
         )}
         

@@ -22,6 +22,7 @@ import {
 import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
+import { CoverImageUploader } from '@/components/profile/CoverImageUploader';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
 import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
@@ -656,6 +657,26 @@ export default function Profile() {
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
+                      {/* Cover Image Uploader - separate from Hero */}
+                      <CoverImageUploader
+                        currentCoverUrl={extendedProfile?.cover_image_url}
+                        hasHeroConfigured={!!(
+                          heroSettings?.hero_config?.title || 
+                          heroSettings?.hero_config?.backgroundImage || 
+                          heroSettings?.hero_config?.cutoutImage
+                        )}
+                        onUpload={async (url) => {
+                          await updateExtendedProfile.mutateAsync({ cover_image_url: url });
+                        }}
+                        onReplaceHero={async () => {
+                          // Clear hero settings when replacing with cover image
+                          await updateHeroSettings.mutateAsync({ 
+                            hero_type: 'standard', 
+                            hero_config: {} 
+                          });
+                        }}
+                      />
+                      
                       {/* Hero Editor */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
