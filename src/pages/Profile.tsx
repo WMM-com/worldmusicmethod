@@ -341,17 +341,25 @@ export default function Profile() {
   // Check if we have an invalid slug (slug provided but page not found)
   const isInvalidSlug = isProfileRoute && normalizedSlug && pages.length > 0 && !currentPage;
 
-  // All sections sorted by order_index
+  // All sections sorted by order_index, filtered by current page
   const sortedSections = useMemo(() => {
     let filtered = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
     
-    // If on a profile page route or own profile, filter by page_id
-    if (showMultiPageFeatures && currentPage) {
-      filtered = filtered.filter(s => s.page_id === currentPage.id);
+    // Always filter by page_id when multi-page features are active
+    if (showMultiPageFeatures) {
+      if (currentPage) {
+        // Show only sections for the current page
+        filtered = filtered.filter(s => s.page_id === currentPage.id);
+      } else if (pages.length > 0) {
+        // If no current page but pages exist (shouldn't happen), show nothing
+        // This prevents showing all sections across all pages
+        filtered = [];
+      }
+      // If pages haven't loaded yet (pages.length === 0), show nothing while loading
     }
     
     return filtered;
-  }, [sections, showMultiPageFeatures, currentPage]);
+  }, [sections, showMultiPageFeatures, currentPage, pages.length]);
   const mainSections = sortedSections.filter(s => 
     ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
   );
@@ -978,6 +986,7 @@ export default function Profile() {
                                     onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                     onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
                                     onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
+                                    onDelete={() => handleDeleteSection(section.id)}
                                     isFirst={index === 0}
                                     isLast={index === mainSections.length - 1}
                                   >
@@ -1021,6 +1030,7 @@ export default function Profile() {
                                   onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                   onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
                                   onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                  onDelete={() => handleDeleteSection(section.id)}
                                   isFirst={index === 0}
                                   isLast={index === sidebarSections.length - 1}
                                 >
@@ -1111,6 +1121,7 @@ export default function Profile() {
                                 onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                 onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
                                 onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                onDelete={() => handleDeleteSection(section.id)}
                                 isFirst={index === 0}
                                 isLast={index === sidebarSections.length - 1}
                               >
@@ -1288,6 +1299,7 @@ export default function Profile() {
                                   onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                   onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
                                   onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
+                                  onDelete={() => handleDeleteSection(section.id)}
                                   isFirst={index === 0}
                                   isLast={index === mainSections.length - 1}
                                 >
@@ -1334,21 +1346,22 @@ export default function Profile() {
                               strategy={verticalListSortingStrategy}
                             >
                               <div className="space-y-6">
-                                {sidebarSections.map((section, index) => (
-                                  <SortableSection
-                                    key={section.id}
-                                    id={section.id}
-                                    layout={section.layout}
-                                    isEditing={isEditing}
-                                    onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                    onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
-                                    onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
-                                    isFirst={index === 0}
-                                    isLast={index === sidebarSections.length - 1}
-                                  >
-                                    {renderSection(section, true)}
-                                  </SortableSection>
-                                ))}
+                                  {sidebarSections.map((section, index) => (
+                                    <SortableSection
+                                      key={section.id}
+                                      id={section.id}
+                                      layout={section.layout}
+                                      isEditing={isEditing}
+                                      onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                      onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                      onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                      onDelete={() => handleDeleteSection(section.id)}
+                                      isFirst={index === 0}
+                                      isLast={index === sidebarSections.length - 1}
+                                    >
+                                      {renderSection(section, true)}
+                                    </SortableSection>
+                                  ))}
                               </div>
                             </SortableContext>
                           </DndContext>
@@ -1380,6 +1393,7 @@ export default function Profile() {
                                   onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                   onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
                                   onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                  onDelete={() => handleDeleteSection(section.id)}
                                   isFirst={index === 0}
                                   isLast={index === sidebarSections.length - 1}
                                 >
