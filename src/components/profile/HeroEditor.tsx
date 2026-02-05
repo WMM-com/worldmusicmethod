@@ -151,30 +151,60 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
           {/* Content */}
           <TabsContent value="content" className="space-y-4 mt-4">
             <div className="space-y-3">
-              <Label>Title</Label>
+              <div className="flex justify-between items-center">
+                <Label>Title</Label>
+                <span className="text-xs text-muted-foreground">
+                  {(config.title || '').length}/60
+                </span>
+              </div>
               <Input
                 value={config.title || ''}
-                onChange={(e) => setConfig(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value.length <= 60) {
+                    setConfig(prev => ({ ...prev, title: e.target.value }));
+                  }
+                }}
                 placeholder="Your Name or Brand"
+                maxLength={60}
               />
             </div>
 
             <div className="space-y-3">
-              <Label>Subtitle</Label>
+              <div className="flex justify-between items-center">
+                <Label>Subtitle</Label>
+                <span className="text-xs text-muted-foreground">
+                  {(config.subtitle || '').length}/120
+                </span>
+              </div>
               <Input
                 value={config.subtitle || ''}
-                onChange={(e) => setConfig(prev => ({ ...prev, subtitle: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value.length <= 120) {
+                    setConfig(prev => ({ ...prev, subtitle: e.target.value }));
+                  }
+                }}
                 placeholder="Musician • Producer • Artist"
+                maxLength={120}
               />
             </div>
 
             <div className="space-y-3">
-              <Label>Description</Label>
+              <div className="flex justify-between items-center">
+                <Label>Description</Label>
+                <span className="text-xs text-muted-foreground">
+                  {(config.description || '').length}/300
+                </span>
+              </div>
               <Textarea
                 value={config.description || ''}
-                onChange={(e) => setConfig(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => {
+                  if (e.target.value.length <= 300) {
+                    setConfig(prev => ({ ...prev, description: e.target.value }));
+                  }
+                }}
                 placeholder="A brief introduction..."
                 rows={3}
+                maxLength={300}
               />
             </div>
 

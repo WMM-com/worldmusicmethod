@@ -29,18 +29,18 @@ export function GenericEmbed({ section, isEditing, onUpdate, onDelete }: Generic
   }
 
   return (
-    <Card>
+    <Card className="bg-black text-white border-zinc-800">
       <CardHeader className="flex flex-row items-center justify-between py-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+        <CardTitle className="text-lg flex items-center gap-2 text-white">
           <Code className="h-5 w-5 text-primary" />
           {section.content?.embedTitle || section.title || 'Embed'}
         </CardTitle>
         {isEditing && (
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)}>
+            <Button variant="ghost" size="sm" onClick={() => setEditing(!editing)} className="text-white hover:bg-zinc-800">
               <Edit2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={onDelete}>
+            <Button variant="ghost" size="sm" onClick={onDelete} className="text-white hover:bg-zinc-800">
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
           </div>
@@ -99,7 +99,7 @@ export function GenericEmbed({ section, isEditing, onUpdate, onDelete }: Generic
             className="rounded-lg"
           />
         ) : (
-          <p className="text-muted-foreground text-center py-8">
+          <p className="text-zinc-400 text-center py-8">
             Click edit to add an embed
           </p>
         )}
