@@ -41,6 +41,18 @@ import { ButtonBlock } from '@/components/profile/sections/ButtonBlock';
 import { DividerBlock } from '@/components/profile/sections/DividerBlock';
 import { SpacerBlock } from '@/components/profile/sections/SpacerBlock';
 import { HeadingBlock } from '@/components/profile/sections/HeadingBlock';
+import { IconBlock } from '@/components/profile/sections/IconBlock';
+import { CounterBlock } from '@/components/profile/sections/CounterBlock';
+import { ProgressBlock } from '@/components/profile/sections/ProgressBlock';
+import { AccordionBlock } from '@/components/profile/sections/AccordionBlock';
+import { HtmlBlock } from '@/components/profile/sections/HtmlBlock';
+import { AlertBlock } from '@/components/profile/sections/AlertBlock';
+import { TabsBlock } from '@/components/profile/sections/TabsBlock';
+import { ToggleListBlock } from '@/components/profile/sections/ToggleListBlock';
+import { SliderBlock } from '@/components/profile/sections/SliderBlock';
+import { TestimonialBlock } from '@/components/profile/sections/TestimonialBlock';
+import { CarouselBlock } from '@/components/profile/sections/CarouselBlock';
+import { ShortcodeBlock } from '@/components/profile/sections/ShortcodeBlock';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -400,7 +412,7 @@ export default function Profile() {
   }, [sections, showMultiPageFeatures, currentPage, pages.length]);
   
   const mainSections = sortedSections.filter(s => 
-    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player', 'image_block', 'button_block', 'divider', 'spacer', 'heading'].includes(s.section_type)
+    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player', 'image_block', 'button_block', 'divider', 'spacer', 'heading', 'icon_block', 'counter', 'progress_bar', 'accordion', 'html_block', 'alert', 'tabs_block', 'toggle_list', 'slider_block', 'testimonial', 'carousel', 'shortcode'].includes(s.section_type)
   );
   
   const sidebarSections = sortedSections.filter(s => 
@@ -452,6 +464,30 @@ export default function Profile() {
         return <SpacerBlock key={section.id} {...props} />;
       case 'heading':
         return <HeadingBlock key={section.id} {...props} />;
+      case 'icon_block':
+        return <IconBlock key={section.id} {...props} />;
+      case 'counter':
+        return <CounterBlock key={section.id} {...props} />;
+      case 'progress_bar':
+        return <ProgressBlock key={section.id} {...props} />;
+      case 'accordion':
+        return <AccordionBlock key={section.id} {...props} />;
+      case 'html_block':
+        return <HtmlBlock key={section.id} {...props} />;
+      case 'alert':
+        return <AlertBlock key={section.id} {...props} />;
+      case 'tabs_block':
+        return <TabsBlock key={section.id} {...props} />;
+      case 'toggle_list':
+        return <ToggleListBlock key={section.id} {...props} />;
+      case 'slider_block':
+        return <SliderBlock key={section.id} {...props} />;
+      case 'testimonial':
+        return <TestimonialBlock key={section.id} {...props} />;
+      case 'carousel':
+        return <CarouselBlock key={section.id} {...props} />;
+      case 'shortcode':
+        return <ShortcodeBlock key={section.id} {...props} userId={profileId} profileSlug={profileId} />;
       default:
         return null;
     }
