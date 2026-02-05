@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,9 @@ import {
   useDeleteProject,
   ProfileProject 
 } from '@/hooks/useProfilePortfolio';
-import { Folder, Plus, Edit2, Trash2, ExternalLink } from 'lucide-react';
+import { Folder, Plus, Edit2, Trash2, ExternalLink, Upload, Loader2, X } from 'lucide-react';
+import { useR2Upload } from '@/hooks/useR2Upload';
+import { toast } from 'sonner';
 
 interface ProjectsSectionProps {
   userId: string;
@@ -24,6 +26,8 @@ export function ProjectsSection({ userId, isEditing }: ProjectsSectionProps) {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const { uploadFile, isUploading } = useR2Upload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<ProfileProject | null>(null);
@@ -61,6 +65,31 @@ export function ProjectsSection({ userId, isEditing }: ProjectsSectionProps) {
     setDialogOpen(false);
     setForm({ title: '', description: '', image_url: '', external_url: '' });
     setEditingProject(null);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadFile(file, {
+      bucket: 'user',
+      folder: 'projects',
+      imageOptimization: 'media',
+      trackInDatabase: true,
+    });
+
+    if (result) {
+      setForm(prev => ({ ...prev, image_url: result.url }));
+      toast.success('Image uploaded');
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setForm(prev => ({ ...prev, image_url: '' }));
   };
 
   if (!projects.length && !isEditing) {
@@ -104,12 +133,52 @@ export function ProjectsSection({ userId, isEditing }: ProjectsSectionProps) {
                   />
                 </div>
                 <div>
-                  <Label>Image URL</Label>
-                  <Input
-                    value={form.image_url}
-                    onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                    placeholder="https://..."
+                  <Label>Project Image</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
                   />
+                  {form.image_url ? (
+                    <div className="relative mt-2">
+                      <img
+                        src={form.image_url}
+                        alt="Project preview"
+                        className="w-full h-32 object-cover rounded-md border"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-2 right-2 h-6 w-6"
+                        onClick={handleRemoveImage}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full mt-2"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload Image
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
                 <div>
                   <Label>External Link</Label>
