@@ -23,6 +23,8 @@ import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings'
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
 import { CoverImageUploader } from '@/components/profile/CoverImageUploader';
+import { CoverImageSettings, CoverSettings, getCoverHeightClass, getCoverFocalPoint } from '@/components/profile/CoverImageSettings';
+import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
 import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
@@ -126,6 +128,12 @@ export default function Profile() {
   const reorderSections = useReorderSections();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
+  const [coverSettings, setCoverSettings] = useState<CoverSettings>({
+    height: 'medium',
+    focalPointX: 50,
+    focalPointY: 50,
+  });
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
   const [cropType, setCropType] = useState<'avatar' | 'cover'>('avatar');
@@ -389,12 +397,18 @@ export default function Profile() {
     );
   }
 
+  // Get max-width constraint for device preview
+  const deviceMaxWidth = isEditing ? getDeviceMaxWidth(previewDevice) : undefined;
+
   return (
     <>
       <SiteHeader />
       <div 
-        className="min-h-screen bg-background overflow-x-hidden"
-        style={heroSettings?.brand_color ? { '--brand-color': heroSettings.brand_color } as React.CSSProperties : undefined}
+        className="min-h-screen bg-background overflow-x-hidden transition-all duration-300"
+        style={{
+          ...(heroSettings?.brand_color ? { '--brand-color': heroSettings.brand_color } : {}),
+          ...(deviceMaxWidth ? { maxWidth: deviceMaxWidth, margin: '0 auto', boxShadow: '0 0 0 1px hsl(var(--border))' } : {}),
+        } as React.CSSProperties}
       >
         {/* Community Navigation */}
         <div className="border-b border-border bg-card overflow-x-hidden">
@@ -470,12 +484,12 @@ export default function Profile() {
         ) : (
           /* Default Cover Image (when no hero configured) */
           <div 
-            className={`relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
+            className={`relative ${getCoverHeightClass(coverSettings.height)} bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
             onClick={handleCoverClick}
             style={extendedProfile?.cover_image_url ? {
               backgroundImage: `url(${extendedProfile.cover_image_url})`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              backgroundPosition: getCoverFocalPoint(coverSettings),
             } : undefined}
           >
             {isEditing && (
@@ -677,11 +691,26 @@ export default function Profile() {
                         }}
                       />
                       
+                      {/* Cover Image Settings */}
+                      {extendedProfile?.cover_image_url && !heroSettings?.hero_config?.backgroundImage && (
+                        <CoverImageSettings
+                          settings={coverSettings}
+                          coverImageUrl={extendedProfile.cover_image_url}
+                          onUpdate={setCoverSettings}
+                        />
+                      )}
+                      
                       {/* Hero Editor */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
                         heroConfig={heroSettings?.hero_config || {}}
                         onSave={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
+                      />
+                      
+                      {/* Device Preview Toggle */}
+                      <DevicePreviewToggle
+                        device={previewDevice}
+                        onChange={setPreviewDevice}
                       />
                       
                       {/* Visibility Dropdown */}
