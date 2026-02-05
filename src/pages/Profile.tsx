@@ -21,8 +21,13 @@ import {
 } from '@/hooks/useProfilePortfolio';
 import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
+import { HeroEditor } from '@/components/profile/HeroEditor';
 import { SortableSection } from '@/components/profile/SortableSection';
+import { LayoutSelector } from '@/components/profile/LayoutSelector';
 import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
+import { TextBlock } from '@/components/profile/sections/TextBlock';
+import { DonationBlock } from '@/components/profile/sections/DonationBlock';
+import { AudioBlock } from '@/components/profile/sections/AudioBlock';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -69,8 +74,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-// Premium-only section types
-const PREMIUM_SECTION_TYPES = ['digital_products'];
+// Premium-only section types (commerce features)
+const PREMIUM_SECTION_TYPES = ['digital_products', 'donation'];
 
 // Sidebar embed sections (right side)
 const SIDEBAR_SECTION_TYPES = [
@@ -82,10 +87,13 @@ const SIDEBAR_SECTION_TYPES = [
 
 // Main content sections
 const MAIN_SECTION_TYPES = [
+  { type: 'text_block', label: 'Text Block', icon: FileText },
   { type: 'gallery', label: 'Gallery', icon: Image },
   { type: 'projects', label: 'Projects', icon: Layout },
   { type: 'custom_tabs', label: 'Info Tabs', icon: FileText },
+  { type: 'audio_player', label: 'Audio Player', icon: Headphones },
   { type: 'social_feed', label: 'Social Feed', icon: Share2 },
+  { type: 'donation', label: 'Tip Jar', icon: DollarSign },
   { type: 'digital_products', label: 'Digital Products', icon: ShoppingBag },
 ];
 
@@ -243,12 +251,19 @@ export default function Profile() {
       custom_tabs: 'Info',
       generic: 'Embed',
       digital_products: 'Digital Products',
+      text_block: 'Text Block',
+      donation: 'Tip Jar',
+      audio_player: 'Audio',
     };
     
     await createSection.mutateAsync({
       section_type: sectionType,
       title: sectionLabels[sectionType] || sectionType,
     });
+  };
+
+  const handleUpdateSectionLayout = async (sectionId: string, layout: string) => {
+    await updateSection.mutateAsync({ id: sectionId, layout });
   };
 
   const handleUpdateSection = async (sectionId: string, content: Record<string, any>) => {
@@ -281,7 +296,7 @@ export default function Profile() {
   
   // Categorize sections for layout
   const mainSections = sortedSections.filter(s => 
-    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products'].includes(s.section_type)
+    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
   );
   
   const sidebarSections = sortedSections.filter(s => 
@@ -317,6 +332,12 @@ export default function Profile() {
         return <CustomTabsSection key={section.id} {...props} userId={profileId!} />;
       case 'digital_products':
         return <DigitalProductsSection key={section.id} {...props} userId={profileId!} />;
+      case 'text_block':
+        return <TextBlock key={section.id} {...props} />;
+      case 'donation':
+        return <DonationBlock key={section.id} {...props} userId={profileId!} />;
+      case 'audio_player':
+        return <AudioBlock key={section.id} {...props} userId={profileId!} />;
       default:
         return null;
     }
@@ -480,11 +501,11 @@ export default function Profile() {
                         {profile.full_name || 'Anonymous'}
                       </h1>
                       {extendedProfile?.visibility === 'public' ? (
-                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-green-500/20 text-green-600 dark:text-green-400">
+                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-primary/20 text-primary">
                           <Globe className="h-3 w-3 mr-1" /> Public
                         </Badge>
                       ) : extendedProfile?.visibility === 'members' ? (
-                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-secondary text-secondary-foreground">
                           <Users className="h-3 w-3 mr-1" /> Members Only
                         </Badge>
                       ) : (
@@ -598,14 +619,21 @@ export default function Profile() {
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
+                      {/* Hero Editor */}
+                      <HeroEditor
+                        heroType={heroSettings?.hero_type || 'standard'}
+                        heroConfig={heroSettings?.hero_config || {}}
+                        onSave={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
+                      />
+                      
                       {/* Visibility Dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="gap-2">
                             {extendedProfile?.visibility === 'public' ? (
-                              <><Globe className="h-4 w-4 text-green-500" /> Public</>
+                              <><Globe className="h-4 w-4 text-primary" /> Public</>
                             ) : extendedProfile?.visibility === 'members' ? (
-                              <><Users className="h-4 w-4 text-blue-500" /> Members Only</>
+                              <><Users className="h-4 w-4 text-primary" /> Members Only</>
                             ) : (
                               <><Lock className="h-4 w-4" /> Private</>
                             )}
@@ -616,7 +644,7 @@ export default function Profile() {
                             onClick={() => handleVisibilityChange('public')}
                             className={extendedProfile?.visibility === 'public' ? 'bg-accent' : ''}
                           >
-                            <Globe className="h-4 w-4 mr-2 text-green-500" />
+                            <Globe className="h-4 w-4 mr-2 text-primary" />
                             <div>
                               <div className="font-medium">Public</div>
                               <div className="text-xs text-muted-foreground">Anyone can view your profile</div>
@@ -626,7 +654,7 @@ export default function Profile() {
                             onClick={() => handleVisibilityChange('members')}
                             className={extendedProfile?.visibility === 'members' ? 'bg-accent' : ''}
                           >
-                            <Users className="h-4 w-4 mr-2 text-blue-500" />
+                            <Users className="h-4 w-4 mr-2 text-primary" />
                             <div>
                               <div className="font-medium">Members Only</div>
                               <div className="text-xs text-muted-foreground">Only logged-in members can view</div>
@@ -809,6 +837,7 @@ export default function Profile() {
                                 id={section.id}
                                 layout={section.layout}
                                 isEditing={isEditing}
+                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                               >
                                 {renderSection(section, false)}
                               </SortableSection>
@@ -839,6 +868,7 @@ export default function Profile() {
                                   id={section.id}
                                   layout={section.layout}
                                   isEditing={isEditing}
+                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                 >
                                   {renderSection(section, true)}
                                 </SortableSection>
@@ -924,6 +954,7 @@ export default function Profile() {
                                 id={section.id}
                                 layout={section.layout}
                                 isEditing={isEditing}
+                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                               >
                                 {renderSection(section, true)}
                               </SortableSection>
