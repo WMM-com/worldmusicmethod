@@ -100,48 +100,51 @@ export function HeroOverlayControls({
         onChange={handleCoverUpload}
       />
 
-      {/* Icon CTA for adding/updating cover image - centered in the hero area */}
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        disabled={isUploading}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
-        title={hasCoverImage ? 'Change cover image' : 'Add cover image'}
-      >
-        {isUploading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Camera className="h-4 w-4" />
-        )}
-        <span className="text-sm font-medium">
-          {hasCoverImage ? 'Change Cover' : 'Add Cover'}
-        </span>
-      </button>
+      {/* Icon CTA for adding cover image - centered (only shown when no cover) */}
+      {!hasCoverImage && (
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
+          title="Add cover image"
+        >
+          {isUploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Camera className="h-4 w-4" />
+          )}
+          <span className="text-sm font-medium">Add Cover</span>
+        </button>
+      )}
 
-      {/* Top-right controls */}
-      <div className="absolute top-4 right-4 z-20 flex gap-2">
-        {/* Hero Editor */}
-        <HeroEditor
-          heroType={heroType}
-          heroConfig={heroConfig}
-          onSave={onUpdateHero}
-          trigger={
-            <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
-              <Edit2 className="h-4 w-4" />
-              Edit Hero
-            </Button>
-          }
-        />
-
-        {/* Cover/Background Settings - only show if there's a background image */}
-        {hasCoverImage && (
+      {/* Top-left: Cover settings icon when cover exists */}
+      {hasCoverImage && (
+        <div className="absolute top-4 left-4 z-20 flex gap-2">
+          {/* Change cover button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="p-2 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
+            title="Change cover image"
+          >
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="h-4 w-4" />
+            )}
+          </button>
+          
+          {/* Cover settings popover */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
+              <button
+                className="p-2 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
+                title="Cover settings"
+              >
                 <Settings2 className="h-4 w-4" />
-                Cover Settings
-              </Button>
+              </button>
             </PopoverTrigger>
-            <PopoverContent className="w-80" align="end">
+            <PopoverContent className="w-80" align="start">
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Cover Height</Label>
@@ -222,7 +225,22 @@ export function HeroOverlayControls({
               </div>
             </PopoverContent>
           </Popover>
-        )}
+        </div>
+      )}
+
+      {/* Top-right: Hero editor */}
+      <div className="absolute top-4 right-4 z-20">
+        <HeroEditor
+          heroType={heroType}
+          heroConfig={heroConfig}
+          onSave={onUpdateHero}
+          trigger={
+            <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
+              <Edit2 className="h-4 w-4" />
+              Edit Hero
+            </Button>
+          }
+        />
       </div>
     </>
   );
