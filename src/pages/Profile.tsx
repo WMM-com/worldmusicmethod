@@ -22,6 +22,7 @@ import {
 import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
 import { SortableSection } from '@/components/profile/SortableSection';
+import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -49,10 +50,16 @@ import {
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
   Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code,
-  Newspaper, UsersRound, UserSearch, ShoppingBag
+  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, Palette, CreditCard
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { Input } from '@/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +68,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+
+// Premium-only section types
+const PREMIUM_SECTION_TYPES = ['digital_products'];
 
 // Sidebar embed sections (right side)
 const SIDEBAR_SECTION_TYPES = [
@@ -201,7 +211,27 @@ export default function Profile() {
     toast.success(`Profile visibility: ${labels[newVisibility]}`);
   };
 
+  // Premium check
+  const { isPremium, canAddMoreSections } = usePremiumCheck(extendedProfile?.profile_tier);
+  
+  // Count custom sections (gallery, projects, custom_tabs)
+  const customSectionCount = (sections || []).filter(s => 
+    ['gallery', 'projects', 'custom_tabs'].includes(s.section_type)
+  ).length;
+
   const handleAddSection = async (sectionType: string) => {
+    // Check premium gates
+    if (PREMIUM_SECTION_TYPES.includes(sectionType) && !isPremium) {
+      toast.error('Upgrade to Premium to add commerce blocks');
+      return;
+    }
+    
+    // Check section limit for custom sections
+    if (['gallery', 'projects', 'custom_tabs'].includes(sectionType) && !canAddMoreSections(customSectionCount)) {
+      toast.error('Upgrade to Premium to add more than 3 custom sections');
+      return;
+    }
+    
     const sectionLabels: Record<string, string> = {
       spotify: 'Music',
       youtube: 'Videos',
@@ -640,14 +670,90 @@ export default function Profile() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          {MAIN_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
-                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
+                          {MAIN_SECTION_TYPES.map(({ type, label, icon: Icon }) => {
+                            const isPremiumOnly = PREMIUM_SECTION_TYPES.includes(type);
+                            const isLimited = ['gallery', 'projects', 'custom_tabs'].includes(type) && !canAddMoreSections(customSectionCount);
+                            return (
+                            <DropdownMenuItem 
+                              key={type} 
+                              onClick={() => handleAddSection(type)}
+                              className={isPremiumOnly && !isPremium ? 'text-muted-foreground' : ''}
+                            >
                               <Icon className="h-4 w-4 mr-2" />
                               {label}
+                              {(isPremiumOnly && !isPremium) && <Crown className="h-3 w-3 ml-auto text-primary" />}
+                              {isLimited && <Crown className="h-3 w-3 ml-auto text-primary" />}
                             </DropdownMenuItem>
-                          ))}
+                          )})}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      
+                      {/* Brand Color Picker - Premium Only */}
+                      <PremiumGate
+                        profileTier={extendedProfile?.profile_tier}
+                        featureName="Brand Colors"
+                        mode="inline"
+                      >
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Palette className="h-4 w-4" />
+                              <span 
+                                className="w-4 h-4 rounded border"
+                                style={{ backgroundColor: heroSettings?.brand_color || 'transparent' }}
+                              />
+                              Brand Color
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64">
+                            <div className="space-y-3">
+                              <Label>Brand Color</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="color"
+                                  value={heroSettings?.brand_color || '#6366f1'}
+                                  onChange={(e) => updateHeroSettings.mutate({ brand_color: e.target.value })}
+                                  className="w-12 h-10 p-1 cursor-pointer"
+                                />
+                                <Input
+                                  type="text"
+                                  value={heroSettings?.brand_color || ''}
+                                  onChange={(e) => updateHeroSettings.mutate({ brand_color: e.target.value })}
+                                  placeholder="#6366f1"
+                                  className="flex-1"
+                                />
+                              </div>
+                              {heroSettings?.brand_color && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => updateHeroSettings.mutate({ brand_color: null })}
+                                  className="w-full"
+                                >
+                                  Reset to default
+                                </Button>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </PremiumGate>
+                      
+                      {/* Payment Accounts - Premium Only */}
+                      <PremiumGate
+                        profileTier={extendedProfile?.profile_tier}
+                        featureName="Payment Accounts"
+                        mode="inline"
+                      >
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-2"
+                          onClick={() => navigate('/settings?section=payments')}
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Connect Payments
+                        </Button>
+                      </PremiumGate>
                     </div>
                   </div>
                 )}
