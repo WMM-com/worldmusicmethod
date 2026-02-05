@@ -378,8 +378,6 @@ export default function Profile() {
         </div>
       </>
     );
-      </>
-    );
   }
 
   // Get max-width constraint for device preview
