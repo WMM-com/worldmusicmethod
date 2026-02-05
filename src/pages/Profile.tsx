@@ -688,22 +688,23 @@ export default function Profile() {
                       </Button>
                     )}
                   </div>
+                </div>
 
-                  {isOwnProfile && (
-                    <Dialog open={inviteFriendsOpen} onOpenChange={setInviteFriendsOpen}>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>Invite Friends</DialogTitle>
-                        </DialogHeader>
-                        <ReferralSection />
-                      </DialogContent>
-                    </Dialog>
-                  )}
+                {isOwnProfile && (
+                  <Dialog open={inviteFriendsOpen} onOpenChange={setInviteFriendsOpen}>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Invite Friends</DialogTitle>
+                      </DialogHeader>
+                      <ReferralSection />
+                    </DialogContent>
+                  </Dialog>
+                )}
 
-                  {/* Edit Mode Controls */}
-                  {isOwnProfile && isEditing && (
-                    <div className="mt-6 pt-6 border-t border-border">
-                      <div className="flex flex-wrap gap-4 items-center">
+                {/* Edit Mode Controls */}
+                {isOwnProfile && isEditing && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <div className="flex flex-wrap gap-4 items-center">
                       {/* Hero Editor - for quick access */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
