@@ -422,15 +422,37 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Hero Section - replaces old cover image when hero settings exist */}
-        {heroSettings?.hero_type && heroSettings.hero_config && Object.keys(heroSettings.hero_config).length > 0 ? (
-          <HeroSection 
-            heroType={heroSettings.hero_type} 
-            heroConfig={heroSettings.hero_config}
-            fallbackName={profile?.full_name || undefined}
-          />
+        {/* Hero Section - shows custom hero OR default cover image */}
+        {heroSettings?.hero_type && heroSettings.hero_config && (
+          heroSettings.hero_config.title || 
+          heroSettings.hero_config.backgroundImage || 
+          heroSettings.hero_config.cutoutImage
+        ) ? (
+          <div className="relative">
+            <HeroSection 
+              heroType={heroSettings.hero_type} 
+              heroConfig={heroSettings.hero_config}
+              fallbackName={profile?.full_name || undefined}
+            />
+            {/* Edit overlay for hero */}
+            {isEditing && (
+              <div className="absolute top-4 right-4 z-20">
+                <HeroEditor
+                  heroType={heroSettings.hero_type}
+                  heroConfig={heroSettings.hero_config}
+                  onSave={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
+                  trigger={
+                    <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
+                      <Edit2 className="h-4 w-4" />
+                      Edit Hero
+                    </Button>
+                  }
+                />
+              </div>
+            )}
+          </div>
         ) : (
-          /* Default Cover Image (fallback) */
+          /* Default Cover Image (when no hero configured) */
           <div 
             className={`relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
             onClick={handleCoverClick}
