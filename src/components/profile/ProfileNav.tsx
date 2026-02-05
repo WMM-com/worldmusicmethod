@@ -11,6 +11,7 @@ interface ProfileNavProps {
   isOwnProfile?: boolean;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  onPageNavigate?: () => void;
 }
 
 // Built-in profile tabs
@@ -20,7 +21,14 @@ const BUILT_IN_TABS = [
   { id: 'media', label: 'Media', icon: Image },
 ];
 
-export function ProfileNav({ userId, brandColor, isOwnProfile, activeTab = 'about', onTabChange }: ProfileNavProps) {
+export function ProfileNav({
+  userId,
+  brandColor,
+  isOwnProfile,
+  activeTab = 'about',
+  onTabChange,
+  onPageNavigate,
+}: ProfileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { slug: currentSlug } = useParams<{ slug?: string }>();
@@ -28,7 +36,7 @@ export function ProfileNav({ userId, brandColor, isOwnProfile, activeTab = 'abou
   const { data: pages = [] } = useProfilePages(userId);
 
   // Check if we're on /profile route (own profile management)
-  const isOnProfileRoute = location.pathname === '/profile';
+  const isOnProfileRoute = location.pathname === '/profile' || location.pathname.startsWith('/profile/pages');
 
   // Filter to only visible pages (unless editing own profile)
   const visiblePages = useMemo(() => {
@@ -54,7 +62,19 @@ export function ProfileNav({ userId, brandColor, isOwnProfile, activeTab = 'abou
   }, [currentSlug, visiblePages, isOnProfileRoute]);
 
   const handlePageClick = (page: any) => {
-    // When on /profile, navigate to /@username to preview
+    onPageNavigate?.();
+
+    // On /profile (own profile management), keep navigation inside /profile
+    if (isOnProfileRoute) {
+      if (page.is_home) {
+        navigate('/profile');
+      } else {
+        navigate(`/profile/pages/${page.slug}`);
+      }
+      return;
+    }
+
+    // Public profile navigation at /@username
     const username = profile?.username || userId;
     if (page.is_home) {
       navigate(`/@${username}`);

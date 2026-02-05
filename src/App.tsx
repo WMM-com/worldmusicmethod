@@ -143,6 +143,7 @@ function AppContent() {
         <Route path="/@:userId" element={<Profile />} />
         <Route path="/@:userId/:slug" element={<Profile />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/profile/pages/:slug" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/:userId" element={<Profile />} />
 
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
