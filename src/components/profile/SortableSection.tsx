@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
@@ -13,9 +13,23 @@ interface SortableSectionProps {
   isEditing: boolean;
   children: ReactNode;
   onLayoutChange?: (layout: LayoutType) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
-export function SortableSection({ id, layout, isEditing, children, onLayoutChange }: SortableSectionProps) {
+export function SortableSection({ 
+  id, 
+  layout, 
+  isEditing, 
+  children, 
+  onLayoutChange,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}: SortableSectionProps) {
   const {
     attributes,
     listeners,
@@ -41,12 +55,28 @@ export function SortableSection({ id, layout, isEditing, children, onLayoutChang
       )}
     >
       {isEditing && (
-        <div className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Move Up Button */}
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className={cn(
+              'p-1 rounded-t-md bg-background border border-border border-b-0 shadow-sm',
+              'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
+              isFirst && 'opacity-40 cursor-not-allowed'
+            )}
+            aria-label="Move section up"
+          >
+            <ChevronUp className="h-3 w-3 text-muted-foreground" />
+          </button>
+          
+          {/* Drag Handle */}
           <button
             {...attributes}
             {...listeners}
             className={cn(
-              'p-1.5 rounded-md bg-background border border-border shadow-sm',
+              'p-1.5 bg-background border-x border-border shadow-sm',
               'cursor-grab active:cursor-grabbing',
               'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary'
             )}
@@ -54,11 +84,30 @@ export function SortableSection({ id, layout, isEditing, children, onLayoutChang
           >
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </button>
+          
+          {/* Move Down Button */}
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={isLast}
+            className={cn(
+              'p-1 rounded-b-md bg-background border border-border border-t-0 shadow-sm',
+              'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
+              isLast && 'opacity-40 cursor-not-allowed'
+            )}
+            aria-label="Move section down"
+          >
+            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+          </button>
+          
+          {/* Layout Selector */}
           {onLayoutChange && (
-            <LayoutSelector 
-              currentLayout={layout || null} 
-              onLayoutChange={onLayoutChange} 
-            />
+            <div className="mt-1">
+              <LayoutSelector 
+                currentLayout={layout || null} 
+                onLayoutChange={onLayoutChange} 
+              />
+            </div>
           )}
         </div>
       )}
