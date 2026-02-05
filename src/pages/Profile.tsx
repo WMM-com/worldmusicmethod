@@ -925,8 +925,6 @@ export default function Profile() {
                       <BioSection profile={extendedProfile} isEditing={isEditing} />
                     )}
                     
-                    {/* Referral Section - only show on own profile */}
-                    {isOwnProfile && <ReferralSection />}
                     
                     {/* Main Content Sections - 12-column grid for flexible layouts */}
                     {mainSections.length === 0 && showMultiPageFeatures ? (
