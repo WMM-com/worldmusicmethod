@@ -49,20 +49,27 @@ export function HeroOverlayControls({
   onRemoveCover,
 }: HeroOverlayControlsProps) {
   const [localSettings, setLocalSettings] = useState<CoverSettings>(coverSettings);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { uploadFile, isUploading } = useR2Upload();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleHeightChange = (value: string) => {
     const newSettings = { ...localSettings, height: value as CoverSettings['height'] };
     setLocalSettings(newSettings);
-    onUpdateCoverSettings(newSettings);
+    setHasUnsavedChanges(true);
   };
 
   const handleFocalPointChange = (axis: 'X' | 'Y', value: number[]) => {
     const key = `focalPoint${axis}` as 'focalPointX' | 'focalPointY';
     const newSettings = { ...localSettings, [key]: value[0] };
     setLocalSettings(newSettings);
-    onUpdateCoverSettings(newSettings);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSaveSettings = () => {
+    onUpdateCoverSettings(localSettings);
+    setHasUnsavedChanges(false);
+    toast.success('Cover settings saved');
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,6 +216,16 @@ export function HeroOverlayControls({
                     }}
                   />
                 </div>
+
+                {/* Save Changes button */}
+                <Button 
+                  size="sm" 
+                  onClick={handleSaveSettings}
+                  disabled={!hasUnsavedChanges}
+                  className="w-full"
+                >
+                  Save Changes
+                </Button>
 
                 {/* Remove Cover option */}
                 {onRemoveCover && (
