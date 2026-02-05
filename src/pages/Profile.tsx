@@ -32,6 +32,7 @@ import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
 import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
+import { AddSectionModal } from '@/components/profile/AddSectionModal';
 import { TextBlock } from '@/components/profile/sections/TextBlock';
 import { DonationBlock } from '@/components/profile/sections/DonationBlock';
 import { AudioBlock } from '@/components/profile/sections/AudioBlock';
@@ -145,6 +146,7 @@ export default function Profile() {
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
+  const [addSectionOpen, setAddSectionOpen] = useState(false);
   // cropType removed - only avatar uses cropper now
   const fileInputRef = useRef<HTMLInputElement>(null);
   // coverInputRef removed - cover upload now handled by HeroOverlayControls
@@ -232,7 +234,7 @@ export default function Profile() {
     ['gallery', 'projects', 'custom_tabs'].includes(s.section_type)
   ).length;
 
-  const handleAddSection = async (sectionType: string) => {
+  const handleAddSection = async (sectionType: string, pageId?: string | null) => {
     // Check premium gates
     if (PREMIUM_SECTION_TYPES.includes(sectionType) && !isPremium) {
       toast.error('Upgrade to Premium to add commerce blocks');
@@ -264,7 +266,12 @@ export default function Profile() {
     await createSection.mutateAsync({
       section_type: sectionType,
       title: sectionLabels[sectionType] || sectionType,
+      page_id: pageId,
     });
+    
+    // Enable editing mode after adding a section
+    setIsEditing(true);
+    toast.success('Section added');
   };
 
   const handleUpdateSectionLayout = async (sectionId: string, layout: string) => {
@@ -941,10 +948,10 @@ export default function Profile() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setIsEditing(true)}
+                            onClick={() => setAddSectionOpen(true)}
                           >
-                            <Edit2 className="h-4 w-4 mr-2" />
-                            Edit Profile
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Content
                           </Button>
                         )}
                       </div>
@@ -1253,7 +1260,7 @@ export default function Profile() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => setIsEditing(true)}
+                              onClick={() => setAddSectionOpen(true)}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Add Content
@@ -1392,6 +1399,14 @@ export default function Profile() {
           aspectRatio={1}
           circularCrop={true}
           title="Crop Profile Picture"
+        />
+
+        {/* Add Section Modal */}
+        <AddSectionModal
+          open={addSectionOpen}
+          onOpenChange={setAddSectionOpen}
+          onAddSection={(sectionType) => handleAddSection(sectionType, currentPage?.id)}
+          isPremium={isPremium}
         />
       </div>
     </>
