@@ -4032,6 +4032,7 @@ export type Database = {
           avatar_url: string | null
           bank_details: string | null
           bio: string | null
+          brand_color: string | null
           business_name: string | null
           cover_image_url: string | null
           created_at: string
@@ -4044,6 +4045,8 @@ export type Database = {
           email_verified_at: string | null
           first_name: string | null
           full_name: string | null
+          hero_config: Json | null
+          hero_type: string | null
           id: string
           invoice_late_payment_messages: Json | null
           invoice_thank_you_messages: Json | null
@@ -4083,6 +4086,7 @@ export type Database = {
           avatar_url?: string | null
           bank_details?: string | null
           bio?: string | null
+          brand_color?: string | null
           business_name?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -4095,6 +4099,8 @@ export type Database = {
           email_verified_at?: string | null
           first_name?: string | null
           full_name?: string | null
+          hero_config?: Json | null
+          hero_type?: string | null
           id: string
           invoice_late_payment_messages?: Json | null
           invoice_thank_you_messages?: Json | null
@@ -4134,6 +4140,7 @@ export type Database = {
           avatar_url?: string | null
           bank_details?: string | null
           bio?: string | null
+          brand_color?: string | null
           business_name?: string | null
           cover_image_url?: string | null
           created_at?: string
@@ -4146,6 +4153,8 @@ export type Database = {
           email_verified_at?: string | null
           first_name?: string | null
           full_name?: string | null
+          hero_config?: Json | null
+          hero_type?: string | null
           id?: string
           invoice_late_payment_messages?: Json | null
           invoice_thank_you_messages?: Json | null
