@@ -100,11 +100,11 @@ export function HeroOverlayControls({
         onChange={handleCoverUpload}
       />
 
-      {/* Icon CTA for adding/updating cover image - positioned in the hero area */}
+      {/* Icon CTA for adding/updating cover image - centered in the hero area */}
       <button
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploading}
-        className="absolute bottom-4 right-4 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-2 px-4 py-2.5 rounded-full bg-background/80 backdrop-blur-sm border border-border hover:bg-background transition-colors shadow-lg"
         title={hasCoverImage ? 'Change cover image' : 'Add cover image'}
       >
         {isUploading ? (
