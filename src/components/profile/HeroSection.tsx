@@ -94,11 +94,16 @@ export function HeroSection({
           />
         )}
         
-        {/* Subtle gradient at bottom for visual polish */}
+        {/* Dark overlay for better contrast */}
+        <div 
+          className="absolute inset-0 pointer-events-none bg-black/20"
+        />
+        
+        {/* Gradient overlay at bottom for visual polish */}
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'linear-gradient(to top, hsl(var(--background) / 0.3) 0%, transparent 30%)'
+            background: 'linear-gradient(to top, hsl(var(--background) / 0.4) 0%, transparent 40%)'
           }}
         />
       </section>
