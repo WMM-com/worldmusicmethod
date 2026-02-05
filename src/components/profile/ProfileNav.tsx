@@ -69,12 +69,11 @@ export function ProfileNav({
       // Update URL based on whether it's home or custom page
       if (page.is_home) {
         navigate('/profile', { replace: false });
+        // Switch to "page" tab to show home page content
+        onTabChange?.('page');
       } else {
         navigate(`/profile/pages/${page.slug}`, { replace: false });
-      }
-      
-      // Always set to "page" tab when navigating custom pages in edit mode
-      if (!page.is_home) {
+        // Switch to "page" tab to show custom page content
         onTabChange?.('page');
       }
       return;
@@ -93,6 +92,9 @@ export function ProfileNav({
     onTabChange?.(tabId);
   };
 
+  // Determine if a custom page is active (for highlighting logic)
+  const isCustomPageActive = activeTab === 'page';
+
   return (
     <nav 
       className="border-b border-border bg-muted/50 rounded-lg"
@@ -104,7 +106,7 @@ export function ProfileNav({
         <div className="flex min-w-min px-2 py-1">
           {/* Custom pages from database */}
           {visiblePages.map((page, index) => {
-            const isActive = activePage?.id === page.id;
+            const isActive = isCustomPageActive && activePage?.id === page.id;
             return (
               <div key={page.id} className="flex items-center">
                 <button
@@ -136,7 +138,7 @@ export function ProfileNav({
           
           {/* Built-in profile tabs */}
           {BUILT_IN_TABS.map((tab, index) => {
-            const isActive = activeTab === tab.id;
+            const isActive = !isCustomPageActive && activeTab === tab.id;
             const Icon = tab.icon;
             return (
               <div key={tab.id} className="flex items-center">
