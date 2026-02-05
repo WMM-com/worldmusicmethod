@@ -47,31 +47,35 @@ export function ProfileNav({ userId, brandColor }: ProfileNavProps) {
     >
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex min-w-min px-4 py-0">
-          {sortedPages.map(page => {
+          {sortedPages.map((page, index) => {
             const isActive = activePage?.id === page.id;
             return (
-              <button
-                key={page.id}
-                onClick={() => handleTabClick(page)}
-                className={cn(
-                  'px-4 py-3 text-sm font-medium whitespace-nowrap relative',
-                  'transition-colors duration-200',
-                  'border-b-2',
-                  isActive 
-                    ? 'text-foreground border-b-current' 
-                    : 'text-muted-foreground hover:text-foreground border-b-transparent hover:border-b-muted'
+              <div key={page.id} className="flex items-center">
+                <button
+                  onClick={() => handleTabClick(page)}
+                  className={cn(
+                    'px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap relative',
+                    'transition-colors duration-200',
+                    'border-b-2',
+                    isActive 
+                      ? 'text-foreground border-b-current' 
+                      : 'text-muted-foreground hover:text-foreground border-b-transparent hover:border-b-muted'
+                  )}
+                  style={
+                    isActive 
+                      ? { 
+                          color: 'var(--brand-color)',
+                          borderBottomColor: 'var(--brand-color)',
+                        }
+                      : {}
+                  }
+                >
+                  {page.title}
+                </button>
+                {index < sortedPages.length - 1 && (
+                  <div className="h-4 w-px bg-border opacity-50 mx-1" />
                 )}
-                style={
-                  isActive 
-                    ? { 
-                        color: 'var(--brand-color)',
-                        borderBottomColor: 'var(--brand-color)',
-                      }
-                    : {}
-                }
-              >
-                {page.title}
-              </button>
+              </div>
             );
           })}
         </div>
