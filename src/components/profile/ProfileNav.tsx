@@ -3,15 +3,24 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useProfilePages } from '@/hooks/useProfilePages';
 import { useExtendedProfile } from '@/hooks/useProfilePortfolio';
 import { cn } from '@/lib/utils';
-import { Home } from 'lucide-react';
+import { Home, User, FileText, Image } from 'lucide-react';
 
 interface ProfileNavProps {
   userId: string;
   brandColor?: string;
   isOwnProfile?: boolean;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-export function ProfileNav({ userId, brandColor, isOwnProfile }: ProfileNavProps) {
+// Built-in profile tabs
+const BUILT_IN_TABS = [
+  { id: 'about', label: 'About', icon: User },
+  { id: 'posts', label: 'Posts', icon: FileText },
+  { id: 'media', label: 'Media', icon: Image },
+];
+
+export function ProfileNav({ userId, brandColor, isOwnProfile, activeTab = 'about', onTabChange }: ProfileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { slug: currentSlug } = useParams<{ slug?: string }>();
@@ -44,7 +53,7 @@ export function ProfileNav({ userId, brandColor, isOwnProfile }: ProfileNavProps
     return visiblePages.find(p => p.slug === currentSlug);
   }, [currentSlug, visiblePages, isOnProfileRoute]);
 
-  const handleTabClick = (page: any) => {
+  const handlePageClick = (page: any) => {
     // When on /profile, navigate to /@username to preview
     const username = profile?.username || userId;
     if (page.is_home) {
@@ -54,46 +63,73 @@ export function ProfileNav({ userId, brandColor, isOwnProfile }: ProfileNavProps
     }
   };
 
-  if (!visiblePages.length) return null;
+  const handleBuiltInTabClick = (tabId: string) => {
+    onTabChange?.(tabId);
+  };
 
   return (
     <nav 
-      className="border-b border-border bg-background sticky top-0 z-40"
+      className="border-b border-border bg-muted/50 rounded-lg"
       style={{
         '--brand-color': brandColor || 'hsl(var(--primary))',
       } as React.CSSProperties}
     >
       <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex min-w-min px-4 py-0">
+        <div className="flex min-w-min px-2 py-1">
+          {/* Custom pages from database */}
           {visiblePages.map((page, index) => {
             const isActive = activePage?.id === page.id;
             return (
               <div key={page.id} className="flex items-center">
                 <button
-                  onClick={() => handleTabClick(page)}
+                  onClick={() => handlePageClick(page)}
                   className={cn(
-                    'px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap relative',
-                    'transition-colors duration-200',
-                    'border-b-2 flex items-center gap-1.5',
+                    'px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap relative',
+                    'transition-colors duration-200 rounded-md',
+                    'flex items-center gap-1.5',
                     isActive 
-                      ? 'text-foreground border-b-current' 
-                      : 'text-muted-foreground hover:text-foreground border-b-transparent hover:border-b-muted',
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
                     !page.is_visible && 'opacity-50'
                   )}
-                  style={
-                    isActive 
-                      ? { 
-                          color: 'var(--brand-color)',
-                          borderBottomColor: 'var(--brand-color)',
-                        }
-                      : {}
-                  }
                 >
-                  {page.is_home && <Home className="h-3 w-3" />}
+                  {page.is_home && <Home className="h-3.5 w-3.5" />}
                   {page.title}
                 </button>
                 {index < visiblePages.length - 1 && (
-                  <div className="h-4 w-px bg-border opacity-50 mx-1" />
+                  <div className="h-4 w-px bg-border opacity-30 mx-0.5" />
+                )}
+              </div>
+            );
+          })}
+          
+          {/* Divider between custom pages and built-in tabs */}
+          {visiblePages.length > 0 && (
+            <div className="h-4 w-px bg-border opacity-50 mx-2 self-center" />
+          )}
+          
+          {/* Built-in profile tabs */}
+          {BUILT_IN_TABS.map((tab, index) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <div key={tab.id} className="flex items-center">
+                <button
+                  onClick={() => handleBuiltInTabClick(tab.id)}
+                  className={cn(
+                    'px-3 py-2 text-xs sm:text-sm font-medium whitespace-nowrap relative',
+                    'transition-colors duration-200 rounded-md',
+                    'flex items-center gap-1.5',
+                    isActive 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                </button>
+                {index < BUILT_IN_TABS.length - 1 && (
+                  <div className="h-4 w-px bg-border opacity-30 mx-0.5" />
                 )}
               </div>
             );
