@@ -1,22 +1,18 @@
-import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useGeoPricing, formatPrice } from '@/contexts/GeoPricingContext';
 import { DigitalProduct } from '@/hooks/useDigitalProducts';
-import { FileIcon, Download, ShoppingCart, Heart, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { FileIcon, ShoppingCart, Heart, Loader2 } from 'lucide-react';
 
 interface ProductCardProps {
   product: DigitalProduct;
-  onPurchase?: (product: DigitalProduct, amount: number) => void;
+  onPurchase?: () => void;
   isPurchasing?: boolean;
 }
 
 export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardProps) {
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
-  const [customAmount, setCustomAmount] = useState<string>('');
   
   // Calculate geo-adjusted price
   const geoPrice = calculatePrice(product.base_price, product.geo_pricing ? 
@@ -31,20 +27,6 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
   const displayPrice = geoPrice?.price ?? product.base_price;
   const displayCurrency = geoPrice?.currency ?? product.currency;
   const minPrice = product.min_price ?? 0;
-  
-  // For PWYW, default to suggested price
-  const suggestedPrice = displayPrice;
-  const currentAmount = customAmount ? parseFloat(customAmount) : suggestedPrice;
-  
-  const handlePurchase = () => {
-    if (product.price_type === 'pwyw') {
-      if (currentAmount < minPrice) {
-        toast.error(`Minimum price is ${formatPrice(minPrice, displayCurrency, false)}`);
-        return;
-      }
-    }
-    onPurchase?.(product, currentAmount);
-  };
 
   const getFileExtension = (url: string) => {
     const match = url.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
@@ -92,33 +74,19 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
               )}
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  Pay What You Want
-                </Badge>
-                {minPrice > 0 && (
+            <div className="space-y-1">
+              <Badge variant="outline" className="text-xs">
+                Pay What You Want
+              </Badge>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-bold text-primary">
+                  From {formatPrice(minPrice, displayCurrency, false)}
+                </span>
+                {displayPrice > minPrice && (
                   <span className="text-xs text-muted-foreground">
-                    Min: {formatPrice(minPrice, displayCurrency, false)}
+                    (suggested: {formatPrice(displayPrice, displayCurrency, false)})
                   </span>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {displayCurrency}
-                </span>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min={minPrice}
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  placeholder={suggestedPrice.toString()}
-                  className="h-9 w-24"
-                />
-                <span className="text-xs text-muted-foreground">
-                  Suggested: {formatPrice(suggestedPrice, displayCurrency, false)}
-                </span>
               </div>
             </div>
           )}
@@ -128,7 +96,7 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
         <div className="flex gap-2">
           <Button 
             className="flex-1" 
-            onClick={handlePurchase}
+            onClick={onPurchase}
             disabled={isPurchasing}
           >
             {isPurchasing ? (
@@ -136,8 +104,8 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
             ) : (
               <ShoppingCart className="h-4 w-4 mr-2" />
             )}
-            {product.price_type === 'pwyw' && currentAmount === 0 
-              ? 'Get Free' 
+            {product.price_type === 'pwyw' && minPrice === 0 
+              ? 'Name Your Price' 
               : 'Buy Now'}
           </Button>
           <Button variant="outline" size="icon">
