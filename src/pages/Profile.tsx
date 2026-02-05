@@ -707,12 +707,6 @@ export default function Profile() {
                         onSave={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
                       />
                       
-                      {/* Device Preview Toggle */}
-                      <DevicePreviewToggle
-                        device={previewDevice}
-                        onChange={setPreviewDevice}
-                      />
-                      
                       {/* Visibility Dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -879,20 +873,30 @@ export default function Profile() {
           {/* Main Content with Tabs */}
           <div className="py-8">
             <Tabs defaultValue="about" className="w-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="about" className="gap-2">
-                  <User className="h-4 w-4" />
-                  About
-                </TabsTrigger>
-                <TabsTrigger value="posts" className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Posts
-                </TabsTrigger>
-                <TabsTrigger value="media" className="gap-2">
-                  <Image className="h-4 w-4" />
-                  Media
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <TabsList>
+                  <TabsTrigger value="about" className="gap-2">
+                    <User className="h-4 w-4" />
+                    About
+                  </TabsTrigger>
+                  <TabsTrigger value="posts" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Posts
+                  </TabsTrigger>
+                  <TabsTrigger value="media" className="gap-2">
+                    <Image className="h-4 w-4" />
+                    Media
+                  </TabsTrigger>
+                </TabsList>
+                
+                {/* Device Preview Toggle - only in edit mode */}
+                {isOwnProfile && isEditing && (
+                  <DevicePreviewToggle
+                    device={previewDevice}
+                    onChange={setPreviewDevice}
+                  />
+                )}
+              </div>
 
               {/* About Tab */}
               <TabsContent value="about">
