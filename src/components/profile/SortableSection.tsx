@@ -4,15 +4,18 @@ import { GripVertical } from 'lucide-react';
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
+import { LayoutSelector } from './LayoutSelector';
+import { LayoutType } from './GridLayout';
 
 interface SortableSectionProps {
   id: string;
   layout?: string | null;
   isEditing: boolean;
   children: ReactNode;
+  onLayoutChange?: (layout: LayoutType) => void;
 }
 
-export function SortableSection({ id, layout, isEditing, children }: SortableSectionProps) {
+export function SortableSection({ id, layout, isEditing, children, onLayoutChange }: SortableSectionProps) {
   const {
     attributes,
     listeners,
@@ -38,20 +41,26 @@ export function SortableSection({ id, layout, isEditing, children }: SortableSec
       )}
     >
       {isEditing && (
-        <button
-          {...attributes}
-          {...listeners}
-          className={cn(
-            'absolute -left-2 top-1/2 -translate-y-1/2 z-10',
-            'p-1.5 rounded-md bg-background border border-border shadow-sm',
-            'opacity-0 group-hover:opacity-100 transition-opacity',
-            'cursor-grab active:cursor-grabbing',
-            'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary'
+        <div className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            {...attributes}
+            {...listeners}
+            className={cn(
+              'p-1.5 rounded-md bg-background border border-border shadow-sm',
+              'cursor-grab active:cursor-grabbing',
+              'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary'
+            )}
+            aria-label="Drag to reorder"
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </button>
+          {onLayoutChange && (
+            <LayoutSelector 
+              currentLayout={layout || null} 
+              onLayoutChange={onLayoutChange} 
+            />
           )}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-        </button>
+        </div>
       )}
       {children}
     </div>
