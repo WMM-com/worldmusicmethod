@@ -109,7 +109,10 @@ export function usePublicProfile(username: string) {
   });
 }
 
-// Profile sections - now accepts optional pageId filter
+// Profile sections - now REQUIRES pageId to prevent cross-page leakage
+// If pageId is undefined, returns empty array (waiting for pages to load)
+// If pageId is null, returns sections with null page_id (legacy unassigned)
+// If pageId is a string, returns sections for that specific page
 export function useProfileSections(userId?: string, pageId?: string | null) {
   const { user } = useAuth();
   const targetId = userId || user?.id;
@@ -118,6 +121,9 @@ export function useProfileSections(userId?: string, pageId?: string | null) {
     queryKey: ['profile-sections', targetId, pageId],
     queryFn: async () => {
       if (!targetId) return [];
+      
+      // If pageId is undefined, pages haven't loaded yet - return empty to prevent fetching all
+      if (pageId === undefined) return [];
 
       let query = supabase
         .from('profile_sections')
@@ -125,13 +131,11 @@ export function useProfileSections(userId?: string, pageId?: string | null) {
         .eq('user_id', targetId)
         .order('order_index', { ascending: true });
 
-      // Filter by page_id if provided
-      if (pageId !== undefined) {
-        if (pageId === null) {
-          query = query.is('page_id', null);
-        } else {
-          query = query.eq('page_id', pageId);
-        }
+      // Filter by page_id
+      if (pageId === null) {
+        query = query.is('page_id', null);
+      } else {
+        query = query.eq('page_id', pageId);
       }
 
       const { data, error } = await query;

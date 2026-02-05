@@ -143,7 +143,18 @@ export default function Profile() {
   const { data: posts, isLoading: postsLoading } = useUserPosts(profileId!);
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
-  const { data: sections, isLoading: sectionsLoading } = useProfileSections(profileId);
+  // Fetch sections filtered by current page to prevent cross-page leakage
+  const currentPageId = useMemo(() => {
+    if (!pages.length) return undefined; // Pages not loaded yet
+    const slug = location.pathname.match(/\/pages\/([^/]+)/)?.[1];
+    const normalizedSlug = (!slug || slug === 'home') ? null : slug;
+    if (normalizedSlug) {
+      return pages.find(p => p.slug === normalizedSlug)?.id || undefined;
+    }
+    return pages.find(p => p.is_home)?.id || undefined;
+  }, [pages, location.pathname]);
+  
+  const { data: sections, isLoading: sectionsLoading } = useProfileSections(profileId, currentPageId);
   
   const updateBio = useUpdateBio();
   const uploadAvatar = useUploadAvatar();
@@ -388,28 +399,11 @@ export default function Profile() {
   // Check if we have an invalid slug (slug provided but page not found)
   const isInvalidSlug = isProfileRoute && normalizedSlug && pages.length > 0 && !currentPage;
 
-  // All sections sorted by order_index, filtered by current page
-  // STRICT: Hide sections with null page_id until assigned
+  // All sections sorted by order_index
+  // Sections are already filtered by page_id at the query level via useProfileSections(profileId, currentPageId)
   const sortedSections = useMemo(() => {
-    let filtered = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
-    
-    // Always filter by page_id when multi-page features are active
-    if (showMultiPageFeatures) {
-      if (currentPage) {
-        // Show only sections for the current page (strict match)
-        filtered = filtered.filter(s => s.page_id === currentPage.id);
-      } else if (pages.length > 0) {
-        // If no current page but pages exist, show nothing to prevent leakage
-        filtered = [];
-      }
-      // If pages haven't loaded yet (pages.length === 0), show nothing while loading
-    } else {
-      // Legacy mode: hide null page_id sections entirely until assigned
-      filtered = filtered.filter(s => s.page_id !== null);
-    }
-    
-    return filtered;
-  }, [sections, showMultiPageFeatures, currentPage, pages.length]);
+    return [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
+  }, [sections]);
   
   const mainSections = sortedSections.filter(s => 
     ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player', 'image_block', 'button_block', 'divider', 'spacer', 'heading', 'icon_block', 'counter', 'progress_bar', 'accordion', 'html_block', 'alert', 'tabs_block', 'toggle_list', 'slider_block', 'testimonial', 'carousel', 'shortcode'].includes(s.section_type)
@@ -884,7 +878,7 @@ export default function Profile() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           {SIDEBAR_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
-                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type)}>
+                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type, currentPage?.id)}>
                               <Icon className="h-4 w-4 mr-2" />
                               {label}
                             </DropdownMenuItem>
@@ -906,7 +900,7 @@ export default function Profile() {
                             return (
                             <DropdownMenuItem 
                               key={type} 
-                              onClick={() => handleAddSection(type)}
+                              onClick={() => handleAddSection(type, currentPage?.id)}
                               className={isPremiumOnly && !isPremium ? 'text-muted-foreground' : ''}
                             >
                               <Icon className="h-4 w-4 mr-2" />
