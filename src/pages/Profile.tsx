@@ -291,6 +291,21 @@ export default function Profile() {
     }
   }, [sections, reorderSections]);
 
+  // Move section up/down handler
+  const handleMoveSection = useCallback((sectionId: string, direction: 'up' | 'down', sectionList: typeof sections) => {
+    if (!sectionList) return;
+    
+    const currentIndex = sectionList.findIndex(s => s.id === sectionId);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= sectionList.length) return;
+    
+    const reorderedSections = arrayMove(sectionList, currentIndex, newIndex);
+    const newOrderArray = reorderedSections.map(s => s.id);
+    reorderSections.mutate(newOrderArray);
+  }, [reorderSections]);
+
   // All sections sorted by order_index
   const sortedSections = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
   
@@ -853,13 +868,17 @@ export default function Profile() {
                           strategy={verticalListSortingStrategy}
                         >
                           <div className="space-y-6">
-                            {mainSections.map(section => (
+                            {mainSections.map((section, index) => (
                               <SortableSection
                                 key={section.id}
                                 id={section.id}
                                 layout={section.layout}
                                 isEditing={isEditing}
                                 onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
+                                onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
+                                isFirst={index === 0}
+                                isLast={index === mainSections.length - 1}
                               >
                                 {renderSection(section, false)}
                               </SortableSection>
@@ -884,13 +903,17 @@ export default function Profile() {
                             strategy={verticalListSortingStrategy}
                           >
                             <div className="space-y-6">
-                              {sidebarSections.map(section => (
+                              {sidebarSections.map((section, index) => (
                                 <SortableSection
                                   key={section.id}
                                   id={section.id}
                                   layout={section.layout}
                                   isEditing={isEditing}
                                   onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                  onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                  onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                  isFirst={index === 0}
+                                  isLast={index === sidebarSections.length - 1}
                                 >
                                   {renderSection(section, true)}
                                 </SortableSection>
@@ -970,13 +993,17 @@ export default function Profile() {
                           strategy={verticalListSortingStrategy}
                         >
                           <div className="space-y-6">
-                            {sidebarSections.map(section => (
+                            {sidebarSections.map((section, index) => (
                               <SortableSection
                                 key={section.id}
                                 id={section.id}
                                 layout={section.layout}
                                 isEditing={isEditing}
                                 onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                isFirst={index === 0}
+                                isLast={index === sidebarSections.length - 1}
                               >
                                 {renderSection(section, true)}
                               </SortableSection>
