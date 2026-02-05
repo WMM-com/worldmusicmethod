@@ -17,11 +17,14 @@ import { useR2Upload } from '@/hooks/useR2Upload';
 import { toast } from 'sonner';
 
 interface ProjectsSectionProps {
+  section?: any;
   userId: string;
   isEditing: boolean;
+  onUpdate?: (content: Record<string, any>) => void;
+  onDelete?: () => void;
 }
 
-export function ProjectsSection({ userId, isEditing }: ProjectsSectionProps) {
+export function ProjectsSection({ section, userId, isEditing, onUpdate, onDelete }: ProjectsSectionProps) {
   const { data: projects = [] } = useProfileProjects(userId);
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
