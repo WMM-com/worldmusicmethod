@@ -156,6 +156,13 @@ export default function Profile() {
     }
   }, [isOwnProfileManageRoute, pages.length, ensureHomePage]);
 
+  // Switch to 'page' tab when on profile management route (home or custom pages)
+  useEffect(() => {
+    if (isOwnProfileManageRoute && activeTab !== 'page') {
+      setActiveTab('page');
+    }
+  }, [isOwnProfileManageRoute]);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
