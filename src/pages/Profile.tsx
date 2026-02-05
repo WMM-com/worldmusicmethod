@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SiteHeader } from '@/components/layout/SiteHeader';
@@ -421,6 +422,13 @@ export default function Profile() {
 
   return (
     <>
+      <Helmet>
+        <title>
+          {isProfileRoute && currentPage
+            ? `${profile?.full_name || 'Artist'} – ${currentPage.title}`
+            : profile?.full_name || 'Profile'}
+        </title>
+      </Helmet>
       <SiteHeader className={isProfileRoute ? 'header-non-sticky' : ''} />
       <div 
         className="min-h-screen bg-background overflow-x-hidden transition-all duration-300"
