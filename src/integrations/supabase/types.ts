@@ -4101,6 +4101,57 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_pages: {
+        Row: {
+          created_at: string
+          id: string
+          is_home: boolean
+          is_visible: boolean
+          order_index: number
+          slug: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_home?: boolean
+          is_visible?: boolean
+          order_index?: number
+          slug: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_home?: boolean
+          is_visible?: boolean
+          order_index?: number
+          slug?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_pages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_pages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_projects: {
         Row: {
           created_at: string
@@ -4145,6 +4196,7 @@ export type Database = {
           is_visible: boolean | null
           layout: string | null
           order_index: number
+          page_id: string | null
           section_type: string
           title: string | null
           updated_at: string
@@ -4157,6 +4209,7 @@ export type Database = {
           is_visible?: boolean | null
           layout?: string | null
           order_index?: number
+          page_id?: string | null
           section_type: string
           title?: string | null
           updated_at?: string
@@ -4169,12 +4222,21 @@ export type Database = {
           is_visible?: boolean | null
           layout?: string | null
           order_index?: number
+          page_id?: string | null
           section_type?: string
           title?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profile_sections_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "profile_pages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profile_tabs: {
         Row: {
@@ -5590,6 +5652,7 @@ export type Database = {
         Returns: boolean
       }
       enroll_users_from_tags: { Args: never; Returns: Json }
+      ensure_default_home_page: { Args: { p_user_id: string }; Returns: string }
       generate_invoice_number: { Args: { _user_id: string }; Returns: string }
       generate_referral_code: { Args: never; Returns: string }
       get_public_profile: {
