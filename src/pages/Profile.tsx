@@ -19,6 +19,8 @@ import {
   useProfileGallery,
   ProfileSection
 } from '@/hooks/useProfilePortfolio';
+import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings';
+import { HeroSection } from '@/components/profile/HeroSection';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -77,6 +79,7 @@ export default function Profile() {
 
   const { data: profile, isLoading: profileLoading } = useUserProfile(profileId);
   const { data: extendedProfile } = useExtendedProfile(profileId);
+  const { data: heroSettings } = useHeroSettings(profileId);
   const { data: posts, isLoading: postsLoading } = useUserPosts(profileId!);
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
@@ -87,6 +90,7 @@ export default function Profile() {
   const sendFriendRequest = useSendFriendRequest();
   const createConversation = useCreateConversation();
   const updateExtendedProfile = useUpdateExtendedProfile();
+  const updateHeroSettings = useUpdateHeroSettings();
   const createSection = useCreateSection();
   const updateSection = useUpdateSection();
   const deleteSection = useDeleteSection();
@@ -308,7 +312,10 @@ export default function Profile() {
   return (
     <>
       <SiteHeader />
-      <div className="min-h-screen bg-background overflow-x-hidden">
+      <div 
+        className="min-h-screen bg-background overflow-x-hidden"
+        style={heroSettings?.brand_color ? { '--brand-color': heroSettings.brand_color } as React.CSSProperties : undefined}
+      >
         {/* Community Navigation */}
         <div className="border-b border-border bg-card overflow-x-hidden">
           <div className="max-w-7xl mx-auto px-4 py-4 overflow-x-auto">
@@ -351,32 +358,41 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Cover Image */}
-        <div 
-          className={`relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
-          onClick={handleCoverClick}
-          style={extendedProfile?.cover_image_url ? {
-            backgroundImage: `url(${extendedProfile.cover_image_url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          } : undefined}
-        >
-          {isEditing && (
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-              <div className="text-white text-center">
-                <Camera className="h-8 w-8 mx-auto mb-2" />
-                <span>Change Cover</span>
-              </div>
-            </div>
-          )}
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => handleFileChange(e, 'cover')}
+        {/* Hero Section - replaces old cover image when hero settings exist */}
+        {heroSettings?.hero_type && heroSettings.hero_config && Object.keys(heroSettings.hero_config).length > 0 ? (
+          <HeroSection 
+            heroType={heroSettings.hero_type} 
+            heroConfig={heroSettings.hero_config}
+            fallbackName={profile?.full_name || undefined}
           />
-        </div>
+        ) : (
+          /* Default Cover Image (fallback) */
+          <div 
+            className={`relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
+            onClick={handleCoverClick}
+            style={extendedProfile?.cover_image_url ? {
+              backgroundImage: `url(${extendedProfile.cover_image_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            } : undefined}
+          >
+            {isEditing && (
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <div className="text-white text-center">
+                  <Camera className="h-8 w-8 mx-auto mb-2" />
+                  <span>Change Cover</span>
+                </div>
+              </div>
+            )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => handleFileChange(e, 'cover')}
+            />
+          </div>
+        )}
 
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Header Card - overlapping cover */}
