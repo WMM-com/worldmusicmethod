@@ -36,7 +36,7 @@ interface MenuItem {
   requires_admin: boolean;
 }
 
-export function SiteHeader({ rightAddon, className }: { rightAddon?: ReactNode; className?: string }) {
+export function SiteHeader({ rightAddon, className, nonSticky = false }: { rightAddon?: ReactNode; className?: string; nonSticky?: boolean }) {
   const navigate = useNavigate();
   const { user, profile, signOut, loading } = useAuth();
   const { getItemCount } = useCart();
@@ -203,7 +203,7 @@ export function SiteHeader({ rightAddon, className }: { rightAddon?: ReactNode; 
   };
 
   return (
-    <header className={`sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${className || ''}`}>
+    <header className={`${nonSticky ? 'relative' : 'sticky top-0'} z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 ${className || ''}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}

@@ -152,9 +152,33 @@ export default function Profile() {
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
   const [addSectionOpen, setAddSectionOpen] = useState(false);
+  const [showStickyDoneButton, setShowStickyDoneButton] = useState(false);
   // cropType removed - only avatar uses cropper now
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileCardRef = useRef<HTMLDivElement>(null);
   // coverInputRef removed - cover upload now handled by HeroOverlayControls
+
+  // Track scroll position to show/hide sticky Done Editing button
+  useEffect(() => {
+    if (!isEditing || !isOwnProfile) {
+      setShowStickyDoneButton(false);
+      return;
+    }
+
+    const handleScroll = () => {
+      if (!profileCardRef.current) return;
+      
+      const rect = profileCardRef.current.getBoundingClientRect();
+      // Show sticky button when profile card is scrolled out of view
+      const isProfileCardOutOfView = rect.bottom < 100;
+      setShowStickyDoneButton(isProfileCardOutOfView);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial position
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isEditing, isOwnProfile]);
 
   // Ensure home page exists when entering profile management
   useEffect(() => {
@@ -436,7 +460,7 @@ export default function Profile() {
   if (profileLoading) {
     return (
       <>
-        <SiteHeader />
+        <SiteHeader nonSticky />
         <div className="min-h-screen bg-background">
           <Skeleton className="h-64 w-full" />
           <div className="max-w-6xl mx-auto px-4 py-8">
@@ -451,7 +475,7 @@ export default function Profile() {
   if (!profile) {
     return (
       <>
-        <SiteHeader />
+        <SiteHeader nonSticky />
         <div className="min-h-screen bg-background">
           <div className="max-w-4xl mx-auto px-4 py-8 text-center">
             <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -467,7 +491,7 @@ export default function Profile() {
   if (isInvalidSlug && !isOwnProfile) {
     return (
       <>
-        <SiteHeader className="header-non-sticky" />
+        <SiteHeader nonSticky />
         <div className="min-h-screen bg-background">
           <div className="max-w-4xl mx-auto px-4 py-8 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -499,7 +523,7 @@ export default function Profile() {
             : profile?.full_name || 'Profile'}
         </title>
       </Helmet>
-      <SiteHeader className={isProfileRoute ? 'header-non-sticky' : ''} />
+      <SiteHeader nonSticky />
       <div 
         className="min-h-screen bg-background overflow-x-hidden transition-all duration-300"
         style={{
@@ -586,7 +610,7 @@ export default function Profile() {
 
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Header Card - overlapping cover */}
-          <div className="-mt-16 sm:-mt-20 relative z-10">
+          <div className="-mt-16 sm:-mt-20 relative z-10" ref={profileCardRef}>
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-end">
@@ -1461,6 +1485,20 @@ export default function Profile() {
           onAddSection={(sectionType) => handleAddSection(sectionType, currentPage?.id)}
           isPremium={isPremium}
         />
+
+        {/* Sticky Done Editing Button - appears when scrolled past profile card */}
+        {isOwnProfile && isEditing && showStickyDoneButton && (
+          <div className="fixed bottom-6 right-6 z-50">
+            <Button
+              onClick={() => setIsEditing(false)}
+              className="shadow-lg"
+              size="lg"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Done Editing
+            </Button>
+          </div>
+        )}
       </div>
     </>
   );
