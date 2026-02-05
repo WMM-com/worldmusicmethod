@@ -19,11 +19,11 @@ import {
   useProfileGallery,
   ProfileSection
 } from '@/hooks/useProfilePortfolio';
-import { useHeroSettings, useUpdateHeroSettings } from '@/hooks/useHeroSettings';
+import { useHeroSettings, useUpdateHeroSettings, CoverSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
+import { HeroOverlayControls } from '@/components/profile/HeroOverlayControls';
 import { CoverImageUploader } from '@/components/profile/CoverImageUploader';
-import { CoverImageSettings, CoverSettings, getCoverHeightClass, getCoverFocalPoint } from '@/components/profile/CoverImageSettings';
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
@@ -129,11 +129,6 @@ export default function Profile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
-  const [coverSettings, setCoverSettings] = useState<CoverSettings>({
-    height: 'medium',
-    focalPointX: 50,
-    focalPointY: 50,
-  });
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
   const [cropType, setCropType] = useState<'avatar' | 'cover'>('avatar');
@@ -452,63 +447,46 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Hero Section - shows custom hero OR default cover image */}
-        {heroSettings?.hero_type && heroSettings.hero_config && (
-          heroSettings.hero_config.title || 
-          heroSettings.hero_config.backgroundImage || 
-          heroSettings.hero_config.cutoutImage
-        ) ? (
-          <div className="relative">
-            <HeroSection 
-              heroType={heroSettings.hero_type} 
-              heroConfig={heroSettings.hero_config}
-              fallbackName={profile?.full_name || undefined}
+        {/* Hero Section - Always use HeroSection for consistent display */}
+        <div className="relative">
+          <HeroSection 
+            heroType={heroSettings?.hero_type || 'standard'} 
+            heroConfig={heroSettings?.hero_config || {}}
+            coverSettings={heroSettings?.cover_settings}
+            fallbackName={profile?.full_name || undefined}
+            fallbackCoverImage={extendedProfile?.cover_image_url}
+          />
+          
+          {/* Edit overlay controls for hero - in top right corner */}
+          {isEditing && isOwnProfile && (
+            <HeroOverlayControls
+              heroType={heroSettings?.hero_type || 'standard'}
+              heroConfig={heroSettings?.hero_config || {}}
+              coverSettings={heroSettings?.cover_settings || { height: 'medium', focalPointX: 50, focalPointY: 50 }}
+              coverImageUrl={heroSettings?.hero_config?.backgroundImage || extendedProfile?.cover_image_url}
+              onUpdateHero={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
+              onUpdateCoverSettings={(settings) => updateHeroSettings.mutate({ cover_settings: settings })}
+              onRemoveCover={async () => {
+                // Clear the background image from hero config
+                await updateHeroSettings.mutateAsync({ 
+                  hero_config: { ...heroSettings?.hero_config, backgroundImage: undefined } 
+                });
+                // Also clear the cover image URL
+                await updateExtendedProfile.mutateAsync({ cover_image_url: null });
+                toast.success('Cover image removed');
+              }}
             />
-            {/* Edit overlay for hero */}
-            {isEditing && (
-              <div className="absolute top-4 right-4 z-20">
-                <HeroEditor
-                  heroType={heroSettings.hero_type}
-                  heroConfig={heroSettings.hero_config}
-                  onSave={(type, config) => updateHeroSettings.mutate({ hero_type: type, hero_config: config })}
-                  trigger={
-                    <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
-                      <Edit2 className="h-4 w-4" />
-                      Edit Hero
-                    </Button>
-                  }
-                />
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Default Cover Image (when no hero configured) */
-          <div 
-            className={`relative ${getCoverHeightClass(coverSettings.height)} bg-gradient-to-r from-primary/20 to-primary/5 ${isEditing ? 'cursor-pointer' : ''}`}
-            onClick={handleCoverClick}
-            style={extendedProfile?.cover_image_url ? {
-              backgroundImage: `url(${extendedProfile.cover_image_url})`,
-              backgroundSize: 'cover',
-              backgroundPosition: getCoverFocalPoint(coverSettings),
-            } : undefined}
-          >
-            {isEditing && (
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <div className="text-white text-center">
-                  <Camera className="h-8 w-8 mx-auto mb-2" />
-                  <span>Change Cover</span>
-                </div>
-              </div>
-            )}
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => handleFileChange(e, 'cover')}
-            />
-          </div>
-        )}
+          )}
+          
+          {/* Hidden file input for cover image upload */}
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFileChange(e, 'cover')}
+          />
+        </div>
 
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Header Card - overlapping cover */}
@@ -691,16 +669,7 @@ export default function Profile() {
                         }}
                       />
                       
-                      {/* Cover Image Settings */}
-                      {extendedProfile?.cover_image_url && !heroSettings?.hero_config?.backgroundImage && (
-                        <CoverImageSettings
-                          settings={coverSettings}
-                          coverImageUrl={extendedProfile.cover_image_url}
-                          onUpdate={setCoverSettings}
-                        />
-                      )}
-                      
-                      {/* Hero Editor */}
+                      {/* Hero Editor - duplicated here for quick access */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
                         heroConfig={heroSettings?.hero_config || {}}

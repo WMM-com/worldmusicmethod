@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { CoverSettings } from '@/hooks/useHeroSettings';
 
 export type HeroType = 'standard' | 'cut-out' | 'minimal';
 
@@ -15,14 +16,35 @@ export interface HeroConfig {
 interface HeroSectionProps {
   heroType: HeroType;
   heroConfig: HeroConfig;
+  coverSettings?: CoverSettings;
   fallbackName?: string;
+  fallbackCoverImage?: string | null;
   className?: string;
+}
+
+// Get height class from cover settings
+function getHeroHeightClass(height?: CoverSettings['height']): string {
+  switch (height) {
+    case 'small': return 'min-h-[192px] md:min-h-[240px]';
+    case 'large': return 'min-h-[400px] md:min-h-[480px] lg:min-h-[540px]';
+    case 'medium':
+    default: return 'min-h-[320px] md:min-h-[420px] lg:min-h-[480px]';
+  }
+}
+
+// Get focal point style from cover settings
+function getFocalPointStyle(settings?: CoverSettings): string {
+  const x = settings?.focalPointX ?? 50;
+  const y = settings?.focalPointY ?? 50;
+  return `${x}% ${y}%`;
 }
 
 export function HeroSection({ 
   heroType, 
   heroConfig, 
+  coverSettings,
   fallbackName,
+  fallbackCoverImage,
   className 
 }: HeroSectionProps) {
   const {
@@ -36,6 +58,11 @@ export function HeroSection({
   } = heroConfig;
 
   const displayTitle = title || fallbackName || 'Welcome';
+  const heroHeightClass = getHeroHeightClass(coverSettings?.height);
+  const focalPoint = getFocalPointStyle(coverSettings);
+  
+  // Use hero background image OR fallback cover image
+  const actualBackgroundImage = backgroundImage || fallbackCoverImage;
 
   const textAlignClass = {
     left: 'text-left items-start',
@@ -48,7 +75,8 @@ export function HeroSection({
     return (
       <section
         className={cn(
-          'relative w-full min-h-[320px] md:min-h-[420px] lg:min-h-[480px] overflow-hidden',
+          'relative w-full overflow-hidden',
+          heroHeightClass,
           className
         )}
         style={{
@@ -56,10 +84,13 @@ export function HeroSection({
         }}
       >
         {/* Background Image */}
-        {backgroundImage && (
+        {actualBackgroundImage && (
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${backgroundImage})` }}
+            className="absolute inset-0 bg-cover"
+            style={{ 
+              backgroundImage: `url(${actualBackgroundImage})`,
+              backgroundPosition: focalPoint,
+            }}
           />
         )}
         
@@ -75,7 +106,8 @@ export function HeroSection({
         
         {/* Content */}
         <div className={cn(
-          'relative z-10 flex flex-col justify-end h-full min-h-[320px] md:min-h-[420px] lg:min-h-[480px] p-6 md:p-10 lg:p-12',
+          'relative z-10 flex flex-col justify-end h-full p-6 md:p-10 lg:p-12',
+          heroHeightClass,
           textAlignClass
         )}>
           {subtitle && (
@@ -83,9 +115,11 @@ export function HeroSection({
               {subtitle}
             </p>
           )}
-          <h1 className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 text-white drop-shadow-lg">
-            {displayTitle}
-          </h1>
+          {(title || fallbackName) && (
+            <h1 className="text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 text-white drop-shadow-lg">
+              {displayTitle}
+            </h1>
+          )}
           {description && (
             <p className="text-base md:text-lg lg:text-xl text-white/90 max-w-2xl drop-shadow-md leading-relaxed">
               {description}
@@ -101,7 +135,8 @@ export function HeroSection({
     return (
       <section
         className={cn(
-          'relative w-full min-h-[320px] md:min-h-[420px] lg:min-h-[480px] overflow-hidden',
+          'relative w-full overflow-hidden',
+          heroHeightClass,
           className
         )}
         style={{
@@ -109,14 +144,20 @@ export function HeroSection({
         }}
       >
         {/* Background pattern or gradient */}
-        {backgroundImage && (
+        {actualBackgroundImage && (
           <div
-            className="absolute inset-0 bg-cover bg-center opacity-20"
-            style={{ backgroundImage: `url(${backgroundImage})` }}
+            className="absolute inset-0 bg-cover opacity-20"
+            style={{ 
+              backgroundImage: `url(${actualBackgroundImage})`,
+              backgroundPosition: focalPoint,
+            }}
           />
         )}
         
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between h-full min-h-[320px] md:min-h-[420px] lg:min-h-[480px] p-6 md:p-10 lg:p-12 gap-8">
+        <div className={cn(
+          'relative z-10 flex flex-col md:flex-row items-center justify-between h-full p-6 md:p-10 lg:p-12 gap-8',
+          heroHeightClass,
+        )}>
           {/* Text Content */}
           <div className={cn(
             'flex flex-col flex-1 justify-center',
@@ -128,9 +169,11 @@ export function HeroSection({
                 {subtitle}
               </p>
             )}
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 text-foreground">
-              {displayTitle}
-            </h1>
+            {(title || fallbackName) && (
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 text-foreground">
+                {displayTitle}
+              </h1>
+            )}
             {description && (
               <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-xl leading-relaxed">
                 {description}
@@ -157,10 +200,17 @@ export function HeroSection({
   }
 
   // Minimal: Solid color background with centered text
+  const minimalHeightClass = coverSettings?.height === 'large' 
+    ? 'min-h-[300px] md:min-h-[360px]' 
+    : coverSettings?.height === 'small' 
+      ? 'min-h-[160px] md:min-h-[200px]'
+      : 'min-h-[240px] md:min-h-[320px] lg:min-h-[360px]';
+
   return (
     <section
       className={cn(
-        'relative w-full min-h-[240px] md:min-h-[320px] lg:min-h-[360px] overflow-hidden',
+        'relative w-full overflow-hidden',
+        minimalHeightClass,
         className
       )}
       style={{
@@ -168,7 +218,8 @@ export function HeroSection({
       }}
     >
       <div className={cn(
-        'flex flex-col justify-center h-full min-h-[240px] md:min-h-[320px] lg:min-h-[360px] p-6 md:p-10 lg:p-12',
+        'flex flex-col justify-center h-full p-6 md:p-10 lg:p-12',
+        minimalHeightClass,
         textAlignClass
       )}>
         {subtitle && (
@@ -176,9 +227,11 @@ export function HeroSection({
             {subtitle}
           </p>
         )}
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 text-foreground">
-          {displayTitle}
-        </h1>
+        {(title || fallbackName) && (
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 text-foreground">
+            {displayTitle}
+          </h1>
+        )}
         {description && (
           <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl leading-relaxed">
             {description}
