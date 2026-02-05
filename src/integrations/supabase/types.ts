@@ -1686,6 +1686,7 @@ export type Database = {
       extended_profiles: {
         Row: {
           brand_color: string | null
+          cover_settings: Json | null
           created_at: string | null
           hero_config: Json | null
           hero_type: string | null
@@ -1695,6 +1696,7 @@ export type Database = {
         }
         Insert: {
           brand_color?: string | null
+          cover_settings?: Json | null
           created_at?: string | null
           hero_config?: Json | null
           hero_type?: string | null
@@ -1704,6 +1706,7 @@ export type Database = {
         }
         Update: {
           brand_color?: string | null
+          cover_settings?: Json | null
           created_at?: string | null
           hero_config?: Json | null
           hero_type?: string | null

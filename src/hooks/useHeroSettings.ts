@@ -5,12 +5,19 @@ import { toast } from 'sonner';
 import { HeroType, HeroConfig } from '@/components/profile/HeroSection';
 import { Json } from '@/integrations/supabase/types';
 
+export interface CoverSettings {
+  height?: 'small' | 'medium' | 'large';
+  focalPointX?: number; // 0-100
+  focalPointY?: number; // 0-100
+}
+
 export interface HeroSettings {
   id?: string;
   user_id: string;
   hero_type: HeroType;
   hero_config: HeroConfig;
   brand_color: string | null;
+  cover_settings: CoverSettings;
   created_at?: string;
   updated_at?: string;
 }
@@ -39,6 +46,7 @@ export function useHeroSettings(userId?: string) {
           hero_type: 'standard' as HeroType,
           hero_config: {} as HeroConfig,
           brand_color: null,
+          cover_settings: { height: 'medium', focalPointX: 50, focalPointY: 50 } as CoverSettings,
         } as HeroSettings;
       }
       
@@ -46,6 +54,7 @@ export function useHeroSettings(userId?: string) {
         ...data,
         hero_type: (data.hero_type || 'standard') as HeroType,
         hero_config: (data.hero_config || {}) as HeroConfig,
+        cover_settings: (data.cover_settings || { height: 'medium', focalPointX: 50, focalPointY: 50 }) as CoverSettings,
       } as HeroSettings;
     },
     enabled: !!targetId,
@@ -57,14 +66,33 @@ export function useUpdateHeroSettings() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (updates: { hero_type?: string; hero_config?: HeroConfig; brand_color?: string | null }) => {
+    mutationFn: async (updates: { 
+      hero_type?: string; 
+      hero_config?: HeroConfig; 
+      brand_color?: string | null;
+      cover_settings?: CoverSettings;
+    }) => {
       if (!user) throw new Error('Not authenticated');
 
-      // Cast hero_config to Json for Supabase compatibility
-      const dbUpdates: { hero_type?: string; hero_config?: Json; brand_color?: string | null } = {
-        ...updates,
+      // Cast hero_config and cover_settings to Json for Supabase compatibility
+      const dbUpdates: { 
+        hero_type?: string; 
+        hero_config?: Json; 
+        brand_color?: string | null;
+        cover_settings?: Json;
+      } = {
+        hero_type: updates.hero_type,
         hero_config: updates.hero_config as unknown as Json,
+        brand_color: updates.brand_color,
+        cover_settings: updates.cover_settings as unknown as Json,
       };
+
+      // Remove undefined values
+      Object.keys(dbUpdates).forEach(key => {
+        if (dbUpdates[key as keyof typeof dbUpdates] === undefined) {
+          delete dbUpdates[key as keyof typeof dbUpdates];
+        }
+      });
 
       // Check if record exists
       const { data: existing } = await supabase
@@ -93,6 +121,7 @@ export function useUpdateHeroSettings() {
             hero_type: updates.hero_type || 'standard',
             hero_config: (updates.hero_config || {}) as unknown as Json,
             brand_color: updates.brand_color || null,
+            cover_settings: (updates.cover_settings || { height: 'medium', focalPointX: 50, focalPointY: 50 }) as unknown as Json,
           }])
           .select()
           .single();
@@ -103,7 +132,6 @@ export function useUpdateHeroSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hero-settings'] });
-      toast.success('Hero settings updated');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update profile');

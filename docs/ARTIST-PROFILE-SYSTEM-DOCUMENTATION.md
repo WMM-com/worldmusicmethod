@@ -87,19 +87,60 @@ style={{ '--brand-color': heroSettings.brand_color }}
 
 **Premium Feature:** Requires `profile_tier = 'premium'`
 
-### 3. Cover Image Settings
+### 3. Hero Section Templates
 
-**Component:** `src/components/profile/CoverImageSettings.tsx`
+**Components:** 
+- `src/components/profile/HeroSection.tsx` - Display component
+- `src/components/profile/HeroEditor.tsx` - Configuration dialog
+- `src/components/profile/HeroOverlayControls.tsx` - In-place editing controls
 
-Settings stored in `hero_settings` JSONB column:
+**Database Columns in `extended_profiles`:**
+- `hero_type` (TEXT) - Template type: 'standard', 'cut-out', 'minimal'
+- `hero_config` (JSONB) - Hero configuration
+- `brand_color` (TEXT) - Custom brand color hex
+- `cover_settings` (JSONB) - Cover image display settings
+
+#### Hero Types
+
+| Type | Description | Best For |
+|------|-------------|----------|
+| `standard` | Full background image with gradient overlay and text | Artists with strong photography |
+| `cut-out` | Transparent PNG person/logo over solid background | Personal branding, logos |
+| `minimal` | Solid color background with clean typography | Minimalist aesthetic |
+
+#### Hero Config Structure
+
+```typescript
+interface HeroConfig {
+  title?: string;           // Main heading (falls back to artist name)
+  subtitle?: string;        // Secondary text (e.g., "Musician • Producer")
+  description?: string;     // Bio paragraph
+  textAlign?: 'left' | 'center' | 'right';
+  backgroundColor?: string; // Hex color for background
+  backgroundImage?: string; // URL for background image (standard/cut-out)
+  cutoutImage?: string;     // URL for transparent PNG (cut-out only)
+}
+```
+
+#### Cover Settings Structure
 
 ```typescript
 interface CoverSettings {
-  height: 'small' | 'medium' | 'large';  // 200px, 300px, 400px
-  focalPointX: number;  // 0-100
-  focalPointY: number;  // 0-100
+  height?: 'small' | 'medium' | 'large';  // 192px, 256px, 320px
+  focalPointX?: number;  // 0-100 (horizontal focus)
+  focalPointY?: number;  // 0-100 (vertical focus)
 }
 ```
+
+#### Integration Flow
+
+1. **Standard Template as Default**: When no hero is configured, the system uses the standard template with the user's cover image (`extended_profiles.cover_image_url`).
+
+2. **Hero Overlay Controls**: When editing, controls appear in the top-right corner of the hero section:
+   - "Edit Hero" - Opens full hero configuration dialog
+   - "Cover Settings" - Quick access to height and focal point adjustments
+
+3. **Cover Image Fallback**: If `hero_config.backgroundImage` is not set, the system falls back to `extended_profiles.cover_image_url`.
 
 ### 4. Device Preview
 
@@ -126,8 +167,8 @@ Available profile sections in `profile_sections` table:
 | `social_feed` | `SocialFeedEmbed.tsx` | Social media feed |
 | `digital_products` | `DigitalProductsSection.tsx` | Product sales |
 | `donation` | `DonationBlock.tsx` | Tip jar |
-| `text` | `TextBlock.tsx` | Custom text |
-| `audio` | `AudioBlock.tsx` | Audio player |
+| `text_block` | `TextBlock.tsx` | Custom text |
+| `audio_player` | `AudioBlock.tsx` | Audio player |
 | `custom_tabs` | `CustomTabsSection.tsx` | Tabbed content |
 
 ---
