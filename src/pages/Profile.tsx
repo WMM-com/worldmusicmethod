@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -55,7 +55,7 @@ import {
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
   Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code,
-  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, Palette, CreditCard, Gift
+  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, Palette, CreditCard
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -87,8 +87,6 @@ const SIDEBAR_SECTION_TYPES = [
 
 // Main content sections
 const MAIN_SECTION_TYPES = [
-  { type: 'bio', label: 'About / Bio', icon: User },
-  { type: 'referral', label: 'Invite Friends', icon: Gift },
   { type: 'text_block', label: 'Text Block', icon: FileText },
   { type: 'gallery', label: 'Gallery', icon: Image },
   { type: 'projects', label: 'Projects', icon: Layout },
@@ -242,19 +240,7 @@ export default function Profile() {
       return;
     }
     
-    // Prevent duplicate bio/referral sections
-    if (sectionType === 'bio' && sections?.some(s => s.section_type === 'bio')) {
-      toast.error('Bio section already exists');
-      return;
-    }
-    if (sectionType === 'referral' && sections?.some(s => s.section_type === 'referral')) {
-      toast.error('Invite Friends section already exists');
-      return;
-    }
-    
     const sectionLabels: Record<string, string> = {
-      bio: 'About',
-      referral: 'Invite Friends',
       spotify: 'Music',
       youtube: 'Videos',
       soundcloud: 'SoundCloud',
@@ -325,47 +311,12 @@ export default function Profile() {
   
   // Categorize sections for layout
   const mainSections = sortedSections.filter(s => 
-    ['bio', 'referral', 'gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
+    ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
   );
   
   const sidebarSections = sortedSections.filter(s => 
     ['youtube', 'spotify', 'soundcloud', 'events', 'generic'].includes(s.section_type)
   );
-  
-  // Check if default sections exist (bio, referral)
-  const hasBioSection = sortedSections.some(s => s.section_type === 'bio');
-  const hasReferralSection = sortedSections.some(s => s.section_type === 'referral');
-  
-  // Auto-create default sections (bio, referral) for own profile if they don't exist
-  const [defaultSectionsCreated, setDefaultSectionsCreated] = useState(false);
-  
-  useEffect(() => {
-    if (!isOwnProfile || sectionsLoading || defaultSectionsCreated) return;
-    if (sections === undefined) return; // Wait for sections to load
-    
-    const createDefaultSections = async () => {
-      const sectionsToCreate: { type: string; title: string; order: number }[] = [];
-      
-      if (!hasBioSection) {
-        sectionsToCreate.push({ type: 'bio', title: 'About', order: 0 });
-      }
-      if (!hasReferralSection) {
-        sectionsToCreate.push({ type: 'referral', title: 'Invite Friends', order: 1 });
-      }
-      
-      if (sectionsToCreate.length > 0) {
-        for (const section of sectionsToCreate) {
-          await createSection.mutateAsync({
-            section_type: section.type,
-            title: section.title,
-          });
-        }
-      }
-      setDefaultSectionsCreated(true);
-    };
-    
-    createDefaultSections();
-  }, [isOwnProfile, sectionsLoading, sections, hasBioSection, hasReferralSection, defaultSectionsCreated, createSection]);
 
   const renderSection = (section: any, isSidebar = false) => {
     const props = {
@@ -376,12 +327,6 @@ export default function Profile() {
     };
 
     switch (section.section_type) {
-      case 'bio':
-        return extendedProfile ? (
-          <BioSection key={section.id} profile={extendedProfile} isEditing={isEditing} />
-        ) : null;
-      case 'referral':
-        return isOwnProfile ? <ReferralSection key={section.id} /> : null;
       case 'spotify':
         return <SpotifyEmbed key={section.id} {...props} />;
       case 'youtube':
@@ -793,23 +738,18 @@ export default function Profile() {
                           {MAIN_SECTION_TYPES.map(({ type, label, icon: Icon }) => {
                             const isPremiumOnly = PREMIUM_SECTION_TYPES.includes(type);
                             const isLimited = ['gallery', 'projects', 'custom_tabs'].includes(type) && !canAddMoreSections(customSectionCount);
-                            // Hide bio/referral if they already exist
-                            const alreadyExists = (type === 'bio' && hasBioSection) || (type === 'referral' && hasReferralSection);
-                            if (alreadyExists) return null;
-                            
                             return (
-                              <DropdownMenuItem 
-                                key={type} 
-                                onClick={() => handleAddSection(type)}
-                                className={isPremiumOnly && !isPremium ? 'text-muted-foreground' : ''}
-                              >
-                                <Icon className="h-4 w-4 mr-2" />
-                                {label}
-                                {(isPremiumOnly && !isPremium) && <Crown className="h-3 w-3 ml-auto text-primary" />}
-                                {isLimited && <Crown className="h-3 w-3 ml-auto text-primary" />}
-                              </DropdownMenuItem>
-                            );
-                          })}
+                            <DropdownMenuItem 
+                              key={type} 
+                              onClick={() => handleAddSection(type)}
+                              className={isPremiumOnly && !isPremium ? 'text-muted-foreground' : ''}
+                            >
+                              <Icon className="h-4 w-4 mr-2" />
+                              {label}
+                              {(isPremiumOnly && !isPremium) && <Crown className="h-3 w-3 ml-auto text-primary" />}
+                              {isLimited && <Crown className="h-3 w-3 ml-auto text-primary" />}
+                            </DropdownMenuItem>
+                          )})}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       
@@ -907,18 +847,16 @@ export default function Profile() {
               {/* About Tab */}
               <TabsContent value="about">
                 <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Left Column - Main Content (fixed max-width like posts) */}
+                  {/* Left Column - Bio (fixed max-width like posts) */}
                   <div className="w-full lg:max-w-2xl space-y-6">
-                    {/* Show loading state while default sections are being created */}
-                    {isOwnProfile && !sectionsLoading && sections !== undefined && !hasBioSection && !hasReferralSection && !defaultSectionsCreated && (
-                      <Card>
-                        <CardContent className="py-6 text-center">
-                          <p className="text-muted-foreground">Setting up your profile...</p>
-                        </CardContent>
-                      </Card>
+                    {extendedProfile && (
+                      <BioSection profile={extendedProfile} isEditing={isEditing} />
                     )}
                     
-                    {/* Main Content Sections (Bio, Referral, Digital Products, Gallery, Projects, etc.) */}
+                    {/* Referral Section - only show on own profile */}
+                    {isOwnProfile && <ReferralSection />}
+                    
+                    {/* Main Content Sections (Digital Products, Gallery, Projects, etc.) */}
                     {isEditing && isOwnProfile ? (
                       <DndContext
                         sensors={sensors}
