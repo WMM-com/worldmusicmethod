@@ -185,3 +185,12 @@ verify_jwt = false
 
 [functions.paypal-connect]
 verify_jwt = false
+
+[functions.create-digital-product-stripe-checkout]
+verify_jwt = false
+
+[functions.create-digital-product-flutterwave-payment]
+verify_jwt = false
+
+[functions.create-digital-product-paypal-order]
+verify_jwt = false

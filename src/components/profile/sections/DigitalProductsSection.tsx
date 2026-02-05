@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { useDigitalProducts, useDeleteDigitalProduct, DigitalProduct } from '@/hooks/useDigitalProducts';
 import { ProductUpload } from './ProductUpload';
 import { ProductCard } from './ProductCard';
+import { BuyProductModal } from './BuyProductModal';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { Plus, ShoppingBag, Trash2, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,12 +32,14 @@ export function DigitalProductsSection({
   onDelete 
 }: DigitalProductsSectionProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [buyModalOpen, setBuyModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
   const { data: products, isLoading } = useDigitalProducts(userId);
   const deleteProduct = useDeleteDigitalProduct();
 
-  const handlePurchase = async (product: DigitalProduct, amount: number) => {
-    // TODO: Integrate with payment flow
-    toast.info(`Purchase flow for "${product.title}" at ${amount} ${product.currency}`);
+  const handlePurchase = (product: DigitalProduct) => {
+    setSelectedProduct(product);
+    setBuyModalOpen(true);
   };
 
   const handleDeleteProduct = async (productId: string) => {
@@ -118,7 +121,7 @@ export function DigitalProductsSection({
                 )}
                 <ProductCard 
                   product={product} 
-                  onPurchase={handlePurchase}
+                  onPurchase={() => handlePurchase(product)}
                 />
               </div>
             ))}
@@ -140,6 +143,19 @@ export function DigitalProductsSection({
           </div>
         )}
       </CardContent>
+
+      {/* Buy Product Modal */}
+      {selectedProduct && (
+        <BuyProductModal
+          open={buyModalOpen}
+          onClose={() => {
+            setBuyModalOpen(false);
+            setSelectedProduct(null);
+          }}
+          product={selectedProduct}
+          sellerId={userId}
+        />
+      )}
     </Card>
   );
 }
