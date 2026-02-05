@@ -62,14 +62,20 @@ export function ProfileNav({
   }, [currentSlug, visiblePages, isOnProfileRoute]);
 
   const handlePageClick = (page: any) => {
-    onPageNavigate?.();
-
     // On /profile (own profile management), keep navigation inside /profile
     if (isOnProfileRoute) {
+      onPageNavigate?.();
+      
+      // Update URL based on whether it's home or custom page
       if (page.is_home) {
-        navigate('/profile');
+        navigate('/profile', { replace: false });
       } else {
-        navigate(`/profile/pages/${page.slug}`);
+        navigate(`/profile/pages/${page.slug}`, { replace: false });
+      }
+      
+      // Always set to "page" tab when navigating custom pages in edit mode
+      if (!page.is_home) {
+        onTabChange?.('page');
       }
       return;
     }

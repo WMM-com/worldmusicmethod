@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -20,7 +20,7 @@ import {
   useProfileGallery,
   ProfileSection
 } from '@/hooks/useProfilePortfolio';
-import { useProfilePages } from '@/hooks/useProfilePages';
+import { useProfilePages, useEnsureHomePage } from '@/hooks/useProfilePages';
 import { useHeroSettings, useUpdateHeroSettings, CoverSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
@@ -137,6 +137,7 @@ export default function Profile() {
   const updateSection = useUpdateSection();
   const deleteSection = useDeleteSection();
   const reorderSections = useReorderSections();
+  const ensureHomePage = useEnsureHomePage();
 
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState(() => (isOwnProfileManageRoute ? 'page' : 'about'));
@@ -147,6 +148,13 @@ export default function Profile() {
   // cropType removed - only avatar uses cropper now
   const fileInputRef = useRef<HTMLInputElement>(null);
   // coverInputRef removed - cover upload now handled by HeroOverlayControls
+
+  // Ensure home page exists when entering profile management
+  useEffect(() => {
+    if (isOwnProfileManageRoute && pages.length === 0) {
+      ensureHomePage.mutate();
+    }
+  }, [isOwnProfileManageRoute, pages.length, ensureHomePage]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -407,8 +415,8 @@ export default function Profile() {
     );
   }
 
-  // Show 404 for invalid page slug
-  if (isInvalidSlug) {
+  // Show 404 for invalid page slug (but not in edit mode - default to home)
+  if (isInvalidSlug && !isOwnProfile) {
     return (
       <>
         <SiteHeader className="header-non-sticky" />
@@ -1225,7 +1233,143 @@ export default function Profile() {
                     </Card>
                   )}
                 </div>
-              </TabsContent>
+               </TabsContent>
+
+              {/* Page Tab - for edit mode custom pages */}
+              {showMultiPageFeatures && currentPage && (
+                <TabsContent value="page">
+                  <div className="flex flex-col lg:flex-row gap-6">
+                    {/* Left Column - Main content sections */}
+                    <div className="w-full lg:max-w-2xl space-y-6">
+                      {mainSections.length === 0 && (
+                        <div className="col-span-full py-12 text-center text-muted-foreground">
+                          <p className="mb-4">This page is empty.</p>
+                          {isOwnProfile && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setIsEditing(true)}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Content
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {isEditing && isOwnProfile ? (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={mainSections.map(s => s.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="grid grid-cols-12 gap-4">
+                              {mainSections.map((section, index) => (
+                                <SortableSection
+                                  key={section.id}
+                                  id={section.id}
+                                  layout={section.layout}
+                                  isEditing={isEditing}
+                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                  onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
+                                  onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
+                                  isFirst={index === 0}
+                                  isLast={index === mainSections.length - 1}
+                                >
+                                  {renderSection(section, false)}
+                                </SortableSection>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      ) : (
+                        <div className="grid grid-cols-12 gap-4">
+                          {mainSections.map(section => (
+                            <div key={section.id} className={getLayoutClass(section.layout)}>
+                              {renderSection(section, false)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Mobile: Show sidebar sections here */}
+                      <div className="lg:hidden space-y-6">
+                        {isEditing && isOwnProfile ? (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext
+                              items={sidebarSections.map(s => s.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="space-y-6">
+                                {sidebarSections.map((section, index) => (
+                                  <SortableSection
+                                    key={section.id}
+                                    id={section.id}
+                                    layout={section.layout}
+                                    isEditing={isEditing}
+                                    onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                    onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                    onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                    isFirst={index === 0}
+                                    isLast={index === sidebarSections.length - 1}
+                                  >
+                                    {renderSection(section, true)}
+                                  </SortableSection>
+                                ))}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        ) : (
+                          sidebarSections.map(section => renderSection(section, true))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right Column - Sidebar content */}
+                    <div className="hidden lg:block flex-1 space-y-6">
+                      {isEditing && isOwnProfile ? (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={sidebarSections.map(s => s.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-6">
+                              {sidebarSections.map((section, index) => (
+                                <SortableSection
+                                  key={section.id}
+                                  id={section.id}
+                                  layout={section.layout}
+                                  isEditing={isEditing}
+                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                  onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                  onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                  isFirst={index === 0}
+                                  isLast={index === sidebarSections.length - 1}
+                                >
+                                  {renderSection(section, true)}
+                                </SortableSection>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      ) : (
+                        sidebarSections.map(section => renderSection(section, true))
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>
