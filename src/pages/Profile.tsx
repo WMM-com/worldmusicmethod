@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -335,6 +335,37 @@ export default function Profile() {
   // Check if default sections exist (bio, referral)
   const hasBioSection = sortedSections.some(s => s.section_type === 'bio');
   const hasReferralSection = sortedSections.some(s => s.section_type === 'referral');
+  
+  // Auto-create default sections (bio, referral) for own profile if they don't exist
+  const [defaultSectionsCreated, setDefaultSectionsCreated] = useState(false);
+  
+  useEffect(() => {
+    if (!isOwnProfile || sectionsLoading || defaultSectionsCreated) return;
+    if (sections === undefined) return; // Wait for sections to load
+    
+    const createDefaultSections = async () => {
+      const sectionsToCreate: { type: string; title: string; order: number }[] = [];
+      
+      if (!hasBioSection) {
+        sectionsToCreate.push({ type: 'bio', title: 'About', order: 0 });
+      }
+      if (!hasReferralSection) {
+        sectionsToCreate.push({ type: 'referral', title: 'Invite Friends', order: 1 });
+      }
+      
+      if (sectionsToCreate.length > 0) {
+        for (const section of sectionsToCreate) {
+          await createSection.mutateAsync({
+            section_type: section.type,
+            title: section.title,
+          });
+        }
+      }
+      setDefaultSectionsCreated(true);
+    };
+    
+    createDefaultSections();
+  }, [isOwnProfile, sectionsLoading, sections, hasBioSection, hasReferralSection, defaultSectionsCreated, createSection]);
 
   const renderSection = (section: any, isSidebar = false) => {
     const props = {
@@ -878,19 +909,11 @@ export default function Profile() {
                 <div className="flex flex-col lg:flex-row gap-6">
                   {/* Left Column - Main Content (fixed max-width like posts) */}
                   <div className="w-full lg:max-w-2xl space-y-6">
-                    {/* Show prompt to add default sections if none exist */}
-                    {isEditing && isOwnProfile && !hasBioSection && !hasReferralSection && mainSections.length === 0 && (
-                      <Card className="border-dashed">
-                        <CardContent className="py-8 text-center">
-                          <p className="text-muted-foreground mb-4">Start building your profile by adding sections</p>
-                          <div className="flex flex-wrap gap-2 justify-center">
-                            <Button variant="outline" size="sm" onClick={() => handleAddSection('bio')}>
-                              <User className="h-4 w-4 mr-2" /> Add About
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleAddSection('referral')}>
-                              <Gift className="h-4 w-4 mr-2" /> Add Invite Friends
-                            </Button>
-                          </div>
+                    {/* Show loading state while default sections are being created */}
+                    {isOwnProfile && !sectionsLoading && sections !== undefined && !hasBioSection && !hasReferralSection && !defaultSectionsCreated && (
+                      <Card>
+                        <CardContent className="py-6 text-center">
+                          <p className="text-muted-foreground">Setting up your profile...</p>
                         </CardContent>
                       </Card>
                     )}
