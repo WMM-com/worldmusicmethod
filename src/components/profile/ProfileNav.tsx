@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useProfilePages } from '@/hooks/useProfilePages';
 import { useExtendedProfile } from '@/hooks/useProfilePortfolio';
 import { cn } from '@/lib/utils';
@@ -36,7 +36,6 @@ export function ProfileNav({
 }: ProfileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { slug: currentSlug } = useParams<{ slug?: string }>();
   const { data: profile } = useExtendedProfile(userId);
   const { data: pages = [] } = useProfilePages(userId);
 
@@ -47,6 +46,20 @@ export function ProfileNav({
   // Check if we're on /profile route (own profile management)
   const isOnProfileRoute = location.pathname === '/profile' || location.pathname.startsWith('/profile/pages');
 
+  // Extract slug directly from pathname for more reliable detection
+  const currentSlug = useMemo(() => {
+    // For /profile/pages/:slug routes
+    const pagesMatch = location.pathname.match(/\/profile\/pages\/([^/]+)/);
+    if (pagesMatch) return pagesMatch[1];
+    
+    // For /@username/:slug routes
+    const usernameMatch = location.pathname.match(/\/@[^/]+\/([^/]+)/);
+    if (usernameMatch) return usernameMatch[1];
+    
+    // No slug means home page
+    return null;
+  }, [location.pathname]);
+
   // Filter to only visible pages (unless editing own profile)
   const visiblePages = useMemo(() => {
     const sorted = [...pages].sort((a, b) => a.order_index - b.order_index);
@@ -54,21 +67,13 @@ export function ProfileNav({
     return sorted.filter(p => p.is_visible);
   }, [pages, isOwnProfile]);
 
-  // Determine active page
+  // Determine active page based on current URL
   const activePage = useMemo(() => {
-    // On /profile route, default to home page
-    if (isOnProfileRoute) {
-      if (!currentSlug || currentSlug === 'home') {
-        return visiblePages.find(p => p.is_home);
-      }
-      return visiblePages.find(p => p.slug === currentSlug);
-    }
-    // On /@username routes
     if (!currentSlug || currentSlug === 'home') {
-      return visiblePages.find(p => p.is_home);
+      return visiblePages.find(p => p.is_home) || null;
     }
-    return visiblePages.find(p => p.slug === currentSlug);
-  }, [currentSlug, visiblePages, isOnProfileRoute]);
+    return visiblePages.find(p => p.slug === currentSlug) || null;
+  }, [currentSlug, visiblePages]);
 
   // Execute navigation after user confirms
   const executeNavigation = (navAction: { type: 'page' | 'tab'; target: any }) => {
