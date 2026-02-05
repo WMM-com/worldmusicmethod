@@ -251,8 +251,8 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
               </div>
             </div>
 
-            {/* Background Image (for standard & cut-out) */}
-            {(selectedType === 'standard' || selectedType === 'cut-out') && (
+            {/* Background Image (for standard only) */}
+            {selectedType === 'standard' && (
               <div className="space-y-3">
                 <Label>Background Image</Label>
                 {config.backgroundImage ? (
