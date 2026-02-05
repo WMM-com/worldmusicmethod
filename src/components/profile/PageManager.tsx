@@ -368,15 +368,7 @@ export function PageManager({ userId, onManageSections }: PageManagerProps) {
             </SortableContext>
           </DndContext>
         )}
-
-        {/* Unassigned sections notice */}
-        {(sectionCounts.unassigned || 0) > 0 && (
-          <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-dashed">
-            <p className="text-sm text-muted-foreground">
-              <strong>{sectionCounts.unassigned}</strong> section{sectionCounts.unassigned !== 1 ? 's' : ''} not assigned to any page
-            </p>
-          </div>
-        )}
+        {/* Removed unassigned sections notice - sections with null page_id are hidden until assigned */}
       </CardContent>
 
       {/* Edit Page Dialog */}

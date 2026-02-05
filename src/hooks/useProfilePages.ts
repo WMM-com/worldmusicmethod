@@ -199,7 +199,7 @@ export function useReorderPages() {
   });
 }
 
-// Get section count per page
+// Get section count per page (only counts sections assigned to pages)
 export function usePageSectionCounts(userId?: string) {
   const { user } = useAuth();
   const targetId = userId || user?.id;
@@ -209,20 +209,20 @@ export function usePageSectionCounts(userId?: string) {
     queryFn: async () => {
       if (!targetId) return {};
 
+      // Only count sections that have a page_id assigned
       const { data, error } = await supabase
         .from('profile_sections')
         .select('page_id')
-        .eq('user_id', targetId);
+        .eq('user_id', targetId)
+        .not('page_id', 'is', null);
 
       if (error) throw error;
 
-      // Count sections per page
-      const counts: Record<string, number> = { unassigned: 0 };
+      // Count sections per page (no unassigned tracking)
+      const counts: Record<string, number> = {};
       for (const section of data || []) {
         if (section.page_id) {
           counts[section.page_id] = (counts[section.page_id] || 0) + 1;
-        } else {
-          counts.unassigned += 1;
         }
       }
       return counts;
