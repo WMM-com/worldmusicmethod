@@ -26,6 +26,7 @@ import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
 import { HeroOverlayControls } from '@/components/profile/HeroOverlayControls';
 import { ProfileNav } from '@/components/profile/ProfileNav';
+import { PageManager } from '@/components/profile/PageManager';
 // CoverImageUploader removed - cover upload now handled by HeroOverlayControls
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
@@ -292,14 +293,21 @@ export default function Profile() {
   // Normalize slug: treat 'home' the same as no slug (show home page)
   const normalizedSlug = (!slug || slug === 'home') ? null : slug;
   
+  // Show multi-page features on profile route OR own profile on /profile
+  const showMultiPageFeatures = isProfileRoute || isOwnProfile;
+  
   // Find the current page based on slug
   const currentPage = useMemo(() => {
-    if (!isProfileRoute || pages.length === 0) return null;
-    if (normalizedSlug) {
-      return pages.find(p => p.slug === normalizedSlug) || null;
+    if (pages.length === 0) return null;
+    // On public profile route or own profile, find the current page
+    if (showMultiPageFeatures) {
+      if (normalizedSlug) {
+        return pages.find(p => p.slug === normalizedSlug) || null;
+      }
+      return pages.find(p => p.is_home) || null;
     }
-    return pages.find(p => p.is_home) || null;
-  }, [isProfileRoute, pages, normalizedSlug]);
+    return null;
+  }, [showMultiPageFeatures, pages, normalizedSlug]);
   
   // Check if we have an invalid slug (slug provided but page not found)
   const isInvalidSlug = isProfileRoute && normalizedSlug && pages.length > 0 && !currentPage;
@@ -308,13 +316,13 @@ export default function Profile() {
   const sortedSections = useMemo(() => {
     let filtered = [...(sections || [])].sort((a, b) => a.order_index - b.order_index);
     
-    // If on a profile page route, filter by page_id
-    if (isProfileRoute && currentPage) {
+    // If on a profile page route or own profile, filter by page_id
+    if (showMultiPageFeatures && currentPage) {
       filtered = filtered.filter(s => s.page_id === currentPage.id);
     }
     
     return filtered;
-  }, [sections, isProfileRoute, currentPage]);
+  }, [sections, showMultiPageFeatures, currentPage]);
   const mainSections = sortedSections.filter(s => 
     ['gallery', 'projects', 'custom_tabs', 'social_feed', 'digital_products', 'text_block', 'donation', 'audio_player'].includes(s.section_type)
   );
@@ -424,7 +432,7 @@ export default function Profile() {
     <>
       <Helmet>
         <title>
-          {isProfileRoute && currentPage
+          {showMultiPageFeatures && currentPage
             ? `${profile?.full_name || 'Artist'} – ${currentPage.title}`
             : profile?.full_name || 'Profile'}
         </title>
@@ -513,6 +521,15 @@ export default function Profile() {
             />
           )}
         </div>
+
+        {/* Multi-page Navigation - show on profile route or own profile with pages */}
+        {showMultiPageFeatures && pages.length > 0 && (
+          <ProfileNav 
+            userId={profileId!} 
+            brandColor={heroSettings?.brand_color}
+            isOwnProfile={isOwnProfile}
+          />
+        )}
 
         <div className="max-w-6xl mx-auto px-4">
           {/* Profile Header Card - overlapping cover */}
@@ -839,6 +856,16 @@ export default function Profile() {
                         </Button>
                       </PremiumGate>
                     </div>
+                    
+                    {/* Page Manager - for creating/managing website pages */}
+                    <div className="mt-6">
+                      <PageManager 
+                        userId={profileId!} 
+                        onManageSections={(pageId, pageTitle) => {
+                          toast.info(`Managing sections for: ${pageTitle}`);
+                        }}
+                      />
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -886,7 +913,7 @@ export default function Profile() {
                     {isOwnProfile && <ReferralSection />}
                     
                     {/* Main Content Sections - 12-column grid for flexible layouts */}
-                    {mainSections.length === 0 && isProfileRoute ? (
+                    {mainSections.length === 0 && showMultiPageFeatures ? (
                       <div className="col-span-full py-12 text-center text-muted-foreground">
                         <p className="mb-4">This page is empty.</p>
                         {isOwnProfile && (
