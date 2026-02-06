@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useProfilePages } from '@/hooks/useProfilePages';
 import { useExtendedProfile } from '@/hooks/useProfilePortfolio';
 import { cn } from '@/lib/utils';
-import { Home, User, FileText, Image } from 'lucide-react';
+import { Home, FileText, Image } from 'lucide-react';
 
 interface ProfileNavProps {
   userId: string;
@@ -14,9 +14,8 @@ interface ProfileNavProps {
   onPageNavigate?: () => void;
 }
 
-// Built-in profile tabs
+// Built-in profile tabs (About is now a page, not a tab)
 const BUILT_IN_TABS = [
-  { id: 'about', label: 'About', icon: User },
   { id: 'posts', label: 'Posts', icon: FileText },
   { id: 'media', label: 'Media', icon: Image },
 ];

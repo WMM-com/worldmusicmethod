@@ -300,9 +300,14 @@ export function PageManager({ userId, onManageSections }: PageManagerProps) {
         
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
+            <Button 
+              size="sm" 
+              variant="outline"
+              disabled={pages.length >= 5}
+              title={pages.length >= 5 ? 'Maximum 5 pages allowed' : 'Add a new page'}
+            >
               <Plus className="h-4 w-4 mr-1" />
-              Add Page
+              Add Page {pages.length >= 5 && '(Max 5)'}
             </Button>
           </DialogTrigger>
           <DialogContent>

@@ -38,7 +38,7 @@ export function useProfilePages(userId?: string) {
   });
 }
 
-// Ensure default home page exists
+// Ensure default home page and about page exist
 export function useEnsureHomePage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -47,12 +47,35 @@ export function useEnsureHomePage() {
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
 
-      // Call the database function directly
+      // Call the database function to ensure home page
       const { data, error } = await supabase.rpc('ensure_default_home_page', {
         p_user_id: user.id,
       });
 
       if (error) throw error;
+      
+      // Also check if "About" page exists, if not create it
+      const { data: existingPages } = await supabase
+        .from('profile_pages')
+        .select('slug')
+        .eq('user_id', user.id);
+      
+      const hasAboutPage = existingPages?.some(p => p.slug === 'about');
+      
+      if (!hasAboutPage) {
+        // Create About page
+        await supabase
+          .from('profile_pages')
+          .insert({
+            user_id: user.id,
+            title: 'About',
+            slug: 'about',
+            order_index: 1,
+            is_home: false,
+            is_visible: true,
+          });
+      }
+      
       return data;
     },
     onSuccess: () => {
