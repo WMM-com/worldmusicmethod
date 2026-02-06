@@ -20,7 +20,7 @@ import {
   useProfileGallery,
   ProfileSection
 } from '@/hooks/useProfilePortfolio';
-import { useProfilePages, useEnsureHomePage } from '@/hooks/useProfilePages';
+import { useProfilePages, useEnsureHomePage, useUpdatePage } from '@/hooks/useProfilePages';
 import { useHeroSettings, useUpdateHeroSettings, CoverSettings } from '@/hooks/useHeroSettings';
 import { HeroSection } from '@/components/profile/HeroSection';
 import { HeroEditor } from '@/components/profile/HeroEditor';
@@ -171,6 +171,7 @@ export default function Profile(
   const deleteSection = useDeleteSection();
   const reorderSections = useReorderSections();
   const ensureHomePage = useEnsureHomePage();
+  const updatePage = useUpdatePage();
 
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('page');
@@ -884,22 +885,55 @@ export default function Profile(
                         </DropdownMenuContent>
                       </DropdownMenu>
                       
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <Button variant="outline" size="sm">
                             <Plus className="h-4 w-4 mr-2" />
                             Add Sidebar Embed
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {SIDEBAR_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
-                            <DropdownMenuItem key={type} onClick={() => handleAddSection(type, currentPage?.id)}>
-                              <Icon className="h-4 w-4 mr-2" />
-                              {label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64" align="start">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="sidebar-toggle" className="text-sm font-medium">Enable Sidebar</Label>
+                              <Switch
+                                id="sidebar-toggle"
+                                checked={currentPage?.sidebar_enabled ?? false}
+                                onCheckedChange={async (checked) => {
+                                  if (currentPage) {
+                                    await updatePage.mutateAsync({ id: currentPage.id, sidebar_enabled: checked });
+                                    toast.success(checked ? 'Sidebar enabled' : 'Sidebar disabled — content is now full width');
+                                  }
+                                }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {currentPage?.sidebar_enabled 
+                                ? 'A right sidebar is shown on this page. Add embeds below.'
+                                : 'Enable to add a sidebar with embeds on this page.'}
+                            </p>
+                            {currentPage?.sidebar_enabled && (
+                              <>
+                                <div className="border-t border-border my-1" />
+                                <div className="space-y-1">
+                                  {SIDEBAR_SECTION_TYPES.map(({ type, label, icon: Icon }) => (
+                                    <Button
+                                      key={type}
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full justify-start gap-2"
+                                      onClick={() => handleAddSection(type, currentPage?.id)}
+                                    >
+                                      <Icon className="h-4 w-4" />
+                                      {label}
+                                    </Button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1105,9 +1139,9 @@ export default function Profile(
             {/* Page Tab - for custom pages content */}
             {showMultiPageFeatures && (
               <div className={activeTab === 'page' ? '' : 'hidden'}>
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Left Column - Main content sections */}
-                  <div className="w-full lg:max-w-2xl space-y-6">
+                <div className={`flex flex-col ${currentPage?.sidebar_enabled ? 'lg:flex-row' : ''} gap-6`}>
+                  {/* Main content sections - full width when sidebar disabled */}
+                  <div className={`w-full ${currentPage?.sidebar_enabled ? 'lg:max-w-2xl' : ''} space-y-6`}>
                     {mainSections.length === 0 ? (
                       <div className="py-12 text-center text-muted-foreground">
                         <p className="mb-4">This page is empty.</p>
@@ -1176,19 +1210,20 @@ export default function Profile(
                       </div>
                     )}
 
-                    {/* Mobile: Show sidebar sections here */}
-                    <div className="lg:hidden space-y-6">
-                      {isEditing && isOwnProfile ? (
-                        <DndContext
-                          sensors={sensors}
-                          collisionDetection={closestCenter}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <SortableContext
-                            items={sidebarSections.map(s => s.id)}
-                            strategy={verticalListSortingStrategy}
+                    {/* Mobile: Show sidebar sections below main content (only when sidebar enabled) */}
+                    {currentPage?.sidebar_enabled && (
+                      <div className="lg:hidden space-y-6">
+                        {isEditing && isOwnProfile ? (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
                           >
-                            <div className="space-y-6">
+                            <SortableContext
+                              items={sidebarSections.map(s => s.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className="space-y-6">
                                 {sidebarSections.map((section, index) => (
                                   <SortableSection
                                     key={section.id}
@@ -1205,6 +1240,46 @@ export default function Profile(
                                     {renderSection(section, true)}
                                   </SortableSection>
                                 ))}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        ) : (
+                          sidebarSections.map(section => renderSection(section, true))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column - Sidebar content (only when enabled for this page) */}
+                  {currentPage?.sidebar_enabled && (
+                    <div className="hidden lg:block flex-1 space-y-6">
+                      {isEditing && isOwnProfile ? (
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={sidebarSections.map(s => s.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-6">
+                              {sidebarSections.map((section, index) => (
+                                <SortableSection
+                                  key={section.id}
+                                  id={section.id}
+                                  layout={section.layout}
+                                  isEditing={isEditing}
+                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                  onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                  onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                  onDelete={() => handleDeleteSection(section.id)}
+                                  isFirst={index === 0}
+                                  isLast={index === sidebarSections.length - 1}
+                                >
+                                  {renderSection(section, true)}
+                                </SortableSection>
+                              ))}
                             </div>
                           </SortableContext>
                         </DndContext>
@@ -1212,44 +1287,7 @@ export default function Profile(
                         sidebarSections.map(section => renderSection(section, true))
                       )}
                     </div>
-                  </div>
-
-                  {/* Right Column - Sidebar content */}
-                  <div className="hidden lg:block flex-1 space-y-6">
-                    {isEditing && isOwnProfile ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={sidebarSections.map(s => s.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-6">
-                            {sidebarSections.map((section, index) => (
-                              <SortableSection
-                                key={section.id}
-                                id={section.id}
-                                layout={section.layout}
-                                isEditing={isEditing}
-                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
-                                onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
-                                onDelete={() => handleDeleteSection(section.id)}
-                                isFirst={index === 0}
-                                isLast={index === sidebarSections.length - 1}
-                              >
-                                {renderSection(section, true)}
-                              </SortableSection>
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    ) : (
-                      sidebarSections.map(section => renderSection(section, true))
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             )}

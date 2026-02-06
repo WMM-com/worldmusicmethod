@@ -11,6 +11,7 @@ export interface ProfilePage {
   order_index: number;
   is_home: boolean;
   is_visible: boolean;
+  sidebar_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
