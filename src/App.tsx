@@ -140,8 +140,7 @@ function AppContent() {
         <Route path="/community" element={<Social />} />
         <Route path="/community/groups/:groupId" element={<GroupDetail />} />
 
-        {/* Profiles: public profiles at /profile/:userId, own profile at /profile (requires login) */}
-        {/* Multi-page profiles at /@username and /@username/:slug */}
+        {/* Profiles: clean URLs at /username and /username/:slug, legacy /@username redirects to /username */}
         <Route path="/:handle" element={<AtProfile />} />
         <Route path="/:handle/:slug" element={<AtProfile />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

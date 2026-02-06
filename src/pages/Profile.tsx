@@ -132,7 +132,8 @@ export default function Profile(
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isProfileRoute = location.pathname.startsWith('/@');
+  // Profile route detection: /@username (legacy) or /username (clean URL) resolved through AtProfile
+  const isProfileRoute = !!routeUserId;
   const isProfileManageRoute =
     location.pathname === '/profile' || location.pathname.startsWith('/profile/pages');
   
@@ -539,7 +540,7 @@ export default function Profile(
               This page doesn't exist on {profile?.full_name || 'this profile'}.
             </p>
             <Button
-              onClick={() => navigate(`/@${extendedProfile?.username || userId}`)}
+              onClick={() => navigate(`/${extendedProfile?.username || userId}`)}
               variant="outline"
             >
               Go to Home
@@ -561,6 +562,12 @@ export default function Profile(
             ? `${profile?.full_name || 'Artist'} – ${currentPage.title}`
             : profile?.full_name || 'Profile'}
         </title>
+        {isProfileRoute && extendedProfile?.username && (
+          <link 
+            rel="canonical" 
+            href={`https://worldmusicmethod.lovable.app/${extendedProfile.username}${normalizedSlug ? `/${normalizedSlug}` : ''}`} 
+          />
+        )}
       </Helmet>
       <SiteHeader nonSticky />
       <div 

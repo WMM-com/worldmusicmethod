@@ -36,6 +36,8 @@ export function ProfileNav({
 
   // Check if we're on /profile route (own profile management)
   const isOnProfileRoute = location.pathname === '/profile' || location.pathname.startsWith('/profile/pages');
+  // Check if we're on a public profile route (not /profile management)
+  const isOnPublicProfileRoute = !isOnProfileRoute;
 
   // Filter to only visible pages (unless editing own profile)
   const visiblePages = useMemo(() => {
@@ -75,12 +77,12 @@ export function ProfileNav({
       return;
     }
 
-    // Public profile navigation at /@username
+    // Public profile navigation at /username (clean URLs)
     const username = profile?.username || userId;
     if (page.is_home) {
-      navigate(`/@${username}`);
+      navigate(`/${username}`);
     } else {
-      navigate(`/@${username}/${page.slug}`);
+      navigate(`/${username}/${page.slug}`);
     }
   };
 
