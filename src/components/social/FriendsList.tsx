@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -124,7 +126,7 @@ export function FriendsList() {
               <div className="space-y-2">
                 {friendships?.friends.map((friend) => (
                   <div key={friend.id} className="flex items-center justify-between p-3 rounded-lg border">
-                    <div className="flex items-center gap-3">
+                    <Link to={getProfileUrl(friend.other_user_id || friend.friend_id, friend.profiles?.username)} className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={friend.profiles?.avatar_url || undefined} />
                         <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
@@ -133,7 +135,7 @@ export function FriendsList() {
                         <p className="font-medium">{friend.profiles?.full_name || 'Unknown'}</p>
                         <p className="text-sm text-muted-foreground">{friend.profiles?.email}</p>
                       </div>
-                    </div>
+                    </Link>
                     <Button
                       size="sm"
                       variant="ghost"

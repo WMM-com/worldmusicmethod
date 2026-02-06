@@ -17,6 +17,7 @@ export interface Post {
   profiles?: {
     full_name: string | null;
     avatar_url: string | null;
+    username?: string | null;
   };
   appreciation_count?: number;
   comment_count?: number;
@@ -33,6 +34,7 @@ export interface Comment {
   profiles?: {
     full_name: string | null;
     avatar_url: string | null;
+    username?: string | null;
   };
   appreciation_count?: number;
   user_appreciated?: boolean;
@@ -73,7 +75,7 @@ export function useFeed() {
         const userIds = [...new Set((posts || []).map(p => p.user_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url')
+          .select('id, full_name, avatar_url, username')
           .in('id', userIds);
 
         const profilesMap = new Map((profiles || []).map(p => [p.id, p]));
@@ -98,7 +100,7 @@ export function useFeed() {
       const userIds = [...new Set(posts.map(p => p.user_id))];
 
       const [profilesRes, appreciationsRes, commentsRes, userAppreciationsRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds),
+        supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', userIds),
         supabase.from('appreciations').select('post_id').in('post_id', postIds),
         supabase.from('comments').select('post_id').in('post_id', postIds),
         supabase.from('appreciations').select('post_id').eq('user_id', user.id).in('post_id', postIds),
@@ -290,7 +292,7 @@ export function useComments(postId: string) {
       const commentIds = comments.map(c => c.id);
 
       const [profilesRes, appreciationsRes, userAppreciationsRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds),
+        supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', userIds),
         supabase.from('appreciations').select('comment_id').in('comment_id', commentIds),
         user ? supabase.from('appreciations').select('comment_id').eq('user_id', user.id).in('comment_id', commentIds) : Promise.resolve({ data: [] }),
       ]);
@@ -754,7 +756,7 @@ export function useSearchUsers(query: string) {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, email')
+        .select('id, full_name, avatar_url, email, username')
         .neq('id', user.id)
         .or(`full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`)
         .limit(10);

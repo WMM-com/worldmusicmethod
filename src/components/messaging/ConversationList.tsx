@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { useConversations, useCreateConversation, useDeleteConversation, Conversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFriendships } from '@/hooks/useSocial';
@@ -185,7 +186,7 @@ function ConversationItem({
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (participant?.id) {
-      navigate(`/${(participant as any).username || participant.id}`);
+      navigate(getProfileUrl(participant.id, participant.username));
     }
   };
 

@@ -584,6 +584,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                 userId={post.user_id} 
                 userName={post.profiles?.full_name || null}
                 avatarUrl={post.profiles?.avatar_url || null}
+                username={post.profiles?.username}
               >
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={post.profiles?.avatar_url || undefined} />
@@ -596,6 +597,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                     userId={post.user_id} 
                     userName={post.profiles?.full_name || null}
                     avatarUrl={post.profiles?.avatar_url || null}
+                    username={post.profiles?.username}
                   >
                     <p className="font-medium hover:underline">{post.profiles?.full_name || 'Unknown'}</p>
                   </UserHoverCard>
