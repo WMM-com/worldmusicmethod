@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.ensure-home-page]
 verify_jwt = true
+
+[functions.check-username]
+verify_jwt = false
