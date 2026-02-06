@@ -148,19 +148,21 @@ export function ProjectsSection({ section, userId, isEditing, onUpdate, onDelete
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div>
-                    <Label>Title *</Label>
+                    <Label>Title * <span className="text-xs text-muted-foreground">({form.title.length}/60)</span></Label>
                     <Input
                       value={form.title}
-                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      onChange={(e) => setForm({ ...form, title: e.target.value.slice(0, 60) })}
                       placeholder="Project name"
+                      maxLength={60}
                     />
                   </div>
                   <div>
-                    <Label>Description</Label>
+                    <Label>Description <span className="text-xs text-muted-foreground">({form.description.length}/500)</span></Label>
                     <Textarea
                       value={form.description}
-                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      onChange={(e) => setForm({ ...form, description: e.target.value.slice(0, 500) })}
                       placeholder="Brief description..."
+                      maxLength={500}
                     />
                   </div>
                   <div>
