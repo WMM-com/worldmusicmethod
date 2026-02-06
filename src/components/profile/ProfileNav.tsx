@@ -65,15 +65,14 @@ export function ProfileNav({
     if (isOnProfileRoute) {
       onPageNavigate?.();
       
-      // Update URL based on whether it's home or custom page
+      // Always switch to page tab first for instant feedback
+      onTabChange?.('page');
+      
+      // Then update URL (won't cause flicker since tab is already set)
       if (page.is_home) {
-        navigate('/profile', { replace: false });
-        // Switch to "page" tab to show home page content
-        onTabChange?.('page');
+        navigate('/profile', { replace: true });
       } else {
-        navigate(`/profile/pages/${page.slug}`, { replace: false });
-        // Switch to "page" tab to show custom page content
-        onTabChange?.('page');
+        navigate(`/profile/pages/${page.slug}`, { replace: true });
       }
       return;
     }

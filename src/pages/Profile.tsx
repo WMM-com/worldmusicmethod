@@ -60,7 +60,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs removed - using CSS show/hide for instant switching
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PostCard } from '@/components/social/PostCard';
 import { ImageCropper } from '@/components/ui/image-cropper';
@@ -214,12 +214,7 @@ export default function Profile(
     }
   }, [isOwnProfileManageRoute, pages.length, ensureHomePage]);
 
-  // Always default to 'page' tab for showing page content
-  useEffect(() => {
-    if (activeTab !== 'page' && activeTab !== 'posts' && activeTab !== 'media') {
-      setActiveTab('page');
-    }
-  }, [activeTab]);
+  // No need for tab reset effect - initial state handles it
 
   // DnD sensors
   const sensors = useSensors(
@@ -1030,140 +1025,87 @@ export default function Profile(
               )}
             </div>
             
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-
-              {/* Posts Tab */}
-              <TabsContent value="posts">
-                <div className="flex gap-6">
-                  {/* Left Column - Posts (same max-width as page content) */}
-                  <div className="w-full max-w-2xl space-y-4">
-                    {postsLoading ? (
-                      <>
-                        <Skeleton className="h-32" />
-                        <Skeleton className="h-32" />
-                      </>
-                    ) : posts?.length === 0 ? (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                          <p className="text-muted-foreground">No posts yet</p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      posts?.map((post) => (
-                        <PostCard 
-                          key={post.id} 
-                          post={{
-                            ...post,
-                            profiles: {
-                              full_name: profile.full_name,
-                              avatar_url: profile.avatar_url,
-                            },
-                            user_appreciated: false,
-                          }} 
-                        />
-                      ))
-                    )}
-                  </div>
-                  {/* Right Column - Reserved for future use */}
-                  <div className="hidden lg:block flex-1">
-                    {/* Future sidebar content */}
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* Media Tab */}
-              <TabsContent value="media">
-                <div className="space-y-6">
-                  {/* Gallery Section */}
-                  {sections?.filter(s => s.section_type === 'gallery').map(section => renderSection(section))}
-                  
-                  {/* YouTube Videos from posts or sections */}
-                  {sections?.filter(s => s.section_type === 'youtube').length === 0 && 
-                   sections?.filter(s => s.section_type === 'gallery').length === 0 && (
+            {/* CSS-based show/hide for instant tab switching (no unmount/remount) */}
+            
+            {/* Posts Tab */}
+            <div className={activeTab === 'posts' ? '' : 'hidden'}>
+              <div className="flex gap-6">
+                {/* Left Column - Posts (same max-width as page content) */}
+                <div className="w-full max-w-2xl space-y-4">
+                  {postsLoading ? (
+                    <>
+                      <Skeleton className="h-32" />
+                      <Skeleton className="h-32" />
+                    </>
+                  ) : posts?.length === 0 ? (
                     <Card>
                       <CardContent className="py-12 text-center">
-                        <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No media yet</p>
-                        {isEditing && (
-                          <Button 
-                            variant="outline" 
-                            className="mt-4"
-                            onClick={() => handleAddSection('gallery')}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Gallery
-                          </Button>
-                        )}
+                        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">No posts yet</p>
                       </CardContent>
                     </Card>
+                  ) : (
+                    posts?.map((post) => (
+                      <PostCard 
+                        key={post.id} 
+                        post={{
+                          ...post,
+                          profiles: {
+                            full_name: profile.full_name,
+                            avatar_url: profile.avatar_url,
+                          },
+                          user_appreciated: false,
+                        }} 
+                      />
+                    ))
                   )}
                 </div>
-               </TabsContent>
+                {/* Right Column - Reserved for future use */}
+                <div className="hidden lg:block flex-1">
+                  {/* Future sidebar content */}
+                </div>
+              </div>
+            </div>
 
-              {/* Page Tab - for edit mode custom pages */}
-              {showMultiPageFeatures && (
-                <TabsContent value="page">
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Left Column - Main content sections */}
-                    <div className="w-full lg:max-w-2xl space-y-6">
-                      {mainSections.length === 0 ? (
-                        <div className="py-12 text-center text-muted-foreground">
-                          <p className="mb-4">This page is empty.</p>
-                          {isOwnProfile && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setAddSectionOpen(true)}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add Content
-                            </Button>
-                          )}
-                        </div>
-                      ) : isEditing && isOwnProfile ? (
-                        <DndContext
-                          sensors={sensors}
-                          collisionDetection={closestCenter}
-                          onDragEnd={handleDragEnd}
+            {/* Media Tab */}
+            <div className={activeTab === 'media' ? '' : 'hidden'}>
+              <div className="space-y-6">
+                {/* Gallery Section */}
+                {sections?.filter(s => s.section_type === 'gallery').map(section => renderSection(section))}
+                
+                {/* YouTube Videos from posts or sections */}
+                {sections?.filter(s => s.section_type === 'youtube').length === 0 && 
+                 sections?.filter(s => s.section_type === 'gallery').length === 0 && (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Image className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No media yet</p>
+                      {isEditing && (
+                        <Button 
+                          variant="outline" 
+                          className="mt-4"
+                          onClick={() => handleAddSection('gallery')}
                         >
-                          <SortableContext
-                            items={mainSections.map(s => s.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            <div className="grid grid-cols-12 gap-4">
-                              {mainSections.map((section, index) => (
-                                <SortableSection
-                                  key={section.id}
-                                  id={section.id}
-                                  layout={section.layout}
-                                  isEditing={isEditing}
-                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                  onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
-                                  onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
-                                  onDelete={() => handleDeleteSection(section.id)}
-                                  isFirst={index === 0}
-                                  isLast={index === mainSections.length - 1}
-                                >
-                                  {renderSection(section, false)}
-                                </SortableSection>
-                              ))}
-                            </div>
-                          </SortableContext>
-                        </DndContext>
-                      ) : (
-                        <div className="grid grid-cols-12 gap-4">
-                          {mainSections.map(section => (
-                            <div key={section.id} className={getLayoutClass(section.layout)}>
-                              {renderSection(section, false)}
-                            </div>
-                          ))}
-                        </div>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Gallery
+                        </Button>
                       )}
-                      
-                      {/* Always show Add Content button after sections */}
-                      {isOwnProfile && mainSections.length > 0 && (
-                        <div className="text-center pt-4">
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+
+            {/* Page Tab - for custom pages content */}
+            {showMultiPageFeatures && (
+              <div className={activeTab === 'page' ? '' : 'hidden'}>
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Left Column - Main content sections */}
+                  <div className="w-full lg:max-w-2xl space-y-6">
+                    {mainSections.length === 0 ? (
+                      <div className="py-12 text-center text-muted-foreground">
+                        <p className="mb-4">This page is empty.</p>
+                        {isOwnProfile && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -1172,49 +1114,64 @@ export default function Profile(
                             <Plus className="h-4 w-4 mr-2" />
                             Add Content
                           </Button>
-                        </div>
-                      )}
-
-                      {/* Mobile: Show sidebar sections here */}
-                      <div className="lg:hidden space-y-6">
-                        {isEditing && isOwnProfile ? (
-                          <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={handleDragEnd}
-                          >
-                            <SortableContext
-                              items={sidebarSections.map(s => s.id)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              <div className="space-y-6">
-                                  {sidebarSections.map((section, index) => (
-                                    <SortableSection
-                                      key={section.id}
-                                      id={section.id}
-                                      layout={section.layout}
-                                      isEditing={isEditing}
-                                      onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                      onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
-                                      onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
-                                      onDelete={() => handleDeleteSection(section.id)}
-                                      isFirst={index === 0}
-                                      isLast={index === sidebarSections.length - 1}
-                                    >
-                                      {renderSection(section, true)}
-                                    </SortableSection>
-                                  ))}
-                              </div>
-                            </SortableContext>
-                          </DndContext>
-                        ) : (
-                          sidebarSections.map(section => renderSection(section, true))
                         )}
                       </div>
-                    </div>
+                    ) : isEditing && isOwnProfile ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={mainSections.map(s => s.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="grid grid-cols-12 gap-4">
+                            {mainSections.map((section, index) => (
+                              <SortableSection
+                                key={section.id}
+                                id={section.id}
+                                layout={section.layout}
+                                isEditing={isEditing}
+                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
+                                onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
+                                onDelete={() => handleDeleteSection(section.id)}
+                                isFirst={index === 0}
+                                isLast={index === mainSections.length - 1}
+                              >
+                                {renderSection(section, false)}
+                              </SortableSection>
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      <div className="grid grid-cols-12 gap-4">
+                        {mainSections.map(section => (
+                          <div key={section.id} className={getLayoutClass(section.layout)}>
+                            {renderSection(section, false)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Always show Add Content button after sections */}
+                    {isOwnProfile && mainSections.length > 0 && (
+                      <div className="text-center pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAddSectionOpen(true)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Content
+                        </Button>
+                      </div>
+                    )}
 
-                    {/* Right Column - Sidebar content */}
-                    <div className="hidden lg:block flex-1 space-y-6">
+                    {/* Mobile: Show sidebar sections here */}
+                    <div className="lg:hidden space-y-6">
                       {isEditing && isOwnProfile ? (
                         <DndContext
                           sensors={sensors}
@@ -1226,22 +1183,22 @@ export default function Profile(
                             strategy={verticalListSortingStrategy}
                           >
                             <div className="space-y-6">
-                              {sidebarSections.map((section, index) => (
-                                <SortableSection
-                                  key={section.id}
-                                  id={section.id}
-                                  layout={section.layout}
-                                  isEditing={isEditing}
-                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                  onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
-                                  onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
-                                  onDelete={() => handleDeleteSection(section.id)}
-                                  isFirst={index === 0}
-                                  isLast={index === sidebarSections.length - 1}
-                                >
-                                  {renderSection(section, true)}
-                                </SortableSection>
-                              ))}
+                                {sidebarSections.map((section, index) => (
+                                  <SortableSection
+                                    key={section.id}
+                                    id={section.id}
+                                    layout={section.layout}
+                                    isEditing={isEditing}
+                                    onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                    onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                    onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                    onDelete={() => handleDeleteSection(section.id)}
+                                    isFirst={index === 0}
+                                    isLast={index === sidebarSections.length - 1}
+                                  >
+                                    {renderSection(section, true)}
+                                  </SortableSection>
+                                ))}
                             </div>
                           </SortableContext>
                         </DndContext>
@@ -1250,9 +1207,46 @@ export default function Profile(
                       )}
                     </div>
                   </div>
-                </TabsContent>
-              )}
-            </Tabs>
+
+                  {/* Right Column - Sidebar content */}
+                  <div className="hidden lg:block flex-1 space-y-6">
+                    {isEditing && isOwnProfile ? (
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={sidebarSections.map(s => s.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-6">
+                            {sidebarSections.map((section, index) => (
+                              <SortableSection
+                                key={section.id}
+                                id={section.id}
+                                layout={section.layout}
+                                isEditing={isEditing}
+                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
+                                onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
+                                onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
+                                onDelete={() => handleDeleteSection(section.id)}
+                                isFirst={index === 0}
+                                isLast={index === sidebarSections.length - 1}
+                              >
+                                {renderSection(section, true)}
+                              </SortableSection>
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    ) : (
+                      sidebarSections.map(section => renderSection(section, true))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
