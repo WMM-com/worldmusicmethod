@@ -151,8 +151,9 @@ function AppContent() {
         <Route path="/:handle/:slug" element={<AtProfile />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/pages/:slug" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        {/* Legacy UUID profile URLs → redirect to /:username */}
+        {/* Legacy UUID profile URLs → redirect to /:username or render inline */}
         <Route path="/profile/:userId" element={<ProfileRedirect />} />
+        <Route path="/profile/:userId/:slug" element={<ProfileRedirect />} />
 
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
