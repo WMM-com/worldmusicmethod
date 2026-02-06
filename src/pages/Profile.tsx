@@ -144,15 +144,15 @@ export default function Profile() {
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
   // Fetch sections filtered by current page to prevent cross-page leakage
+  // Uses the slug param from route (works for /@username/:slug, /profile/pages/:slug, and /profile)
   const currentPageId = useMemo(() => {
     if (!pages.length) return undefined; // Pages not loaded yet
-    const slug = location.pathname.match(/\/pages\/([^/]+)/)?.[1];
     const normalizedSlug = (!slug || slug === 'home') ? null : slug;
     if (normalizedSlug) {
       return pages.find(p => p.slug === normalizedSlug)?.id || undefined;
     }
     return pages.find(p => p.is_home)?.id || undefined;
-  }, [pages, location.pathname]);
+  }, [pages, slug]);
   
   const { data: sections, isLoading: sectionsLoading } = useProfileSections(profileId, currentPageId);
   
