@@ -143,13 +143,45 @@ serve(async (req) => {
                 }
               }
               
-              // Final fallback: list charges for this invoice's payment intent
+              // Fallback: list charges for this invoice's payment intent
               if (!chargeId && invoice.payment_intent) {
                 const piId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id;
                 const charges = await stripe.charges.list({ payment_intent: piId, limit: 1 });
                 if (charges.data.length > 0) {
                   chargeId = charges.data[0].id;
                   logStep("Found charge via charges.list fallback", { chargeId });
+                }
+              }
+              
+              // Ultimate fallback: when invoice has no charge or payment_intent,
+              // look up the customer's charges and match by amount and date
+              if (!chargeId && invoice.customer) {
+                const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer.id;
+                const invoiceAmount = invoice.total; // in cents
+                const invoiceCreated = invoice.created; // unix timestamp
+                logStep("Attempting customer charge lookup fallback", { customerId, invoiceAmount, invoiceCreated });
+                
+                const charges = await stripe.charges.list({ 
+                  customer: customerId, 
+                  limit: 10,
+                  created: {
+                    gte: invoiceCreated,
+                    lte: invoiceCreated + 86400, // within 24 hours
+                  },
+                });
+                
+                // Match by amount
+                const matchingCharge = charges.data.find(c => c.amount === invoiceAmount && c.status === 'succeeded');
+                if (matchingCharge) {
+                  chargeId = matchingCharge.id;
+                  logStep("Found charge via customer lookup fallback", { chargeId });
+                } else if (charges.data.length > 0) {
+                  // If only one charge in the window, use it
+                  const succeeded = charges.data.filter(c => c.status === 'succeeded');
+                  if (succeeded.length === 1) {
+                    chargeId = succeeded[0].id;
+                    logStep("Found single charge via customer lookup fallback", { chargeId });
+                  }
                 }
               }
             }
