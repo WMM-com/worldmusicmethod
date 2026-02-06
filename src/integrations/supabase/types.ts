@@ -4108,6 +4108,7 @@ export type Database = {
           is_home: boolean
           is_visible: boolean
           order_index: number
+          sidebar_enabled: boolean
           slug: string
           title: string
           updated_at: string
@@ -4119,6 +4120,7 @@ export type Database = {
           is_home?: boolean
           is_visible?: boolean
           order_index?: number
+          sidebar_enabled?: boolean
           slug: string
           title: string
           updated_at?: string
@@ -4130,6 +4132,7 @@ export type Database = {
           is_home?: boolean
           is_visible?: boolean
           order_index?: number
+          sidebar_enabled?: boolean
           slug?: string
           title?: string
           updated_at?: string
