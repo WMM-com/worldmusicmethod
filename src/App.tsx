@@ -46,6 +46,7 @@ import ArtistPage from "./pages/ArtistPage";
 import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
+import AtProfile from "./pages/AtProfile";
 import ResetPassword from "./pages/ResetPassword";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
