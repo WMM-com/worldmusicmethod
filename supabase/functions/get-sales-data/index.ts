@@ -121,15 +121,35 @@ serve(async (req) => {
                   ? paymentIntent.latest_charge : paymentIntent.latest_charge.id;
               }
             } else if (paymentId.startsWith('in_')) {
-              // Invoice ID - retrieve the invoice to get its charge or payment_intent
-              const invoice = await stripe.invoices.retrieve(paymentId);
+              // Invoice ID - retrieve the invoice with expanded fields to get its charge
+              const invoice = await stripe.invoices.retrieve(paymentId, {
+                expand: ['charge', 'payment_intent', 'payment_intent.latest_charge'],
+              });
+              logStep("Invoice retrieved for fee lookup", { 
+                invoiceId: paymentId, 
+                charge: invoice.charge ? 'present' : 'null',
+                payment_intent: invoice.payment_intent ? 'present' : 'null',
+                status: invoice.status,
+              });
+              
               if (invoice.charge) {
                 chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
               } else if (invoice.payment_intent) {
-                const piId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id;
-                const pi = await stripe.paymentIntents.retrieve(piId);
+                const pi = typeof invoice.payment_intent === 'string' 
+                  ? await stripe.paymentIntents.retrieve(invoice.payment_intent)
+                  : invoice.payment_intent;
                 if (pi.latest_charge) {
                   chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge.id;
+                }
+              }
+              
+              // Final fallback: list charges for this invoice's payment intent
+              if (!chargeId && invoice.payment_intent) {
+                const piId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id;
+                const charges = await stripe.charges.list({ payment_intent: piId, limit: 1 });
+                if (charges.data.length > 0) {
+                  chargeId = charges.data[0].id;
+                  logStep("Found charge via charges.list fallback", { chargeId });
                 }
               }
             }
