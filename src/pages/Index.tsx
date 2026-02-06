@@ -18,6 +18,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { SoundsliceEmbed } from '@/components/courses/SoundsliceEmbed';
 import { StudentStoriesSection } from '@/components/home/StudentStoriesSection';
 import { PartnersSection } from '@/components/home/PartnersSection';
+import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const HERO_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4';
@@ -100,6 +101,7 @@ export default function Index() {
         <meta name="description" content="Accelerate your musical journey with world-class instructors, cutting-edge technology, and a vibrant global community. Access an entire world of musical knowledge." />
       </Helmet>
       
+      <SiteHeader />
       <main className="min-h-screen bg-background">
         {/* Hero Section - Split Layout */}
         <section className="relative w-full min-h-[85vh] flex items-stretch overflow-hidden">
@@ -136,7 +138,7 @@ export default function Index() {
           {/* Left side - Text & CTAs with gradient overlay */}
           <div className="relative z-10 w-full lg:w-[45%] flex items-center">
             {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background from-60% to-transparent" />
             
             <div className="relative px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
               <motion.h1
