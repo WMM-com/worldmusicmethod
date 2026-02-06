@@ -123,8 +123,12 @@ const MAIN_SECTION_TYPES = [
   { type: 'digital_products', label: 'Digital Products', icon: ShoppingBag },
 ];
 
-export default function Profile() {
-  const { userId, slug } = useParams<{ userId: string; slug?: string }>();
+export default function Profile(
+  { routeUserId, routeSlug }: { routeUserId?: string; routeSlug?: string } = {}
+) {
+  const params = useParams<{ userId?: string; slug?: string }>();
+  const userId = routeUserId ?? params.userId;
+  const slug = routeSlug ?? params.slug;
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -379,9 +383,9 @@ export default function Profile() {
   // Normalize slug: treat 'home' the same as no slug (show home page)
   const normalizedSlug = (!slug || slug === 'home') ? null : slug;
   
-  // Show multi-page features on profile route OR own profile on /profile
-  const showMultiPageFeatures = isProfileRoute || isOwnProfile;
-  
+  // Show multi-page features for public profile views and own profile management
+  const showMultiPageFeatures = isProfileRoute || !!userId || isOwnProfile;
+
   // Find the current page based on slug - also check for home page on /profile route
   const currentPage = useMemo(() => {
     // On public profile route or own profile, find the current page
