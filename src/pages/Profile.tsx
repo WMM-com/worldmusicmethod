@@ -563,10 +563,23 @@ export default function Profile(
             : profile?.full_name || 'Profile'}
         </title>
         {isProfileRoute && extendedProfile?.username && (
-          <link 
-            rel="canonical" 
-            href={`https://worldmusicmethod.lovable.app/${extendedProfile.username}${normalizedSlug ? `/${normalizedSlug}` : ''}`} 
-          />
+          <>
+            <link 
+              rel="canonical" 
+              href={`https://worldmusicmethod.com/${extendedProfile.username}${normalizedSlug ? `/${normalizedSlug}` : ''}`} 
+            />
+            <meta 
+              property="og:url" 
+              content={`https://worldmusicmethod.com/${extendedProfile.username}${normalizedSlug ? `/${normalizedSlug}` : ''}`} 
+            />
+            <meta property="og:title" content={profile?.full_name || 'Artist Profile'} />
+            {extendedProfile?.bio && (
+              <meta property="og:description" content={extendedProfile.bio.slice(0, 160)} />
+            )}
+            {profile?.avatar_url && (
+              <meta property="og:image" content={profile.avatar_url} />
+            )}
+          </>
         )}
       </Helmet>
       <SiteHeader nonSticky />

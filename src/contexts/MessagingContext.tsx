@@ -5,6 +5,7 @@ interface PopupConversation {
   participantId?: string;
   participantName: string;
   participantAvatar?: string;
+  participantUsername?: string;
 }
 
 interface MessagingContextType {

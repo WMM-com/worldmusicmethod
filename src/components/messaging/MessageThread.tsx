@@ -24,6 +24,7 @@ interface MessageThreadProps {
   conversationId: string;
   participantName?: string;
   participantId?: string;
+  participantUsername?: string;
 }
 
 interface AttachmentPreview {
@@ -32,7 +33,7 @@ interface AttachmentPreview {
   type: 'image' | 'video' | 'file';
 }
 
-export function MessageThread({ conversationId, participantName, participantId }: MessageThreadProps) {
+export function MessageThread({ conversationId, participantName, participantId, participantUsername }: MessageThreadProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: messages, isLoading } = useMessages(conversationId);
@@ -134,7 +135,7 @@ export function MessageThread({ conversationId, participantName, participantId }
       <CardHeader className="border-b border-neutral-800 pb-4 shrink-0 bg-[#111111]">
         <CardTitle 
           className="text-lg leading-tight break-words whitespace-normal text-white cursor-pointer hover:text-red-400 transition-colors"
-          onClick={() => participantId && navigate(`/profile/${participantId}`)}
+          onClick={() => participantId && navigate(`/${participantUsername || participantId}`)}
         >
           {participantName || 'Conversation'}
         </CardTitle>

@@ -28,6 +28,7 @@ export interface Conversation {
     id: string;
     full_name: string | null;
     avatar_url: string | null;
+    username: string | null;
   }[];
   last_message?: Message;
   unread_count?: number;
@@ -69,7 +70,7 @@ export function useConversations() {
       
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, username')
         .in('id', allParticipantIds);
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);

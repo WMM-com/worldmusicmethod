@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { Button } from '@/components/ui/button';
 import {
   HoverCard,
@@ -15,11 +16,13 @@ interface UserHoverCardProps {
   userId: string;
   userName: string | null;
   avatarUrl: string | null;
+  username?: string | null;
   children: React.ReactNode;
 }
 
-export function UserHoverCard({ userId, userName, avatarUrl, children }: UserHoverCardProps) {
+export function UserHoverCard({ userId, userName, avatarUrl, username, children }: UserHoverCardProps) {
   const { user } = useAuth();
+  const profileUrl = getProfileUrl(userId, username);
   const { data: connectionStatus, isLoading: loadingStatus } = useConnectionStatus(userId);
   const connectMutation = useConnectWithMember();
   const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +47,7 @@ export function UserHoverCard({ userId, userName, avatarUrl, children }: UserHov
     <HoverCard open={isOpen} onOpenChange={setIsOpen} openDelay={300} closeDelay={100}>
       <HoverCardTrigger asChild>
         <Link 
-          to={`/profile/${userId}`} 
+          to={profileUrl} 
           className="cursor-pointer hover:opacity-80 transition-opacity"
           onClick={(e) => e.stopPropagation()}
         >
@@ -105,7 +108,7 @@ export function UserHoverCard({ userId, userName, avatarUrl, children }: UserHov
                 className="w-full"
                 asChild
               >
-                <Link to={`/profile/${userId}`}>
+                <Link to={profileUrl}>
                   <User className="h-4 w-4 mr-1.5" />
                   View Profile
                 </Link>
@@ -115,7 +118,7 @@ export function UserHoverCard({ userId, userName, avatarUrl, children }: UserHov
 
           {isOwnProfile && (
             <Button variant="outline" size="sm" asChild>
-              <Link to={`/profile/${userId}`}>
+              <Link to={profileUrl}>
                 <User className="h-4 w-4 mr-2" />
                 View Your Profile
               </Link>

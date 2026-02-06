@@ -11,6 +11,7 @@ export interface MemberProfile {
   avatar_url: string | null;
   bio: string | null;
   business_name: string | null;
+  username: string | null;
 }
 
 // Fetch all members (for directory)
@@ -22,7 +23,7 @@ export function useMembers(searchQuery?: string) {
     queryFn: async () => {
       let query = supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio, business_name')
+        .select('id, full_name, avatar_url, bio, business_name, username')
         .order('full_name', { ascending: true });
       
       if (searchQuery && searchQuery.length >= 2) {
