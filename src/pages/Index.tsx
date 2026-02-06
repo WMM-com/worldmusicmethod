@@ -12,7 +12,6 @@ import {
   MousePointerClick,
   SlidersHorizontal,
   Gauge,
-  Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -95,79 +94,113 @@ export default function Index() {
       </Helmet>
       
       <main className="min-h-screen bg-background">
-        {/* ── Hero Section ── */}
-        <section className="relative w-full overflow-hidden min-h-[90vh] flex items-center pt-16">
-          {/* Background video */}
-          <video
-            ref={heroVideoRef}
-            src={HERO_VIDEO_URL}
-            className="absolute inset-0 w-full h-full object-cover"
-            muted
-            loop
-            playsInline
-            autoPlay
-          />
-          {/* Overlays */}
-          <div className="absolute inset-0 bg-black/60" />
-          <div 
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(to top, hsl(var(--background)) 0%, transparent 40%)' }}
-          />
-
-          <div className="relative z-10 max-w-5xl mx-auto px-4 py-20 md:py-32 text-center">
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-6 text-foreground"
-            >
-              Master Your Instrument, Unlock Musical Freedom
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15 }}
-              className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed"
-            >
-              Accelerate your journey with world-class instructors, cutting-edge technology, and a vibrant global community. Step beyond Western musical limitations, challenge yourself, and access an entire world of musical knowledge.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            >
-              <Button
-                size="lg"
-                asChild
-                className="text-base px-8 py-6 h-auto"
+        {/* Hero Section - Split Layout */}
+        <section className="relative w-full min-h-[85vh] flex items-stretch">
+          {/* Left side - Text & CTAs */}
+          <div className="relative z-10 w-full lg:w-1/2 flex items-center bg-gradient-to-r from-background via-background to-background/80 lg:to-transparent">
+            <div className="px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7 }}
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl mb-6 text-foreground text-left"
               >
-                <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                asChild
-                className="text-base px-8 py-6 h-auto"
+                Master Your Instrument, Unlock Musical Freedom
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.15 }}
+                className="text-base sm:text-lg md:text-xl text-muted-foreground mb-10 leading-relaxed text-left"
               >
-                <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setShowTrailer(true)}
-                className="text-base px-8 py-6 h-auto gap-2"
+                Accelerate your journey with world-class instructors, cutting-edge technology, and a vibrant global community. Step beyond Western musical limitations, challenge yourself, and access an entire world of musical knowledge.
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                className="flex flex-col sm:flex-row gap-4 items-start"
               >
-                <Volume2 className="w-5 h-5" />
-                Watch Trailer
-              </Button>
-            </motion.div>
+                <Button
+                  size="lg"
+                  asChild
+                  className="text-base px-8 py-6 h-auto"
+                >
+                  <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  asChild
+                  className="text-base px-8 py-6 h-auto"
+                >
+                  <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+                </Button>
+              </motion.div>
+            </div>
           </div>
+
+          {/* Right side - Video with Watch Trailer overlay */}
+          <div className="hidden lg:block absolute inset-0 lg:relative lg:w-1/2">
+            <video
+              ref={heroVideoRef}
+              src={HERO_VIDEO_URL}
+              className="absolute inset-0 w-full h-full object-cover"
+              muted
+              loop
+              playsInline
+              autoPlay
+            />
+            <div className="absolute inset-0 bg-black/30" />
+            
+            {/* Watch Trailer button centered on video */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.5 }}
+              onClick={() => setShowTrailer(true)}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-4 group cursor-pointer"
+            >
+              <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
+                <Play className="w-8 h-8 text-primary-foreground ml-1" fill="currentColor" />
+              </div>
+              <span className="text-sm font-semibold text-foreground bg-background/60 backdrop-blur-sm px-4 py-2 rounded-full">
+                Watch Trailer
+              </span>
+            </motion.button>
+          </div>
+
+          {/* Mobile: video background behind text */}
+          <div className="absolute inset-0 lg:hidden -z-0">
+            <video
+              src={HERO_VIDEO_URL}
+              className="absolute inset-0 w-full h-full object-cover"
+              muted
+              loop
+              playsInline
+              autoPlay
+            />
+            <div className="absolute inset-0 bg-black/60" />
+          </div>
+
+          {/* Mobile Watch Trailer button */}
+          {isMobile && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              onClick={() => setShowTrailer(true)}
+              className="absolute bottom-6 right-6 z-20 lg:hidden flex items-center gap-2 bg-primary/90 text-primary-foreground px-5 py-3 rounded-full shadow-xl"
+            >
+              <Play className="w-5 h-5" fill="currentColor" />
+              <span className="text-sm font-semibold">Watch Trailer</span>
+            </motion.button>
+          )}
         </section>
 
-        {/* ── Instant Lesson Preview Section ── */}
+        {/* Instant Lesson Preview Section */}
         <section className="py-16 md:py-24">
           <div className="max-w-6xl mx-auto px-4">
             <motion.div
@@ -225,9 +258,9 @@ export default function Index() {
         </section>
       </main>
 
-      {/* ── Soundslice Popup Dialog ── */}
+      {/* Soundslice Popup Dialog - scrollable */}
       <Dialog open={!!selectedInstrument} onOpenChange={(open) => !open && handleClosePopup()}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-background border-border overflow-hidden">
+        <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-background border-border overflow-hidden [&>button:last-child]:hidden">
           <button
             onClick={handleClosePopup}
             className="absolute top-3 right-3 z-50 w-9 h-9 rounded-full bg-primary hover:bg-primary/80 flex items-center justify-center transition-colors"
@@ -253,8 +286,8 @@ export default function Index() {
             </div>
           </div>
 
-          {/* Soundslice embed - taller to show controls */}
-          <div className="p-4">
+          {/* Soundslice embed - use overflow-y-auto so control bar is accessible */}
+          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 80px)' }}>
             {selectedInstrument && (
               <SoundsliceEmbed
                 sliceIdOrUrl={selectedInstrument.sliceId}
@@ -266,9 +299,9 @@ export default function Index() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Trailer Video Popup ── */}
+      {/* Trailer Video Popup */}
       <Dialog open={showTrailer} onOpenChange={(open) => !open && handleCloseTrailer()}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-black border-border overflow-hidden">
+        <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-black border-border overflow-hidden [&>button:last-child]:hidden">
           <button
             onClick={handleCloseTrailer}
             className="absolute top-3 right-3 z-50 w-9 h-9 rounded-full bg-primary hover:bg-primary/80 flex items-center justify-center transition-colors"
