@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +15,10 @@ import {
 interface ProfileHeaderProps {
   profile: ExtendedProfile;
   isOwnProfile: boolean;
+  createdAt?: string;
 }
 
-export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, isOwnProfile, createdAt }: ProfileHeaderProps) {
   const [coverCropperOpen, setCoverCropperOpen] = useState(false);
   const [avatarCropperOpen, setAvatarCropperOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
@@ -136,28 +138,36 @@ export function ProfileHeader({ profile, isOwnProfile }: ProfileHeaderProps) {
             )}
           </div>
 
-          {/* Name & Info */}
-          <div className="flex-1 text-center sm:text-left pb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold">
-              {profile.full_name || profile.business_name || 'Unnamed'}
-            </h1>
-            {profile.tagline && (
-              <p className="text-lg text-muted-foreground mt-1">{profile.tagline}</p>
-            )}
-            
-            <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
-              {profile.profile_type && (
-                <Badge variant="secondary" className="capitalize">
-                  {profile.profile_type}
-                </Badge>
-              )}
-              {profile.is_public && (
-                <Badge variant="outline">
-                  <Globe className="h-3 w-3 mr-1" />
-                  Public
-                </Badge>
-              )}
-            </div>
+           {/* Name & Info */}
+           <div className="flex-1 text-center sm:text-left pb-4">
+             <h1 className="text-2xl sm:text-3xl font-bold">
+               {profile.full_name || profile.business_name || 'Unnamed'}
+             </h1>
+             
+             {/* Joined date - fetched from backend */}
+             {createdAt && (
+               <p className="text-sm text-muted-foreground mt-1">
+                 Joined in {format(new Date(createdAt), 'MMM yyyy')}
+               </p>
+             )}
+             
+             {profile.tagline && (
+               <p className="text-lg text-muted-foreground mt-1">{profile.tagline}</p>
+             )}
+             
+             <div className="flex flex-wrap gap-2 mt-3 justify-center sm:justify-start">
+               {profile.profile_type && (
+                 <Badge variant="secondary" className="capitalize">
+                   {profile.profile_type}
+                 </Badge>
+               )}
+               {profile.is_public && (
+                 <Badge variant="outline">
+                   <Globe className="h-3 w-3 mr-1" />
+                   Public
+                 </Badge>
+               )}
+             </div>
 
             {/* Social Links */}
             {profile.social_links && Object.keys(profile.social_links).length > 0 && (

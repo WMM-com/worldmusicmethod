@@ -674,55 +674,62 @@ export default function Profile() {
                     />
                   </div>
 
-                  {/* Profile Info */}
-                  <div className="flex-1 text-center sm:text-left pb-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                      <h1 className="text-2xl sm:text-3xl font-bold">
-                        {profile.full_name || 'Anonymous'}
-                      </h1>
-                      {extendedProfile?.visibility === 'public' ? (
-                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-primary/20 text-primary">
-                          <Globe className="h-3 w-3 mr-1" /> Public
-                        </Badge>
-                      ) : extendedProfile?.visibility === 'members' ? (
-                        <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-secondary text-secondary-foreground">
-                          <Users className="h-3 w-3 mr-1" /> Members Only
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="w-fit mx-auto sm:mx-0">
-                          <Lock className="h-3 w-3 mr-1" /> Private
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    {extendedProfile?.tagline && (
-                      <p className="text-lg text-muted-foreground mb-1">{extendedProfile.tagline}</p>
-                    )}
-                    
-                    {profile.business_name && (
-                      <p className="text-muted-foreground mb-2">{profile.business_name}</p>
-                    )}
-                    
-                    {extendedProfile?.username && (
-                      <p className="text-sm text-muted-foreground mb-2">@{extendedProfile.username}</p>
-                    )}
+                   {/* Profile Info */}
+                   <div className="flex-1 text-center sm:text-left pb-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                       <h1 className="text-2xl sm:text-3xl font-bold">
+                         {profile.full_name || 'Anonymous'}
+                       </h1>
+                       {extendedProfile?.visibility === 'public' ? (
+                         <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-primary/20 text-primary">
+                           <Globe className="h-3 w-3 mr-1" /> Public
+                         </Badge>
+                       ) : extendedProfile?.visibility === 'members' ? (
+                         <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-secondary text-secondary-foreground">
+                           <Users className="h-3 w-3 mr-1" /> Members Only
+                         </Badge>
+                       ) : (
+                         <Badge variant="outline" className="w-fit mx-auto sm:mx-0">
+                           <Lock className="h-3 w-3 mr-1" /> Private
+                         </Badge>
+                       )}
+                     </div>
+                     
+                     {/* Joined date - fetched from backend */}
+                     {profile.created_at && (
+                       <p className="text-sm text-muted-foreground mb-1">
+                         Joined in {format(new Date(profile.created_at), 'MMM yyyy')}
+                       </p>
+                     )}
+                     
+                     {extendedProfile?.tagline && (
+                       <p className="text-lg text-muted-foreground mb-1">{extendedProfile.tagline}</p>
+                     )}
+                     
+                     {profile.business_name && (
+                       <p className="text-muted-foreground mb-2">{profile.business_name}</p>
+                     )}
+                     
+                     {extendedProfile?.username && (
+                       <p className="text-sm text-muted-foreground mb-2">@{extendedProfile.username}</p>
+                     )}
 
-                    {/* Stats */}
-                    <div className="flex gap-6 justify-center sm:justify-start mt-4">
-                      <div className="text-center">
-                        <span className="font-bold text-lg">{stats?.posts || 0}</span>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <FileText className="h-3 w-3" /> Posts
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <span className="font-bold text-lg">{stats?.friends || 0}</span>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Users className="h-3 w-3" /> Friends
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                     {/* Stats */}
+                     <div className="flex gap-6 justify-center sm:justify-start mt-4">
+                       <div className="text-center">
+                         <span className="font-bold text-lg">{stats?.posts || 0}</span>
+                         <p className="text-xs text-muted-foreground flex items-center gap-1">
+                           <FileText className="h-3 w-3" /> Posts
+                         </p>
+                       </div>
+                       <div className="text-center">
+                         <span className="font-bold text-lg">{stats?.friends || 0}</span>
+                         <p className="text-xs text-muted-foreground flex items-center gap-1">
+                           <Users className="h-3 w-3" /> Friends
+                         </p>
+                       </div>
+                     </div>
+                   </div>
 
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2 justify-center sm:justify-end pb-4">
