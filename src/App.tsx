@@ -58,6 +58,7 @@ import VideoCall from "./pages/VideoCall";
 import Meet from "./pages/Meet";
 import TutorRooms from "./pages/TutorRooms";
 import Download from "./pages/Download";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -114,7 +115,7 @@ function AppContent() {
         <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/" element={<Navigate to="/courses" replace />} />
+        <Route path="/" element={<Index />} />
         <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
         <Route path="/left-brain/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
