@@ -417,10 +417,13 @@ export default function Profile(
     ['youtube', 'spotify', 'soundcloud', 'events', 'generic'].includes(s.section_type)
   );
 
+  // Only allow editing when both isEditing AND isOwnProfile are true
+  const canEdit = isEditing && isOwnProfile;
+
   const renderSection = (section: any, isSidebar = false) => {
     const props = {
       section,
-      isEditing,
+      isEditing: canEdit,
       onUpdate: (content: Record<string, any>) => handleUpdateSection(section.id, content),
       onDelete: () => handleDeleteSection(section.id),
     };
