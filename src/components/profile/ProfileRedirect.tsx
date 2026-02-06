@@ -4,13 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SiteHeader } from '@/components/layout/SiteHeader';
+import Profile from '@/pages/Profile';
 
 /**
  * Route handler for legacy /profile/:userId paths.
  *
- * If :userId is a UUID, looks up the user's username and redirects to /:username.
- * This ensures all old /profile/uuid links get SEO-redirected to clean URLs.
- * Falls through to <Profile /> if the user has no username set.
+ * If :userId is a UUID, looks up the user's username:
+ *   - If username exists → redirect to /:username (SEO)
+ *   - If no username → render Profile inline with the UUID (backwards compatible)
+ * Non-UUID params fall through to Profile as well.
  */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,17 +41,18 @@ export default function ProfileRedirect() {
   useEffect(() => {
     if (!isUUID || isLoading) return;
     if (username) {
+      // User has a username — redirect to the clean branded URL
       navigate(`/${username}`, { replace: true });
     }
-    // If no username found, stay on /profile/:userId (Profile component handles it)
+    // If no username found, stay on /profile/:userId — Profile component renders below
   }, [username, isLoading, isUUID, navigate]);
 
-  // Non-UUID userId (shouldn't happen, but let Profile handle it)
+  // Non-UUID userId — render Profile directly
   if (!isUUID) {
-    return null; // App.tsx will render Profile for this case
+    return <Profile routeUserId={userId} />;
   }
 
-  // Show loading skeleton while resolving
+  // Still loading or about to redirect — show skeleton
   if (isLoading || username) {
     return (
       <>
@@ -70,6 +73,6 @@ export default function ProfileRedirect() {
     );
   }
 
-  // UUID but no username → render Profile inline (lazy import to avoid circular dep)
-  return null;
+  // UUID but no username set — render Profile with this userId (backwards compatible)
+  return <Profile routeUserId={userId} />;
 }
