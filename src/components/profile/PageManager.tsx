@@ -144,7 +144,7 @@ function SortablePageItem({
           <Edit2 className="h-4 w-4" />
         </Button>
         
-        {!page.is_home && (
+        {!page.is_home && page.slug !== 'about' && (
           <Button
             size="icon"
             variant="ghost"

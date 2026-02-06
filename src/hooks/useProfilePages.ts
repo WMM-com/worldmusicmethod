@@ -47,35 +47,12 @@ export function useEnsureHomePage() {
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
 
-      // Call the database function to ensure home page
+      // Call the database function which ensures both Home and About pages exist
       const { data, error } = await supabase.rpc('ensure_default_home_page', {
         p_user_id: user.id,
       });
 
       if (error) throw error;
-      
-      // Also check if "About" page exists, if not create it
-      const { data: existingPages } = await supabase
-        .from('profile_pages')
-        .select('slug')
-        .eq('user_id', user.id);
-      
-      const hasAboutPage = existingPages?.some(p => p.slug === 'about');
-      
-      if (!hasAboutPage) {
-        // Create About page
-        await supabase
-          .from('profile_pages')
-          .insert({
-            user_id: user.id,
-            title: 'About',
-            slug: 'about',
-            order_index: 1,
-            is_home: false,
-            is_visible: true,
-          });
-      }
-      
       return data;
     },
     onSuccess: () => {
@@ -152,21 +129,25 @@ export function useUpdatePage() {
   });
 }
 
-// Delete a page (cannot delete home page)
+// Delete a page (cannot delete home page or about page)
 export function useDeletePage() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // First check if it's the home page
+      // First check if it's a protected page (home or about)
       const { data: page } = await supabase
         .from('profile_pages')
-        .select('is_home')
+        .select('is_home, slug')
         .eq('id', id)
         .single();
 
       if (page?.is_home) {
         throw new Error('Cannot delete the home page');
+      }
+
+      if (page?.slug === 'about') {
+        throw new Error('Cannot delete the About page');
       }
 
       // Move sections from this page to home page (set page_id to null for now)
