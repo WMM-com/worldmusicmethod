@@ -172,6 +172,14 @@ serve(async (req) => {
               if (pi.latest_charge) {
                 chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge.id;
               }
+              // Fallback: list charges for this payment intent
+              if (!chargeId) {
+                const charges = await stripe.charges.list({ payment_intent: piId, limit: 1 });
+                if (charges.data.length > 0) {
+                  chargeId = charges.data[0].id;
+                  logStep("Found charge via charges.list fallback", { chargeId, invoiceId: invoice.id });
+                }
+              }
             } catch (e) {
               logStep("Could not resolve charge from payment_intent", { invoiceId: invoice.id });
             }
