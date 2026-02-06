@@ -94,13 +94,13 @@ export function ProjectDetailModal({
         )}
       </div>
 
-      <DialogContent className="max-w-[calc(100vw-120px)] w-full p-0 gap-0 overflow-hidden" style={{ maxHeight: 'calc(100vh - 80px)' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-border shrink-0">
+      <DialogContent className="max-w-[calc(100vw-120px)] w-full p-0 gap-0 overflow-hidden [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-7 [&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-3 [&>button]:top-3" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-20 flex items-center justify-between px-6 pt-5 pb-3 border-b border-border bg-background/95 backdrop-blur-sm">
           <h2 className="text-lg font-semibold truncate pr-4">{project.title}</h2>
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-10"
           >
             <Link2 className="h-4 w-4" />
             Copy Link
@@ -111,7 +111,7 @@ export function ProjectDetailModal({
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px - 58px)' }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             {/* Left column */}
-            <div className="p-6 space-y-5 md:border-r border-border">
+            <div className="p-6 space-y-5">
               {/* Description */}
               {project.description ? (
                 <div>
