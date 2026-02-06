@@ -144,20 +144,21 @@ export default function Profile(
   const { data: profile, isLoading: profileLoading } = useUserProfile(profileId);
   const { data: extendedProfile } = useExtendedProfile(profileId);
   const { data: heroSettings } = useHeroSettings(profileId);
-  const { data: pages = [] } = useProfilePages(profileId);
+  const { data: pages = [], isLoading: pagesLoading } = useProfilePages(profileId);
   const { data: posts, isLoading: postsLoading } = useUserPosts(profileId!);
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
   // Fetch sections filtered by current page to prevent cross-page leakage
   // Uses the slug param from route (works for /@username/:slug, /profile/pages/:slug, and /profile)
   const currentPageId = useMemo(() => {
-    if (!pages.length) return undefined; // Pages not loaded yet
+    if (pagesLoading) return undefined; // Pages still loading — wait
+    if (!pages.length) return null; // No pages exist — show all sections (legacy fallback)
     const normalizedSlug = (!slug || slug === 'home') ? null : slug;
     if (normalizedSlug) {
       return pages.find(p => p.slug === normalizedSlug)?.id || undefined;
     }
     return pages.find(p => p.is_home)?.id || undefined;
-  }, [pages, slug]);
+  }, [pages, slug, pagesLoading]);
   
   const { data: sections, isLoading: sectionsLoading } = useProfileSections(profileId, currentPageId);
   
@@ -215,12 +216,12 @@ export default function Profile(
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isEditing, isOwnProfile]);
 
-  // Ensure home page exists when entering profile management
+  // Ensure home page exists when viewing own profile (any route)
   useEffect(() => {
-    if (isOwnProfileManageRoute && pages.length === 0) {
+    if (isOwnProfile && !pagesLoading && pages.length === 0) {
       ensureHomePage.mutate();
     }
-  }, [isOwnProfileManageRoute, pages.length, ensureHomePage]);
+  }, [isOwnProfile, pagesLoading, pages.length, ensureHomePage]);
 
   // No need for tab reset effect - initial state handles it
 
@@ -403,8 +404,8 @@ export default function Profile(
     return null;
   }, [showMultiPageFeatures, pages, normalizedSlug]);
   
-  // Check if we have an invalid slug (slug provided but page not found)
-  const isInvalidSlug = isProfileRoute && normalizedSlug && pages.length > 0 && !currentPage;
+  // Check if we have an invalid slug (slug provided but page not found, and pages finished loading)
+  const isInvalidSlug = isProfileRoute && normalizedSlug && !pagesLoading && pages.length > 0 && !currentPage;
 
   // All sections sorted by order_index
   // Sections are already filtered by page_id at the query level via useProfileSections(profileId, currentPageId)
