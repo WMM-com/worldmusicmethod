@@ -4445,6 +4445,50 @@ export type Database = {
         }
         Relationships: []
       }
+      project_reports: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          project_id: string
+          reporter_email: string | null
+          reporter_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          project_id: string
+          reporter_email?: string | null
+          reporter_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          project_id?: string
+          reporter_email?: string | null
+          reporter_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "profile_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questionnaire_responses: {
         Row: {
           answers: Json
@@ -5702,6 +5746,7 @@ export type Database = {
       ensure_default_home_page: { Args: { p_user_id: string }; Returns: string }
       generate_invoice_number: { Args: { _user_id: string }; Returns: string }
       generate_referral_code: { Args: never; Returns: string }
+      get_admin_user_ids: { Args: never; Returns: string[] }
       get_public_profile: {
         Args: { p_username: string }
         Returns: {
