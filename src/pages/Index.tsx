@@ -12,12 +12,12 @@ import {
   MousePointerClick,
   SlidersHorizontal,
   Gauge,
-  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { SoundsliceEmbed } from '@/components/courses/SoundsliceEmbed';
 import { StudentStoriesSection } from '@/components/home/StudentStoriesSection';
+import { PartnersSection } from '@/components/home/PartnersSection';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const HERO_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4';
@@ -135,9 +135,8 @@ export default function Index() {
 
           {/* Left side - Text & CTAs with gradient overlay */}
           <div className="relative z-10 w-full lg:w-[45%] flex items-center">
-            {/* Layered gradient for depth */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 via-60% to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background/60" />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background to-transparent" />
             
             <div className="relative px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
               <motion.h1
@@ -182,19 +181,16 @@ export default function Index() {
               </motion.div>
 
               {/* Trust line */}
-              <motion.div
+              <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.7, delay: 0.5 }}
-                className="flex items-center gap-2 mt-8 text-muted-foreground"
+                className="mt-8 text-sm text-secondary"
               >
-                <Users className="w-4 h-4" />
-                <span className="text-sm">Trusted by 2,500+ dedicated musicians worldwide</span>
-              </motion.div>
+                Trusted by 2,500+ dedicated musicians worldwide
+              </motion.p>
             </div>
           </div>
-
-          
 
           {/* Mobile: video background behind text */}
           <div className="absolute inset-0 lg:hidden -z-0">
@@ -223,6 +219,9 @@ export default function Index() {
             </motion.button>
           )}
         </section>
+
+        {/* Partners Section */}
+        <PartnersSection />
 
         {/* Instant Lesson Preview Section */}
         <section className="py-16 md:py-24">
