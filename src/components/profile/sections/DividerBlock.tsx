@@ -71,15 +71,17 @@ export function DividerBlock({ section, isEditing, onUpdate, onDelete }: Divider
           className="border-border" 
           style={dividerStyle}
         />
-        {/* Hover edit button */}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute top-1/2 right-0 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => setInlineEdit(true)}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
+        {/* Hover edit button - only visible to owners in edit mode */}
+        {isEditing && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-1/2 right-0 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => setInlineEdit(true)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     );
   }
