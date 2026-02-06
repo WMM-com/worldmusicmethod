@@ -1,46 +1,30 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useResolveUsername } from "@/hooks/useUsernameResolution";
 import Profile from "./Profile";
 import NotFound from "./NotFound";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteHeader } from "@/components/layout/SiteHeader";
-import { useEffect } from "react";
 
+/**
+ * Route component for /:handle and /:handle/:slug.
+ *
+ * Redirect duties (/@username → /username, /old-username → /current-username)
+ * are handled upstream by the global useUsernameRedirect middleware in AppContent.
+ *
+ * By the time this component renders, the path is a clean /current-username.
+ * It simply resolves the username to a user UUID and renders the Profile.
+ */
 export default function AtProfile() {
   const { handle, slug } = useParams<{ handle: string; slug?: string }>();
-  const navigate = useNavigate();
 
-  // Handle /@username → redirect to /username (301-style)
-  const isAtRoute = handle?.startsWith("@");
-  const username = isAtRoute ? handle.slice(1) : handle;
+  // Strip @ as a fallback (middleware normally handles this)
+  const username = handle?.startsWith("@") ? handle.slice(1) : handle;
 
-  // Always call hooks unconditionally
-  const { data: resolution, isLoading } = useResolveUsername(
-    // Only resolve when NOT an @ redirect (@ routes just redirect, no need to resolve)
-    isAtRoute ? undefined : username
-  );
+  // Resolve username → user_id (shares cache with useUsernameRedirect)
+  const { data: resolution, isLoading } = useResolveUsername(username);
 
-  // Redirect /@username → /username
-  useEffect(() => {
-    if (isAtRoute && handle) {
-      const cleanUsername = handle.slice(1);
-      const newPath = slug ? `/${cleanUsername}/${slug}` : `/${cleanUsername}`;
-      navigate(newPath, { replace: true });
-    }
-  }, [isAtRoute, handle, slug, navigate]);
-
-  // Handle redirect for old usernames (301-style client redirect)
-  useEffect(() => {
-    if (!resolution || !resolution.found || !resolution.is_redirect) return;
-
-    const newPath = slug
-      ? `/${resolution.username}/${slug}`
-      : `/${resolution.username}`;
-    navigate(newPath, { replace: true });
-  }, [resolution, slug, navigate]);
-
-  // For @ routes, show nothing while redirecting
-  if (isAtRoute) return null;
+  // While middleware redirect is in flight, show nothing
+  if (handle?.startsWith("@")) return null;
 
   if (isLoading) {
     return (
@@ -62,12 +46,12 @@ export default function AtProfile() {
     );
   }
 
-  // Not found or redirect in progress
-  if (!resolution?.found || resolution.is_redirect) {
-    if (resolution?.is_redirect) return null;
-    return <NotFound />;
-  }
+  // Old-username redirect in progress (middleware is navigating)
+  if (resolution?.is_redirect) return null;
 
-  // Resolved: pass the real UUID to Profile
+  // Not found
+  if (!resolution?.found) return <NotFound />;
+
+  // Resolved: render the profile
   return <Profile routeUserId={resolution.user_id} routeSlug={slug} />;
 }
