@@ -4302,6 +4302,7 @@ export type Database = {
           invoice_thank_you_messages: Json | null
           is_public: boolean | null
           last_name: string | null
+          last_username_change: string | null
           logo_url: string | null
           message_privacy: string | null
           notification_email_comments: boolean | null
@@ -4357,6 +4358,7 @@ export type Database = {
           invoice_thank_you_messages?: Json | null
           is_public?: boolean | null
           last_name?: string | null
+          last_username_change?: string | null
           logo_url?: string | null
           message_privacy?: string | null
           notification_email_comments?: boolean | null
@@ -4412,6 +4414,7 @@ export type Database = {
           invoice_thank_you_messages?: Json | null
           is_public?: boolean | null
           last_name?: string | null
+          last_username_change?: string | null
           logo_url?: string | null
           message_privacy?: string | null
           notification_email_comments?: boolean | null
@@ -5517,6 +5520,45 @@ export type Database = {
           },
         ]
       }
+      username_history: {
+        Row: {
+          changed_at: string
+          id: string
+          new_username: string
+          old_username: string
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          id?: string
+          new_username: string
+          old_username: string
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          id?: string
+          new_username?: string
+          old_username?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "username_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "username_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_rooms: {
         Row: {
           created_at: string | null
@@ -5641,6 +5683,7 @@ export type Database = {
         }[]
       }
       can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
+      change_username: { Args: { p_new_username: string }; Returns: Json }
       check_and_award_signup_milestone: {
         Args: { p_referrer_id: string }
         Returns: Json
@@ -5751,6 +5794,7 @@ export type Database = {
         Returns: Json
       }
       repair_profile_tags_from_csv: { Args: { csv_data: Json }; Returns: Json }
+      resolve_username: { Args: { p_username: string }; Returns: Json }
       retract_friend_request: {
         Args: { p_friendship_id: string }
         Returns: boolean
