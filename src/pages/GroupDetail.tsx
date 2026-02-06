@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { useState } from 'react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { Button } from '@/components/ui/button';
@@ -466,7 +467,7 @@ export default function GroupDetail() {
                   {members?.map((member) => (
                     <Card key={member.id}>
                       <CardContent className="p-4">
-                        <Link to={`/profile/${member.user_id}`} className="flex items-center gap-3">
+                        <Link to={getProfileUrl(member.user_id, (member.profile as any)?.username)} className="flex items-center gap-3">
                           <Avatar>
                             <AvatarImage src={member.profile?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(member.profile?.full_name)}</AvatarFallback>

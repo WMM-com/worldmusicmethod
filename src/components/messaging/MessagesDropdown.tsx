@@ -63,6 +63,7 @@ export function MessagesDropdown() {
       participantId: participant?.id,
       participantName: participant?.full_name || 'Unknown',
       participantAvatar: participant?.avatar_url,
+      participantUsername: participant?.username,
     });
     setOpen(false);
   };
@@ -233,7 +234,7 @@ function DropdownConversationItem({
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (participant?.id) {
-      navigate(`/profile/${participant.id}`);
+      navigate(`/${(participant as any).username || participant.id}`);
       onClose();
     }
   };

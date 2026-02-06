@@ -47,6 +47,7 @@ import ArtistPage from "./pages/ArtistPage";
 import GroupDetail from "./pages/GroupDetail";
 import Messages from "./pages/Messages";
 import Profile from "./pages/Profile";
+import ProfileRedirect from "./components/profile/ProfileRedirect";
 import AtProfile from "./pages/AtProfile";
 import ResetPassword from "./pages/ResetPassword";
 import Notifications from "./pages/Notifications";
@@ -150,7 +151,8 @@ function AppContent() {
         <Route path="/:handle/:slug" element={<AtProfile />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/profile/pages/:slug" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/profile/:userId" element={<Profile />} />
+        {/* Legacy UUID profile URLs → redirect to /:username */}
+        <Route path="/profile/:userId" element={<ProfileRedirect />} />
 
         <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />

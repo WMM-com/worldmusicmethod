@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, UserPlus, Check, X, UserMinus, Users, UserX, ShieldOff, LogIn, MessageCircle } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { getProfileUrl } from '@/lib/profileUrl';
 import {
   useFriendships,
   useSearchUsers,
@@ -163,7 +164,7 @@ export function FriendsTab() {
             <div className="mt-4 space-y-2">
               {searchResults.map((searchUser) => (
                 <div key={searchUser.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-card overflow-hidden">
-                  <Link to={`/profile/${searchUser.id}`} className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+                  <Link to={getProfileUrl(searchUser.id, (searchUser as any).username)} className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                     <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={searchUser.avatar_url || undefined} />
                       <AvatarFallback>{getInitials(searchUser.full_name)}</AvatarFallback>
@@ -247,7 +248,7 @@ export function FriendsTab() {
                     const otherUserId = getOtherUserId(friend);
                     return (
                       <div key={friend.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border overflow-hidden">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+                        <Link to={getProfileUrl(otherUserId, friend.profiles?.username)} className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                           <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={friend.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
@@ -326,7 +327,7 @@ export function FriendsTab() {
                     const otherUserId = getOtherUserId(request);
                     return (
                       <div key={request.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                        <Link to={getProfileUrl(otherUserId, request.profiles?.username)} className="flex items-center gap-3 min-w-0 flex-1">
                           <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={request.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(request.profiles?.full_name)}</AvatarFallback>
@@ -381,7 +382,7 @@ export function FriendsTab() {
                     const otherUserId = getOtherUserId(pending);
                     return (
                       <div key={pending.id} className="flex items-center justify-between gap-2 p-4 rounded-lg border">
-                        <Link to={`/profile/${otherUserId}`} className="flex items-center gap-3 min-w-0 flex-1">
+                        <Link to={getProfileUrl(otherUserId, pending.profiles?.username)} className="flex items-center gap-3 min-w-0 flex-1">
                           <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
                             <AvatarImage src={pending.profiles?.avatar_url || undefined} />
                             <AvatarFallback>{getInitials(pending.profiles?.full_name)}</AvatarFallback>

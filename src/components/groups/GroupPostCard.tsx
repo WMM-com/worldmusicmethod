@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -399,7 +400,7 @@ function CommentItem({ comment, getInitials, groupId }: { comment: GroupPostComm
   
   return (
     <div className="flex items-start gap-2 pl-4 border-l-2 border-muted">
-      <Link to={`/profile/${comment.user_id}`}>
+      <Link to={getProfileUrl(comment.user_id, (comment.profile as any)?.username)}>
         <Avatar className="h-7 w-7">
           <AvatarImage src={comment.profile?.avatar_url || undefined} />
           <AvatarFallback className="text-xs">{getInitials(comment.profile?.full_name)}</AvatarFallback>
@@ -408,7 +409,7 @@ function CommentItem({ comment, getInitials, groupId }: { comment: GroupPostComm
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Link to={`/profile/${comment.user_id}`} className="text-sm font-semibold hover:underline">
+            <Link to={getProfileUrl(comment.user_id, (comment.profile as any)?.username)} className="text-sm font-semibold hover:underline">
               {comment.profile?.full_name || 'Anonymous'}
             </Link>
             <span className="text-xs text-muted-foreground">

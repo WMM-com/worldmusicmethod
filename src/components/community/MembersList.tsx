@@ -31,11 +31,12 @@ import { Label } from '@/components/ui/label';
 import { Search, UserPlus, MessageCircle, Users, Check, Clock, MoreHorizontal, Flag, Ban } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMembers, useConnectWithMember, useConnectionStatus, useCancelConnection } from '@/hooks/useMembers';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 
-function MemberCard({ member }: { member: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; business_name: string | null } }) {
+function MemberCard({ member }: { member: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; business_name: string | null; username?: string | null } }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: connectionStatus, isLoading: loadingStatus } = useConnectionStatus(member.id);
@@ -92,7 +93,7 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
       <Card className="hover:bg-muted/50 transition-colors">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            <Link to={`/profile/${member.id}`}>
+            <Link to={getProfileUrl(member.id, member.username)}>
               <Avatar className="h-12 w-12">
                 <AvatarImage src={member.avatar_url || undefined} />
                 <AvatarFallback>{getInitials(member.full_name)}</AvatarFallback>
@@ -101,7 +102,7 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
             
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between">
-                <Link to={`/profile/${member.id}`} className="hover:underline">
+                <Link to={getProfileUrl(member.id, member.username)} className="hover:underline">
                   <h4 className="font-semibold truncate">{member.full_name || 'Anonymous'}</h4>
                 </Link>
                 {user && !isOwnProfile && (

@@ -137,7 +137,8 @@ export function ChatPopup() {
 
   const handleViewProfile = () => {
     if (popupConversation.participantId) {
-      navigate(`/profile/${popupConversation.participantId}`);
+      // Navigate to clean username URL; ProfileRedirect handles UUID fallback
+      navigate(`/${popupConversation.participantUsername || popupConversation.participantId}`);
       closePopupChat();
     }
   };

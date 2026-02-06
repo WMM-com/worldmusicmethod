@@ -49,6 +49,7 @@ export interface Friendship {
     full_name: string | null;
     avatar_url: string | null;
     email: string;
+    username: string | null;
   };
 }
 
@@ -579,7 +580,7 @@ export function useFriendships() {
       const otherUserIds = data.map(f => f.user_id === user.id ? f.friend_id : f.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, email')
+        .select('id, full_name, avatar_url, email, username')
         .in('id', otherUserIds);
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);

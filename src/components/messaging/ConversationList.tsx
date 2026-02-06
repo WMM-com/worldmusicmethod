@@ -185,7 +185,7 @@ function ConversationItem({
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (participant?.id) {
-      navigate(`/profile/${participant.id}`);
+      navigate(`/${(participant as any).username || participant.id}`);
     }
   };
 
