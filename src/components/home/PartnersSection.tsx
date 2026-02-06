@@ -1,19 +1,17 @@
 import { motion } from 'framer-motion';
-import songlinesLogo from '@/assets/partners/songlines.gif';
-import afropopLogo from '@/assets/partners/afropop.jpg';
 import soundsliceLogo from '@/assets/partners/soundslice.png';
 
 const partners = [
   {
     name: 'Songlines',
-    logo: songlinesLogo,
+    logo: soundsliceLogo,
     description: 'The leading world music magazine',
-    invert: true,
+    invert: false,
   },
   {
     name: 'Afropop Worldwide',
-    logo: afropopLogo,
-    description: 'Celebrating and sharing African music',
+    logo: soundsliceLogo,
+    description: 'Documenting African music',
     invert: false,
   },
   {
@@ -33,7 +31,7 @@ export function PartnersSection() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground mb-10"
+          className="text-center text-sm uppercase tracking-[0.2em] text-muted-foreground mb-10"
         >
           Partnered With
         </motion.p>
@@ -53,7 +51,7 @@ export function PartnersSection() {
                 alt={partner.name}
                 className={`h-10 md:h-12 w-auto object-contain ${partner.invert ? 'invert' : ''}`}
               />
-              <span className="text-xs text-muted-foreground text-center max-w-[160px]">
+              <span className="text-sm text-muted-foreground text-center max-w-[160px]">
                 {partner.description}
               </span>
             </motion.div>
