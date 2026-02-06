@@ -12,10 +12,12 @@ import {
   MousePointerClick,
   SlidersHorizontal,
   Gauge,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { SoundsliceEmbed } from '@/components/courses/SoundsliceEmbed';
+import { StudentStoriesSection } from '@/components/home/StudentStoriesSection';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const HERO_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4';
@@ -61,12 +63,9 @@ const baseTips = [
 ];
 
 const fretboardTip = { icon: SlidersHorizontal, text: 'Press fretboard icon for animated fretboard' };
-const pianoTip = { icon: SlidersHorizontal, text: 'Press piano icon to see notes on a piano' };
-
 function getTipsForInstrument(id: string) {
   if (id === 'guitar' || id === 'bass') return [...baseTips, fretboardTip];
-  if (id === 'vocals') return [...baseTips, pianoTip];
-  return baseTips; // drums - no fretboard/piano tip
+  return baseTips; // drums & vocals - no fretboard/piano tip
 }
 
 export default function Index() {
@@ -135,8 +134,12 @@ export default function Index() {
           </div>
 
           {/* Left side - Text & CTAs with gradient overlay */}
-          <div className="relative z-10 w-full lg:w-[45%] flex items-center bg-gradient-to-r from-background via-background from-60% to-transparent">
-            <div className="px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
+          <div className="relative z-10 w-full lg:w-[45%] flex items-center">
+            {/* Layered gradient for depth */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 via-60% to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background/60" />
+            
+            <div className="relative px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -176,6 +179,17 @@ export default function Index() {
                 >
                   <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
                 </Button>
+              </motion.div>
+
+              {/* Trust line */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.7, delay: 0.5 }}
+                className="flex items-center gap-2 mt-8 text-muted-foreground"
+              >
+                <Users className="w-4 h-4" />
+                <span className="text-sm">Trusted by 2,500+ dedicated musicians worldwide</span>
               </motion.div>
             </div>
           </div>
@@ -266,6 +280,8 @@ export default function Index() {
             </div>
           </div>
         </section>
+
+        <StudentStoriesSection />
       </main>
 
       {/* Soundslice Popup Dialog - scrollable */}
