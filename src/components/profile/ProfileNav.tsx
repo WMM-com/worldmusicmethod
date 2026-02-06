@@ -77,12 +77,22 @@ export function ProfileNav({
       return;
     }
 
-    // Public profile navigation at /username (clean URLs)
-    const username = profile?.username || userId;
-    if (page.is_home) {
-      navigate(`/${username}`);
+    // Public profile navigation — use branded URL if username exists,
+    // otherwise fall back to /profile/:userId paths (legacy-safe)
+    const username = profile?.username;
+    if (username) {
+      if (page.is_home) {
+        navigate(`/${username}`);
+      } else {
+        navigate(`/${username}/${page.slug}`);
+      }
     } else {
-      navigate(`/${username}/${page.slug}`);
+      // No username set — use /profile/:userId routes
+      if (page.is_home) {
+        navigate(`/profile/${userId}`);
+      } else {
+        navigate(`/profile/${userId}/${page.slug}`);
+      }
     }
   };
 

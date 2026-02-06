@@ -7,17 +7,17 @@ import { SiteHeader } from '@/components/layout/SiteHeader';
 import Profile from '@/pages/Profile';
 
 /**
- * Route handler for legacy /profile/:userId paths.
+ * Route handler for legacy /profile/:userId and /profile/:userId/:slug paths.
  *
  * If :userId is a UUID, looks up the user's username:
- *   - If username exists → redirect to /:username (SEO)
+ *   - If username exists → redirect to /:username (or /:username/:slug) for SEO
  *   - If no username → render Profile inline with the UUID (backwards compatible)
  * Non-UUID params fall through to Profile as well.
  */
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function ProfileRedirect() {
-  const { userId } = useParams<{ userId: string }>();
+  const { userId, slug } = useParams<{ userId: string; slug?: string }>();
   const navigate = useNavigate();
 
   const isUUID = userId ? UUID_REGEX.test(userId) : false;
@@ -42,14 +42,15 @@ export default function ProfileRedirect() {
     if (!isUUID || isLoading) return;
     if (username) {
       // User has a username — redirect to the clean branded URL
-      navigate(`/${username}`, { replace: true });
+      const target = slug ? `/${username}/${slug}` : `/${username}`;
+      navigate(target, { replace: true });
     }
     // If no username found, stay on /profile/:userId — Profile component renders below
-  }, [username, isLoading, isUUID, navigate]);
+  }, [username, isLoading, isUUID, navigate, slug]);
 
   // Non-UUID userId — render Profile directly
   if (!isUUID) {
-    return <Profile routeUserId={userId} />;
+    return <Profile routeUserId={userId} routeSlug={slug} />;
   }
 
   // Still loading or about to redirect — show skeleton
@@ -74,5 +75,5 @@ export default function ProfileRedirect() {
   }
 
   // UUID but no username set — render Profile with this userId (backwards compatible)
-  return <Profile routeUserId={userId} />;
+  return <Profile routeUserId={userId} routeSlug={slug} />;
 }
