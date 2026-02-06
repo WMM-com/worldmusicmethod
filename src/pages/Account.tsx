@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,9 +28,10 @@ import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
 import { 
   User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
-  AtSign, Eye, EyeOff, ChevronRight, Globe, Users
+  AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useChangeUsername } from '@/hooks/useUsernameResolution';
 
 type Section = 'profile' | 'orders' | 'notifications' | 'security';
 
@@ -40,6 +41,9 @@ export default function Account() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [saving, setSaving] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const changeUsername = useChangeUsername();
   
   const currentSection = (searchParams.get('section') as Section) || 'profile';
   
@@ -104,6 +108,7 @@ export default function Account() {
         display_name_preference: (profile as any).display_name_preference || 'full_name',
         visibility: (profile as any).visibility || 'private',
       });
+      setUsernameInput((profile as any).username || '');
       setMessagePrivacy(profile.message_privacy || 'community');
       setNotifications({
         email_reminders: profile.notification_email_reminders ?? true,
@@ -124,22 +129,52 @@ export default function Account() {
       first_name: form.first_name,
       last_name: form.last_name,
       full_name: `${form.first_name} ${form.last_name}`.trim(),
-      username: form.username || null,
       display_name_preference: form.display_name_preference,
       visibility: form.visibility,
-      is_public: form.visibility === 'public', // Keep for backwards compatibility
+      is_public: form.visibility === 'public',
     } as any);
     
     if (error) {
       toast.error('Failed to save: ' + error.message);
     } else {
       toast.success('Profile settings saved');
-      // Invalidate profile queries to sync with Profile page
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       queryClient.invalidateQueries({ queryKey: ['extended-profile'] });
     }
     setSaving(false);
   };
+
+  const handleSaveUsername = async () => {
+    if (!usernameInput.trim()) {
+      toast.error('Username cannot be empty');
+      return;
+    }
+    setSavingUsername(true);
+    try {
+      const result = await changeUsername.mutateAsync(usernameInput.trim());
+      if (result.success) {
+        toast.success(result.message || 'Username updated');
+        setForm(prev => ({ ...prev, username: result.username || usernameInput.trim() }));
+      } else {
+        toast.error(result.error || 'Failed to change username');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to change username');
+    }
+    setSavingUsername(false);
+  };
+
+  // Calculate cooldown info
+  const cooldownInfo = useMemo(() => {
+    const lastChange = (profile as any)?.last_username_change;
+    if (!lastChange) return { canChange: true, daysRemaining: 0 };
+    const daysSince = Math.floor((Date.now() - new Date(lastChange).getTime()) / (1000 * 60 * 60 * 24));
+    const cooldownDays = 30;
+    return {
+      canChange: daysSince >= cooldownDays || !(profile as any)?.username,
+      daysRemaining: Math.max(0, cooldownDays - daysSince),
+    };
+  }, [profile]);
 
   const handleChangeEmail = async () => {
     if (!form.email || form.email === profile?.email) {
@@ -382,18 +417,50 @@ export default function Account() {
                         </div>
                       </div>
                       
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label className="flex items-center gap-2">
-                          <AtSign className="h-4 w-4" />
-                          Username / Display Name
+                          <Link2 className="h-4 w-4" />
+                          Profile URL (Username)
                         </Label>
-                        <Input 
-                          value={form.username} 
-                          onChange={(e) => setForm({...form, username: e.target.value})} 
-                          placeholder="Your username or band name"
-                        />
+                        <div className="flex gap-2">
+                          <div className="flex items-center gap-0 flex-1">
+                            <span className="text-sm text-muted-foreground bg-muted px-3 py-2 rounded-l-md border border-r-0 border-input whitespace-nowrap">
+                              /@
+                            </span>
+                            <Input 
+                              value={usernameInput} 
+                              onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))} 
+                              placeholder="yourname"
+                              className="rounded-l-none"
+                              maxLength={30}
+                            />
+                          </div>
+                          <Button 
+                            onClick={handleSaveUsername} 
+                            disabled={savingUsername || usernameInput === form.username || !cooldownInfo.canChange}
+                            size="sm"
+                            variant="outline"
+                          >
+                            {savingUsername ? 'Saving...' : 'Set'}
+                          </Button>
+                        </div>
+                        
+                        {form.username && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <Globe className="h-3 w-3" />
+                            Your profile URL: <span className="font-mono font-medium text-foreground">/@{form.username}</span>
+                          </p>
+                        )}
+                        
+                        {!cooldownInfo.canChange && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                            <Clock className="h-3 w-3" />
+                            Username can be changed again in {cooldownInfo.daysRemaining} days
+                          </p>
+                        )}
+                        
                         <p className="text-xs text-muted-foreground">
-                          Can include capitals, spaces, and special characters. Used for @mentions.
+                          3-30 characters. Letters, numbers, hyphens, underscores only. Changing your username creates a redirect from your old URL for 90 days.
                         </p>
                       </div>
                     </CardContent>
