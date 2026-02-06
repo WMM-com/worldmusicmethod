@@ -109,9 +109,9 @@ export function usePublicProfile(username: string) {
   });
 }
 
-// Profile sections - now REQUIRES pageId to prevent cross-page leakage
-// If pageId is undefined, returns empty array (waiting for pages to load)
-// If pageId is null, returns sections with null page_id (legacy unassigned)
+// Profile sections - supports page-level filtering
+// If pageId is undefined, pages are still loading — returns empty array to prevent flash
+// If pageId is null, no pages exist for user — returns ALL sections (legacy fallback)
 // If pageId is a string, returns sections for that specific page
 export function useProfileSections(userId?: string, pageId?: string | null) {
   const { user } = useAuth();
@@ -131,12 +131,11 @@ export function useProfileSections(userId?: string, pageId?: string | null) {
         .eq('user_id', targetId)
         .order('order_index', { ascending: true });
 
-      // Filter by page_id
-      if (pageId === null) {
-        query = query.is('page_id', null);
-      } else {
+      // Filter by page_id (null = show ALL sections as legacy fallback)
+      if (pageId !== null) {
         query = query.eq('page_id', pageId);
       }
+      // When pageId === null, fetch all sections without page filtering
 
       const { data, error } = await query;
 
