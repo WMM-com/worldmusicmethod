@@ -10,26 +10,37 @@ export default function AtProfile() {
   const { handle, slug } = useParams<{ handle: string; slug?: string }>();
   const navigate = useNavigate();
 
-  // Only treat routes that start with @ as profile routes
+  // Handle /@username → redirect to /username (301-style)
   const isAtRoute = handle?.startsWith("@");
-  const username = isAtRoute ? handle.slice(1) : undefined;
+  const username = isAtRoute ? handle.slice(1) : handle;
 
-  const { data: resolution, isLoading } = useResolveUsername(username);
+  // Always call hooks unconditionally
+  const { data: resolution, isLoading } = useResolveUsername(
+    // Only resolve when NOT an @ redirect (@ routes just redirect, no need to resolve)
+    isAtRoute ? undefined : username
+  );
+
+  // Redirect /@username → /username
+  useEffect(() => {
+    if (isAtRoute && handle) {
+      const cleanUsername = handle.slice(1);
+      const newPath = slug ? `/${cleanUsername}/${slug}` : `/${cleanUsername}`;
+      navigate(newPath, { replace: true });
+    }
+  }, [isAtRoute, handle, slug, navigate]);
 
   // Handle redirect for old usernames (301-style client redirect)
   useEffect(() => {
     if (!resolution || !resolution.found || !resolution.is_redirect) return;
 
-    // Old username → redirect to current username
     const newPath = slug
-      ? `/@${resolution.username}/${slug}`
-      : `/@${resolution.username}`;
+      ? `/${resolution.username}/${slug}`
+      : `/${resolution.username}`;
     navigate(newPath, { replace: true });
   }, [resolution, slug, navigate]);
 
-  if (!isAtRoute) {
-    return <NotFound />;
-  }
+  // For @ routes, show nothing while redirecting
+  if (isAtRoute) return null;
 
   if (isLoading) {
     return (
@@ -53,7 +64,7 @@ export default function AtProfile() {
 
   // Not found or redirect in progress
   if (!resolution?.found || resolution.is_redirect) {
-    if (resolution?.is_redirect) return null; // Redirect is happening
+    if (resolution?.is_redirect) return null;
     return <NotFound />;
   }
 

@@ -428,7 +428,7 @@ export default function Account() {
                         <div className="flex gap-2">
                           <div className="flex items-center gap-0 flex-1">
                             <span className="text-sm text-muted-foreground bg-muted px-3 py-2 rounded-l-md border border-r-0 border-input whitespace-nowrap">
-                              /@
+                              /
                             </span>
                             <div className="relative flex-1">
                               <Input 
@@ -499,7 +499,7 @@ export default function Account() {
                         {form.username && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                             <Globe className="h-3 w-3" />
-                            Your profile URL: <span className="font-mono font-medium text-foreground">/@{form.username}</span>
+                            Your profile URL: <span className="font-mono font-medium text-foreground">worldmusicmethod.lovable.app/{form.username}</span>
                           </p>
                         )}
                         
