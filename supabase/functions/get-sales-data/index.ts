@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 // Sanitize search queries to prevent filter injection
@@ -97,17 +97,45 @@ serve(async (req) => {
       });
 
       // Fetch Stripe fees once per payment intent and cache the result
+      // Also backfill orders that have stripe_fee=0 or null
       const feeCache: Record<string, { totalFee: number; totalAmount: number }> = {};
       
       for (const paymentId of Object.keys(ordersByPaymentId)) {
         const ordersForPayment = ordersByPaymentId[paymentId];
         const firstOrder = ordersForPayment[0];
         
-        if (firstOrder.payment_provider === 'stripe' && firstOrder.status === 'completed') {
+        // Backfill if stripe_fee is missing/zero for any completed stripe order
+        const needsFeeBackfill = firstOrder.payment_provider === 'stripe' && 
+          firstOrder.status === 'completed' &&
+          ordersForPayment.some(o => !o.stripe_fee || o.stripe_fee === 0);
+        
+        if (needsFeeBackfill) {
           try {
-            const paymentIntent = await stripe.paymentIntents.retrieve(paymentId);
-            if (paymentIntent.latest_charge) {
-              const charge = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+            // Try payment intent first, fall back to invoice charge lookup
+            let chargeId: string | null = null;
+            
+            if (paymentId.startsWith('pi_')) {
+              const paymentIntent = await stripe.paymentIntents.retrieve(paymentId);
+              if (paymentIntent.latest_charge) {
+                chargeId = typeof paymentIntent.latest_charge === 'string' 
+                  ? paymentIntent.latest_charge : paymentIntent.latest_charge.id;
+              }
+            } else if (paymentId.startsWith('in_')) {
+              // Invoice ID - retrieve the invoice to get its charge or payment_intent
+              const invoice = await stripe.invoices.retrieve(paymentId);
+              if (invoice.charge) {
+                chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
+              } else if (invoice.payment_intent) {
+                const piId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id;
+                const pi = await stripe.paymentIntents.retrieve(piId);
+                if (pi.latest_charge) {
+                  chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge.id;
+                }
+              }
+            }
+            
+            if (chargeId) {
+              const charge = await stripe.charges.retrieve(chargeId);
               let totalFee = 0;
               
               if (charge.balance_transaction) {
@@ -117,9 +145,10 @@ serve(async (req) => {
                 totalFee = bt.fee / 100;
               }
               
-              // Total amount for this payment (sum of all order amounts with same payment id)
               const totalAmount = ordersForPayment.reduce((sum, o) => sum + (o.amount || 0), 0);
               feeCache[paymentId] = { totalFee, totalAmount };
+            } else {
+              logStep("No charge found for fee lookup", { paymentId });
             }
           } catch (e) {
             logStep("Error fetching Stripe fee", { paymentId, error: e });

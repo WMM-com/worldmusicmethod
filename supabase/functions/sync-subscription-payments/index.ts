@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -161,9 +161,24 @@ serve(async (req) => {
 
           // Get charge details for fee
           let stripeFee = 0;
+          // Try to get fee from charge on invoice, or fall back to payment intent
+          let chargeId: string | null = null;
           if (invoice.charge) {
+            chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
+          } else if (invoice.payment_intent) {
             try {
-              const chargeId = typeof invoice.charge === 'string' ? invoice.charge : invoice.charge.id;
+              const piId = typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent.id;
+              const pi = await stripe.paymentIntents.retrieve(piId);
+              if (pi.latest_charge) {
+                chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : pi.latest_charge.id;
+              }
+            } catch (e) {
+              logStep("Could not resolve charge from payment_intent", { invoiceId: invoice.id });
+            }
+          }
+          
+          if (chargeId) {
+            try {
               const charge = await stripe.charges.retrieve(chargeId);
               if (charge.balance_transaction) {
                 const btId = typeof charge.balance_transaction === 'string' 
@@ -173,8 +188,12 @@ serve(async (req) => {
                 stripeFee = bt.fee / 100;
               }
             } catch (e) {
-              logStep("Could not get fee for invoice", { invoiceId: invoice.id });
+              logStep("Could not get fee for charge", { chargeId, invoiceId: invoice.id });
             }
+          }
+          
+          if (stripeFee === 0) {
+            logStep("WARNING: Could not retrieve Stripe fee", { invoiceId: invoice.id, chargeId });
           }
 
           const amount = (invoice.amount_paid || 0) / 100;
