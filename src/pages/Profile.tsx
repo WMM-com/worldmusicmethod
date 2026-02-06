@@ -169,7 +169,7 @@ export default function Profile() {
   const ensureHomePage = useEnsureHomePage();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => (isOwnProfileManageRoute ? 'page' : 'about'));
+  const [activeTab, setActiveTab] = useState(() => 'page');
   const [inviteFriendsOpen, setInviteFriendsOpen] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
   const [cropperOpen, setCropperOpen] = useState(false);
@@ -210,12 +210,12 @@ export default function Profile() {
     }
   }, [isOwnProfileManageRoute, pages.length, ensureHomePage]);
 
-  // Switch to 'page' tab when on profile management route (home or custom pages)
+  // Always default to 'page' tab for showing page content
   useEffect(() => {
-    if (isOwnProfileManageRoute && activeTab !== 'page') {
+    if (activeTab !== 'page' && activeTab !== 'posts' && activeTab !== 'media') {
       setActiveTab('page');
     }
-  }, [isOwnProfileManageRoute]);
+  }, [activeTab]);
 
   // DnD sensors
   const sensors = useSensors(
@@ -1018,261 +1018,10 @@ export default function Profile() {
             
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
-              {/* About Tab */}
-              <TabsContent value="about">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Left Column - Bio (fixed max-width like posts) */}
-                  <div className="w-full lg:max-w-2xl space-y-6">
-                    {extendedProfile && (
-                      <BioSection profile={extendedProfile} isEditing={isEditing} />
-                    )}
-                    
-                    
-                    {/* Main Content Sections - 12-column grid for flexible layouts */}
-                    {mainSections.length === 0 && showMultiPageFeatures ? (
-                      <div className="col-span-full py-12 text-center text-muted-foreground">
-                        <p className="mb-4">This page is empty.</p>
-                        {isOwnProfile && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAddSectionOpen(true)}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Content
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        {isEditing && isOwnProfile ? (
-                          <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCenter}
-                            onDragEnd={handleDragEnd}
-                          >
-                            <SortableContext
-                              items={mainSections.map(s => s.id)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              <div className="grid grid-cols-12 gap-4">
-                                {mainSections.map((section, index) => (
-                                  <SortableSection
-                                    key={section.id}
-                                    id={section.id}
-                                    layout={section.layout}
-                                    isEditing={isEditing}
-                                    onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                    onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
-                                    onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
-                                    onDelete={() => handleDeleteSection(section.id)}
-                                    isFirst={index === 0}
-                                    isLast={index === mainSections.length - 1}
-                                  >
-                                    {renderSection(section, false)}
-                                  </SortableSection>
-                                ))}
-                              </div>
-                            </SortableContext>
-                          </DndContext>
-                        ) : (
-                          <div className="grid grid-cols-12 gap-4">
-                            {mainSections.map(section => (
-                              <div key={section.id} className={getLayoutClass(section.layout)}>
-                                {renderSection(section, false)}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* Mobile: Show sidebar sections here */}
-                    <div className="lg:hidden space-y-6">
-                      {isEditing && isOwnProfile ? (
-                        <DndContext
-                          sensors={sensors}
-                          collisionDetection={closestCenter}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <SortableContext
-                            items={sidebarSections.map(s => s.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            <div className="space-y-6">
-                              {sidebarSections.map((section, index) => (
-                                <SortableSection
-                                  key={section.id}
-                                  id={section.id}
-                                  layout={section.layout}
-                                  isEditing={isEditing}
-                                  onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                  onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
-                                  onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
-                                  onDelete={() => handleDeleteSection(section.id)}
-                                  isFirst={index === 0}
-                                  isLast={index === sidebarSections.length - 1}
-                                >
-                                  {renderSection(section, true)}
-                                </SortableSection>
-                              ))}
-                            </div>
-                          </SortableContext>
-                        </DndContext>
-                      ) : (
-                        sidebarSections.map(section => renderSection(section, true))
-                      )}
-                      
-                      {/* Social Links - mobile */}
-                      {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
-                        <Card>
-                          <CardContent className="pt-6">
-                            <h3 className="font-semibold mb-4 flex items-center gap-2">
-                              <Share2 className="h-4 w-4" />
-                              Links
-                            </h3>
-                            <div className="space-y-2">
-                              {extendedProfile.website_url && (
-                                <a 
-                                  href={extendedProfile.website_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-sm text-primary hover:underline"
-                                >
-                                  <Globe className="h-4 w-4" />
-                                  Website
-                                </a>
-                              )}
-                              {Object.entries(extendedProfile.social_links as Record<string, string>).map(([platform, url]) => (
-                                <a 
-                                  key={platform}
-                                  href={url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-sm text-primary hover:underline capitalize"
-                                >
-                                  <Share2 className="h-4 w-4" />
-                                  {platform}
-                                </a>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                      
-                      {/* Member Info - mobile */}
-                      <Card>
-                        <CardContent className="pt-6">
-                          <h3 className="font-semibold mb-4">Info</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
-                          </p>
-                          {extendedProfile?.profile_type && (
-                            <Badge variant="outline" className="mt-2 capitalize">
-                              {extendedProfile.profile_type}
-                            </Badge>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-
-                  {/* Right Column - Embeds & Info (desktop only) */}
-                  <div className="hidden lg:block flex-1 space-y-6">
-                    {/* Sidebar Embed Sections */}
-                    {isEditing && isOwnProfile ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={sidebarSections.map(s => s.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-6">
-                            {sidebarSections.map((section, index) => (
-                              <SortableSection
-                                key={section.id}
-                                id={section.id}
-                                layout={section.layout}
-                                isEditing={isEditing}
-                                onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
-                                onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
-                                onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
-                                onDelete={() => handleDeleteSection(section.id)}
-                                isFirst={index === 0}
-                                isLast={index === sidebarSections.length - 1}
-                              >
-                                {renderSection(section, true)}
-                              </SortableSection>
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    ) : (
-                      sidebarSections.map(section => renderSection(section, true))
-                    )}
-
-                    {/* Social Links */}
-                    {extendedProfile?.social_links && Object.keys(extendedProfile.social_links).length > 0 && (
-                      <Card>
-                        <CardContent className="pt-6">
-                          <h3 className="font-semibold mb-4 flex items-center gap-2">
-                            <Share2 className="h-4 w-4" />
-                            Links
-                          </h3>
-                          <div className="space-y-2">
-                            {extendedProfile.website_url && (
-                              <a 
-                                href={extendedProfile.website_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-sm text-primary hover:underline"
-                              >
-                                <Globe className="h-4 w-4" />
-                                Website
-                              </a>
-                            )}
-                            {Object.entries(extendedProfile.social_links as Record<string, string>).map(([platform, url]) => (
-                              <a 
-                                key={platform}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-sm text-primary hover:underline capitalize"
-                              >
-                                <Share2 className="h-4 w-4" />
-                                {platform}
-                              </a>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    {/* Member Info */}
-                    <Card>
-                      <CardContent className="pt-6">
-                        <h3 className="font-semibold mb-4">Info</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Member since {format(new Date(profile.created_at), 'MMMM yyyy')}
-                        </p>
-                        {extendedProfile?.profile_type && (
-                          <Badge variant="outline" className="mt-2 capitalize">
-                            {extendedProfile.profile_type}
-                          </Badge>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </TabsContent>
-
               {/* Posts Tab */}
               <TabsContent value="posts">
                 <div className="flex gap-6">
-                  {/* Left Column - Posts (same max-width as About) */}
+                  {/* Left Column - Posts (same max-width as page content) */}
                   <div className="w-full max-w-2xl space-y-4">
                     {postsLoading ? (
                       <>
