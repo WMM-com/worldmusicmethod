@@ -5637,6 +5637,7 @@ export type Database = {
           price: number
         }[]
       }
+      can_view_profile: { Args: { target_user_id: string }; Returns: boolean }
       check_and_award_signup_milestone: {
         Args: { p_referrer_id: string }
         Returns: Json
