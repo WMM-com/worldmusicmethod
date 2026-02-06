@@ -84,15 +84,17 @@ export function TextBlock({ section, isEditing, onUpdate, onDelete }: TextBlockP
         {localContent.body && (
           <p className="text-base leading-relaxed whitespace-pre-wrap">{localContent.body}</p>
         )}
-        {/* Hover edit button for owners */}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => setInlineEdit(true)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+        {/* Hover edit button - only visible to owners in edit mode */}
+        {isEditing && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => setInlineEdit(true)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     );
   }

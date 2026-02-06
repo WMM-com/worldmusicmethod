@@ -85,14 +85,16 @@ export function HeadingBlock({ section, isEditing, onUpdate, onDelete }: Heading
           {localContent.text}
         </HeadingTag>
         {/* Hover edit button */}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute top-0 right-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => setInlineEdit(true)}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
+        {isEditing && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute top-0 right-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => setInlineEdit(true)}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     );
   }

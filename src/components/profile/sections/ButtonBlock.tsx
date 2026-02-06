@@ -84,18 +84,20 @@ export function ButtonBlock({ section, isEditing, onUpdate, onDelete }: ButtonBl
         >
           {localContent.label}
         </Button>
-        {/* Hover edit button for owners */}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation();
-            setInlineEdit(true);
-          }}
-        >
-          <Pencil className="h-3 w-3" />
-        </Button>
+        {/* Hover edit button - only visible to owners in edit mode */}
+        {isEditing && (
+          <Button
+            variant="secondary"
+            size="icon"
+            className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              setInlineEdit(true);
+            }}
+          >
+            <Pencil className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     );
   }
