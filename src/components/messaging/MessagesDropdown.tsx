@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getProfileUrl } from '@/lib/profileUrl';
 import { MessageSquare, User, Send, PenLine, MoreVertical, Trash2, Flag, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,13 +69,14 @@ export function MessagesDropdown() {
     setOpen(false);
   };
 
-  const handleStartConversation = async (friendId: string, friendName: string, friendAvatar: string | null) => {
+  const handleStartConversation = async (friendId: string, friendName: string, friendAvatar: string | null, friendUsername?: string | null) => {
     const conversationId = await createConversation.mutateAsync(friendId);
     openPopupChat({
       id: conversationId,
       participantId: friendId,
       participantName: friendName,
       participantAvatar: friendAvatar || undefined,
+      participantUsername: friendUsername || undefined,
     });
     setNewChatOpen(false);
     setOpen(false);
@@ -136,10 +138,11 @@ export function MessagesDropdown() {
                         const friendUserId = friend.other_user_id || friend.friend_id;
                         const friendName = friend.profiles?.full_name || friend.profiles?.email || 'Unknown';
                         const friendAvatar = friend.profiles?.avatar_url || null;
+                        const friendUsername = friend.profiles?.username;
                         return (
                           <button
                             key={friend.id}
-                            onClick={() => handleStartConversation(friendUserId, friendName, friendAvatar)}
+                            onClick={() => handleStartConversation(friendUserId, friendName, friendAvatar, friendUsername)}
                             className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-neutral-800 transition-colors text-left"
                             disabled={createConversation.isPending}
                           >
@@ -234,7 +237,7 @@ function DropdownConversationItem({
   const handleViewProfile = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (participant?.id) {
-      navigate(`/${(participant as any).username || participant.id}`);
+      navigate(getProfileUrl(participant.id, participant?.username));
       onClose();
     }
   };

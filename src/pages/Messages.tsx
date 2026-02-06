@@ -39,6 +39,7 @@ export default function Messages() {
   const selectedConversation = conversations?.find(c => c.id === selectedConversationId);
   const participantName = selectedConversation?.participants?.[0]?.full_name || 'Conversation';
   const participantId = selectedConversation?.participants?.[0]?.id;
+  const participantUsername = selectedConversation?.participants?.[0]?.username;
 
   if (loading || !user) return null;
 
@@ -77,6 +78,7 @@ export default function Messages() {
                   conversationId={selectedConversationId}
                   participantName={participantName}
                   participantId={participantId}
+                  participantUsername={participantUsername || undefined}
                 />
               ) : (
                 <Card className="h-full flex items-center justify-center border-neutral-800 bg-[#0a0a0a]">
