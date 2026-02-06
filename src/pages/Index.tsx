@@ -55,11 +55,19 @@ const instruments = [
   },
 ];
 
-const popupTips = [
+const baseTips = [
   { icon: MousePointerClick, text: 'Drag on notation to loop any section' },
   { icon: Gauge, text: 'Slow down any passage without changing pitch' },
-  { icon: SlidersHorizontal, text: 'Press fretboard icon for animated fretboard (guitar & bass)' },
 ];
+
+const fretboardTip = { icon: SlidersHorizontal, text: 'Press fretboard icon for animated fretboard' };
+const pianoTip = { icon: SlidersHorizontal, text: 'Press piano icon to see notes on a piano' };
+
+function getTipsForInstrument(id: string) {
+  if (id === 'guitar' || id === 'bass') return [...baseTips, fretboardTip];
+  if (id === 'vocals') return [...baseTips, pianoTip];
+  return baseTips; // drums - no fretboard/piano tip
+}
 
 export default function Index() {
   const isMobile = useIsMobile();
@@ -95,9 +103,39 @@ export default function Index() {
       
       <main className="min-h-screen bg-background">
         {/* Hero Section - Split Layout */}
-        <section className="relative w-full min-h-[85vh] flex items-stretch">
-          {/* Left side - Text & CTAs */}
-          <div className="relative z-10 w-full lg:w-1/2 flex items-center bg-gradient-to-r from-background via-background to-background/80 lg:to-transparent">
+        <section className="relative w-full min-h-[85vh] flex items-stretch overflow-hidden">
+          {/* Right side - Video (positioned first, behind gradient) */}
+          <div className="hidden lg:block absolute inset-0" style={{ left: '30%' }}>
+            <video
+              ref={heroVideoRef}
+              src={HERO_VIDEO_URL}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+              muted
+              loop
+              playsInline
+              autoPlay
+            />
+            <div className="absolute inset-0 bg-black/30" />
+            
+            {/* Watch Trailer button centered on video area */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.5 }}
+              onClick={() => setShowTrailer(true)}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-4 group cursor-pointer"
+            >
+              <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
+                <Play className="w-8 h-8 text-primary-foreground ml-1" fill="currentColor" />
+              </div>
+              <span className="text-sm font-semibold text-foreground bg-background/60 backdrop-blur-sm px-4 py-2 rounded-full">
+                Watch Trailer
+              </span>
+            </motion.button>
+          </div>
+
+          {/* Left side - Text & CTAs with gradient overlay */}
+          <div className="relative z-10 w-full lg:w-[45%] flex items-center bg-gradient-to-r from-background via-background from-60% to-transparent">
             <div className="px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
@@ -142,35 +180,7 @@ export default function Index() {
             </div>
           </div>
 
-          {/* Right side - Video with Watch Trailer overlay */}
-          <div className="hidden lg:block absolute inset-0 lg:relative lg:w-1/2">
-            <video
-              ref={heroVideoRef}
-              src={HERO_VIDEO_URL}
-              className="absolute inset-0 w-full h-full object-cover"
-              muted
-              loop
-              playsInline
-              autoPlay
-            />
-            <div className="absolute inset-0 bg-black/30" />
-            
-            {/* Watch Trailer button centered on video */}
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.7, delay: 0.5 }}
-              onClick={() => setShowTrailer(true)}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-4 group cursor-pointer"
-            >
-              <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
-                <Play className="w-8 h-8 text-primary-foreground ml-1" fill="currentColor" />
-              </div>
-              <span className="text-sm font-semibold text-foreground bg-background/60 backdrop-blur-sm px-4 py-2 rounded-full">
-                Watch Trailer
-              </span>
-            </motion.button>
-          </div>
+          
 
           {/* Mobile: video background behind text */}
           <div className="absolute inset-0 lg:hidden -z-0">
@@ -274,7 +284,7 @@ export default function Index() {
               {selectedInstrument?.label} Lesson Preview
             </h3>
             <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
-              {popupTips.map((tip, idx) => {
+              {selectedInstrument && getTipsForInstrument(selectedInstrument.id).map((tip, idx) => {
                 const TipIcon = tip.icon;
                 return (
                   <div key={idx} className="flex items-center gap-1.5">
@@ -292,7 +302,7 @@ export default function Index() {
               <SoundsliceEmbed
                 sliceIdOrUrl={selectedInstrument.sliceId}
                 preset={selectedInstrument.preset}
-                height={isMobile ? 450 : 620}
+                height={isMobile ? 400 : 500}
               />
             )}
           </div>
