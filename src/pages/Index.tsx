@@ -9,15 +9,13 @@ import {
   Drum,
   Mic,
   Music,
-  Repeat,
-  Timer,
   MousePointerClick,
   SlidersHorizontal,
-  Gauge
+  Gauge,
+  Volume2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { SiteHeader } from '@/components/layout/SiteHeader';
 import { SoundsliceEmbed } from '@/components/courses/SoundsliceEmbed';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -58,20 +56,19 @@ const instruments = [
   },
 ];
 
-const soundsliceTips = [
-  { icon: MousePointerClick, title: 'Click & Drag to Loop', description: 'Select any bars on the notation to instantly loop them' },
-  { icon: Gauge, title: 'Adjust Tempo', description: 'Slow down or speed up any passage with the tempo controls' },
-  { icon: SlidersHorizontal, title: 'Fretboard View', description: 'Press the fretboard icon to see notes on an animated fretboard (guitar & bass)' },
-  { icon: Repeat, title: 'Auto-Repeat', description: 'Loop difficult sections until you nail them perfectly' },
-  { icon: Timer, title: 'Measure Counter', description: 'Track exactly where you are in the piece at all times' },
+const popupTips = [
+  { icon: MousePointerClick, text: 'Drag on notation to loop any section' },
+  { icon: Gauge, text: 'Slow down any passage without changing pitch' },
+  { icon: SlidersHorizontal, text: 'Press fretboard icon for animated fretboard (guitar & bass)' },
 ];
 
 export default function Index() {
   const isMobile = useIsMobile();
   const heroVideoRef = useRef<HTMLVideoElement>(null);
+  const trailerVideoRef = useRef<HTMLVideoElement>(null);
   const [selectedInstrument, setSelectedInstrument] = useState<typeof instruments[0] | null>(null);
+  const [showTrailer, setShowTrailer] = useState(false);
 
-  // Autoplay hero video muted
   useEffect(() => {
     if (heroVideoRef.current) {
       heroVideoRef.current.play().catch(() => {});
@@ -82,17 +79,24 @@ export default function Index() {
     setSelectedInstrument(null);
   };
 
+  const handleCloseTrailer = () => {
+    if (trailerVideoRef.current) {
+      trailerVideoRef.current.pause();
+      trailerVideoRef.current.currentTime = 0;
+    }
+    setShowTrailer(false);
+  };
+
   return (
     <>
       <Helmet>
         <title>World Music Method | Master Your Instrument, Unlock Musical Freedom</title>
         <meta name="description" content="Accelerate your musical journey with world-class instructors, cutting-edge technology, and a vibrant global community. Access an entire world of musical knowledge." />
       </Helmet>
-      <SiteHeader />
       
       <main className="min-h-screen bg-background">
         {/* ── Hero Section ── */}
-        <section className="relative w-full overflow-hidden min-h-[90vh] flex items-center">
+        <section className="relative w-full overflow-hidden min-h-[90vh] flex items-center pt-16">
           {/* Background video */}
           <video
             ref={heroVideoRef}
@@ -133,7 +137,7 @@ export default function Index() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
               <Button
                 size="lg"
@@ -149,6 +153,15 @@ export default function Index() {
                 className="text-base px-8 py-6 h-auto"
               >
                 <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => setShowTrailer(true)}
+                className="text-base px-8 py-6 h-auto gap-2"
+              >
+                <Volume2 className="w-5 h-5" />
+                Watch Trailer
               </Button>
             </motion.div>
           </div>
@@ -173,7 +186,7 @@ export default function Index() {
             </motion.div>
 
             {/* 2x2 Instrument Grid */}
-            <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto mb-14">
+            <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto">
               {instruments.map((inst, idx) => {
                 const Icon = inst.icon;
                 return (
@@ -186,16 +199,13 @@ export default function Index() {
                     onClick={() => setSelectedInstrument(inst)}
                     className="group relative aspect-[4/3] rounded-xl overflow-hidden border border-border bg-card hover:border-primary/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    {/* Placeholder image */}
                     <img
                       src={inst.placeholder}
                       alt={inst.label}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    {/* Overlay */}
                     <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors" />
                     
-                    {/* Content */}
                     <div className="relative z-10 flex flex-col items-center justify-center h-full gap-3">
                       <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
                         <Play className="w-6 h-6 md:w-7 md:h-7 text-primary-foreground ml-0.5" fill="currentColor" />
@@ -211,36 +221,6 @@ export default function Index() {
                 );
               })}
             </div>
-
-            {/* Soundslice Quick Tips */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="max-w-4xl mx-auto"
-            >
-              <h3 className="text-lg md:text-xl font-semibold text-center mb-6">
-                How to Use the Practice Player
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                {soundsliceTips.map((tip, idx) => {
-                  const TipIcon = tip.icon;
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-4 rounded-lg bg-card border border-border"
-                    >
-                      <TipIcon className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{tip.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{tip.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
           </div>
         </section>
       </main>
@@ -248,7 +228,6 @@ export default function Index() {
       {/* ── Soundslice Popup Dialog ── */}
       <Dialog open={!!selectedInstrument} onOpenChange={(open) => !open && handleClosePopup()}>
         <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-background border-border overflow-hidden">
-          {/* Close button */}
           <button
             onClick={handleClosePopup}
             className="absolute top-3 right-3 z-50 w-9 h-9 rounded-full bg-primary hover:bg-primary/80 flex items-center justify-center transition-colors"
@@ -256,26 +235,53 @@ export default function Index() {
             <X className="w-5 h-5 text-primary-foreground" />
           </button>
 
-          {/* Header */}
+          {/* Header with inline tips */}
           <div className="px-6 pt-5 pb-3 border-b border-border">
             <h3 className="text-lg font-semibold text-foreground">
-              {selectedInstrument?.label} — Lesson Preview
+              {selectedInstrument?.label} Lesson Preview
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Try the interactive player below. Click and drag on the notation to loop sections, adjust tempo, and explore.
-            </p>
+            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
+              {popupTips.map((tip, idx) => {
+                const TipIcon = tip.icon;
+                return (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <TipIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
+                    <span className="text-xs text-muted-foreground">{tip.text}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Soundslice embed */}
+          {/* Soundslice embed - taller to show controls */}
           <div className="p-4">
             {selectedInstrument && (
               <SoundsliceEmbed
                 sliceIdOrUrl={selectedInstrument.sliceId}
                 preset={selectedInstrument.preset}
-                height={isMobile ? 400 : 550}
+                height={isMobile ? 450 : 620}
               />
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Trailer Video Popup ── */}
+      <Dialog open={showTrailer} onOpenChange={(open) => !open && handleCloseTrailer()}>
+        <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-black border-border overflow-hidden">
+          <button
+            onClick={handleCloseTrailer}
+            className="absolute top-3 right-3 z-50 w-9 h-9 rounded-full bg-primary hover:bg-primary/80 flex items-center justify-center transition-colors"
+          >
+            <X className="w-5 h-5 text-primary-foreground" />
+          </button>
+          <video
+            ref={trailerVideoRef}
+            src={HERO_VIDEO_URL}
+            className="w-full aspect-video"
+            controls
+            autoPlay
+          />
         </DialogContent>
       </Dialog>
     </>
