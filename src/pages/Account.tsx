@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChangeUsername } from '@/hooks/useUsernameResolution';
+import { useCheckUsername } from '@/hooks/useCheckUsername';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 type Section = 'profile' | 'orders' | 'notifications' | 'security';
 
@@ -44,7 +46,6 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
   const changeUsername = useChangeUsername();
-  
   const currentSection = (searchParams.get('section') as Section) || 'profile';
   
   // Account form
@@ -56,6 +57,8 @@ export default function Account() {
     display_name_preference: 'full_name',
     visibility: 'private' as 'private' | 'members' | 'public',
   });
+
+  const { result: usernameCheck, checking: checkingUsername } = useCheckUsername(usernameInput, form.username);
 
   // Password form
   const [passwordForm, setPasswordForm] = useState({
@@ -427,23 +430,71 @@ export default function Account() {
                             <span className="text-sm text-muted-foreground bg-muted px-3 py-2 rounded-l-md border border-r-0 border-input whitespace-nowrap">
                               /@
                             </span>
-                            <Input 
-                              value={usernameInput} 
-                              onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))} 
-                              placeholder="yourname"
-                              className="rounded-l-none"
-                              maxLength={30}
-                            />
+                            <div className="relative flex-1">
+                              <Input 
+                                value={usernameInput} 
+                                onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))} 
+                                placeholder="yourname"
+                                className={cn(
+                                  "rounded-l-none pr-9",
+                                  usernameCheck?.available === true && usernameInput !== form.username && "border-green-500 focus-visible:ring-green-500",
+                                  usernameCheck?.available === false && "border-destructive focus-visible:ring-destructive",
+                                )}
+                                maxLength={30}
+                                disabled={!cooldownInfo.canChange}
+                              />
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                {checkingUsername && (
+                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                )}
+                                {!checkingUsername && usernameCheck?.available === true && usernameInput !== form.username && (
+                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                )}
+                                {!checkingUsername && usernameCheck?.available === false && (
+                                  <XCircle className="h-4 w-4 text-destructive" />
+                                )}
+                              </div>
+                            </div>
                           </div>
                           <Button 
                             onClick={handleSaveUsername} 
-                            disabled={savingUsername || usernameInput === form.username || !cooldownInfo.canChange}
+                            disabled={
+                              savingUsername || 
+                              usernameInput === form.username || 
+                              !cooldownInfo.canChange || 
+                              checkingUsername ||
+                              usernameCheck?.available === false ||
+                              !usernameInput.trim() ||
+                              usernameInput.trim().length < 3
+                            }
                             size="sm"
                             variant="outline"
                           >
                             {savingUsername ? 'Saving...' : 'Set'}
                           </Button>
                         </div>
+                        
+                        {/* Real-time feedback messages */}
+                        {!checkingUsername && usernameCheck?.error && (
+                          <p className="text-xs text-destructive flex items-center gap-1.5">
+                            <AlertCircle className="h-3 w-3" />
+                            {usernameCheck.error}
+                          </p>
+                        )}
+                        
+                        {!checkingUsername && usernameCheck?.available && usernameInput !== form.username && (
+                          <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Username is available!
+                          </p>
+                        )}
+
+                        {!checkingUsername && usernameCheck?.message && usernameInput === form.username && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {usernameCheck.message}
+                          </p>
+                        )}
                         
                         {form.username && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -460,7 +511,7 @@ export default function Account() {
                         )}
                         
                         <p className="text-xs text-muted-foreground">
-                          3-30 characters. Letters, numbers, hyphens, underscores only. Changing your username creates a redirect from your old URL for 90 days.
+                          3-30 characters. Letters, numbers, hyphens, underscores only. Changing your username creates a redirect from your old URL.
                         </p>
                       </div>
                     </CardContent>
