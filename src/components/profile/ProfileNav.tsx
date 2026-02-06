@@ -61,14 +61,12 @@ export function ProfileNav({
   }, [currentSlug, visiblePages, isOnProfileRoute]);
 
   const handlePageClick = (page: any) => {
+    // Always switch to page tab first for instant feedback
+    onTabChange?.('page');
+    onPageNavigate?.();
+
     // On /profile (own profile management), keep navigation inside /profile
     if (isOnProfileRoute) {
-      onPageNavigate?.();
-      
-      // Always switch to page tab first for instant feedback
-      onTabChange?.('page');
-      
-      // Then update URL (won't cause flicker since tab is already set)
       if (page.is_home) {
         navigate('/profile', { replace: true });
       } else {

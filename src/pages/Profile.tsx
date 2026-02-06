@@ -173,7 +173,7 @@ export default function Profile(
   const ensureHomePage = useEnsureHomePage();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState(() => 'page');
+  const [activeTab, setActiveTab] = useState('page');
   const [inviteFriendsOpen, setInviteFriendsOpen] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<DeviceType>('desktop');
   const [cropperOpen, setCropperOpen] = useState(false);
@@ -181,6 +181,12 @@ export default function Profile(
   const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [showStickyDoneButton, setShowStickyDoneButton] = useState(false);
   // cropType removed - only avatar uses cropper now
+
+  // Sync activeTab to 'page' when slug changes (e.g. browser back/forward, URL navigation)
+  // This ensures page content is always visible when navigating to a page URL
+  useEffect(() => {
+    setActiveTab('page');
+  }, [slug]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profileCardRef = useRef<HTMLDivElement>(null);
   // coverInputRef removed - cover upload now handled by HeroOverlayControls
