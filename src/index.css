@@ -137,7 +137,7 @@
   /* Mobile viewport fix – dynamic viewport height handles mobile browser bars */
   html, body, #root {
     height: 100dvh;
-    overflow-x: hidden;
+    overflow: hidden;
   }
 
   html {
