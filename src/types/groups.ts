@@ -63,6 +63,8 @@ export interface GroupPost {
     id: string;
     full_name: string | null;
     avatar_url: string | null;
+    username?: string | null;
+    email_verified?: boolean | null;
   };
   comment_count?: number;
 }
@@ -78,6 +80,8 @@ export interface GroupPostComment {
     id: string;
     full_name: string | null;
     avatar_url: string | null;
+    username?: string | null;
+    email_verified?: boolean | null;
   };
 }
 

@@ -440,7 +440,7 @@ export function useGroupMembers(groupId: string) {
       const userIds = members.map(m => m.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio')
+        .select('id, full_name, avatar_url, bio, username, email_verified')
         .in('id', userIds);
       
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
@@ -484,7 +484,7 @@ export function useGroupPosts(groupId: string, channelId?: string) {
       const userIds = [...new Set(posts.map(p => p.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, username, email_verified')
         .in('id', userIds);
       
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
@@ -563,7 +563,7 @@ export function useGroupPostComments(postId: string) {
       const userIds = [...new Set(comments.map(c => c.user_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, username, email_verified')
         .in('id', userIds);
       
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
@@ -764,7 +764,7 @@ export function useGroupJoinRequests(groupId: string) {
       const userIds = data.map(r => r.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url')
+        .select('id, full_name, avatar_url, username, email_verified')
         .in('id', userIds);
       
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);

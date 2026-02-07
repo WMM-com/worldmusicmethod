@@ -23,7 +23,7 @@ export function useMembers(searchQuery?: string) {
     queryFn: async () => {
       let query = supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, bio, business_name, username')
+        .select('id, full_name, avatar_url, bio, business_name, username, email_verified')
         .order('full_name', { ascending: true });
       
       if (searchQuery && searchQuery.length >= 2) {

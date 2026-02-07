@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, UserPlus, Check, X, UserMinus } from 'lucide-react';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 import {
   useFriendships,
   useSearchUsers,
@@ -132,7 +133,10 @@ export function FriendsList() {
                         <AvatarFallback>{getInitials(friend.profiles?.full_name)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{friend.profiles?.full_name || 'Unknown'}</p>
+                        <p className="font-medium flex items-center gap-1">
+                          {friend.profiles?.full_name || 'Unknown'}
+                          {friend.profiles && isUserVerified(friend.profiles) && <VerifiedBadge size="sm" />}
+                        </p>
                         <p className="text-sm text-muted-foreground">{friend.profiles?.email}</p>
                       </div>
                     </Link>
@@ -165,7 +169,10 @@ export function FriendsList() {
                         <AvatarFallback>{getInitials(request.profiles?.full_name)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{request.profiles?.full_name || 'Unknown'}</p>
+                        <p className="font-medium flex items-center gap-1">
+                          {request.profiles?.full_name || 'Unknown'}
+                          {request.profiles && isUserVerified(request.profiles) && <VerifiedBadge size="sm" />}
+                        </p>
                         <p className="text-sm text-muted-foreground">wants to be friends</p>
                       </div>
                     </div>
@@ -207,7 +214,10 @@ export function FriendsList() {
                         <AvatarFallback>{getInitials(pending.profiles?.full_name)}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{pending.profiles?.full_name || 'Unknown'}</p>
+                        <p className="font-medium flex items-center gap-1">
+                          {pending.profiles?.full_name || 'Unknown'}
+                          {pending.profiles && isUserVerified(pending.profiles) && <VerifiedBadge size="sm" />}
+                        </p>
                         <p className="text-sm text-muted-foreground">Request pending</p>
                       </div>
                     </div>
