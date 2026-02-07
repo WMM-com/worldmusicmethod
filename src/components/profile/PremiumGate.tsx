@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Crown, Lock, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface PremiumGateProps {
@@ -74,38 +75,62 @@ export function UpgradePrompt({ featureName, featureDescription, className }: Up
         </div>
         <CardTitle className="text-lg flex items-center justify-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          Unlock {featureName}
+          Unlock Premium Profile Features
         </CardTitle>
-        {featureDescription && (
+        {featureDescription ? (
           <CardDescription className="text-sm">
             {featureDescription}
+          </CardDescription>
+        ) : (
+          <CardDescription className="text-sm">
+            {featureName} and more with Beta Membership
           </CardDescription>
         )}
       </CardHeader>
       <CardContent className="text-center pt-0">
         <p className="text-sm text-muted-foreground mb-4">
-          Upgrade to Premium to access this feature and more.
+          Get commerce blocks, brand colors, unlimited sections, and more.
         </p>
         <Link to="/membership">
           <Button className="gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70">
             <Crown className="h-4 w-4" />
-            Upgrade to Premium
+            Join Beta ($10 suggested)
           </Button>
         </Link>
         <p className="text-xs text-muted-foreground mt-3">
-          Get unlimited customization, commerce tools, and more
+          Start your free trial — cancel anytime
         </p>
       </CardContent>
     </Card>
   );
 }
 
-// Helper hook to check premium status using the new has_premium_features flag
-export function usePremiumCheck(hasPremiumFeatures: boolean | null | undefined) {
-  const isPremium = hasPremiumFeatures === true;
+/** Small badge to show in the profile editor when premium is active */
+export function PremiumActiveBadge() {
+  return (
+    <Badge variant="outline" className="gap-1 border-primary/30 text-primary bg-primary/5 text-xs">
+      <Crown className="h-3 w-3" />
+      Premium Features Active
+    </Badge>
+  );
+}
+
+/**
+ * Hook to check premium status.
+ * Primary: has_premium_features flag from extended_profiles.
+ * Fallback: checks if activeSubscriptionProductIds includes beta_membership.
+ */
+export function usePremiumCheck(
+  hasPremiumFeatures: boolean | null | undefined,
+  activeSubscriptionProductIds?: string[] | null,
+) {
+  const isPremium =
+    hasPremiumFeatures === true ||
+    (activeSubscriptionProductIds?.includes('beta_membership') ?? false);
+
   return {
     isPremium,
-    canAddMoreSections: (currentCount: number) => 
+    canAddMoreSections: (currentCount: number) =>
       isPremium || currentCount < 3,
   };
 }

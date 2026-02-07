@@ -31,7 +31,7 @@ import { PageManager } from '@/components/profile/PageManager';
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
-import { PremiumGate, usePremiumCheck } from '@/components/profile/PremiumGate';
+import { PremiumGate, PremiumActiveBadge, usePremiumCheck } from '@/components/profile/PremiumGate';
 import { AddSectionModal } from '@/components/profile/AddSectionModal';
 import { TextBlock } from '@/components/profile/sections/TextBlock';
 import { DonationBlock } from '@/components/profile/sections/DonationBlock';
@@ -854,6 +854,7 @@ export default function Profile(
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
+                      {isPremium && <PremiumActiveBadge />}
                       {/* Hero Editor - for quick access */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
