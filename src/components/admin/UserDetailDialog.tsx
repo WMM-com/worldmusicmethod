@@ -478,7 +478,7 @@ export function UserDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col w-[calc(100vw-2rem)] sm:w-full">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-3">
             {user.avatar_url ? (
@@ -504,17 +504,17 @@ export function UserDetailDialog({
         </DialogHeader>
 
         <Tabs defaultValue="details" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 flex-shrink-0">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="access">Access & Enrollments</TabsTrigger>
-            <TabsTrigger value="email">Send Email</TabsTrigger>
+          <TabsList className="flex w-full flex-shrink-0 h-auto flex-wrap gap-1 p-1">
+            <TabsTrigger value="details" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
+            <TabsTrigger value="access" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3">Access</TabsTrigger>
+            <TabsTrigger value="email" className="flex-1 min-w-0 text-xs sm:text-sm px-2 sm:px-3">Email</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 mt-4">
             <TabsContent value="details" className="m-0 space-y-4">
               {/* Profile Info */}
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Username:</span>
                     <span className="ml-2 font-medium">{user.username || 'Not set'}</span>
