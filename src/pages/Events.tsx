@@ -281,14 +281,14 @@ export default function Events() {
 
   return (
     <AppLayout>
-      <div className="p-6 lg:p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Events</h1>
             <p className="text-muted-foreground mt-1">Manage your gigs, sessions, and bookings</p>
           </div>
           
-          <div className="flex items-center gap-2">
+           <div className="flex flex-wrap items-center gap-2">
             {/* View toggle */}
             <div className="flex items-center border rounded-lg p-1 bg-secondary/30">
               <Button 
@@ -577,7 +577,7 @@ export default function Events() {
             </TabsList>
             
             {activeTab === 'active' && (
-              <div className="relative max-w-sm flex-1">
+              <div className="relative w-full sm:max-w-sm sm:flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search events..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
               </div>
@@ -606,7 +606,7 @@ export default function Events() {
                 {/* Bulk Actions Toolbar */}
                 {filteredEvents.length > 0 && (
                   <div className={cn(
-                    "flex items-center gap-2 p-3 rounded-lg bg-secondary/30 border transition-all",
+                    "flex flex-wrap items-center gap-2 p-3 rounded-lg bg-secondary/30 border transition-all",
                     selectedEventIds.size > 0 ? "border-primary" : "border-transparent"
                   )}>
                     <Button 
@@ -624,7 +624,7 @@ export default function Events() {
                         <span className="text-sm text-muted-foreground">
                           {selectedEventIds.size} selected
                         </span>
-                        <div className="h-4 w-px bg-border mx-2" />
+                        <div className="hidden sm:block h-4 w-px bg-border mx-2" />
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -632,12 +632,12 @@ export default function Events() {
                           disabled={isBulkActionPending}
                           className="h-8"
                         >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
+                          <Copy className="h-4 w-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Duplicate</span>
                         </Button>
                         <Select onValueChange={(v) => handleBulkStatusChange(v as EventStatus)}>
-                          <SelectTrigger className="w-[140px] h-8">
-                            <SelectValue placeholder="Set Status" />
+                          <SelectTrigger className="w-auto sm:w-[140px] h-8">
+                            <SelectValue placeholder="Status" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="pencilled">Pencilled</SelectItem>
@@ -653,8 +653,8 @@ export default function Events() {
                           disabled={isBulkActionPending}
                           className="h-8"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
+                          <Trash2 className="h-4 w-4 mr-1 sm:mr-2" />
+                          <span className="hidden sm:inline">Delete</span>
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -679,29 +679,29 @@ export default function Events() {
                     onClick={() => handleEventClick(event)}
                   >
                     <CardContent className="py-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
                           <Checkbox
                             checked={selectedEventIds.has(event.id)}
                             onClick={(e) => toggleEventSelection(event.id, e)}
-                            className="h-5 w-5"
+                            className="h-5 w-5 mt-0.5 flex-shrink-0"
                           />
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium">{event.title}</h3>
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary">{event.event_type}</span>
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-medium text-sm sm:text-base truncate">{event.title}</h3>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary flex-shrink-0">{event.event_type}</span>
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
                               {event.venue_name && `${event.venue_name} • `}
                               {formatEventTime(event)}
                             </p>
-                            {event.client_name && <p className="text-sm text-muted-foreground">Client: {event.client_name}</p>}
+                            {event.client_name && <p className="text-xs sm:text-sm text-muted-foreground truncate">Client: {event.client_name}</p>}
                             {(() => {
                               const shares = getEventShares(event.id);
                               if (shares.length === 0) return null;
                               return (
                                 <div className="flex items-center gap-1.5 mt-1">
-                                  <Users className="h-3 w-3 text-muted-foreground" />
+                                  <Users className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                   <div className="flex -space-x-1">
                                     {shares.slice(0, 3).map((share) => (
                                       <div
@@ -730,10 +730,10 @@ export default function Events() {
                             })()}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right space-y-1">
-                            <p className="font-semibold">{formatCurrencyAmount(event.fee || 0, event.currency || defaultCurrency)}</p>
-                            <div className="flex gap-2 flex-wrap justify-end">
+                        <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-8 sm:pl-0 flex-shrink-0">
+                          <div className="text-left sm:text-right space-y-1">
+                            <p className="font-semibold text-sm sm:text-base">{formatCurrencyAmount(event.fee || 0, event.currency || defaultCurrency)}</p>
+                            <div className="flex gap-2 flex-wrap sm:justify-end">
                               <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeClass(event.status)}`}>
                                 {event.status}
                               </span>
@@ -744,37 +744,41 @@ export default function Events() {
                               }`}>{event.payment_status}</span>
                             </div>
                             {eventInvoices[event.id]?.sent_at && (
-                              <div className="flex items-center gap-1 justify-end text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1 sm:justify-end text-xs text-muted-foreground">
                                 <Mail className="h-3 w-3" />
                                 <span>Sent {format(new Date(eventInvoices[event.id].sent_at!), 'MMM d')}</span>
                               </div>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Create invoice"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInvoiceEvent(event);
-                              setInvoiceDialogOpen(true);
-                            }}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <ShareEventDialog 
-                            event={event}
-                            trigger={
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                title="Share with bandmates"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Share2 className="h-4 w-4" />
-                              </Button>
-                            }
-                          />
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Create invoice"
+                              className="h-8 w-8 sm:h-10 sm:w-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInvoiceEvent(event);
+                                setInvoiceDialogOpen(true);
+                              }}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <ShareEventDialog 
+                              event={event}
+                              trigger={
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Share with bandmates"
+                                  className="h-8 w-8 sm:h-10 sm:w-10"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Share2 className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                          </div>
                         </div>
                       </div>
                     </CardContent>
