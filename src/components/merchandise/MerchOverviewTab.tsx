@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { CreditCard, TrendingUp, ShoppingBag, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,8 +8,13 @@ import { usePaymentAccounts, useConnectStripe } from '@/hooks/usePaymentAccounts
 import { useMerchSales, useMerchGigs } from '@/hooks/useMerchandise';
 import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function MerchOverviewTab() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: paymentAccounts = [], isLoading: accountsLoading } = usePaymentAccounts();
   const connectStripe = useConnectStripe();
   const { data: gigs = [] } = useMerchGigs();
@@ -18,6 +24,32 @@ export function MerchOverviewTab() {
 
   const stripeAccount = paymentAccounts.find(a => a.provider === 'stripe');
   const isStripeConnected = stripeAccount?.onboarding_complete;
+
+  // ── Realtime: listen for new merch_sales inserts ──
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('merch-sales-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'merch_sales',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Invalidate all sales queries so the UI refreshes
+          queryClient.invalidateQueries({ queryKey: ['merch-sales'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, queryClient]);
 
   // Revenue calculations
   const totalRevenue = allSales.reduce((sum, s) => sum + Number(s.total), 0);
