@@ -107,13 +107,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col h-[100dvh] overflow-hidden bg-background">
       {/* Site Header for navigation back to main site */}
       <SiteHeader />
       
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-h-0">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:top-16 lg:bottom-0 border-r border-border bg-sidebar">
+      <aside className="hidden lg:flex lg:w-64 lg:flex-col flex-shrink-0 border-r border-border bg-sidebar overflow-y-auto">
         <div className="flex h-14 items-center gap-2 px-6 border-b border-border">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-secondary to-secondary/80">
             <Brain className="h-4 w-4 text-secondary-foreground" />
@@ -242,8 +242,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:pl-64">
-        <div className="pt-14 lg:pt-0 min-h-screen">
+      <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+        <div className="pt-14 lg:pt-0">
           {/* Section Guide */}
           {currentGuide && (
             <div className="hidden lg:block px-6 lg:px-8 pt-6">
