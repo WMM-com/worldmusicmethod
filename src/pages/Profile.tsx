@@ -66,6 +66,7 @@ import { PostCard } from '@/components/social/PostCard';
 import { ImageCropper } from '@/components/ui/image-cropper';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ReferralSection } from '@/components/profile/ReferralSection';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 import { BioSection } from '@/components/profile/sections/BioSection';
 import { SpotifyEmbed } from '@/components/profile/sections/SpotifyEmbed';
 import { YouTubeEmbed } from '@/components/profile/sections/YouTubeEmbed';
@@ -707,8 +708,9 @@ export default function Profile(
                    {/* Profile Info */}
                    <div className="flex-1 text-center sm:text-left pb-4">
                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
-                       <h1 className="text-2xl sm:text-3xl font-bold">
+                       <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-1.5">
                          {profile.full_name || 'Anonymous'}
+                         {extendedProfile && isUserVerified(extendedProfile) && <VerifiedBadge size="lg" />}
                        </h1>
                        {extendedProfile?.visibility === 'public' ? (
                          <Badge variant="secondary" className="w-fit mx-auto sm:mx-0 bg-primary/20 text-primary">

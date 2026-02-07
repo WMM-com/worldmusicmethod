@@ -71,6 +71,9 @@ export default function Account() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
   const [requestingDeletion, setRequestingDeletion] = useState(false);
+  const [verifiedAlertDismissed, setVerifiedAlertDismissed] = useState(
+    () => localStorage.getItem('verified-alert-dismissed') === 'true'
+  );
   const [deletionRequested, setDeletionRequested] = useState(false);
 
   // Notification settings
@@ -331,15 +334,27 @@ export default function Account() {
                     const verified = emailOk && usernameOk;
                     
                     if (verified) {
+                      if (verifiedAlertDismissed) return null;
+                      
                       return (
-                        <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 flex items-center gap-3">
+                        <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 flex items-center gap-3 relative">
                           <VerifiedBadge size="lg" />
-                          <div>
+                          <div className="flex-1">
                             <p className="font-semibold text-sm">Your account is verified</p>
                             <p className="text-xs text-muted-foreground">
                               Your verified badge is displayed next to your name on your profile.
                             </p>
                           </div>
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('verified-alert-dismissed', 'true');
+                              setVerifiedAlertDismissed(true);
+                            }}
+                            className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                            aria-label="Dismiss"
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
                         </div>
                       );
                     }
