@@ -157,6 +157,7 @@ export function SoundsliceEmbed({
         height={height}
         frameBorder="0"
         allowFullScreen
+        loading="lazy"
         className="w-full max-w-full"
         style={{ maxWidth: '100%' }}
         title="Soundslice Music Player"
