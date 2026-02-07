@@ -235,6 +235,18 @@ serve(async (req) => {
 
       logStep("Price ready", { priceId, amount: priceAmount, currency: geoCurrency });
 
+      // Resolve user_id from profiles by email so the webhook can grant premium
+      let resolvedUserId: string | null = null;
+      const { data: profileRow } = await supabaseClient
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (profileRow) {
+        resolvedUserId = profileRow.id;
+        logStep("Resolved user_id from profiles", { userId: resolvedUserId });
+      }
+
       // Create subscription
       const subscriptionParams: Stripe.SubscriptionCreateParams = {
         customer: customerId,
@@ -245,8 +257,11 @@ serve(async (req) => {
         metadata: {
           product_id: productId,
           product_name: product.name,
+          product_type: product.product_type || '',
+          price_type: product.price_type || '',
           email,
           full_name: fullName,
+          ...(resolvedUserId ? { user_id: resolvedUserId } : {}),
         },
       };
 
