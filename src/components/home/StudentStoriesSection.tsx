@@ -33,16 +33,16 @@ const stories: StudentStory[] = [
     quote: `I loved the intense period of learning new stuff. Rehearsals and gigs are in full swing now. I have added many things to our set, and written new songs and interludes directly based on World Music Method classes. One of the modified Sebene grooves from Niwel has become a song. I redid another song with a Makossa groove from Jeannot accompanying kora. Fleshed out a new version of Tura from Justin, as well as a new song featuring a desert-inspired groove that came out of the desert air.\n\nOther new original songs contain riffs and ideas inspired by Derek's classes on Total Desert immersion and another one coming using the doublegum octave technique from Vieux. This is all stuff for my band and performance. I also feel I have become a better teacher using inspiration from the method and some of the materials from the technique library. I haven't yet fully utilized the rhythm encyclopedia and backing track directory, but I will. The program has been the best thing to augment my skills as a musician and teacher. I am really grateful for it! Oh one last thing…I can now groove pretty well on a zouk beat on the drums.😉`,
   },
   {
-    name: 'Bill Leff',
-    country: 'USA',
-    avatar: billAvatar,
-    quote: `At my advanced age it's more about having fun and challenging yourself. Love the soukous stuff you put together on your site Edd. Never even thought about that music much until I stumbled on one of your adverts. Opened up a new musical world for me and helped me through the Covid years. I'm indebted to you for that!`,
-  },
-  {
     name: 'Allan Mwetu',
     country: 'Kenya',
     avatar: allanAvatar,
     quote: `Sir Edd, you truly are a life saver and an icon and I know that the footprint you've created by your contributions in World Music will last forever. Personally I am still practicing and still learning, I use my blue print and am soon to advance to Niwel's course, thank you so much mate and I'm among your biggest fans as well.\n\nMy course has been smooth and am honestly loving every single sound I'm hearing and learning out of the course. It truly is golden, I've been slow but by the time the year is over I truly will be almost 100% done. I am thankful that I'm a part of World Music Method and for how much you've put out there for the world to explore, to be honest nobody can thank you enough nor all those musician tutors who freely have passed on the priceless gift of music literacy.\n\nRecently I was fortunate enough to acquire a 24 fret electric guitar hence I'm back to my Central African Guitar classes, once am done I'll immediately jump right to my dream Congolese Guitar Evolution. Soon I'll be doing gigs in no time especially this upcoming Christmas season. Thank you and my humble blessing upon you.`,
+  },
+  {
+    name: 'Bill Leff',
+    country: 'USA',
+    avatar: billAvatar,
+    quote: `At my advanced age it's more about having fun and challenging yourself. Love the soukous stuff you put together on your site Edd. Never even thought about that music much until I stumbled on one of your adverts. Opened up a new musical world for me and helped me through the Covid years. I'm indebted to you for that!`,
   },
   {
     name: 'Geoff Carter',
@@ -99,6 +99,18 @@ export function StudentStoriesSection() {
                   transition={{ duration: 0.4, delay: idx * 0.08 }}
                   className="group relative bg-card border border-border rounded-xl p-6 flex flex-col hover:border-primary/30 transition-colors"
                 >
+                  <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
+                    <img
+                      src={story.avatar}
+                      alt={story.name}
+                      className="w-16 h-16 rounded-full object-cover bg-muted"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{story.name}</p>
+                      <p className="text-xs text-muted-foreground">{story.country}</p>
+                    </div>
+                  </div>
+
                   <Quote className="w-8 h-8 text-primary/20 mb-3 shrink-0" />
                   
                   <p className="text-sm text-muted-foreground leading-relaxed flex-1 whitespace-pre-line">
@@ -113,18 +125,6 @@ export function StudentStoriesSection() {
                       Read full story →
                     </button>
                   )}
-
-                  <div className="flex items-center gap-3 mt-5 pt-4 border-t border-border">
-                    <img
-                      src={story.avatar}
-                      alt={story.name}
-                      className="w-10 h-10 rounded-full object-cover bg-muted"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{story.name}</p>
-                      <p className="text-xs text-muted-foreground">{story.country}</p>
-                    </div>
-                  </div>
                 </motion.div>
               );
             })}

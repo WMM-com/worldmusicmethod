@@ -21,6 +21,11 @@ import { PartnersSection } from '@/components/home/PartnersSection';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+import guitarImg from '@/assets/lessons/guitar.jpg';
+import bassImg from '@/assets/lessons/bass.jpg';
+import drumsImg from '@/assets/lessons/drums.jpg';
+import vocalsImg from '@/assets/lessons/vocals.jpg';
+
 const HERO_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4';
 
 const instruments = [
@@ -30,7 +35,7 @@ const instruments = [
     sliceId: 'M7kTc', 
     preset: 'guitar' as const,
     icon: Guitar,
-    placeholder: '/placeholder.svg',
+    placeholder: guitarImg,
   },
   { 
     id: 'bass', 
@@ -38,7 +43,7 @@ const instruments = [
     sliceId: 'w7kTc', 
     preset: 'bass' as const,
     icon: Music,
-    placeholder: '/placeholder.svg',
+    placeholder: bassImg,
   },
   { 
     id: 'drums', 
@@ -46,7 +51,7 @@ const instruments = [
     sliceId: 'z7kTc', 
     preset: 'drum' as const,
     icon: Drum,
-    placeholder: '/placeholder.svg',
+    placeholder: drumsImg,
   },
   { 
     id: 'vocals', 
@@ -54,7 +59,7 @@ const instruments = [
     sliceId: 'R7kTc', 
     preset: 'vocals' as const,
     icon: Mic,
-    placeholder: '/placeholder.svg',
+    placeholder: vocalsImg,
   },
 ];
 
@@ -136,9 +141,9 @@ export default function Index() {
           </div>
 
           {/* Left side - Text & CTAs with gradient overlay */}
-          <div className="relative z-10 w-full lg:w-[45%] flex items-center">
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background from-60% to-transparent" />
+          <div className="relative z-10 w-full lg:w-[55%] flex items-center">
+            {/* Gradient overlay - extended to cover all text content */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background from-70% to-transparent" />
             
             <div className="relative px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
               <motion.h1
