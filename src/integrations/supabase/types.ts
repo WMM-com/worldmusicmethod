@@ -4234,11 +4234,13 @@ export type Database = {
           max_price: number | null
           min_price: number | null
           name: string
+          price_type: string | null
           product_type: string
           purchase_tag_id: string | null
           refund_remove_tag: boolean | null
           sale_ends_at: string | null
           sale_price_usd: number | null
+          stripe_price_id: string | null
           suggested_price: number | null
           trial_enabled: boolean | null
           trial_length_days: number | null
@@ -4258,11 +4260,13 @@ export type Database = {
           max_price?: number | null
           min_price?: number | null
           name: string
+          price_type?: string | null
           product_type?: string
           purchase_tag_id?: string | null
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
+          stripe_price_id?: string | null
           suggested_price?: number | null
           trial_enabled?: boolean | null
           trial_length_days?: number | null
@@ -4282,11 +4286,13 @@ export type Database = {
           max_price?: number | null
           min_price?: number | null
           name?: string
+          price_type?: string | null
           product_type?: string
           purchase_tag_id?: string | null
           refund_remove_tag?: boolean | null
           sale_ends_at?: string | null
           sale_price_usd?: number | null
+          stripe_price_id?: string | null
           suggested_price?: number | null
           trial_enabled?: boolean | null
           trial_length_days?: number | null
