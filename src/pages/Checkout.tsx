@@ -354,7 +354,7 @@ function CheckoutContent() {
   const [useCredits, setUseCredits] = useState(false);
   const [creditAmountUsed, setCreditAmountUsed] = useState(0);
 
-  const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
+  const { calculatePrice, isLoading: geoLoading, countryCode } = useGeoPricing();
 
   // Fetch product details
   const { data: product, isLoading: productLoading } = useQuery({
@@ -569,6 +569,9 @@ function CheckoutContent() {
   // Calculate prices with geo pricing for single product mode
   const productPriceInfo = product ? calculatePrice(product.base_price_usd, productRegionalPricing || []) : null;
   
+  // Check if product is a subscription/membership
+  const isSubscriptionProduct = product?.product_type === 'subscription' || product?.product_type === 'membership';
+  
   // Check if product has PWYF pricing
   const isPwyfProduct = product?.is_pwyf && product?.min_price != null;
   const pwyfMin = product?.min_price || 0;
@@ -585,10 +588,21 @@ function CheckoutContent() {
   };
 
   // Calculate geo-adjusted PWYF bounds
+  // For PWYF subscriptions, use regional pricing fixed_price as the min floor
   const geoRatio = productPriceInfo && product?.base_price_usd 
     ? productPriceInfo.price / product.base_price_usd 
     : 1;
-  const geoPwyfMin = Math.round(pwyfMin * geoRatio);
+  
+  // Use regional pricing fixed_price as geo min if available (set up as min price per region)
+  const regionalFixedPrice = productRegionalPricing?.find(rp => {
+    // The regionalpPricing matched by calculatePrice already determines the active region
+    return rp.fixed_price && rp.fixed_price > 0;
+  });
+  
+  // For PWYF subscriptions, the regional fixed_price IS the geo minimum
+  const geoPwyfMin = isPwyfProduct && productPriceInfo?.price
+    ? Math.round(productPriceInfo.price) // productPriceInfo.price = regional fixed_price for this product
+    : Math.round(pwyfMin * geoRatio);
   const geoPwyfMax = Math.round(pwyfMax * geoRatio);
   const geoPwyfSuggested = Math.round(pwyfSuggested * geoRatio);
 
@@ -908,6 +922,7 @@ function CheckoutContent() {
                             suggested={geoPwyfSuggested}
                             currency={currency}
                             currencySymbol={getCurrencySymbol(currency)}
+                            billingLabel={isSubscriptionProduct ? 'Monthly' : undefined}
                           />
                           {!isPwyfPriceValid && (
                             <p className="text-xs text-destructive mt-2">
@@ -1106,27 +1121,25 @@ function CheckoutContent() {
                     <StripeCardFields
                       productIds={isCartMode ? cartItems.map(item => item.productId) : [productId || '']}
                       amounts={
-                        // Pass coupon-discounted AND card-discounted amounts to the backend
-                        // For PWYF products, use the custom price (pwyfPrice)
-                        isCartMode 
-                          ? cartItems.map(item => {
-                              // Use customPrice for PWYF items, otherwise regular price
-                              const itemPrice = item.isPwyf && item.customPrice !== undefined
-                                ? item.customPrice
-                                : item.price;
-                              // Apply proportional coupon discount to each item
-                              const itemRatio = basePrice > 0 ? itemPrice / basePrice : 1;
-                              const afterCoupon = itemPrice - (couponDiscount * itemRatio);
-                              // Apply 2% card discount
-                              return afterCoupon - (afterCoupon * 0.02);
-                            }) 
-                          : [cardPrice]  // cardPrice already includes coupon + 2% card discount (and PWYF price)
+                        // For PWYF subscriptions, pass the raw PWYF price (no card discount — subscription handles pricing)
+                        isSubscriptionProduct && isPwyfProduct && pwyfPrice !== null
+                          ? [pwyfPrice]
+                          : isCartMode 
+                            ? cartItems.map(item => {
+                                const itemPrice = item.isPwyf && item.customPrice !== undefined
+                                  ? item.customPrice
+                                  : item.price;
+                                const itemRatio = basePrice > 0 ? itemPrice / basePrice : 1;
+                                const afterCoupon = itemPrice - (couponDiscount * itemRatio);
+                                return afterCoupon - (afterCoupon * 0.02);
+                              }) 
+                            : [cardPrice]
                       }
                       email={user?.email || email}
                       fullName={fullName || user?.email || email}
                       password={password}
                       couponCode={appliedCoupon?.code}
-                      totalAmount={cardPrice}
+                      totalAmount={isSubscriptionProduct && isPwyfProduct && pwyfPrice !== null ? pwyfPrice : cardPrice}
                       currency={currency}
                       onSuccess={handleSuccess}
                       debugEnabled={debugEnabled}
@@ -1134,6 +1147,11 @@ function CheckoutContent() {
                       isPwyf={isPwyfProduct || cartHasPwyf}
                       pwyfValid={isPwyfPriceValid}
                       creditAmountUsed={useCredits ? creditAmountUsed : 0}
+                      // Subscription props
+                      isSubscription={isSubscriptionProduct || (isCartMode && !!subscriptionCartItem)}
+                      productType={product?.product_type || subscriptionCartItem?.productType}
+                      billingInterval={product?.billing_interval || 'monthly'}
+                      countryCode={countryCode}
                       onFreeCheckout={async (data) => {
                         try {
                           const { data: result, error } = await supabase.functions.invoke('complete-free-credit-checkout', {

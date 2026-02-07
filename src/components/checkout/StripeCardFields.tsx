@@ -44,6 +44,11 @@ interface StripeCardFieldsProps {
   pwyfValid?: boolean; // Flag if PWYF price is valid
   creditAmountUsed?: number; // Credits to apply in cents
   onFreeCheckout?: (data: { productIds: string[]; email: string; fullName: string; password: string; creditAmountUsed: number }) => Promise<void>;
+  // Subscription-specific props
+  isSubscription?: boolean; // True for subscription/membership products
+  productType?: string; // 'subscription' | 'membership' | 'course' etc.
+  billingInterval?: string; // 'monthly' | 'annual' etc.
+  countryCode?: string; // Buyer country for geo-min validation
 }
 
 export function StripeCardFields({
@@ -62,6 +67,10 @@ export function StripeCardFields({
   pwyfValid = true,
   creditAmountUsed = 0,
   onFreeCheckout,
+  isSubscription = false,
+  productType,
+  billingInterval,
+  countryCode,
 }: StripeCardFieldsProps) {
   const stripe = useStripe();
   const elements = useElements();
@@ -103,6 +112,63 @@ export function StripeCardFields({
         throw new Error('Card input not found. Please refresh and try again.');
       }
 
+      // ── Subscription flow: route to create-subscription ──────────
+      if (isSubscription && productIds.length === 1) {
+        console.log('[StripeCardFields] Subscription mode — creating payment method then subscription...', {
+          productId: productIds[0], amount: amounts[0], currency, isPwyf, countryCode,
+        });
+
+        // Create a payment method from the card element
+        const { paymentMethod: pm, error: pmError } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardNumberElement,
+          billing_details: { name: fullName || email, email },
+        });
+        if (pmError || !pm) throw new Error(pmError?.message || 'Failed to create payment method');
+
+        const { data: subData, error: subError } = await supabase.functions.invoke('create-subscription', {
+          body: {
+            productId: productIds[0],
+            email,
+            fullName: fullName || email.split('@')[0],
+            paymentMethod: 'stripe',
+            paymentMethodId: pm.id,
+            couponCode,
+            amount: amounts[0], // PWYF amount (already geo-priced)
+            currency,
+            isPwyf,
+            countryCode,
+          },
+        });
+
+        if (subError) throw subError;
+
+        // If subscription requires confirmation (incomplete status)
+        if (subData?.clientSecret) {
+          const { error: confirmError } = await stripe.confirmCardPayment(subData.clientSecret, {
+            payment_method: pm.id,
+          });
+          if (confirmError) throw new Error(confirmError.message || 'Payment confirmation failed');
+        }
+
+        // Auto sign-in for new users
+        if (!isLoggedIn && password) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          try {
+            const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+            if (signInError) {
+              console.warn('[StripeCardFields] Subscription auto sign-in failed:', signInError);
+              toast.info('Please sign in to access your subscription');
+            }
+          } catch { /* ignore */ }
+        }
+
+        toast.success('Subscription started!');
+        onSuccess();
+        return;
+      }
+
+      // ── One-time payment flow ────────────────────────────────────
       // Create payment intent with geo-priced currency and amounts
       console.log('[StripeCardFields] Creating payment intent...', { productIds, amounts, currency, creditAmountUsed });
       const { data: intentData, error: intentError } = await supabase.functions.invoke('create-payment-intent', {
@@ -406,7 +472,7 @@ export function StripeCardFields({
         ) : (
           <>
             <CreditCard className="mr-2 h-4 w-4" />
-            Pay {formatPrice(totalAmount, currency)}
+            {isSubscription ? `Subscribe ${formatPrice(totalAmount, currency)}/mo` : `Pay ${formatPrice(totalAmount, currency)}`}
           </>
         )}
       </Button>

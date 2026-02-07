@@ -39,9 +39,10 @@ serve(async (req) => {
       returnUrl,
       trialAmount, // Geo-priced trial amount (optional)
       isPwyf, // Flag for PWYF products
+      countryCode, // Buyer's country code for geo-min validation
     } = await req.json();
 
-    logStep("Starting subscription creation", { productId, email, fullName, paymentMethod });
+    logStep("Starting subscription creation", { productId, email, fullName, paymentMethod, countryCode });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -73,6 +74,37 @@ serve(async (req) => {
       trialEnabled: product.trial_enabled,
       isPwyf: productIsPwyf
     });
+
+    // ── Geo-min validation for PWYF subscriptions ───────────────────
+    // Fetch regional pricing to get the geo-specific minimum price
+    let geoMinPrice = product.min_price || 0;
+    let geoMinCurrency = 'USD';
+
+    if (productIsPwyf && countryCode) {
+      // Map country code to pricing region
+      const { data: regionMapping } = await supabaseClient
+        .from("country_region_mapping")
+        .select("region")
+        .eq("country_code", countryCode)
+        .maybeSingle();
+
+      const buyerRegion = regionMapping?.region || 'default';
+      logStep("Buyer region resolved", { countryCode, region: buyerRegion });
+
+      // Get regional pricing for this product
+      const { data: regionalPricing } = await supabaseClient
+        .from("product_regional_pricing")
+        .select("fixed_price, currency")
+        .eq("product_id", productId)
+        .eq("region", buyerRegion)
+        .maybeSingle();
+
+      if (regionalPricing) {
+        geoMinPrice = regionalPricing.fixed_price;
+        geoMinCurrency = regionalPricing.currency;
+        logStep("Geo-min price resolved", { geoMinPrice, geoMinCurrency, region: buyerRegion });
+      }
+    }
 
     // Map billing interval to Stripe interval
     const intervalMap: Record<string, Stripe.PriceCreateParams.Recurring.Interval> = {
@@ -121,16 +153,21 @@ serve(async (req) => {
         ? amount
         : (product.base_price_usd || 0);
 
-      // Validate PWYF price bounds
-      if (productIsPwyf && product.min_price != null && product.max_price != null) {
-        if (geoAmount < product.min_price * 0.9 || geoAmount > product.max_price * 1.1) {
-          logStep("PWYF price out of range, using suggested", { 
+      // Validate PWYF price bounds using geo-specific minimum
+      if (productIsPwyf) {
+        const effectiveMin = geoMinPrice;
+        const effectiveMax = product.max_price || Infinity;
+        
+        if (geoAmount < effectiveMin * 0.9 || geoAmount > effectiveMax * 1.1) {
+          logStep("PWYF price out of range, using geo min", { 
             amount: geoAmount, 
-            min: product.min_price, 
-            max: product.max_price 
+            geoMin: effectiveMin,
+            geoMinCurrency,
+            max: effectiveMax 
           });
-          geoAmount = product.suggested_price || product.min_price;
+          geoAmount = Math.max(effectiveMin, product.suggested_price || effectiveMin);
         }
+        logStep("PWYF price validated", { finalAmount: geoAmount, geoMin: effectiveMin });
       }
 
       const priceAmount = Math.round(geoAmount * 100);

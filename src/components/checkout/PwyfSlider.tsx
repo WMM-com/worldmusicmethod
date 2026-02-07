@@ -10,6 +10,7 @@ interface PwyfSliderProps {
   suggested: number;
   currency: string;
   currencySymbol: string;
+  billingLabel?: string; // e.g. "Monthly" for subscriptions
 }
 
 /**
@@ -41,6 +42,7 @@ export function PwyfSlider({
   suggested,
   currency,
   currencySymbol,
+  billingLabel,
 }: PwyfSliderProps) {
   const [inputValue, setInputValue] = useState(value.toString());
 
@@ -82,7 +84,9 @@ export function PwyfSlider({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Choose your price</span>
+        <span className="text-sm text-muted-foreground">
+          Choose your price{billingLabel ? ` — ${billingLabel}` : ''}
+        </span>
         <div className="flex items-center gap-1">
           <span className="text-lg font-medium">{currencySymbol}</span>
           <Input
