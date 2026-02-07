@@ -9,6 +9,7 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { UserPlus, UserCheck, Clock, User } from 'lucide-react';
+import { VerifiedBadge } from '@/components/profile/VerifiedBadge';
 import { useConnectionStatus, useConnectWithMember } from '@/hooks/useMembers';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,10 +18,11 @@ interface UserHoverCardProps {
   userName: string | null;
   avatarUrl: string | null;
   username?: string | null;
+  isVerified?: boolean;
   children: React.ReactNode;
 }
 
-export function UserHoverCard({ userId, userName, avatarUrl, username, children }: UserHoverCardProps) {
+export function UserHoverCard({ userId, userName, avatarUrl, username, isVerified, children }: UserHoverCardProps) {
   const { user } = useAuth();
   const profileUrl = getProfileUrl(userId, username);
   const { data: connectionStatus, isLoading: loadingStatus } = useConnectionStatus(userId);
@@ -67,7 +69,10 @@ export function UserHoverCard({ userId, userName, avatarUrl, username, children 
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold truncate">{userName || 'Unknown'}</p>
+              <p className="font-semibold truncate flex items-center gap-1">
+                {userName || 'Unknown'}
+                {isVerified && <VerifiedBadge size="sm" />}
+              </p>
             </div>
           </div>
 

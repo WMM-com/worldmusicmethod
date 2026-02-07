@@ -7,6 +7,7 @@ import { ImageCropper } from '@/components/ui/image-cropper';
 import { useUploadAvatar } from '@/hooks/useProfile';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { useUpdateExtendedProfile, ExtendedProfile } from '@/hooks/useProfilePortfolio';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 import { 
   User, Camera, Globe, MapPin, ExternalLink, 
   Facebook, Instagram, Youtube, Music2 
@@ -140,9 +141,10 @@ export function ProfileHeader({ profile, isOwnProfile, createdAt }: ProfileHeade
 
            {/* Name & Info */}
            <div className="flex-1 text-center sm:text-left pb-4">
-             <h1 className="text-2xl sm:text-3xl font-bold">
-               {profile.full_name || profile.business_name || 'Unnamed'}
-             </h1>
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-1.5">
+                {profile.full_name || profile.business_name || 'Unnamed'}
+                {isUserVerified(profile) && <VerifiedBadge size="lg" />}
+              </h1>
              
              {/* Joined date - fetched from backend */}
              {createdAt && (

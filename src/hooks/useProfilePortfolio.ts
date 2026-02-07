@@ -68,6 +68,7 @@ export interface ExtendedProfile {
   social_links: Record<string, string>;
   profile_layout: string[];
   profile_tier: 'basic' | 'premium' | null;
+  email_verified: boolean | null;
   created_at: string;
 }
 

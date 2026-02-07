@@ -28,8 +28,10 @@ import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
 import { 
   User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
-  AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle
+  AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle,
+  BadgeCheck
 } from 'lucide-react';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 import { cn } from '@/lib/utils';
 import { useChangeUsername } from '@/hooks/useUsernameResolution';
 import { useCheckUsername } from '@/hooks/useCheckUsername';
@@ -322,6 +324,59 @@ export default function Account() {
               {/* Profile & Display Section */}
               {currentSection === 'profile' && (
                 <>
+                  {/* Verification Badge Status */}
+                  {profile && (() => {
+                    const emailOk = (profile as any).email_verified === true;
+                    const usernameOk = !!(profile as any).username?.trim();
+                    const verified = emailOk && usernameOk;
+                    
+                    if (verified) {
+                      return (
+                        <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 flex items-center gap-3">
+                          <VerifiedBadge size="lg" />
+                          <div>
+                            <p className="font-semibold text-sm">Your account is verified</p>
+                            <p className="text-xs text-muted-foreground">
+                              Your verified badge is displayed next to your name on your profile.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    const missing: string[] = [];
+                    if (!emailOk) missing.push('verify your email');
+                    if (!usernameOk) missing.push('set a username');
+                    
+                    return (
+                      <div className="p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 flex items-start gap-3">
+                        <BadgeCheck className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-sm">Get your verified badge</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Complete these steps to earn a verified badge next to your name: {missing.join(' and ')}.
+                          </p>
+                          <div className="flex gap-3 mt-2">
+                            <span className={cn(
+                              "text-xs flex items-center gap-1",
+                              emailOk ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                            )}>
+                              {emailOk ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                              Email verified
+                            </span>
+                            <span className={cn(
+                              "text-xs flex items-center gap-1",
+                              usernameOk ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                            )}>
+                              {usernameOk ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+                              Username set
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Profile Visibility - FIRST */}
                   <Card className="border-primary/20">
                     <CardHeader>
