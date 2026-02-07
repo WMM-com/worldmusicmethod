@@ -115,10 +115,13 @@ export function PremiumActiveBadge() {
   );
 }
 
+/** Beta Membership product ID — the subscription that grants premium features */
+export const BETA_MEMBERSHIP_PRODUCT_ID = 'a0e4cee3-0074-4246-8162-f1d9c69b32d8';
+
 /**
  * Hook to check premium status.
- * Primary: has_premium_features flag from extended_profiles.
- * Fallback: checks if activeSubscriptionProductIds includes beta_membership.
+ * Primary: has_premium_features flag from extended_profiles (set by webhook/admin).
+ * Fallback: checks if activeSubscriptionProductIds includes the Beta Membership product.
  */
 export function usePremiumCheck(
   hasPremiumFeatures: boolean | null | undefined,
@@ -126,7 +129,7 @@ export function usePremiumCheck(
 ) {
   const isPremium =
     hasPremiumFeatures === true ||
-    (activeSubscriptionProductIds?.includes('beta_membership') ?? false);
+    (activeSubscriptionProductIds?.includes(BETA_MEMBERSHIP_PRODUCT_ID) ?? false);
 
   return {
     isPremium,
