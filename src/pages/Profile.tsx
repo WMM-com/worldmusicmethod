@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -31,7 +33,7 @@ import { PageManager } from '@/components/profile/PageManager';
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
 import { getLayoutClass } from '@/components/profile/GridLayout';
-import { PremiumGate, PremiumActiveBadge, usePremiumCheck } from '@/components/profile/PremiumGate';
+import { PremiumGate, PremiumActiveBadge, usePremiumCheck, BETA_MEMBERSHIP_PRODUCT_ID } from '@/components/profile/PremiumGate';
 import { AddSectionModal } from '@/components/profile/AddSectionModal';
 import { TextBlock } from '@/components/profile/sections/TextBlock';
 import { DonationBlock } from '@/components/profile/sections/DonationBlock';
@@ -149,6 +151,21 @@ export default function Profile(
   const { data: posts, isLoading: postsLoading } = useUserPosts(profileId!);
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
+
+  // Fetch active subscription product IDs for premium fallback check
+  const { data: activeSubscriptionProductIds } = useQuery({
+    queryKey: ['user-active-subscriptions', profileId],
+    queryFn: async () => {
+      if (!profileId) return [];
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('product_id')
+        .eq('user_id', profileId)
+        .in('status', ['active', 'trialing']);
+      return data?.map(s => s.product_id).filter(Boolean) as string[] || [];
+    },
+    enabled: !!profileId && isOwnProfile,
+  });
   // Fetch sections filtered by current page to prevent cross-page leakage
   // Uses the slug param from route (works for /@username/:slug, /profile/pages/:slug, and /profile)
   const currentPageId = useMemo(() => {
@@ -288,7 +305,7 @@ export default function Profile(
   };
 
   // Premium check - admins bypass premium restrictions
-  const { isPremium: isPremiumTier, canAddMoreSections } = usePremiumCheck(heroSettings?.has_premium_features);
+  const { isPremium: isPremiumTier, canAddMoreSections } = usePremiumCheck(heroSettings?.has_premium_features, activeSubscriptionProductIds);
   const isPremium = isPremiumTier || isAdmin;
   
   // Count custom sections (gallery, projects, custom_tabs)

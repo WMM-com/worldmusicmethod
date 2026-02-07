@@ -6176,6 +6176,7 @@ export type Database = {
         | "asia_lower"
         | "asia_higher"
         | "default"
+        | "africa_francophone"
       profile_visibility: "private" | "members" | "public"
     }
     CompositeTypes: {
@@ -6365,6 +6366,7 @@ export const Constants = {
         "asia_lower",
         "asia_higher",
         "default",
+        "africa_francophone",
       ],
       profile_visibility: ["private", "members", "public"],
     },
