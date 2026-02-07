@@ -18,6 +18,8 @@ export interface HeroSettings {
   hero_config: HeroConfig;
   brand_color: string | null;
   cover_settings: CoverSettings;
+  has_premium_features: boolean;
+  premium_granted_by: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -47,6 +49,8 @@ export function useHeroSettings(userId?: string) {
           hero_config: {} as HeroConfig,
           brand_color: null,
           cover_settings: { height: 'medium', focalPointX: 50, focalPointY: 50 } as CoverSettings,
+          has_premium_features: false,
+          premium_granted_by: null,
         } as HeroSettings;
       }
       
@@ -55,6 +59,8 @@ export function useHeroSettings(userId?: string) {
         hero_type: (data.hero_type || 'standard') as HeroType,
         hero_config: (data.hero_config || {}) as HeroConfig,
         cover_settings: (data.cover_settings || { height: 'medium', focalPointX: 50, focalPointY: 50 }) as CoverSettings,
+        has_premium_features: data.has_premium_features ?? false,
+        premium_granted_by: data.premium_granted_by ?? null,
       } as HeroSettings;
     },
     enabled: !!targetId,

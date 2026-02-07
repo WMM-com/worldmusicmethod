@@ -288,7 +288,7 @@ export default function Profile(
   };
 
   // Premium check - admins bypass premium restrictions
-  const { isPremium: isPremiumTier, canAddMoreSections } = usePremiumCheck(extendedProfile?.profile_tier);
+  const { isPremium: isPremiumTier, canAddMoreSections } = usePremiumCheck(heroSettings?.has_premium_features);
   const isPremium = isPremiumTier || isAdmin;
   
   // Count custom sections (gallery, projects, custom_tabs)
@@ -986,7 +986,7 @@ export default function Profile(
                       
                       {/* Brand Color Picker - Premium Only */}
                       <PremiumGate
-                        profileTier={extendedProfile?.profile_tier}
+                        hasPremiumFeatures={isPremium}
                         featureName="Brand Colors"
                         mode="inline"
                       >
@@ -1036,7 +1036,7 @@ export default function Profile(
                       
                       {/* Payment Accounts - Premium Only */}
                       <PremiumGate
-                        profileTier={extendedProfile?.profile_tier}
+                        hasPremiumFeatures={isPremium}
                         featureName="Payment Accounts"
                         mode="inline"
                       >
