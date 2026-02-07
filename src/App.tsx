@@ -61,6 +61,7 @@ import Meet from "./pages/Meet";
 import TutorRooms from "./pages/TutorRooms";
 import Download from "./pages/Download";
 import Merchandise from "./pages/Merchandise";
+import FanPayment from "./pages/FanPayment";
 import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
@@ -172,6 +173,7 @@ function AppContent() {
         <Route path="/meet/:roomId" element={<ProtectedRoute><VideoCall /></ProtectedRoute>} />
         <Route path="/tutor/rooms" element={<ProtectedRoute><TutorRooms /></ProtectedRoute>} />
         <Route path="/download/:token" element={<Download />} />
+        <Route path="/pay/:gigId" element={<FanPayment />} />
         <Route path="/sitemap.xml" element={<Sitemap />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

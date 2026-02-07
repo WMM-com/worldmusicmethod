@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.notify-project-report]
 verify_jwt = false
+
+[functions.create-merch-checkout]
+verify_jwt = false
