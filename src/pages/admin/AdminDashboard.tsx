@@ -192,15 +192,15 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <SiteHeader />
-      <div className="min-h-screen bg-background flex">
+      <SiteHeader hideMobileMenu />
+      <div className="min-h-[calc(100dvh-4rem)] bg-background flex overflow-hidden">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex w-56 flex-col border-r border-border bg-card">
           <SidebarContent />
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           {/* Header */}
           <header className="border-b border-border bg-card px-6 py-4">
             <div className="flex items-center gap-4">
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-4 sm:p-6 overflow-auto">
+          <main className="flex-1 p-4 sm:p-6 overflow-y-auto overflow-x-hidden">
             {/* Stats - only show on users tab */}
             {activeTab === 'users' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">

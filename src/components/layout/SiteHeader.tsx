@@ -36,7 +36,7 @@ interface MenuItem {
   requires_admin: boolean;
 }
 
-export function SiteHeader({ rightAddon, className, nonSticky = false }: { rightAddon?: ReactNode; className?: string; nonSticky?: boolean }) {
+export function SiteHeader({ rightAddon, className, nonSticky = false, hideMobileMenu = false }: { rightAddon?: ReactNode; className?: string; nonSticky?: boolean; hideMobileMenu?: boolean }) {
   const navigate = useNavigate();
   const { user, profile, signOut, loading } = useAuth();
   const { getItemCount } = useCart();
@@ -341,18 +341,20 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
           </div>
 
           {/* Mobile menu button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          {!hideMobileMenu && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
         </div>
 
         {/* Mobile Navigation */}
-        {mobileMenuOpen && (
+        {!hideMobileMenu && mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border">
             <nav className="flex flex-col gap-2">
               {mobileItems.map(item => renderMobileNavItem(item))}
