@@ -47,6 +47,7 @@ export interface MerchGig {
   currency: string;
   notes: string | null;
   status: string;
+  stripe_location_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +63,7 @@ export interface MerchSale {
   total: number;
   currency: string;
   payment_method: string;
+  payment_source: string;
   buyer_name: string | null;
   buyer_email: string | null;
   notes: string | null;

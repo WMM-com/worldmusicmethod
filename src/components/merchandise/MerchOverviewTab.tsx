@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { CreditCard, TrendingUp, ShoppingBag, AlertCircle } from 'lucide-react';
+import { CreditCard, TrendingUp, ShoppingBag, AlertCircle, Globe, Smartphone, Banknote } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,33 @@ import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+
+function PaymentSourceBadge({ source }: { source: string }) {
+  switch (source) {
+    case 'terminal':
+      return (
+        <Badge variant="outline" className="text-xs">
+          <Smartphone className="h-3 w-3 mr-1" />
+          Terminal
+        </Badge>
+      );
+    case 'cash':
+      return (
+        <Badge variant="outline" className="text-xs">
+          <Banknote className="h-3 w-3 mr-1" />
+          Cash
+        </Badge>
+      );
+    case 'web':
+    default:
+      return (
+        <Badge variant="outline" className="text-xs">
+          <Globe className="h-3 w-3 mr-1" />
+          Web
+        </Badge>
+      );
+  }
+}
 
 export function MerchOverviewTab() {
   const { user } = useAuth();
@@ -174,7 +201,9 @@ export function MerchOverviewTab() {
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="font-semibold text-sm">{formatCurrency(sale.total, sale.currency)}</p>
-                    <Badge variant="outline" className="text-xs capitalize">{sale.payment_method}</Badge>
+                    <div className="flex items-center gap-1 justify-end mt-0.5">
+                      <PaymentSourceBadge source={sale.payment_source} />
+                    </div>
                   </div>
                 </div>
               ))}

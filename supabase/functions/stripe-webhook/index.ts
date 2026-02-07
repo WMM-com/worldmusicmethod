@@ -82,10 +82,12 @@ Deno.serve(async (req) => {
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent
       const metadata = paymentIntent.metadata || {}
+      const paymentMethodTypes = paymentIntent.payment_method_types || []
+      const isTerminal = paymentMethodTypes.includes('card_present')
 
-      // Route merch terminal payments to the merch handler
-      if (metadata.gig_id || metadata.artist_user_id) {
-        await handleMerchPaymentIntentSucceeded(paymentIntent, supabase)
+      // Route merch terminal payments or metadata-tagged payments
+      if (metadata.gig_id || metadata.artist_user_id || isTerminal) {
+        await handleMerchPaymentIntentSucceeded(paymentIntent, stripe, supabase)
         return new Response(JSON.stringify({ received: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -167,6 +169,7 @@ async function handleMerchCheckoutCompleted(
         total,
         currency,
         payment_method: 'stripe',
+        payment_source: 'web',
         buyer_email: buyerEmail,
         stripe_payment_id: `${session.id}_${i}`,
       })
@@ -187,6 +190,7 @@ async function handleMerchCheckoutCompleted(
       total,
       currency,
       payment_method: 'stripe',
+      payment_source: 'web',
       buyer_email: buyerEmail,
       stripe_payment_id: session.id,
     })
@@ -202,17 +206,21 @@ async function handleMerchCheckoutCompleted(
 // ── Merch: payment_intent.succeeded (Terminal / Connect) ──
 async function handleMerchPaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
+  stripe: Stripe,
   supabase: any
 ) {
   const metadata = paymentIntent.metadata || {}
-  const gigId = metadata.gig_id || null
+  let gigId = metadata.gig_id || null
   const artistUserId = metadata.artist_user_id || null
   const productId = metadata.product_id || null
+  const paymentMethodTypes = paymentIntent.payment_method_types || []
+  const isTerminal = paymentMethodTypes.includes('card_present')
 
   logStep('Merch payment_intent.succeeded', {
     paymentIntentId: paymentIntent.id,
     gigId,
     artistUserId,
+    isTerminal,
     connectedAccount: (paymentIntent as any).transfer_data?.destination,
   })
 
@@ -235,6 +243,36 @@ async function handleMerchPaymentIntentSucceeded(
     }
   }
 
+  // For Terminal payments, try to resolve gig from the Terminal location
+  if (isTerminal && !gigId) {
+    try {
+      // Get the charge to find the payment method details with location
+      const charges = await stripe.charges.list({ payment_intent: paymentIntent.id, limit: 1 })
+      const charge = charges.data[0]
+      const locationId = (charge?.payment_method_details as any)?.card_present?.reader?.location
+        || metadata.location
+
+      if (locationId) {
+        logStep('Terminal location found', { locationId })
+        const { data: gig } = await supabase
+          .from('merch_gigs')
+          .select('id, user_id')
+          .eq('stripe_location_id', locationId)
+          .maybeSingle()
+
+        if (gig) {
+          gigId = gig.id
+          if (!resolvedArtistId) resolvedArtistId = gig.user_id
+          logStep('Resolved gig from Terminal location', { gigId, userId: gig.user_id })
+        } else {
+          logStep('No gig found for Terminal location', { locationId })
+        }
+      }
+    } catch (err) {
+      logStep('Error resolving Terminal location', { error: (err as Error).message })
+    }
+  }
+
   if (!resolvedArtistId) {
     logStep('Could not resolve artist user_id, skipping merch sale insert')
     return
@@ -254,6 +292,7 @@ async function handleMerchPaymentIntentSucceeded(
 
   const total = (paymentIntent.amount || 0) / 100
   const currency = (paymentIntent.currency || 'usd').toUpperCase()
+  const paymentSource = isTerminal ? 'terminal' : 'web'
 
   const { error } = await supabase.from('merch_sales').insert({
     user_id: resolvedArtistId,
@@ -263,14 +302,15 @@ async function handleMerchPaymentIntentSucceeded(
     unit_price: total,
     total,
     currency,
-    payment_method: 'stripe_terminal',
+    payment_method: isTerminal ? 'stripe_terminal' : 'stripe',
+    payment_source: paymentSource,
     stripe_payment_id: paymentIntent.id,
   })
 
   if (error) {
     logStep('Error inserting terminal merch sale', { error: error.message })
   } else {
-    logStep('Terminal merch sale recorded', { total, currency })
+    logStep('Merch sale recorded', { total, currency, paymentSource })
   }
 }
 
