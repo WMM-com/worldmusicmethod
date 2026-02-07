@@ -5,14 +5,14 @@ import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Check } from 'lucide-re
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { createNotification } from '@/hooks/useNotifications';
 
 interface ProjectReportFormProps {
   projectId: string;
   userId: string;
+  projectTitle?: string;
 }
 
-export function ProjectReportForm({ projectId, userId }: ProjectReportFormProps) {
+export function ProjectReportForm({ projectId, userId, projectTitle }: ProjectReportFormProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -27,7 +27,7 @@ export function ProjectReportForm({ projectId, userId }: ProjectReportFormProps)
 
     setSubmitting(true);
     try {
-      // Insert report
+      // 1. Insert report into database
       const { error } = await supabase.from('project_reports').insert({
         project_id: projectId,
         reporter_id: user.id,
@@ -37,24 +37,22 @@ export function ProjectReportForm({ projectId, userId }: ProjectReportFormProps)
 
       if (error) throw error;
 
-      // Get admin user IDs and notify them
-      const { data: admins } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
+      // 2. Notify admins via edge function (notifications + email)
+      const { error: fnError } = await supabase.functions.invoke(
+        'notify-project-report',
+        {
+          body: {
+            project_id: projectId,
+            profile_owner_id: userId,
+            message: message.trim(),
+            project_title: projectTitle || 'Untitled project',
+          },
+        },
+      );
 
-      if (admins) {
-        for (const admin of admins) {
-          await createNotification({
-            userId: admin.user_id,
-            type: 'project_report',
-            title: 'Project Issue Reported',
-            message: `A user reported an issue with a project listing: "${message.trim().slice(0, 100)}"`,
-            referenceId: projectId,
-            referenceType: 'project',
-            fromUserId: user.id,
-          });
-        }
+      if (fnError) {
+        console.error('Notification function error:', fnError);
+        // Don't throw — the report itself was saved successfully
       }
 
       setSubmitted(true);

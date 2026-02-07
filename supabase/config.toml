@@ -200,3 +200,6 @@ verify_jwt = true
 
 [functions.check-username]
 verify_jwt = false
+
+[functions.notify-project-report]
+verify_jwt = false
