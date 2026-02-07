@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMerchProducts, useCreateMerchProduct, useUpdateMerchProduct, useDeleteMerchProduct, type MerchProduct } from '@/hooks/useMerchandise';
 import { formatCurrency } from '@/lib/currency';
+import { MerchImageUploader } from './MerchImageUploader';
 
 const CATEGORIES = [
   { value: 'clothing', label: 'Clothing' },
@@ -24,7 +25,7 @@ const defaultForm = {
   title: '',
   description: '',
   category: 'other',
-  image_url: '',
+  image_urls: [] as string[],
   sku: '',
   base_price: 0,
   currency: 'USD',
@@ -57,7 +58,7 @@ export function MerchProductsTab() {
       title: p.title,
       description: p.description || '',
       category: p.category,
-      image_url: p.image_url || '',
+      image_urls: p.image_urls || (p.image_url ? [p.image_url] : []),
       sku: p.sku || '',
       base_price: p.base_price,
       currency: p.currency,
@@ -74,7 +75,8 @@ export function MerchProductsTab() {
     const payload = {
       ...form,
       description: form.description || null,
-      image_url: form.image_url || null,
+      image_url: form.image_urls[0] || null,
+      image_urls: form.image_urls,
       sku: form.sku || null,
       cost_price: form.cost_price || null,
       weight_grams: form.weight_grams || null,
@@ -123,8 +125,8 @@ export function MerchProductsTab() {
           {products.map(p => (
             <Card key={p.id} className="overflow-hidden group">
               <div className="aspect-square bg-muted relative">
-                {p.image_url ? (
-                  <img src={p.image_url} alt={p.title} className="w-full h-full object-cover" />
+                {(p.image_urls?.[0] || p.image_url) ? (
+                  <img src={p.image_urls?.[0] || p.image_url!} alt={p.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Package className="h-12 w-12 text-muted-foreground/40" />
@@ -213,10 +215,10 @@ export function MerchProductsTab() {
               <Label>Cost Price (optional)</Label>
               <Input type="number" min={0} step={0.01} value={form.cost_price} onChange={e => setForm(f => ({ ...f, cost_price: parseFloat(e.target.value) || 0 }))} />
             </div>
-            <div>
-              <Label>Image URL</Label>
-              <Input value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." />
-            </div>
+            <MerchImageUploader
+              images={form.image_urls}
+              onChange={(urls) => setForm(f => ({ ...f, image_urls: urls }))}
+            />
             <div className="flex items-center gap-3">
               <Switch checked={form.track_inventory} onCheckedChange={v => setForm(f => ({ ...f, track_inventory: v }))} />
               <Label className="mb-0">Track inventory</Label>
