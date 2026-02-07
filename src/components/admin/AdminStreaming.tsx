@@ -496,37 +496,37 @@ export function AdminStreaming() {
       </Card>
 
       <Tabs defaultValue="tracks" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="tracks" className="gap-2">
             <Music className="h-4 w-4" />
-            Tracks ({tracks.length})
+            <span className="hidden sm:inline">Tracks</span> ({tracks.length})
           </TabsTrigger>
           <TabsTrigger value="playlists" className="gap-2">
             <ListMusic className="h-4 w-4" />
-            Playlists ({adminPlaylists.length})
+            <span className="hidden sm:inline">Playlists</span> ({adminPlaylists.length})
           </TabsTrigger>
           <TabsTrigger value="artists" className="gap-2">
             <Users className="h-4 w-4" />
-            Artists ({artists.length})
+            <span className="hidden sm:inline">Artists</span> ({artists.length})
           </TabsTrigger>
           <TabsTrigger value="podcasts" className="gap-2">
             <Podcast className="h-4 w-4" />
-            Podcasts ({podcasts.length})
+            <span className="hidden sm:inline">Podcasts</span> ({podcasts.length})
           </TabsTrigger>
           <TabsTrigger value="analytics" className="gap-2">
             <BarChart3 className="h-4 w-4" />
-            Analytics
+            <span className="hidden sm:inline">Analytics</span>
           </TabsTrigger>
           <TabsTrigger value="revenue" className="gap-2">
             <DollarSign className="h-4 w-4" />
-            Revenue Pool
+            <span className="hidden sm:inline">Revenue Pool</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Tracks Tab */}
         <TabsContent value="tracks">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <CardTitle>Tracks</CardTitle>
               <Dialog open={trackDialogOpen} onOpenChange={(open) => {
                 setTrackDialogOpen(open);
@@ -566,7 +566,7 @@ export function AdminStreaming() {
                       createTrack.mutate(trackForm);
                     }
                   }} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Title *</Label>
                         <Input
@@ -719,7 +719,7 @@ export function AdminStreaming() {
                         <div className="text-xs text-muted-foreground">Uploading: {progress}%</div>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Content Type</Label>
                         <Select
@@ -744,7 +744,7 @@ export function AdminStreaming() {
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div className="space-y-2">
                         <Label>Album</Label>
                         <Input
@@ -793,8 +793,8 @@ export function AdminStreaming() {
                 </DialogContent>
               </Dialog>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="overflow-x-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
@@ -917,8 +917,8 @@ export function AdminStreaming() {
                 </DialogContent>
               </Dialog>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="overflow-x-auto">
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -1096,8 +1096,8 @@ export function AdminStreaming() {
                 </DialogContent>
               </Dialog>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="overflow-x-auto">
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Artist</TableHead>
@@ -1203,8 +1203,8 @@ export function AdminStreaming() {
                 </DialogContent>
               </Dialog>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="overflow-x-auto">
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Podcast</TableHead>
@@ -1235,8 +1235,8 @@ export function AdminStreaming() {
               <CardTitle>Play Analytics</CardTitle>
               <CardDescription>Top 10 most played tracks (last 100 plays)</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="overflow-x-auto">
+              <Table className="min-w-[400px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>#</TableHead>

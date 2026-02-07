@@ -13,7 +13,7 @@ export function AdminEmailCRM() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="campaigns" className="space-y-6">
-        <TabsList className="flex-wrap">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="campaigns" className="gap-2">
             <Send className="h-4 w-4" />
             Campaigns

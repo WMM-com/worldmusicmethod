@@ -171,8 +171,8 @@ export function AdminCourses() {
         <CardHeader>
           <CardTitle>Courses</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="overflow-x-auto">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Course</TableHead>
@@ -306,7 +306,7 @@ export function AdminCourses() {
           </DialogHeader>
           {selectedCourse && viewMode === 'view' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Title</label>
                   <p className="mt-1">{selectedCourse.title}</p>

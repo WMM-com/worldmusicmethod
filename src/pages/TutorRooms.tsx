@@ -488,7 +488,7 @@ export default function TutorRooms() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Room Code</TableHead>

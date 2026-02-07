@@ -44,7 +44,7 @@ export function AdminFinances() {
   return (
     <div className="space-y-6">
       {/* Header controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
           {/* Date Range Picker */}
           <Popover>
@@ -125,7 +125,7 @@ export function AdminFinances() {
 
       {/* Main tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="expenses">Expenses</TabsTrigger>

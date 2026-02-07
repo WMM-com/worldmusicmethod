@@ -354,12 +354,12 @@ export function AdminSales() {
   return (
     <div className="space-y-6">
       {/* Header with filters */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold">Sales Dashboard</h3>
           <p className="text-sm text-muted-foreground">Revenue, orders, and subscriptions with fees</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -373,6 +373,7 @@ export function AdminSales() {
           </Select>
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => syncPayments.mutate()}
             disabled={syncPayments.isPending}
           >
@@ -381,7 +382,8 @@ export function AdminSales() {
             ) : (
               <CloudDownload className="h-4 w-4 mr-2" />
             )}
-            Sync Payments
+            <span className="hidden sm:inline">Sync Payments</span>
+            <span className="sm:hidden">Sync</span>
           </Button>
           <Button 
             variant="outline" 
@@ -425,7 +427,7 @@ export function AdminSales() {
       </Card>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -518,13 +520,13 @@ export function AdminSales() {
 
         <TabsContent value="orders" className="mt-4">
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <CardTitle>Orders</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Orders</CardTitle>
                   <CardDescription>All transactions with fee information</CardDescription>
                 </div>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by email or name..."
@@ -538,8 +540,8 @@ export function AdminSales() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table className="text-sm">
+            <CardContent className="p-0 overflow-x-auto">
+              <Table className="text-sm min-w-[800px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="py-2 px-3">Date</TableHead>
@@ -676,13 +678,13 @@ export function AdminSales() {
 
         <TabsContent value="subscriptions" className="mt-4">
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <CardTitle>Subscriptions</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Subscriptions</CardTitle>
                   <CardDescription>Manage active and cancelled subscriptions</CardDescription>
                 </div>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by email or name..."
@@ -696,8 +698,8 @@ export function AdminSales() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Table>
+            <CardContent className="overflow-x-auto">
+              <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Started</TableHead>

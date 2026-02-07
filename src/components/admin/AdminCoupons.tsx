@@ -265,9 +265,9 @@ export function AdminCoupons() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Tag className="h-5 w-5 text-primary" />
             </div>
             <div>
@@ -275,7 +275,7 @@ export function AdminCoupons() {
               <CardDescription>Create and manage discount codes</CardDescription>
             </div>
           </div>
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Create Coupon
           </Button>
@@ -293,7 +293,8 @@ export function AdminCoupons() {
             <Button variant="link" onClick={openCreate}>Create your first coupon</Button>
           </div>
         ) : (
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="min-w-[650px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Code</TableHead>
@@ -370,6 +371,7 @@ export function AdminCoupons() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CardContent>
 
