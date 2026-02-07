@@ -191,18 +191,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <>
-      <SiteHeader hideMobileMenu />
-      <div className="min-h-[calc(100dvh-4rem)] bg-background flex overflow-hidden">
+    <div className="flex flex-col h-[100dvh] overflow-hidden bg-background">
+      <SiteHeader />
+      <div className="flex flex-1 min-h-0">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex w-56 flex-col border-r border-border bg-card">
+        <aside className="hidden lg:flex w-56 flex-col flex-shrink-0 border-r border-border bg-card overflow-y-auto">
           <SidebarContent />
         </aside>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Header */}
-          <header className="border-b border-border bg-card px-6 py-4">
+          <header className="border-b border-border bg-card px-4 sm:px-6 py-4 flex-shrink-0">
             <div className="flex items-center gap-4">
               {/* Mobile menu trigger */}
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -216,9 +216,9 @@ export default function AdminDashboard() {
                 </SheetContent>
               </Sheet>
 
-              <div>
-                <h1 className="text-xl font-semibold capitalize">{menuItems.find(m => m.id === activeTab)?.label || 'Admin'}</h1>
-                <p className="text-sm text-muted-foreground">Manage users, courses, and products</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-semibold capitalize truncate">{menuItems.find(m => m.id === activeTab)?.label || 'Admin'}</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">Manage users, courses, and products</p>
               </div>
             </div>
           </header>
@@ -287,6 +287,6 @@ export default function AdminDashboard() {
           </main>
         </div>
       </div>
-    </>
+    </div>
   );
 }
