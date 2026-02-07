@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { getProfileUrl } from '@/lib/profileUrl';
 import { ProjectReportForm } from './ProjectReportForm';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 interface ProjectDetailModalProps {
   project: ProfileProject | null;
@@ -27,6 +27,7 @@ export function ProjectDetailModal({
   onSelectProject,
 }: ProjectDetailModalProps) {
   const { data: extendedProfile } = useExtendedProfile(userId);
+  const location = useLocation();
 
   const currentIndex = useMemo(
     () => (project ? allProjects.findIndex((p) => p.id === project.id) : -1),
@@ -45,22 +46,44 @@ export function ProjectDetailModal({
   const profileUrl = getProfileUrl(userId, extendedProfile?.username);
   const displayName = extendedProfile?.full_name || 'this artist';
 
+  // Build the correct shareable URL including the current page slug
+  const shareUrl = useMemo(() => {
+    const base = window.location.origin;
+    const pathname = location.pathname;
+    
+    // Owner route: /profile/pages/{slug} → use profileUrl/{slug}
+    const ownerMatch = pathname.match(/^\/profile\/pages\/(.+)/);
+    if (ownerMatch) {
+      const slug = ownerMatch[1];
+      // Don't append slug if it's "home"
+      const pagePath = slug === 'home' ? profileUrl : `${profileUrl}/${slug}`;
+      return `${base}${pagePath}`;
+    }
+    
+    // Public route: /@username/{slug} or /username/{slug} → use current pathname
+    // The pathname already contains the correct public path
+    return `${base}${pathname}`;
+  }, [location.pathname, profileUrl]);
+
   const handleCopyLink = () => {
     if (!project) return;
-    const base = window.location.origin;
-    const url = `${base}${profileUrl}?project=${project.id}`;
+    const url = `${shareUrl}?project=${project.id}`;
     navigator.clipboard.writeText(url);
     toast.success('Project link copied');
   };
 
-  const goToPrev = () => {
+  const goToPrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (currentIndex > 0) {
       onSelectProject(allProjects[currentIndex - 1]);
       setSliderIndex(0);
     }
   };
 
-  const goToNext = () => {
+  const goToNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     if (currentIndex < allProjects.length - 1) {
       onSelectProject(allProjects[currentIndex + 1]);
       setSliderIndex(0);
@@ -71,33 +94,38 @@ export function ProjectDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Navigation arrows – only visible when modal is open */}
-      {open && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
-          {currentIndex > 0 && (
-            <button
-              onClick={goToPrev}
-              className="pointer-events-auto absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center rounded-full bg-background/60 backdrop-blur-md border border-border shadow-lg hover:bg-accent transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          )}
-
-          {currentIndex < allProjects.length - 1 && (
-            <button
-              onClick={goToNext}
-              className="pointer-events-auto absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center rounded-full bg-background/60 backdrop-blur-md border border-border shadow-lg hover:bg-accent transition-colors"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-      )}
-
       <DialogContent
         className="max-w-[calc(100vw-120px)] w-full p-0 gap-0 overflow-hidden flex flex-col [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-7 [&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-3 [&>button]:top-3 [&>button]:z-30"
         style={{ maxHeight: 'calc(100vh - 80px)' }}
+        onInteractOutside={(e) => {
+          // Prevent closing when clicking navigation arrows
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-project-nav]')) {
+            e.preventDefault();
+          }
+        }}
       >
+        {/* Navigation arrows – fixed positioned but inside DialogContent to prevent outside-click close */}
+        {currentIndex > 0 && (
+          <button
+            data-project-nav="prev"
+            onClick={goToPrev}
+            className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-[60] h-10 w-10 flex items-center justify-center rounded-full bg-background/60 backdrop-blur-md border border-border shadow-lg hover:bg-accent transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+
+        {currentIndex < allProjects.length - 1 && (
+          <button
+            data-project-nav="next"
+            onClick={goToNext}
+            className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-[60] h-10 w-10 flex items-center justify-center rounded-full bg-background/60 backdrop-blur-md border border-border shadow-lg hover:bg-accent transition-colors"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
+
         {/* Sticky Header */}
         <div className="shrink-0 flex items-center justify-between px-6 pt-5 pb-3 border-b border-border bg-background">
           <h2 className="text-lg font-semibold truncate pr-4">{project.title}</h2>
