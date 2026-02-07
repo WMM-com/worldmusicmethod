@@ -63,6 +63,8 @@ export function NotificationBell() {
         return '✉️';
       case 'booking_request':
         return '📅';
+      case 'project_report':
+        return '⚠️';
       default:
         return '🔔';
     }

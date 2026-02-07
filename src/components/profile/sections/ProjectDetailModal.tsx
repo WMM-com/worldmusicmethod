@@ -193,7 +193,7 @@ export function ProjectDetailModal({
               </div>
             )}
 
-            <ProjectReportForm projectId={project.id} userId={userId} />
+            <ProjectReportForm projectId={project.id} userId={userId} projectTitle={project.title} />
           </div>
 
           {/* Right column – scrollable */}
