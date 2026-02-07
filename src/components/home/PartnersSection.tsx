@@ -51,7 +51,7 @@ export function PartnersSection() {
               transition={{ duration: 0.4, delay: idx * 0.12 }}
               className="flex flex-col items-center gap-4 group rounded-xl border border-border/50 hover:border-primary/30 bg-card/50 p-8 transition-all duration-300"
             >
-              <div className="h-16 md:h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+              <div className={`${partner.name === 'Soundslice' ? 'h-24 md:h-[7.5rem]' : 'h-16 md:h-20'} flex items-center justify-center transition-transform duration-300 group-hover:scale-105`}>
                 <img
                   src={partner.logo}
                   alt={partner.name}
