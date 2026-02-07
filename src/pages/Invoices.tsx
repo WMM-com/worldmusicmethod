@@ -169,30 +169,31 @@ export default function Invoices() {
   const renderInvoiceCard = (invoice: Invoice, isDeleted = false) => (
     <Card key={invoice.id} className="glass">
       <CardContent className="py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">{invoice.invoice_number}</p>
-            <p className="text-sm text-muted-foreground truncate">{invoice.client_name}</p>
-            {invoice.sent_at && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                <CheckCircle className="h-3 w-3 text-success" />
-                Sent on {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
-              </p>
-            )}
-            {invoice.paid_at && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
-              </p>
-            )}
-            {!invoice.paid_at && invoice.due_date && !isDeleted && (
-              <p className={`text-xs mt-1 ${isOverdue(invoice) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="font-semibold">{formatCurrency(invoice.amount, invoice.currency)}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          {/* Top row: info + amount */}
+          <div className="flex items-start justify-between gap-3 sm:flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-sm sm:text-base">{invoice.invoice_number}</p>
+              <p className="text-sm text-muted-foreground truncate">{invoice.client_name}</p>
+              {invoice.sent_at && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                  <CheckCircle className="h-3 w-3 flex-shrink-0 text-success" />
+                  Sent {format(new Date(invoice.sent_at), 'MMM d, yyyy')}
+                </p>
+              )}
+              {invoice.paid_at && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
+                </p>
+              )}
+              {!invoice.paid_at && invoice.due_date && !isDeleted && (
+                <p className={`text-xs mt-1 ${isOverdue(invoice) ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                  Due {format(parseISO(invoice.due_date), 'MMM d, yyyy')}
+                </p>
+              )}
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="font-semibold text-sm sm:text-base">{formatCurrency(invoice.amount, invoice.currency)}</p>
               {!isDeleted && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -217,9 +218,13 @@ export default function Invoices() {
                 </DropdownMenu>
               )}
             </div>
+          </div>
+
+          {/* Action buttons - full width row on mobile */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             {isDeleted ? (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => restoreInvoice.mutate(invoice.id)}>
+              <>
+                <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => restoreInvoice.mutate(invoice.id)}>
                   <RotateCcw className="h-4 w-4 mr-1" />
                   Restore
                 </Button>
@@ -240,9 +245,9 @@ export default function Invoices() {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
+              </>
             ) : (
-              <div className="flex items-center gap-2">
+              <>
                 <Button variant="outline" size="sm" onClick={() => handleOpenEditDialog(invoice)}>
                   <Edit className="h-4 w-4" />
                 </Button>
@@ -255,7 +260,7 @@ export default function Invoices() {
                 <Button variant="ghost" size="sm" onClick={() => softDeleteInvoice.mutate(invoice.id)}>
                   <Trash2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -265,13 +270,13 @@ export default function Invoices() {
 
   return (
     <AppLayout>
-      <div className="p-6 lg:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Invoices</h1>
-            <p className="text-muted-foreground mt-1">Create and manage your invoices</p>
+            <h1 className="text-2xl sm:text-3xl font-bold">Invoices</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Create and manage your invoices</p>
           </div>
-          <Button className="gradient-primary" onClick={() => setCreateDialogOpen(true)}>
+          <Button className="gradient-primary w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Create Invoice
           </Button>
