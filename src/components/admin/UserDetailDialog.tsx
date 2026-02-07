@@ -123,13 +123,13 @@ export function UserDetailDialog({
   });
 
   // Fetch active subscription for this user
-  const { data: activeSubscription } = useQuery({
+  const { data: activeSubscription, refetch: refetchSubscription } = useQuery({
     queryKey: ['admin-user-subscription', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('id, status, product_name, current_period_end')
+        .select('id, status, product_name, current_period_end, payment_provider, provider_subscription_id')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle();
@@ -363,6 +363,27 @@ export function UserDetailDialog({
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update premium status');
+    },
+  });
+
+  // Cancel subscription mutation
+  const cancelSubscriptionMutation = useMutation({
+    mutationFn: async (subscriptionId: string) => {
+      const { data, error } = await supabase.functions.invoke('manage-subscription', {
+        body: { subscriptionId, action: 'cancel_immediately' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      refetchSubscription();
+      refetchExtendedProfile();
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      toast.success('Subscription cancelled and premium revoked');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to cancel subscription');
     },
   });
 
@@ -703,10 +724,25 @@ export function UserDetailDialog({
                     <span>Not active — toggle to grant commerce blocks, brand colors & more</span>
                   )}
                 </div>
-                {extendedProfile?.has_premium_features && extendedProfile.premium_granted_by === 'subscription' && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 pl-6">
-                    ⚠ Granted via subscription. Toggling off here will override until their next renewal webhook.
-                  </p>
+                {extendedProfile?.has_premium_features && extendedProfile.premium_granted_by === 'subscription' && activeSubscription && (
+                  <div className="pl-6 space-y-2">
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                      ⚠ Granted via subscription ({activeSubscription.product_name || 'Membership'}). Toggling off alone won't persist — the next renewal webhook will re-grant it.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-7 text-xs"
+                      disabled={cancelSubscriptionMutation.isPending}
+                      onClick={() => {
+                        if (confirm(`Cancel ${activeSubscription.product_name || 'subscription'} immediately and revoke premium? This cannot be undone.`)) {
+                          cancelSubscriptionMutation.mutate(activeSubscription.id);
+                        }
+                      }}
+                    >
+                      {cancelSubscriptionMutation.isPending ? 'Cancelling...' : 'Cancel Subscription & Revoke Premium'}
+                    </Button>
+                  </div>
                 )}
               </div>
 
