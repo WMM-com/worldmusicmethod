@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music, Video } from 'lucide-react';
+import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music, Video, Store } from 'lucide-react';
 import { useState } from 'react';
 import { SiteHeader } from './SiteHeader';
 
@@ -16,6 +16,7 @@ const sectionGuides: Record<string, string> = {
   '/finances': 'Detailed breakdown of your income and expenses with tax estimates.',
   '/documents': 'Upload and store documents to share with venues, tour managers, or bandmates.',
   '/tech-specs': 'Create visual stage plots and channel lists to share with venues and sound engineers.',
+  '/merchandise': 'Manage your merch catalogue, track inventory, and record sales from gigs and online.',
   '/left-brain-settings': 'Customize your Left Brain experience, invoice templates, and preferences.',
 };
 
@@ -26,6 +27,7 @@ const mainNavItems = [
   { href: '/invoices', label: 'Invoices', icon: FileText },
   { href: '/expenses', label: 'Expenses', icon: Receipt },
   { href: '/finances', label: 'Finances', icon: PieChart },
+  { href: '/merchandise', label: 'Merchandise', icon: Store },
 ];
 
 // Documents section

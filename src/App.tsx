@@ -60,6 +60,7 @@ import VideoCall from "./pages/VideoCall";
 import Meet from "./pages/Meet";
 import TutorRooms from "./pages/TutorRooms";
 import Download from "./pages/Download";
+import Merchandise from "./pages/Merchandise";
 import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
@@ -126,6 +127,7 @@ function AppContent() {
         <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
         <Route path="/left-brain/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
         <Route path="/finances" element={<ProtectedRoute><Finances /></ProtectedRoute>} />
+        <Route path="/merchandise" element={<ProtectedRoute><Merchandise /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
         <Route path="/left-brain-settings" element={<ProtectedRoute><LeftBrainSettings /></ProtectedRoute>} />
         <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
