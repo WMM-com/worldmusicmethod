@@ -3126,6 +3126,110 @@ export type Database = {
           },
         ]
       }
+      merch_product_variants: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          price_override: number | null
+          product_id: string
+          sku_suffix: string | null
+          sort_order: number
+          stock_quantity: number
+          variant_label: string
+          variant_value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_override?: number | null
+          product_id: string
+          sku_suffix?: string | null
+          sort_order?: number
+          stock_quantity?: number
+          variant_label: string
+          variant_value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_override?: number | null
+          product_id?: string
+          sku_suffix?: string | null
+          sort_order?: number
+          stock_quantity?: number
+          variant_label?: string
+          variant_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merch_product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "merch_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merch_products: {
+        Row: {
+          base_price: number
+          category: string
+          cost_price: number | null
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          sku: string | null
+          stock_quantity: number
+          title: string
+          track_inventory: boolean
+          updated_at: string
+          user_id: string
+          weight_grams: number | null
+        }
+        Insert: {
+          base_price?: number
+          category?: string
+          cost_price?: number | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          sku?: string | null
+          stock_quantity?: number
+          title: string
+          track_inventory?: boolean
+          updated_at?: string
+          user_id: string
+          weight_grams?: number | null
+        }
+        Update: {
+          base_price?: number
+          category?: string
+          cost_price?: number | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          sku?: string | null
+          stock_quantity?: number
+          title?: string
+          track_inventory?: boolean
+          updated_at?: string
+          user_id?: string
+          weight_grams?: number | null
+        }
+        Relationships: []
+      }
       merchant_category_rules: {
         Row: {
           category: Database["public"]["Enums"]["expense_category_uk"]
