@@ -100,10 +100,10 @@ export default function Index() {
       
       <SiteHeader />
       <main className="min-h-screen bg-background">
-        {/* Hero Section - Split Layout */}
-        <section className="relative w-full min-h-[85vh] flex items-stretch overflow-hidden">
-          {/* Right side - Video (positioned first, behind gradient) */}
-          <div className="hidden lg:block absolute inset-0" style={{ left: '30%' }}>
+        {/* Hero Section - Desktop: Split Layout */}
+        <section className="relative w-full min-h-[85vh] hidden lg:flex items-stretch overflow-hidden">
+          {/* Right side - Video */}
+          <div className="absolute inset-0" style={{ left: '30%' }}>
             <video
               ref={heroVideoRef}
               src={HERO_VIDEO_URL}
@@ -134,7 +134,6 @@ export default function Index() {
 
           {/* Left side - Text & CTAs with gradient overlay */}
           <div className="relative z-10 w-full lg:w-[50%] flex items-center">
-            {/* Gradient overlay - covers text content without extending too far right */}
             <div className="absolute inset-0 bg-gradient-to-r from-background via-background from-65% to-transparent" />
             
             <div className="relative px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
@@ -179,7 +178,6 @@ export default function Index() {
                 </Button>
               </motion.div>
 
-              {/* Trust line */}
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -190,33 +188,76 @@ export default function Index() {
               </motion.p>
             </div>
           </div>
+        </section>
 
-          {/* Mobile: video background behind text */}
-          <div className="absolute inset-0 lg:hidden -z-0">
+        {/* Hero Section - Mobile: Stacked layout like course landing pages */}
+        <section className="lg:hidden px-4 pt-6 pb-8">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-2xl font-bold mb-4 text-foreground"
+          >
+            Master Your Instrument, Unlock Musical Freedom
+          </motion.h1>
+
+          {/* Video thumbnail with play button */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group mb-4 border-2 border-border"
+            onClick={() => setShowTrailer(true)}
+          >
             <video
               src={HERO_VIDEO_URL}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-cover"
               muted
-              loop
               playsInline
               autoPlay
+              loop
             />
-            <div className="absolute inset-0 bg-black/60" />
-          </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-active:bg-black/40 transition-colors">
+              <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+                <Play className="w-6 h-6 text-primary-foreground ml-0.5" fill="currentColor" />
+              </div>
+              <span className="mt-2 px-3 py-1 bg-black/60 rounded text-foreground text-xs font-medium">
+                Watch Trailer
+              </span>
+            </div>
+          </motion.div>
 
-          {/* Mobile Watch Trailer button */}
-          {isMobile && (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              onClick={() => setShowTrailer(true)}
-              className="absolute bottom-6 right-6 z-20 lg:hidden flex items-center gap-2 bg-primary/90 text-primary-foreground px-5 py-3 rounded-full shadow-xl"
-            >
-              <Play className="w-5 h-5" fill="currentColor" />
-              <span className="text-sm font-semibold">Watch Trailer</span>
-            </motion.button>
-          )}
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-sm text-muted-foreground mb-5 leading-relaxed"
+          >
+            Accelerate your journey with world-class instructors, cutting-edge technology, and a vibrant global community.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex flex-col gap-3"
+          >
+            <Button size="lg" asChild className="text-base py-5 h-auto w-full">
+              <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
+            </Button>
+            <Button variant="secondary" size="lg" asChild className="text-base py-5 h-auto w-full">
+              <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+            </Button>
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="mt-4 text-xs text-secondary text-center"
+          >
+            Trusted by 2,500+ dedicated musicians worldwide
+          </motion.p>
         </section>
 
         {/* Partners Section */}
@@ -274,7 +315,7 @@ export default function Index() {
 
         {/* Bottom CTA Section */}
         <section className="py-16 md:py-24 border-t border-border/50">
-          <div className="max-w-3xl mx-auto px-4 text-center">
+          <div className="max-w-4xl mx-auto px-4 text-center">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -284,6 +325,7 @@ export default function Index() {
             >
               Ready to Explore the World Through Music?
             </motion.h2>
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -302,9 +344,9 @@ export default function Index() {
         </section>
       </main>
 
-      {/* Soundslice Popup Dialog - scrollable */}
+      {/* Soundslice Popup Dialog - near-fullscreen on mobile */}
       <Dialog open={!!selectedInstrument} onOpenChange={(open) => !open && handleClosePopup()}>
-        <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 bg-background border-border overflow-hidden [&>button:last-child]:hidden">
+        <DialogContent className={`${isMobile ? 'w-[100vw] h-[100dvh] max-w-none max-h-none rounded-none' : 'max-w-5xl w-[95vw]'} p-0 gap-0 bg-background border-border overflow-hidden [&>button:last-child]:hidden`}>
           <button
             onClick={handleClosePopup}
             className="absolute top-3 right-3 z-50 w-9 h-9 rounded-full bg-primary hover:bg-primary/80 flex items-center justify-center transition-colors"
@@ -312,31 +354,42 @@ export default function Index() {
             <X className="w-5 h-5 text-primary-foreground" />
           </button>
 
-          {/* Header with inline tips */}
-          <div className="px-6 pt-5 pb-3 border-b border-border">
-            <h3 className="text-lg font-semibold text-foreground">
-              {selectedInstrument?.label} Lesson Preview
-            </h3>
-            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
-              {selectedInstrument && getTipsForInstrument(selectedInstrument.id).map((tip, idx) => {
-                const TipIcon = tip.icon;
-                return (
-                  <div key={idx} className="flex items-center gap-1.5">
-                    <TipIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
-                    <span className="text-xs text-muted-foreground">{tip.text}</span>
-                  </div>
-                );
-              })}
+          {/* Header with inline tips - hidden on mobile */}
+          {!isMobile && (
+            <div className="px-6 pt-5 pb-3 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">
+                {selectedInstrument?.label} Lesson Preview
+              </h3>
+              <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2">
+                {selectedInstrument && getTipsForInstrument(selectedInstrument.id).map((tip, idx) => {
+                  const TipIcon = tip.icon;
+                  return (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <TipIcon className="w-3.5 h-3.5 text-secondary shrink-0" />
+                      <span className="text-xs text-muted-foreground">{tip.text}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Soundslice embed - use overflow-y-auto so control bar is accessible */}
-          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 80px)' }}>
+          {/* Mobile: simple title bar */}
+          {isMobile && (
+            <div className="px-4 pt-4 pb-2">
+              <h3 className="text-base font-semibold text-foreground">
+                {selectedInstrument?.label} Lesson Preview
+              </h3>
+            </div>
+          )}
+
+          {/* Soundslice embed */}
+          <div className={`${isMobile ? 'p-2 flex-1' : 'p-4'} overflow-y-auto`} style={{ maxHeight: isMobile ? undefined : 'calc(90vh - 80px)' }}>
             {selectedInstrument && (
               <SoundsliceEmbed
                 sliceIdOrUrl={selectedInstrument.sliceId}
                 preset={selectedInstrument.preset}
-                height={isMobile ? 400 : 500}
+                height={isMobile ? window.innerHeight - 100 : 500}
               />
             )}
           </div>
