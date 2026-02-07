@@ -5,10 +5,6 @@ import { motion } from 'framer-motion';
 import { 
   Play, 
   X, 
-  Guitar,
-  Drum,
-  Mic,
-  Music,
   MousePointerClick,
   SlidersHorizontal,
   Gauge,
@@ -34,7 +30,6 @@ const instruments = [
     label: 'Guitar', 
     sliceId: 'M7kTc', 
     preset: 'guitar' as const,
-    icon: Guitar,
     placeholder: guitarImg,
   },
   { 
@@ -42,7 +37,6 @@ const instruments = [
     label: 'Bass', 
     sliceId: 'w7kTc', 
     preset: 'bass' as const,
-    icon: Music,
     placeholder: bassImg,
   },
   { 
@@ -50,7 +44,6 @@ const instruments = [
     label: 'Drums & Percussion', 
     sliceId: 'z7kTc', 
     preset: 'drum' as const,
-    icon: Drum,
     placeholder: drumsImg,
   },
   { 
@@ -58,7 +51,6 @@ const instruments = [
     label: 'Vocals', 
     sliceId: 'R7kTc', 
     preset: 'vocals' as const,
-    icon: Mic,
     placeholder: vocalsImg,
   },
 ];
@@ -115,7 +107,7 @@ export default function Index() {
             <video
               ref={heroVideoRef}
               src={HERO_VIDEO_URL}
-              className="absolute inset-0 w-full h-full object-cover object-center"
+              className="absolute inset-0 w-full h-full object-cover object-right"
               muted
               loop
               playsInline
@@ -141,9 +133,9 @@ export default function Index() {
           </div>
 
           {/* Left side - Text & CTAs with gradient overlay */}
-          <div className="relative z-10 w-full lg:w-[55%] flex items-center">
-            {/* Gradient overlay - extended to cover all text content */}
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background from-70% to-transparent" />
+          <div className="relative z-10 w-full lg:w-[50%] flex items-center">
+            {/* Gradient overlay - covers text content without extending too far right */}
+            <div className="absolute inset-0 bg-gradient-to-r from-background via-background from-65% to-transparent" />
             
             <div className="relative px-6 sm:px-10 lg:px-16 py-20 max-w-2xl">
               <motion.h1
@@ -250,9 +242,7 @@ export default function Index() {
 
             {/* 2x2 Instrument Grid */}
             <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto">
-              {instruments.map((inst, idx) => {
-                const Icon = inst.icon;
-                return (
+               {instruments.map((inst, idx) => (
                   <motion.button
                     key={inst.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -267,22 +257,15 @@ export default function Index() {
                       alt={inst.label}
                       className="absolute inset-0 w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-colors" />
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors" />
                     
-                    <div className="relative z-10 flex flex-col items-center justify-center h-full gap-3">
-                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg">
-                        <Play className="w-6 h-6 md:w-7 md:h-7 text-primary-foreground ml-0.5" fill="currentColor" />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-foreground/80" />
-                        <span className="text-sm md:text-base font-semibold text-foreground">
-                          {inst.label}
-                        </span>
-                      </div>
+                    <div className="absolute bottom-0 left-0 right-0 z-10 p-3 md:p-4 bg-gradient-to-t from-black/70 to-transparent">
+                      <span className="text-sm md:text-lg font-bold text-foreground">
+                        {inst.label}
+                      </span>
                     </div>
                   </motion.button>
-                );
-              })}
+                ))}
             </div>
           </div>
         </section>

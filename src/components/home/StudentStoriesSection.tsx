@@ -103,15 +103,14 @@ export function StudentStoriesSection() {
                     <img
                       src={story.avatar}
                       alt={story.name}
-                      className="w-16 h-16 rounded-full object-cover bg-muted"
+                      className="w-24 h-24 rounded-full object-cover object-top bg-muted"
                     />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-semibold text-foreground">{story.name}</p>
                       <p className="text-xs text-muted-foreground">{story.country}</p>
                     </div>
+                    <Quote className="w-7 h-7 text-primary/20 shrink-0 self-start" />
                   </div>
-
-                  <Quote className="w-8 h-8 text-primary/20 mb-3 shrink-0" />
                   
                   <p className="text-sm text-muted-foreground leading-relaxed flex-1 whitespace-pre-line">
                     "{truncated}"
@@ -148,7 +147,7 @@ export function StudentStoriesSection() {
                 <img
                   src={selectedStory.avatar}
                   alt={selectedStory.name}
-                  className="w-14 h-14 rounded-full object-cover bg-muted"
+                  className="w-20 h-20 rounded-full object-cover object-top bg-muted"
                 />
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">{selectedStory.name}</h3>
