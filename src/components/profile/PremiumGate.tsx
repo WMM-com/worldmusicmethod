@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils';
 
 interface PremiumGateProps {
-  /** The user's current profile tier */
-  profileTier: string | null | undefined;
+  /** Whether the user has premium features enabled */
+  hasPremiumFeatures: boolean;
   /** Feature name to display in the upgrade prompt */
   featureName: string;
   /** Optional description of what the feature does */
@@ -21,16 +21,14 @@ interface PremiumGateProps {
 }
 
 export function PremiumGate({
-  profileTier,
+  hasPremiumFeatures,
   featureName,
   featureDescription,
   children,
   className,
   mode = 'block',
 }: PremiumGateProps) {
-  const isPremium = profileTier === 'premium';
-
-  if (isPremium) {
+  if (hasPremiumFeatures) {
     return <>{children}</>;
   }
 
@@ -102,11 +100,12 @@ export function UpgradePrompt({ featureName, featureDescription, className }: Up
   );
 }
 
-// Helper hook to check premium status
-export function usePremiumCheck(profileTier: string | null | undefined) {
+// Helper hook to check premium status using the new has_premium_features flag
+export function usePremiumCheck(hasPremiumFeatures: boolean | null | undefined) {
+  const isPremium = hasPremiumFeatures === true;
   return {
-    isPremium: profileTier === 'premium',
+    isPremium,
     canAddMoreSections: (currentCount: number) => 
-      profileTier === 'premium' || currentCount < 3,
+      isPremium || currentCount < 3,
   };
 }

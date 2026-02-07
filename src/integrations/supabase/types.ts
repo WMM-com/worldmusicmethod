@@ -1688,9 +1688,11 @@ export type Database = {
           brand_color: string | null
           cover_settings: Json | null
           created_at: string | null
+          has_premium_features: boolean | null
           hero_config: Json | null
           hero_type: string | null
           id: string
+          premium_granted_by: string | null
           updated_at: string | null
           user_id: string
         }
@@ -1698,9 +1700,11 @@ export type Database = {
           brand_color?: string | null
           cover_settings?: Json | null
           created_at?: string | null
+          has_premium_features?: boolean | null
           hero_config?: Json | null
           hero_type?: string | null
           id?: string
+          premium_granted_by?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -1708,9 +1712,11 @@ export type Database = {
           brand_color?: string | null
           cover_settings?: Json | null
           created_at?: string | null
+          has_premium_features?: boolean | null
           hero_config?: Json | null
           hero_type?: string | null
           id?: string
+          premium_granted_by?: string | null
           updated_at?: string | null
           user_id?: string
         }
