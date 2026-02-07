@@ -26,44 +26,39 @@ const partners = [
 
 export function PartnersSection() {
   return (
-    <section className="py-12 md:py-16 border-t border-border/50 relative overflow-hidden">
-      {/* Subtle decorative background */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: 'radial-gradient(circle at 20% 50%, hsl(var(--primary)) 0%, transparent 50%), radial-gradient(circle at 80% 50%, hsl(var(--secondary)) 0%, transparent 50%)',
-      }} />
-
-      <div className="max-w-5xl mx-auto px-4 relative">
+    <section className="py-14 md:py-20 border-t border-border/50">
+      <div className="max-w-6xl mx-auto px-4">
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center text-sm uppercase tracking-[0.2em] text-muted-foreground mb-10"
+          className="text-center text-sm uppercase tracking-[0.2em] text-muted-foreground mb-12"
         >
           Partnered With
         </motion.p>
 
-        <div className="flex items-center justify-center gap-12 md:gap-20 flex-wrap">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
           {partners.map((partner, idx) => (
             <motion.a
               key={partner.name}
               href={partner.url}
               target="_blank"
               rel="noopener noreferrer"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 15 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: idx * 0.1 }}
-              className="flex flex-col items-center gap-3 group"
+              transition={{ duration: 0.4, delay: idx * 0.12 }}
+              className="flex flex-col items-center gap-4 group rounded-xl border border-border/50 hover:border-primary/30 bg-card/50 p-8 transition-all duration-300"
             >
-              <div className="h-14 md:h-16 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+              <div className="h-16 md:h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
                 <img
                   src={partner.logo}
                   alt={partner.name}
-                  className="h-full w-auto object-contain max-w-[160px]"
+                  className="h-full w-auto object-contain max-w-[200px]"
                 />
               </div>
-              <span className="text-sm text-muted-foreground text-center max-w-[160px] group-hover:text-foreground transition-colors">
+              <span className="text-sm text-muted-foreground text-center group-hover:text-foreground transition-colors">
                 {partner.description}
               </span>
             </motion.a>
@@ -76,7 +71,7 @@ export function PartnersSection() {
           whileInView={{ scaleX: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="mt-10 h-px bg-gradient-to-r from-transparent via-border to-transparent"
+          className="mt-14 h-px bg-gradient-to-r from-transparent via-border to-transparent"
         />
       </div>
     </section>
