@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ProfileProject } from '@/hooks/useProfilePortfolio';
 import { useExtendedProfile } from '@/hooks/useProfilePortfolio';
@@ -90,41 +90,60 @@ export function ProjectDetailModal({
     }
   };
 
+  const navRef = useRef<HTMLDivElement>(null);
+
   if (!project) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* Navigation arrows – rendered outside DialogContent but inside Dialog */}
+      {open && (
+        <div
+          ref={navRef}
+          className="fixed inset-0 z-[60] pointer-events-none"
+          style={{ isolation: 'isolate' }}
+        >
+          {currentIndex > 0 && (
+            <button
+              data-project-nav="prev"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={goToPrev}
+              className="pointer-events-auto absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-12 w-12 flex items-center justify-center rounded-full bg-primary/25 backdrop-blur-md shadow-lg opacity-30 hover:opacity-100 hover:bg-primary/80 active:opacity-100 active:bg-primary/90 transition-all duration-200"
+            >
+              <ChevronLeft className="h-6 w-6 text-primary-foreground" />
+            </button>
+          )}
+
+          {currentIndex < allProjects.length - 1 && (
+            <button
+              data-project-nav="next"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={goToNext}
+              className="pointer-events-auto absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 h-12 w-12 flex items-center justify-center rounded-full bg-primary/25 backdrop-blur-md shadow-lg opacity-30 hover:opacity-100 hover:bg-primary/80 active:opacity-100 active:bg-primary/90 transition-all duration-200"
+            >
+              <ChevronRight className="h-6 w-6 text-primary-foreground" />
+            </button>
+          )}
+        </div>
+      )}
+
       <DialogContent
         className="max-w-[calc(100vw-120px)] w-full p-0 gap-0 overflow-hidden flex flex-col [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-7 [&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-3 [&>button]:top-3 [&>button]:z-30"
         style={{ maxHeight: 'calc(100vh - 80px)' }}
-        onInteractOutside={(e) => {
+        onPointerDownOutside={(e) => {
           // Prevent closing when clicking navigation arrows
           const target = e.target as HTMLElement;
           if (target.closest('[data-project-nav]')) {
             e.preventDefault();
           }
         }}
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-project-nav]')) {
+            e.preventDefault();
+          }
+        }}
       >
-        {/* Navigation arrows – fixed positioned but inside DialogContent to prevent outside-click close */}
-        {currentIndex > 0 && (
-          <button
-            data-project-nav="prev"
-            onClick={goToPrev}
-            className="fixed left-2 sm:left-4 top-1/2 -translate-y-1/2 z-[60] h-10 w-10 flex items-center justify-center rounded-full bg-background/60 backdrop-blur-md border border-border shadow-lg hover:bg-accent transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        )}
-
-        {currentIndex < allProjects.length - 1 && (
-          <button
-            data-project-nav="next"
-            onClick={goToNext}
-            className="fixed right-2 sm:right-4 top-1/2 -translate-y-1/2 z-[60] h-10 w-10 flex items-center justify-center rounded-full bg-background/60 backdrop-blur-md border border-border shadow-lg hover:bg-accent transition-colors"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        )}
 
         {/* Sticky Header */}
         <div className="shrink-0 flex items-center justify-between px-6 pt-5 pb-3 border-b border-border bg-background">
