@@ -95,6 +95,15 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Beta Membership subscription handling ────────────────
+    if (
+      event.type === 'invoice.payment_succeeded' ||
+      event.type === 'customer.subscription.created' ||
+      event.type === 'customer.subscription.updated'
+    ) {
+      await handleBetaMembershipSubscription(event, stripe, supabase)
+    }
+
     // ── Existing referral/subscription/digital product handling ──
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.payment_succeeded') {
       await handlePaymentEvent(event, stripe, supabase)
@@ -113,6 +122,152 @@ Deno.serve(async (req) => {
     })
   }
 })
+
+// ── Beta Membership: grant premium features on subscription ──
+async function handleBetaMembershipSubscription(
+  event: Stripe.Event,
+  stripe: Stripe,
+  supabase: any
+) {
+  let subscriptionMetadata: Record<string, string> = {}
+  let subscriptionStatus: string = ''
+  let subscriptionId: string = ''
+
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object as Stripe.Invoice
+    if (!invoice.subscription) return
+
+    // Retrieve the subscription to access metadata
+    try {
+      const sub = await stripe.subscriptions.retrieve(invoice.subscription as string)
+      subscriptionMetadata = (sub.metadata || {}) as Record<string, string>
+      subscriptionStatus = sub.status
+      subscriptionId = sub.id
+    } catch (err) {
+      logStep('Failed to retrieve subscription from invoice', { error: (err as Error).message })
+      return
+    }
+  } else if (
+    event.type === 'customer.subscription.created' ||
+    event.type === 'customer.subscription.updated'
+  ) {
+    const sub = event.data.object as Stripe.Subscription
+    subscriptionMetadata = (sub.metadata || {}) as Record<string, string>
+    subscriptionStatus = sub.status
+    subscriptionId = sub.id
+  }
+
+  // Check if this is a Beta Membership (product_type === 'membership' or product name match)
+  const productType = subscriptionMetadata.product_type || ''
+  const productName = subscriptionMetadata.product_name || ''
+  const userId = subscriptionMetadata.user_id || ''
+  const isBetaMembership =
+    productType === 'membership' ||
+    productName.toLowerCase().includes('beta membership')
+
+  if (!isBetaMembership) {
+    return // Not a Beta Membership subscription, skip
+  }
+
+  logStep('Beta Membership subscription event detected', {
+    eventType: event.type,
+    subscriptionId,
+    subscriptionStatus,
+    userId,
+    productType,
+    productName,
+  })
+
+  if (!userId) {
+    // Fallback: try to resolve user_id from email in metadata
+    const email = subscriptionMetadata.email
+    if (email) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+
+      if (profile) {
+        logStep('Resolved user_id from email fallback', { userId: profile.id, email })
+        await grantOrRevokePremium(supabase, profile.id, subscriptionStatus, subscriptionId)
+      } else {
+        logStep('Could not resolve user from email', { email })
+      }
+    } else {
+      logStep('No user_id or email in subscription metadata, cannot grant premium')
+    }
+    return
+  }
+
+  await grantOrRevokePremium(supabase, userId, subscriptionStatus, subscriptionId)
+}
+
+async function grantOrRevokePremium(
+  supabase: any,
+  userId: string,
+  subscriptionStatus: string,
+  subscriptionId: string
+) {
+  const isActive = subscriptionStatus === 'active' || subscriptionStatus === 'trialing'
+
+  if (isActive) {
+    // Grant premium features
+    const { data: existing } = await supabase
+      .from('extended_profiles')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (existing) {
+      const { error } = await supabase
+        .from('extended_profiles')
+        .update({
+          has_premium_features: true,
+          premium_granted_by: 'subscription',
+        })
+        .eq('user_id', userId)
+
+      if (error) {
+        logStep('Error updating premium features', { error: error.message, userId })
+      } else {
+        logStep('Premium features GRANTED via subscription', { userId, subscriptionId })
+      }
+    } else {
+      // Create extended_profiles row if it doesn't exist
+      const { error } = await supabase
+        .from('extended_profiles')
+        .insert({
+          user_id: userId,
+          has_premium_features: true,
+          premium_granted_by: 'subscription',
+        })
+
+      if (error) {
+        logStep('Error inserting extended_profiles for premium', { error: error.message, userId })
+      } else {
+        logStep('Premium features GRANTED (new profile created)', { userId, subscriptionId })
+      }
+    }
+  } else if (subscriptionStatus === 'canceled' || subscriptionStatus === 'unpaid' || subscriptionStatus === 'past_due') {
+    // Revoke premium features (only if granted by subscription, not by admin)
+    const { error } = await supabase
+      .from('extended_profiles')
+      .update({ has_premium_features: false })
+      .eq('user_id', userId)
+      .eq('premium_granted_by', 'subscription')
+
+    if (error) {
+      logStep('Error revoking premium features', { error: error.message, userId })
+    } else {
+      logStep('Premium features REVOKED due to subscription status', {
+        userId,
+        subscriptionId,
+        status: subscriptionStatus,
+      })
+    }
+  }
+}
 
 // ── Merch: checkout.session.completed ─────────────────────
 async function handleMerchCheckoutCompleted(
