@@ -69,18 +69,18 @@ const DialogContent = React.forwardRef<
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className={cn(
-          /* Mobile-first: full-width bottom sheet feel, safe area padding */
+          /* Mobile-first: full-screen bottom sheet */
           "fixed left-0 right-0 bottom-0 z-50 grid w-full gap-4 border-t bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg",
           /* Prevent background scroll */
           "overscroll-contain",
-          /* Mobile swipe hint */
-          "rounded-t-2xl",
-          /* Max height with dynamic viewport */
-          "max-h-[85dvh] overflow-y-auto",
+          /* Mobile swipe hint + full-height */
+          "rounded-t-3xl",
+          /* Full height on mobile with dynamic viewport */
+          "h-[100dvh] max-h-[100dvh] overflow-y-auto",
           /* Animations */
           "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-          /* Desktop: centered modal */
-          "sm:left-[50%] sm:right-auto sm:bottom-auto sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:rounded-lg sm:border sm:border-t sm:p-6 sm:pb-6 sm:max-h-[90vh]",
+          /* Desktop: centered modal, constrained height */
+          "sm:left-[50%] sm:right-auto sm:bottom-auto sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:rounded-lg sm:border sm:border-t sm:p-6 sm:pb-6 sm:h-auto sm:max-h-[90vh]",
           "sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-top-[48%] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
           className,
         )}
@@ -89,7 +89,7 @@ const DialogContent = React.forwardRef<
         {/* Mobile swipe indicator */}
         <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/30 sm:hidden" />
         {children}
-        <DialogPrimitive.Close className="absolute right-3 top-3 flex items-center justify-center min-h-11 min-w-11 rounded-md opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none sm:right-4 sm:top-4 sm:min-h-0 sm:min-w-0 sm:rounded-sm">
+        <DialogPrimitive.Close className="absolute right-3 top-3 flex items-center justify-center min-h-12 min-w-12 rounded-md opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none sm:right-4 sm:top-4 sm:min-h-0 sm:min-w-0 sm:rounded-sm">
           <X className="h-5 w-5 sm:h-4 sm:w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
