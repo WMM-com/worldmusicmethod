@@ -82,7 +82,7 @@ export function StudentStoriesSection() {
             <h2 className="text-2xl md:text-4xl mb-4">
               In Their Own Words
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto text-sm md:text-base">
+            <p className="text-muted-foreground max-w-4xl mx-auto text-sm md:text-base">
               Real stories from musicians around the world whose lives have been transformed through music.
             </p>
           </motion.div>
@@ -147,7 +147,7 @@ export function StudentStoriesSection() {
                 <img
                   src={selectedStory.avatar}
                   alt={selectedStory.name}
-                  className="w-20 h-20 rounded-full object-cover object-top bg-muted"
+                  className="w-28 h-28 rounded-full object-cover object-top bg-muted"
                 />
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">{selectedStory.name}</h3>
