@@ -3126,6 +3126,48 @@ export type Database = {
           },
         ]
       }
+      merch_gigs: {
+        Row: {
+          created_at: string
+          currency: string
+          gig_date: string
+          id: string
+          location: string | null
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          venue: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          gig_date?: string
+          id?: string
+          location?: string | null
+          name: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          venue?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          gig_date?: string
+          id?: string
+          location?: string | null
+          name?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          venue?: string | null
+        }
+        Relationships: []
+      }
       merch_product_variants: {
         Row: {
           created_at: string
@@ -3229,6 +3271,82 @@ export type Database = {
           weight_grams?: number | null
         }
         Relationships: []
+      }
+      merch_sales: {
+        Row: {
+          buyer_email: string | null
+          buyer_name: string | null
+          created_at: string
+          currency: string
+          gig_id: string | null
+          id: string
+          notes: string | null
+          payment_method: string
+          product_id: string | null
+          quantity: number
+          stripe_payment_id: string | null
+          total: number
+          unit_price: number
+          user_id: string
+          variant_id: string | null
+        }
+        Insert: {
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          currency?: string
+          gig_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          product_id?: string | null
+          quantity?: number
+          stripe_payment_id?: string | null
+          total: number
+          unit_price: number
+          user_id: string
+          variant_id?: string | null
+        }
+        Update: {
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          currency?: string
+          gig_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          product_id?: string | null
+          quantity?: number
+          stripe_payment_id?: string | null
+          total?: number
+          unit_price?: number
+          user_id?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merch_sales_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "merch_gigs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merch_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "merch_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merch_sales_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "merch_product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       merchant_category_rules: {
         Row: {
