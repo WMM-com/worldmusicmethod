@@ -273,7 +273,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
@@ -281,7 +281,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-6 py-4">
+        <div className="flex flex-col gap-6 overflow-y-auto pb-20 sm:pb-4">
           {/* Your Business Info (readonly display) */}
           {(profile?.business_name || profile?.full_name) && (
             <div className="bg-muted/50 rounded-lg p-4 space-y-1">
@@ -520,11 +520,12 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
 
           {/* Submit */}
           <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button 
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => handleSubmit(false)}
               disabled={createInvoice.isPending || sendingAfterCreate}
             >
@@ -532,7 +533,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
               {createInvoice.isPending && !sendingAfterCreate ? 'Creating...' : 'Save Invoice'}
             </Button>
             <Button 
-              className="gradient-primary" 
+              className="gradient-primary w-full sm:w-auto" 
               onClick={() => handleSubmit(true)}
               disabled={createInvoice.isPending || sendingAfterCreate || !form.client_email}
             >
