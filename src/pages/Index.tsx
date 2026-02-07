@@ -271,6 +271,35 @@ export default function Index() {
         </section>
 
         <StudentStoriesSection />
+
+        {/* Bottom CTA Section */}
+        <section className="py-16 md:py-24 border-t border-border/50">
+          <div className="max-w-3xl mx-auto px-4 text-center">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="text-2xl md:text-4xl mb-8"
+            >
+              Ready to Explore the World Through Music?
+            </motion.h2>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <Button size="lg" asChild className="text-base px-8 py-6 h-auto">
+                <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
+              </Button>
+              <Button variant="secondary" size="lg" asChild className="text-base px-8 py-6 h-auto">
+                <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+              </Button>
+            </motion.div>
+          </div>
+        </section>
       </main>
 
       {/* Soundslice Popup Dialog - scrollable */}
