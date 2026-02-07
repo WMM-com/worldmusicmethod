@@ -206,3 +206,6 @@ verify_jwt = false
 
 [functions.create-merch-checkout]
 verify_jwt = false
+
+[functions.create-terminal-location]
+verify_jwt = false

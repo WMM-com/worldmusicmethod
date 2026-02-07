@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, CalendarDays, QrCode, Pencil, Trash2, Copy, Check } from 'lucide-react';
+import { Plus, CalendarDays, QrCode, Pencil, Trash2, Copy, Check, Smartphone, MapPin, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -9,8 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useMerchGigs, useCreateMerchGig, useUpdateMerchGig, useDeleteMerchGig, type MerchGig } from '@/hooks/useMerchandise';
+import { usePaymentAccounts } from '@/hooks/usePaymentAccounts';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
   { value: 'upcoming', label: 'Upcoming' },
@@ -33,14 +37,19 @@ const appUrl = window.location.origin;
 
 export function MerchGigsTab() {
   const { data: gigs = [], isLoading } = useMerchGigs();
+  const { data: paymentAccounts = [] } = usePaymentAccounts();
   const createGig = useCreateMerchGig();
   const updateGig = useUpdateMerchGig();
   const deleteGig = useDeleteMerchGig();
+
+  const stripeAccount = paymentAccounts.find(a => a.provider === 'stripe');
+  const isStripeConnected = stripeAccount?.onboarding_complete;
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingGig, setEditingGig] = useState<MerchGig | null>(null);
   const [qrGig, setQrGig] = useState<MerchGig | null>(null);
   const [copied, setCopied] = useState(false);
+  const [creatingLocation, setCreatingLocation] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -83,9 +92,40 @@ export function MerchGigsTab() {
     if (editingGig) {
       await updateGig.mutateAsync({ id: editingGig.id, ...payload });
     } else {
-      await createGig.mutateAsync(payload);
+      const newGig = await createGig.mutateAsync(payload);
+      // Auto-create Terminal location if Stripe is connected
+      if (isStripeConnected && newGig?.id) {
+        createTerminalLocation(newGig.id, form.name, form.location);
+      }
     }
     setFormOpen(false);
+  };
+
+  const createTerminalLocation = async (gigId: string, displayName: string, location?: string) => {
+    setCreatingLocation(gigId);
+    try {
+      // Parse location into city/country if possible
+      const parts = location?.split(',').map(s => s.trim()) || [];
+      const city = parts[0] || 'City';
+      const country = parts[1] || 'GB';
+
+      const { data, error } = await supabase.functions.invoke('create-terminal-location', {
+        body: {
+          gig_id: gigId,
+          display_name: displayName,
+          city,
+          country: country.length === 2 ? country : 'GB',
+        },
+      });
+
+      if (error) throw error;
+      toast.success('Terminal location created — you can now use Tap to Pay');
+    } catch (err: any) {
+      console.error('Terminal location error:', err);
+      toast.error('Could not create Terminal location: ' + (err.message || 'Unknown error'));
+    } finally {
+      setCreatingLocation(null);
+    }
   };
 
   const payUrl = qrGig ? `${appUrl}/pay/${qrGig.id}` : '';
@@ -133,6 +173,7 @@ export function MerchGigsTab() {
                 <TableHead>Venue</TableHead>
                 <TableHead>Currency</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Terminal</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -145,6 +186,31 @@ export function MerchGigsTab() {
                   <TableCell>{g.currency}</TableCell>
                   <TableCell>
                     <Badge variant={statusVariant(g.status)} className="capitalize">{g.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {g.stripe_location_id ? (
+                      <Badge variant="outline" className="text-xs">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        Linked
+                      </Badge>
+                    ) : isStripeConnected ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => createTerminalLocation(g.id, g.name, g.location || undefined)}
+                        disabled={creatingLocation === g.id}
+                      >
+                        {creatingLocation === g.id ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Smartphone className="h-3 w-3 mr-1" />
+                        )}
+                        Set up
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
@@ -188,7 +254,7 @@ export function MerchGigsTab() {
               </div>
               <div>
                 <Label>Location</Label>
-                <Input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="London, UK" />
+                <Input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="London, GB" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -211,6 +277,14 @@ export function MerchGigsTab() {
                 </Select>
               </div>
             </div>
+            {!editingGig && isStripeConnected && (
+              <Alert>
+                <Smartphone className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  A Stripe Terminal location will be created automatically so you can accept Tap to Pay with the Stripe Dashboard app.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>Cancel</Button>
@@ -239,6 +313,16 @@ export function MerchGigsTab() {
                   {copied ? <Check className="h-4 w-4 text-secondary" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
+
+              {/* Terminal instructions */}
+              {qrGig.stripe_location_id && (
+                <Alert className="text-left">
+                  <Smartphone className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Tap to Pay:</strong> Open the Stripe Dashboard app on your phone. Go to <strong>Payments → Collect payment</strong> and select the location "<strong>{qrGig.name}</strong>". All Terminal sales will sync here automatically.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
         </DialogContent>

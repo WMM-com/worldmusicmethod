@@ -3136,6 +3136,7 @@ export type Database = {
           name: string
           notes: string | null
           status: string
+          stripe_location_id: string | null
           updated_at: string
           user_id: string
           venue: string | null
@@ -3149,6 +3150,7 @@ export type Database = {
           name: string
           notes?: string | null
           status?: string
+          stripe_location_id?: string | null
           updated_at?: string
           user_id: string
           venue?: string | null
@@ -3162,6 +3164,7 @@ export type Database = {
           name?: string
           notes?: string | null
           status?: string
+          stripe_location_id?: string | null
           updated_at?: string
           user_id?: string
           venue?: string | null
@@ -3282,6 +3285,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string
+          payment_source: string
           product_id: string | null
           quantity: number
           stripe_payment_id: string | null
@@ -3299,6 +3303,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string
+          payment_source?: string
           product_id?: string | null
           quantity?: number
           stripe_payment_id?: string | null
@@ -3316,6 +3321,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string
+          payment_source?: string
           product_id?: string | null
           quantity?: number
           stripe_payment_id?: string | null
