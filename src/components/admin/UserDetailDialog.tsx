@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Mail, MailX, Send, User, Shield, Eye, EyeOff, Tag, BookOpen, X, Plus, CreditCard, Search, BarChart3 } from 'lucide-react';
+import { Mail, MailX, Send, User, Shield, Eye, EyeOff, Tag, BookOpen, X, Plus, CreditCard, Search, BarChart3, Crown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { ArtistDashboardAccessDialog } from './ArtistDashboardAccessDialog';
@@ -132,6 +132,22 @@ export function UserDetailDialog({
         .select('id, status, product_name, current_period_end')
         .eq('user_id', user.id)
         .eq('status', 'active')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch extended profile (premium features status)
+  const { data: extendedProfile, refetch: refetchExtendedProfile } = useQuery({
+    queryKey: ['admin-user-extended-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('extended_profiles')
+        .select('id, has_premium_features, premium_granted_by')
+        .eq('user_id', user.id)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -307,6 +323,46 @@ export function UserDetailDialog({
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to enroll in group');
+    },
+  });
+
+  // Toggle premium features mutation
+  const togglePremiumMutation = useMutation({
+    mutationFn: async ({ userId, grant }: { userId: string; grant: boolean }) => {
+      if (grant) {
+        // Check if extended_profiles row exists
+        const { data: existing } = await supabase
+          .from('extended_profiles')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from('extended_profiles')
+            .update({ has_premium_features: true, premium_granted_by: 'admin' })
+            .eq('user_id', userId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('extended_profiles')
+            .insert({ user_id: userId, has_premium_features: true, premium_granted_by: 'admin' });
+          if (error) throw error;
+        }
+      } else {
+        const { error } = await supabase
+          .from('extended_profiles')
+          .update({ has_premium_features: false, premium_granted_by: null })
+          .eq('user_id', userId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { grant }) => {
+      refetchExtendedProfile();
+      toast.success(grant ? 'Premium features granted' : 'Premium features revoked');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update premium status');
     },
   });
 
@@ -614,6 +670,44 @@ export function UserDetailDialog({
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <Separator />
+
+              {/* Premium Features (Beta) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span className="font-medium">Premium Features (Beta)</span>
+                  </div>
+                  <Switch
+                    checked={extendedProfile?.has_premium_features || false}
+                    onCheckedChange={(checked) =>
+                      togglePremiumMutation.mutate({ userId: user.id, grant: checked })
+                    }
+                    disabled={togglePremiumMutation.isPending}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1 pl-6">
+                  {extendedProfile?.has_premium_features ? (
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs">
+                        Active
+                      </Badge>
+                      <span>
+                        Granted by: <span className="font-medium capitalize">{extendedProfile.premium_granted_by || 'unknown'}</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <span>Not active — toggle to grant commerce blocks, brand colors & more</span>
+                  )}
+                </div>
+                {extendedProfile?.has_premium_features && extendedProfile.premium_granted_by === 'subscription' && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 pl-6">
+                    ⚠ Granted via subscription. Toggling off here will override until their next renewal webhook.
+                  </p>
+                )}
               </div>
 
               <Separator />
