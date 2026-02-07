@@ -212,9 +212,9 @@ export function AdminPages() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <CardTitle>Pages & Redirects</CardTitle>
-        <Button onClick={() => handleOpenDialog()}>
+        <Button onClick={() => handleOpenDialog()} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           Add Page
         </Button>
@@ -228,7 +228,8 @@ export function AdminPages() {
           />
         </div>
 
-        <Table>
+        <div className="overflow-x-auto">
+        <Table className="min-w-[500px]">
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
@@ -297,6 +298,7 @@ export function AdminPages() {
             )}
           </TableBody>
         </Table>
+        </div>
 
         {/* Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

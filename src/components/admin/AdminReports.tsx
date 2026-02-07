@@ -234,7 +234,8 @@ export function AdminReports() {
                   <p className="text-muted-foreground">No reports found</p>
                 </div>
               ) : (
-                <Table>
+                <div className="overflow-x-auto">
+                <Table className="min-w-[700px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
@@ -342,6 +343,7 @@ export function AdminReports() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -360,7 +362,8 @@ export function AdminReports() {
                   <p className="text-muted-foreground">No blocks recorded</p>
                 </div>
               ) : (
-                <Table>
+                <div className="overflow-x-auto">
+                <Table className="min-w-[500px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Blocker</TableHead>
@@ -430,6 +433,7 @@ export function AdminReports() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>

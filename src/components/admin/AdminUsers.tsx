@@ -813,21 +813,15 @@ export function AdminUsers() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Users
-        </CardTitle>
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={handleRepairTags} disabled={repairingTags}>
-            <Tag className={`h-4 w-4 mr-2 ${repairingTags ? 'animate-pulse' : ''}`} />
-            {repairingTags ? 'Repairing Tags...' : 'Repair Tags'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleSyncEmails} disabled={syncing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
-            Sync Emails
-          </Button>
-          <div className="relative w-64">
+      <CardHeader className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Users
+          </CardTitle>
+        </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search users..."
@@ -836,6 +830,17 @@ export function AdminUsers() {
               className="pl-9"
             />
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRepairTags} disabled={repairingTags}>
+            <Tag className={`h-4 w-4 mr-2 ${repairingTags ? 'animate-pulse' : ''}`} />
+            <span className="hidden sm:inline">{repairingTags ? 'Repairing Tags...' : 'Repair Tags'}</span>
+            <span className="sm:hidden">{repairingTags ? 'Repairing...' : 'Tags'}</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSyncEmails} disabled={syncing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Sync Emails</span>
+            <span className="sm:hidden">Sync</span>
+          </Button>
           <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -1129,10 +1134,11 @@ export function AdminUsers() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <Table>
+      <CardContent className="overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-[200px]">User</TableHead>

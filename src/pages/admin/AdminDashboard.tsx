@@ -223,10 +223,10 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-6 overflow-auto">
+          <main className="flex-1 p-4 sm:p-6 overflow-auto">
             {/* Stats - only show on users tab */}
             {activeTab === 'users' && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-4">

@@ -399,26 +399,27 @@ export function AdminMenuEditor() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-          <div className="flex items-center justify-between mb-4">
-            <TabsList>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <TabsList className="w-full sm:w-auto">
               <TabsTrigger value="desktop" className="gap-2">
-                {tabIcon.desktop} Desktop
+                {tabIcon.desktop} <span className="hidden sm:inline">Desktop</span>
               </TabsTrigger>
               <TabsTrigger value="mobile" className="gap-2">
-                {tabIcon.mobile} Mobile
+                {tabIcon.mobile} <span className="hidden sm:inline">Mobile</span>
               </TabsTrigger>
               <TabsTrigger value="profile" className="gap-2">
-                {tabIcon.profile} Profile
+                {tabIcon.profile} <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
             </TabsList>
             <div className="flex gap-2">
               {activeTab === 'mobile' && (
-                <Button variant="outline" onClick={syncFromDesktop}>
+                <Button variant="outline" size="sm" onClick={syncFromDesktop}>
                   <Link2 className="h-4 w-4 mr-2" />
-                  Sync from Desktop
+                  <span className="hidden sm:inline">Sync from Desktop</span>
+                  <span className="sm:hidden">Sync</span>
                 </Button>
               )}
-              <Button onClick={() => openNew()}>
+              <Button size="sm" onClick={() => openNew()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Item
               </Button>
@@ -427,7 +428,8 @@ export function AdminMenuEditor() {
 
           {['desktop', 'mobile', 'profile'].map(tab => (
             <TabsContent key={tab} value={tab}>
-              <Table>
+              <div className="overflow-x-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8"></TableHead>
@@ -456,6 +458,7 @@ export function AdminMenuEditor() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </TabsContent>
           ))}
         </Tabs>

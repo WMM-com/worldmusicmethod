@@ -341,7 +341,7 @@ export default function Expenses() {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="amount"
@@ -635,7 +635,7 @@ export default function Expenses() {
         </Card>
         {/* Expenses Table */}
         <Card className="glass">
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             {isLoading ? (
               <div className="flex items-center justify-center p-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -653,7 +653,7 @@ export default function Expenses() {
                 </p>
               </div>
             ) : (
-              <Table>
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>

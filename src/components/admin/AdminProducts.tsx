@@ -139,21 +139,22 @@ export function AdminProducts() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <CardTitle>Products & Pricing</CardTitle>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <BulkPriceEditor
             products={products || []}
             trigger={
-              <Button variant="outline">
+              <Button variant="outline" size="sm">
                 <Pencil className="h-4 w-4 mr-2" />
-                Bulk Edit Prices
+                <span className="hidden sm:inline">Bulk Edit Prices</span>
+                <span className="sm:hidden">Bulk Edit</span>
               </Button>
             }
           />
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Product
               </Button>
@@ -183,7 +184,7 @@ export function AdminProducts() {
                     rows={2}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="price">Base Price (USD)</Label>
                     <Input
@@ -257,7 +258,8 @@ export function AdminProducts() {
           onOpenChange={(open) => !open && setEditingProduct(null)}
         />
         
-        <Table>
+        <div className="overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow>
               <TableHead>Product</TableHead>
@@ -368,6 +370,7 @@ export function AdminProducts() {
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );
