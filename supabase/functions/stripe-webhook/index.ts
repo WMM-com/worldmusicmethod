@@ -64,7 +64,36 @@ Deno.serve(async (req) => {
 
     logStep('Received event', { type: event.type, id: event.id })
 
-    // Handle relevant events
+    // ── Merch-specific events ──────────────────────────────
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session
+      const metadata = session.metadata || {}
+
+      // Route merch checkouts to the merch handler
+      if (metadata.gig_id) {
+        await handleMerchCheckoutCompleted(session, stripe, supabase)
+        return new Response(JSON.stringify({ received: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent
+      const metadata = paymentIntent.metadata || {}
+
+      // Route merch terminal payments to the merch handler
+      if (metadata.gig_id || metadata.artist_user_id) {
+        await handleMerchPaymentIntentSucceeded(paymentIntent, supabase)
+        return new Response(JSON.stringify({ received: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // ── Existing referral/subscription/digital product handling ──
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.payment_succeeded') {
       await handlePaymentEvent(event, stripe, supabase)
     }
@@ -83,6 +112,169 @@ Deno.serve(async (req) => {
   }
 })
 
+// ── Merch: checkout.session.completed ─────────────────────
+async function handleMerchCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  stripe: Stripe,
+  supabase: any
+) {
+  const metadata = session.metadata || {}
+  const gigId = metadata.gig_id
+  const artistUserId = metadata.artist_user_id
+  const productIds = metadata.product_ids ? metadata.product_ids.split(',') : []
+
+  logStep('Merch checkout completed', { gigId, artistUserId, sessionId: session.id })
+
+  // Idempotency: check if we already recorded this payment
+  const { data: existing } = await supabase
+    .from('merch_sales')
+    .select('id')
+    .eq('stripe_payment_id', session.id)
+    .maybeSingle()
+
+  if (existing) {
+    logStep('Merch sale already recorded, skipping', { sessionId: session.id })
+    return
+  }
+
+  // Retrieve line items to get individual product details
+  let lineItems: any[] = []
+  try {
+    const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 })
+    lineItems = items.data
+  } catch (err) {
+    logStep('Failed to retrieve line items', { error: (err as Error).message })
+  }
+
+  const currency = (session.currency || 'usd').toUpperCase()
+  const buyerEmail = session.customer_email || session.customer_details?.email || null
+
+  if (lineItems.length > 0 && productIds.length > 0) {
+    // Insert one sale per product line item
+    for (let i = 0; i < lineItems.length; i++) {
+      const li = lineItems[i]
+      const productId = productIds[i] || null
+      const quantity = li.quantity || 1
+      const unitPrice = (li.amount_total || 0) / 100 / quantity
+      const total = (li.amount_total || 0) / 100
+
+      const { error } = await supabase.from('merch_sales').insert({
+        user_id: artistUserId,
+        gig_id: gigId,
+        product_id: productId,
+        quantity,
+        unit_price: unitPrice,
+        total,
+        currency,
+        payment_method: 'stripe',
+        buyer_email: buyerEmail,
+        stripe_payment_id: `${session.id}_${i}`,
+      })
+
+      if (error) {
+        logStep('Error inserting merch sale line', { error: error.message, index: i })
+      }
+    }
+  } else {
+    // Single sale record (custom amount or fallback)
+    const total = (session.amount_total || 0) / 100
+
+    const { error } = await supabase.from('merch_sales').insert({
+      user_id: artistUserId,
+      gig_id: gigId,
+      quantity: 1,
+      unit_price: total,
+      total,
+      currency,
+      payment_method: 'stripe',
+      buyer_email: buyerEmail,
+      stripe_payment_id: session.id,
+    })
+
+    if (error) {
+      logStep('Error inserting merch sale', { error: error.message })
+    }
+  }
+
+  logStep('Merch sales recorded successfully', { gigId })
+}
+
+// ── Merch: payment_intent.succeeded (Terminal / Connect) ──
+async function handleMerchPaymentIntentSucceeded(
+  paymentIntent: Stripe.PaymentIntent,
+  supabase: any
+) {
+  const metadata = paymentIntent.metadata || {}
+  const gigId = metadata.gig_id || null
+  const artistUserId = metadata.artist_user_id || null
+  const productId = metadata.product_id || null
+
+  logStep('Merch payment_intent.succeeded', {
+    paymentIntentId: paymentIntent.id,
+    gigId,
+    artistUserId,
+    connectedAccount: (paymentIntent as any).transfer_data?.destination,
+  })
+
+  // If no artist_user_id in metadata, try to find it via connected account
+  let resolvedArtistId = artistUserId
+  if (!resolvedArtistId) {
+    const connectedAccountId = (paymentIntent as any).transfer_data?.destination
+    if (connectedAccountId) {
+      const { data: account } = await supabase
+        .from('payment_accounts')
+        .select('user_id')
+        .eq('account_id', connectedAccountId)
+        .eq('provider', 'stripe')
+        .maybeSingle()
+
+      if (account) {
+        resolvedArtistId = account.user_id
+        logStep('Resolved artist from connected account', { userId: resolvedArtistId })
+      }
+    }
+  }
+
+  if (!resolvedArtistId) {
+    logStep('Could not resolve artist user_id, skipping merch sale insert')
+    return
+  }
+
+  // Idempotency
+  const { data: existing } = await supabase
+    .from('merch_sales')
+    .select('id')
+    .eq('stripe_payment_id', paymentIntent.id)
+    .maybeSingle()
+
+  if (existing) {
+    logStep('Payment intent already recorded, skipping', { piId: paymentIntent.id })
+    return
+  }
+
+  const total = (paymentIntent.amount || 0) / 100
+  const currency = (paymentIntent.currency || 'usd').toUpperCase()
+
+  const { error } = await supabase.from('merch_sales').insert({
+    user_id: resolvedArtistId,
+    gig_id: gigId,
+    product_id: productId,
+    quantity: 1,
+    unit_price: total,
+    total,
+    currency,
+    payment_method: 'stripe_terminal',
+    stripe_payment_id: paymentIntent.id,
+  })
+
+  if (error) {
+    logStep('Error inserting terminal merch sale', { error: error.message })
+  } else {
+    logStep('Terminal merch sale recorded', { total, currency })
+  }
+}
+
+// ── Existing: referral / digital product handling ─────────
 async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase: any) {
   let customerEmail: string | null = null
   let amountPaid: number = 0
@@ -119,7 +311,7 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
               buyerId: metadata.buyer_id || null,
               buyerEmail: customerEmail,
               sellerId: metadata.seller_id,
-              amount: amountPaid / 100, // Convert cents to dollars
+              amount: amountPaid / 100,
               currency: currency.toUpperCase(),
               paymentProvider: 'stripe',
               providerPaymentId: session.id,
@@ -137,7 +329,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
         logStep('Error completing digital product purchase', { error: errMsg })
       }
 
-      // Don't process referral credits for digital products
       return
     }
 
@@ -149,7 +340,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
       productName = product.name || ''
     }
 
-    // For subscriptions from checkout, this is always the first payment
     if (isSubscription) {
       isFirstSubscriptionPayment = true
     }
@@ -162,8 +352,7 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     })
   } else if (event.type === 'invoice.payment_succeeded') {
     const invoice = event.data.object as Stripe.Invoice
-    
-    // Only process subscription invoices
+
     if (!invoice.subscription) {
       logStep('Skipping non-subscription invoice')
       return
@@ -175,8 +364,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     isSubscription = true
     paymentId = invoice.id
 
-    // Check if this is the first payment for the subscription
-    // billing_reason === 'subscription_create' indicates first invoice
     isFirstSubscriptionPayment = invoice.billing_reason === 'subscription_create'
 
     if (!isFirstSubscriptionPayment) {
@@ -184,7 +371,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
       return
     }
 
-    // Get product name from invoice lines
     if (invoice.lines?.data?.[0]?.price?.product) {
       const product = await stripe.products.retrieve(
         invoice.lines.data[0].price.product as string
@@ -204,7 +390,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     return
   }
 
-  // Find the user by email
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id')
@@ -219,7 +404,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
   const userId = profile.id
   logStep('Found user', { userId })
 
-  // Check if this user has a referral with status 'signed_up'
   const { data: referral, error: referralError } = await supabase
     .from('referrals')
     .select('id, referrer_id')
@@ -234,7 +418,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
 
   logStep('Found pending referral', { referralId: referral.id, referrerId: referral.referrer_id })
 
-  // Check if we've already processed this payment (idempotency)
   const { data: existingTransaction } = await supabase
     .from('credit_transactions')
     .select('id')
@@ -246,7 +429,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     return
   }
 
-  // Determine product type and calculate credit amount
   const isUnionMembership = SUBSCRIPTION_PRODUCT_KEYWORDS.some(
     keyword => productName.toLowerCase().includes(keyword)
   ) || isSubscription
@@ -255,11 +437,9 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
   let description: string
 
   if (isUnionMembership && isFirstSubscriptionPayment) {
-    // 200% of first month for subscriptions
     creditAmount = Math.round(amountPaid * SUBSCRIPTION_CREDIT_MULTIPLIER)
     description = `Referral reward: ${productName || 'Union Membership'} (200% first month)`
   } else if (!isSubscription) {
-    // 30% for one-time purchases (courses)
     creditAmount = Math.round(amountPaid * COURSE_CREDIT_PERCENTAGE)
     description = `Referral reward: ${productName || 'Course purchase'} (30%)`
   } else {
@@ -267,7 +447,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     return
   }
 
-  // Amount is in cents, credit is also stored in cents
   logStep('Awarding referral credit', {
     referrerId: referral.referrer_id,
     amount: creditAmount,
@@ -275,7 +454,6 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
     description,
   })
 
-  // Award the credit atomically using database function
   const { data: result, error: awardError } = await supabase.rpc('award_referral_credit', {
     p_referrer_id: referral.referrer_id,
     p_referred_user_id: userId,
