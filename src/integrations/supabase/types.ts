@@ -3228,6 +3228,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          image_urls: string[] | null
           is_active: boolean
           sku: string | null
           stock_quantity: number
@@ -3246,6 +3247,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[] | null
           is_active?: boolean
           sku?: string | null
           stock_quantity?: number
@@ -3264,6 +3266,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[] | null
           is_active?: boolean
           sku?: string | null
           stock_quantity?: number

@@ -12,6 +12,7 @@ export interface MerchProduct {
   description: string | null;
   category: string;
   image_url: string | null;
+  image_urls: string[];
   sku: string | null;
   base_price: number;
   currency: string;
