@@ -30,73 +30,41 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    onSwipeDown?: () => void;
-  }
->(({ className, children, onSwipeDown, ...props }, ref) => {
-  const touchStartY = React.useRef<number | null>(null);
-  const contentRef = React.useRef<HTMLDivElement | null>(null);
-
-  const handleTouchStart = React.useCallback((e: React.TouchEvent) => {
-    // Only track swipe if scrolled to top
-    const el = contentRef.current;
-    if (el && el.scrollTop <= 0) {
-      touchStartY.current = e.touches[0].clientY;
-    } else {
-      touchStartY.current = null;
-    }
-  }, []);
-
-  const handleTouchEnd = React.useCallback((e: React.TouchEvent) => {
-    if (touchStartY.current === null) return;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-    if (deltaY > 80) {
-      // Swipe down detected — close dialog
-      onSwipeDown?.();
-    }
-    touchStartY.current = null;
-  }, [onSwipeDown]);
-
-  return (
-    <DialogPortal>
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        ref={(node) => {
-          contentRef.current = node;
-          if (typeof ref === "function") ref(node);
-          else if (ref) ref.current = node;
-        }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        className={cn(
-          /* Mobile-first: full-screen bottom sheet */
-          "fixed left-0 right-0 bottom-0 z-50 grid w-full gap-4 border-t bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg",
-          /* Prevent background scroll */
-          "overscroll-contain",
-          /* Mobile swipe hint + full-height */
-          "rounded-t-3xl",
-          /* Full height on mobile with dynamic viewport */
-          "h-[100dvh] max-h-[100dvh] overflow-y-auto",
-          /* Animations */
-          "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-          /* Desktop: centered modal, constrained height */
-          "sm:left-[50%] sm:right-auto sm:bottom-auto sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:max-w-lg sm:rounded-lg sm:border sm:border-t sm:p-6 sm:pb-6 sm:h-auto sm:max-h-[90vh]",
-          "sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-top-[48%] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
-          className,
-        )}
-        {...props}
-      >
-        {/* Mobile swipe indicator */}
-        <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-muted-foreground/30 sm:hidden" />
-        {children}
-        <DialogPrimitive.Close className="absolute right-3 top-3 flex items-center justify-center min-h-12 min-w-12 rounded-md opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none sm:right-4 sm:top-4 sm:min-h-0 sm:min-w-0 sm:rounded-sm">
-          <X className="h-5 w-5 sm:h-4 sm:w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  );
-});
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        /* Centered on ALL devices */
+        "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
+        /* Sizing */
+        "w-[calc(100%-2rem)] max-w-md sm:max-w-lg",
+        /* Padding: generous on all sides */
+        "pt-8 pb-10 px-6 sm:px-10",
+        /* Scrollable content */
+        "max-h-[90dvh] overflow-y-auto overscroll-contain",
+        /* Appearance */
+        "grid gap-4 rounded-xl border bg-background shadow-lg",
+        /* Animations */
+        "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "data-[state=closed]:slide-out-to-left-1/2 data-[state=open]:slide-in-from-left-1/2",
+        "data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-top-[48%]",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-3 top-3 flex items-center justify-center min-h-12 min-w-12 rounded-md opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-5 w-5" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
