@@ -35,8 +35,9 @@ import { getProfileUrl } from '@/lib/profileUrl';
 import { useCreateConversation } from '@/hooks/useMessaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 
-function MemberCard({ member }: { member: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; business_name: string | null; username?: string | null } }) {
+function MemberCard({ member }: { member: { id: string; full_name: string | null; avatar_url: string | null; bio: string | null; business_name: string | null; username?: string | null; email_verified?: boolean | null } }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: connectionStatus, isLoading: loadingStatus } = useConnectionStatus(member.id);
@@ -103,7 +104,10 @@ function MemberCard({ member }: { member: { id: string; full_name: string | null
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between">
                 <Link to={getProfileUrl(member.id, member.username)} className="hover:underline">
-                  <h4 className="font-semibold truncate">{member.full_name || 'Anonymous'}</h4>
+                  <h4 className="font-semibold truncate flex items-center gap-1">
+                    {member.full_name || 'Anonymous'}
+                    {isUserVerified(member) && <VerifiedBadge size="sm" />}
+                  </h4>
                 </Link>
                 {user && !isOwnProfile && (
                   <DropdownMenu>

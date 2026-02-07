@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { UserHoverCard } from './UserHoverCard';
 import { MentionInput, renderMentionText } from '@/components/ui/mention-input';
 import { LazyImage } from '@/components/ui/lazy-image';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 
 // Helper function to parse image URLs - handles both single URL and JSON array
 function parseImageUrls(imageUrl: string): string[] {
@@ -585,6 +586,7 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                 userName={post.profiles?.full_name || null}
                 avatarUrl={post.profiles?.avatar_url || null}
                 username={post.profiles?.username}
+                isVerified={post.profiles ? isUserVerified(post.profiles) : false}
               >
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={post.profiles?.avatar_url || undefined} />
@@ -598,8 +600,12 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
                     userName={post.profiles?.full_name || null}
                     avatarUrl={post.profiles?.avatar_url || null}
                     username={post.profiles?.username}
+                    isVerified={post.profiles ? isUserVerified(post.profiles) : false}
                   >
-                    <p className="font-medium hover:underline">{post.profiles?.full_name || 'Unknown'}</p>
+                    <span className="font-medium hover:underline flex items-center gap-1">
+                      {post.profiles?.full_name || 'Unknown'}
+                      {post.profiles && isUserVerified(post.profiles) && <VerifiedBadge size="sm" />}
+                    </span>
                   </UserHoverCard>
                   <Badge variant="outline" className={cn("text-xs gap-1 py-0", typeConfig.badgeClass)}>
                     <TypeIcon className="h-3 w-3" />

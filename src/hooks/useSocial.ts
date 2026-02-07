@@ -18,6 +18,7 @@ export interface Post {
     full_name: string | null;
     avatar_url: string | null;
     username?: string | null;
+    email_verified?: boolean | null;
   };
   appreciation_count?: number;
   comment_count?: number;
@@ -35,6 +36,7 @@ export interface Comment {
     full_name: string | null;
     avatar_url: string | null;
     username?: string | null;
+    email_verified?: boolean | null;
   };
   appreciation_count?: number;
   user_appreciated?: boolean;
@@ -52,6 +54,7 @@ export interface Friendship {
     avatar_url: string | null;
     email: string;
     username: string | null;
+    email_verified?: boolean | null;
   };
 }
 
@@ -75,7 +78,7 @@ export function useFeed() {
         const userIds = [...new Set((posts || []).map(p => p.user_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, username')
+          .select('id, full_name, avatar_url, username, email_verified')
           .in('id', userIds);
 
         const profilesMap = new Map((profiles || []).map(p => [p.id, p]));
@@ -100,7 +103,7 @@ export function useFeed() {
       const userIds = [...new Set(posts.map(p => p.user_id))];
 
       const [profilesRes, appreciationsRes, commentsRes, userAppreciationsRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', userIds),
+        supabase.from('profiles').select('id, full_name, avatar_url, username, email_verified').in('id', userIds),
         supabase.from('appreciations').select('post_id').in('post_id', postIds),
         supabase.from('comments').select('post_id').in('post_id', postIds),
         supabase.from('appreciations').select('post_id').eq('user_id', user.id).in('post_id', postIds),
@@ -292,7 +295,7 @@ export function useComments(postId: string) {
       const commentIds = comments.map(c => c.id);
 
       const [profilesRes, appreciationsRes, userAppreciationsRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', userIds),
+        supabase.from('profiles').select('id, full_name, avatar_url, username, email_verified').in('id', userIds),
         supabase.from('appreciations').select('comment_id').in('comment_id', commentIds),
         user ? supabase.from('appreciations').select('comment_id').eq('user_id', user.id).in('comment_id', commentIds) : Promise.resolve({ data: [] }),
       ]);
@@ -582,7 +585,7 @@ export function useFriendships() {
       const otherUserIds = data.map(f => f.user_id === user.id ? f.friend_id : f.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, email, username')
+        .select('id, full_name, avatar_url, email, username, email_verified')
         .in('id', otherUserIds);
 
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
@@ -756,7 +759,7 @@ export function useSearchUsers(query: string) {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, email, username')
+        .select('id, full_name, avatar_url, email, username, email_verified')
         .neq('id', user.id)
         .or(`full_name.ilike.%${safeQuery}%,email.ilike.%${safeQuery}%`)
         .limit(10);

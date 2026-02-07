@@ -38,6 +38,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCreateReport, useBlockUser, REPORT_REASONS, ReportReason } from '@/hooks/useReports';
 import { UserHoverCard } from '@/components/social/UserHoverCard';
 import { MentionInput, renderMentionText } from '@/components/ui/mention-input';
+import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 
 interface GroupPostCardProps {
   post: GroupPost;
@@ -139,9 +140,11 @@ export function GroupPostCard({ post, getInitials, isAdmin, canPin = true, onPin
                   userId={post.user_id}
                   userName={post.profile?.full_name || null}
                   avatarUrl={post.profile?.avatar_url || null}
+                  isVerified={post.profile ? isUserVerified(post.profile) : false}
                 >
-                  <span className="font-semibold hover:underline">
+                  <span className="font-semibold hover:underline flex items-center gap-1">
                     {post.profile?.full_name || 'Anonymous'}
+                    {post.profile && isUserVerified(post.profile) && <VerifiedBadge size="sm" />}
                   </span>
                 </UserHoverCard>
                 <span className="text-sm text-muted-foreground">
