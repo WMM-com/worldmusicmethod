@@ -212,7 +212,7 @@ export default function Auth() {
             </div>
           ) : (
             <>
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <HoneypotField />
                 {mode === 'signup' && (
                   <>

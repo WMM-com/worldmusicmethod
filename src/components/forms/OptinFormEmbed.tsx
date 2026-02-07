@@ -118,7 +118,7 @@ export function OptinFormEmbed({ formId, className }: OptinFormEmbedProps) {
         </CardHeader>
       )}
       <CardContent className={form.heading || form.description ? '' : 'pt-6'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="space-y-2">
             <Label htmlFor={`${formId}-firstName`}>First Name</Label>
             <Input

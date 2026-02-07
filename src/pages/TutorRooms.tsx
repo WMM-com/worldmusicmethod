@@ -384,7 +384,7 @@ export default function TutorRooms() {
                       </DialogDescription>
                     </DialogHeader>
 
-                    <div className="py-6 space-y-4">
+                    <div className="py-6 flex flex-col gap-6">
                       {/* Error display */}
                       {createError && (
                         <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-2">

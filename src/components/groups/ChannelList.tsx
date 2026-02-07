@@ -190,7 +190,7 @@ function CreateChannelDialog({ groupId, open, onOpenChange }: CreateChannelDialo
         <DialogHeader>
           <DialogTitle>Create Channel</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="space-y-2">
             <Label htmlFor="channel-name">Name</Label>
             <Input
@@ -232,7 +232,7 @@ function CreateChannelDialog({ groupId, open, onOpenChange }: CreateChannelDialo
             />
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

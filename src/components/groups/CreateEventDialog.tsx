@@ -89,7 +89,7 @@ export function CreateEventDialog({ groupId, trigger }: CreateEventDialogProps) 
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="space-y-2">
             <Label htmlFor="title">Event Title *</Label>
             <Input
@@ -142,7 +142,7 @@ export function CreateEventDialog({ groupId, trigger }: CreateEventDialogProps) 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date *</Label>
               <Input
@@ -163,7 +163,7 @@ export function CreateEventDialog({ groupId, trigger }: CreateEventDialogProps) 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>End Date</Label>
               <Input
@@ -182,7 +182,7 @@ export function CreateEventDialog({ groupId, trigger }: CreateEventDialogProps) 
             </div>
           </div>
           
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>

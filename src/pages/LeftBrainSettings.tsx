@@ -114,7 +114,7 @@ export default function LeftBrainSettings() {
                 <CardDescription>This information appears on your invoices and contracts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Business Name</Label>
                     <Input 
@@ -173,7 +173,7 @@ export default function LeftBrainSettings() {
                 <CardDescription>Configure your tax identifiers for international invoicing</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Tax Residency Country</Label>
                     <Select 
