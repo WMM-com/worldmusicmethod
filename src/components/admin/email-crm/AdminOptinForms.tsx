@@ -233,7 +233,7 @@ export function AdminOptinForms() {
                   Configure your opt-in form
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="flex flex-col gap-6 py-4">
                 <div className="space-y-2">
                   <Label>Form Name (internal)</Label>
                   <Input
@@ -259,7 +259,7 @@ export function AdminOptinForms() {
                     rows={2}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Button Text</Label>
                     <Input

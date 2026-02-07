@@ -339,7 +339,7 @@ export function AdminCampaigns() {
                   <TabsTrigger value="schedule">Schedule</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="content" className="space-y-4 py-4">
+                <TabsContent value="content" className="flex flex-col gap-6 py-4">
                   <div className="space-y-2">
                     <Label>Campaign Name (internal)</Label>
                     <Input
@@ -380,7 +380,7 @@ export function AdminCampaigns() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="audience" className="space-y-4 py-4">
+                <TabsContent value="audience" className="flex flex-col gap-6 py-4">
                   {/* Recipient count display */}
                   {(formData.send_to_all || formData.send_to_lists.length > 0 || formData.include_tags.length > 0) && (
                     <div className="bg-muted/50 rounded-lg p-4 flex items-center gap-3">

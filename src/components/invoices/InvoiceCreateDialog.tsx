@@ -281,7 +281,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="flex flex-col gap-6 py-4">
           {/* Your Business Info (readonly display) */}
           {(profile?.business_name || profile?.full_name) && (
             <div className="bg-muted/50 rounded-lg p-4 space-y-1">
@@ -296,7 +296,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
           )}
 
           {/* Invoice Details */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Invoice Number *</Label>
               <Input
@@ -326,7 +326,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
           {/* Client Details */}
           <div className="space-y-4">
             <h3 className="font-medium">Client Details</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Client Name *</Label>
                 <Input
@@ -397,8 +397,8 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
 
             <div className="space-y-3">
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-start">
-                  <div className="col-span-5 space-y-1">
+                <div key={index} className="flex flex-col gap-2 sm:grid sm:grid-cols-12 sm:items-start border-b pb-4 sm:border-0 sm:pb-0">
+                  <div className="sm:col-span-5 space-y-1">
                     {index === 0 && <Label className="text-xs">Description</Label>}
                     <Input
                       value={item.description}
@@ -407,35 +407,37 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
                       className={cn(errors[`items.${index}.description`] && 'border-destructive')}
                     />
                   </div>
-                  <div className="col-span-2 space-y-1">
-                    {index === 0 && <Label className="text-xs">Qty</Label>}
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
-                    />
+                  <div className="grid grid-cols-3 gap-2 sm:contents">
+                    <div className="space-y-1 sm:col-span-2">
+                      {index === 0 && <Label className="text-xs">Qty</Label>}
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      {index === 0 && <Label className="text-xs">Rate</Label>}
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.rate}
+                        onChange={(e) => updateItem(index, 'rate', parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      {index === 0 && <Label className="text-xs">Amount</Label>}
+                      <Input
+                        value={`${getCurrencySymbol(form.currency)}${item.amount.toFixed(2)}`}
+                        readOnly
+                        className="bg-muted"
+                      />
+                    </div>
                   </div>
-                  <div className="col-span-2 space-y-1">
-                    {index === 0 && <Label className="text-xs">Rate</Label>}
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={item.rate}
-                      onChange={(e) => updateItem(index, 'rate', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    {index === 0 && <Label className="text-xs">Amount</Label>}
-                    <Input
-                      value={`${getCurrencySymbol(form.currency)}${item.amount.toFixed(2)}`}
-                      readOnly
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div className="col-span-1 space-y-1">
-                    {index === 0 && <Label className="text-xs">&nbsp;</Label>}
+                  <div className="flex justify-end sm:col-span-1 sm:space-y-1">
+                    {index === 0 && <Label className="text-xs hidden sm:block">&nbsp;</Label>}
                     <Button
                       type="button"
                       variant="ghost"
@@ -466,7 +468,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
 
           {/* Notes & Messages */}
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Late Payment Terms</Label>
                 <Select value={selectedLatePaymentId} onValueChange={setSelectedLatePaymentId}>
@@ -517,7 +519,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fromEvent }: InvoiceCr
           </div>
 
           {/* Submit */}
-          <div className="flex gap-3 justify-end">
+          <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

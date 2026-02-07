@@ -54,7 +54,7 @@ export function CreatePlaylistDialog() {
         <DialogHeader>
           <DialogTitle>Create Playlist</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-4">
+        <div className="flex flex-col gap-6 pt-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input
@@ -74,7 +74,7 @@ export function CreatePlaylistDialog() {
               rows={3}
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>

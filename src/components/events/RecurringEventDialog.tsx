@@ -178,7 +178,7 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
         <DialogHeader>
           <DialogTitle>Create Recurring Events</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="flex flex-col gap-6 py-4">
           <div className="space-y-2">
             <Label>Event Title *</Label>
             <Input 
@@ -194,7 +194,7 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
             <p className="text-xs text-muted-foreground">Each event will be numbered (e.g., "Jazz Residency #1")</p>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Event Type</Label>
               <Select value={eventDetails.event_type} onValueChange={(v) => setEventDetails({...eventDetails, event_type: v as EventType})}>
@@ -301,7 +301,7 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Venue</Label>
               <Input 
@@ -320,7 +320,7 @@ export function RecurringEventDialog({ onCreateRecurring, isPending }: Recurring
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Client Name</Label>
               <Input 

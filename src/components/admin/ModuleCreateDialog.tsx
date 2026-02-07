@@ -61,7 +61,7 @@ export function ModuleCreateDialog({ courseId, nextOrderIndex, open, onOpenChang
         <DialogHeader>
           <DialogTitle>Add New Module</DialogTitle>
         </DialogHeader>
-        <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate(); }} className="flex flex-col gap-6">
           <div className="space-y-2">
             <Label htmlFor="new-mod-title">Title *</Label>
             <Input 
@@ -91,7 +91,7 @@ export function ModuleCreateDialog({ courseId, nextOrderIndex, open, onOpenChang
               placeholder="e.g. Andean Highlands"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={createMutation.isPending || !title.trim()}>
               {createMutation.isPending ? 'Creating...' : 'Create Module'}

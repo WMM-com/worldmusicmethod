@@ -163,7 +163,7 @@ export function EventDetailDialog({
         <DialogHeader>
           <DialogTitle>Event Details</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="flex flex-col gap-6 py-4">
           <div className="space-y-2">
             <Label>Event Title *</Label>
             <Input 
@@ -178,7 +178,7 @@ export function EventDetailDialog({
             {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Event Type</Label>
               <Select 
@@ -262,7 +262,7 @@ export function EventDetailDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Venue</Label>
               <Input 
@@ -342,7 +342,7 @@ export function EventDetailDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Client Name</Label>
               <Input 
@@ -405,7 +405,7 @@ export function EventDetailDialog({
             {errors.notes && <p className="text-sm text-destructive">{errors.notes}</p>}
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex flex-col gap-3 pt-4 sm:flex-row">
             <Button 
               className="flex-1 gradient-primary" 
               onClick={handleSave} 

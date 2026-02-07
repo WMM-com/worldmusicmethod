@@ -150,7 +150,7 @@ export function AdminLists() {
                   Lists help you organize contacts for targeted email campaigns
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="flex flex-col gap-6 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">List Name</Label>
                   <Input

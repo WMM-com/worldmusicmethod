@@ -129,7 +129,7 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="space-y-2">
         <Label htmlFor="title">Title</Label>
         <Input
@@ -287,7 +287,7 @@ export function CourseEditDialog({ course, onClose }: CourseEditDialogProps) {
         </div>
       </div>
       
-      <div className="flex justify-end gap-2 pt-4">
+      <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancel
         </Button>

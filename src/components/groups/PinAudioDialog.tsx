@@ -107,7 +107,7 @@ export function PinAudioDialog({ groupId, section = 'group_header' }: PinAudioDi
           <DialogTitle>Pin Audio to Group</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="space-y-2">
             <Label>Audio File *</Label>
             {audioUrl ? (
@@ -209,7 +209,7 @@ export function PinAudioDialog({ groupId, section = 'group_header' }: PinAudioDi
             />
           </div>
           
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
