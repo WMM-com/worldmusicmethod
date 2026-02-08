@@ -82,6 +82,8 @@ export function AdminBlog() {
         content: data.content || null,
         excerpt: data.excerpt || null,
         featured_image: data.featured_image || null,
+        featured_image_size: data.featured_image_size || 'full',
+        featured_image_position: data.featured_image_position || 'center center',
         author_name: data.author_name || null,
         published_at: data.is_published && data.published_at ? data.published_at : null,
         categories: data.categories.length > 0 ? data.categories : null,

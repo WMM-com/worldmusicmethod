@@ -8,6 +8,8 @@ export interface BlogPostData {
   content: string | null;
   excerpt: string | null;
   featured_image: string | null;
+  featured_image_size: string | null;
+  featured_image_position: string | null;
   author_name: string | null;
   published_at: string | null;
   categories: string[] | null;
@@ -35,7 +37,7 @@ export interface PopularPostData {
 async function fetchPostBySlug(slug: string): Promise<BlogPostData | null> {
   const { data, error } = await supabase
     .from('blog_posts')
-    .select('id, title, slug, content, excerpt, featured_image, author_name, published_at, categories, tags, reading_time, meta_title, meta_description')
+    .select('id, title, slug, content, excerpt, featured_image, featured_image_size, featured_image_position, author_name, published_at, categories, tags, reading_time, meta_title, meta_description')
     .eq('slug', slug)
     .is('deleted_at', null)
     .maybeSingle();
