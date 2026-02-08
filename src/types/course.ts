@@ -41,7 +41,6 @@ export interface ModuleLesson {
   soundslice_preset?: string | null;
   duration_seconds: number | null;
   content: string | null;
-  suggested_listening_content: string | null;
   listening_references: ListeningReference[];
   order_index: number;
   created_at: string;

@@ -91,8 +91,7 @@ export function useCourse(courseIdOrSlug: string | undefined) {
               ...l,
               lesson_type: l.lesson_type as ModuleLesson['lesson_type'],
               listening_references: (l.listening_references || []) as any[],
-              soundslice_preset: l.soundslice_preset || 'guitar',
-              suggested_listening_content: (l as any).suggested_listening_content || null,
+              soundslice_preset: l.soundslice_preset || 'guitar'
             })) as ModuleLesson[]
           };
         })
