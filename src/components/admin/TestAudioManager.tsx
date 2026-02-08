@@ -682,8 +682,7 @@ export function TestAudioManager({ onBack }: Props) {
           )}
 
           <CardContent>
-            <ScrollArea className="max-h-[calc(100vh-300px)]">
-              <div className="space-y-2">
+            <div className="overflow-y-auto max-h-[calc(100vh-300px)] space-y-2">
                 {currentTest.questions.map((q, idx) => {
                   const mapping = mappings.find((m) => m.questionId === q.id);
                   const isUploading = uploadingQuestionId === q.id;
@@ -783,7 +782,6 @@ export function TestAudioManager({ onBack }: Props) {
                   );
                 })}
               </div>
-            </ScrollArea>
           </CardContent>
         </Card>
       )}
