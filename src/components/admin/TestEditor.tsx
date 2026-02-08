@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -27,7 +27,11 @@ import {
   CheckCircle2,
   ArrowLeft,
   Save,
-  Volume2
+  Volume2,
+  Upload,
+  Play,
+  Pause,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -55,6 +59,10 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
   const queryClient = useQueryClient();
   const [editingQuestion, setEditingQuestion] = useState<QuestionFormData | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'question' | 'test'; id: string } | null>(null);
+  const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const audioPreviewRef = useRef<HTMLAudioElement>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
   const [testSettings, setTestSettings] = useState({
     title: '',
     description: '',
@@ -509,6 +517,52 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
         </Card>
       )}
       
+      {/* Hidden audio & file input */}
+      <audio
+        ref={audioPreviewRef}
+        onEnded={() => setPlayingAudioUrl(null)}
+        onError={() => setPlayingAudioUrl(null)}
+      />
+      <input
+        type="file"
+        ref={audioFileInputRef}
+        accept="audio/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file || !editingQuestion) return;
+          e.target.value = '';
+          
+          setIsUploadingAudio(true);
+          try {
+            const reader = new FileReader();
+            const base64 = await new Promise<string>((resolve, reject) => {
+              reader.onload = () => resolve((reader.result as string).split(',')[1]);
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+
+            const { data, error } = await supabase.functions.invoke('r2-test-audio', {
+              body: {
+                action: 'upload',
+                fileName: file.name,
+                fileType: file.type || 'audio/mpeg',
+                fileData: base64,
+                folder: 'courses/test-audio',
+              },
+            });
+
+            if (error) throw error;
+            setEditingQuestion({ ...editingQuestion, audio_url: data.url });
+            toast.success(`Uploaded: ${file.name}`);
+          } catch (err: any) {
+            toast.error(err.message || 'Upload failed');
+          } finally {
+            setIsUploadingAudio(false);
+          }
+        }}
+      />
+
       {/* Question Editor Dialog */}
       {editingQuestion && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -517,13 +571,55 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
               <CardTitle>{editingQuestion.id ? 'Edit Question' : 'Add Question'}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Audio URL with preview & upload */}
               <div className="space-y-2">
                 <Label>Audio URL (R2)</Label>
-                <Input
-                  value={editingQuestion.audio_url}
-                  onChange={(e) => setEditingQuestion({ ...editingQuestion, audio_url: e.target.value })}
-                  placeholder="https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/..."
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={editingQuestion.audio_url}
+                    onChange={(e) => setEditingQuestion({ ...editingQuestion, audio_url: e.target.value })}
+                    placeholder="https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/..."
+                    className="flex-1"
+                  />
+                  {editingQuestion.audio_url && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        const url = editingQuestion.audio_url;
+                        if (playingAudioUrl === url) {
+                          audioPreviewRef.current?.pause();
+                          setPlayingAudioUrl(null);
+                        } else if (audioPreviewRef.current) {
+                          audioPreviewRef.current.src = url;
+                          audioPreviewRef.current.play().catch(() => toast.error('Playback failed'));
+                          setPlayingAudioUrl(url);
+                        }
+                      }}
+                    >
+                      {playingAudioUrl === editingQuestion.audio_url ? (
+                        <Pause className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={isUploadingAudio}
+                    onClick={() => audioFileInputRef.current?.click()}
+                  >
+                    {isUploadingAudio ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Paste a URL or click upload to add an MP3 from your device.
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -594,7 +690,11 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
               </div>
               
               <div className="flex gap-2 justify-end pt-4">
-                <Button variant="outline" onClick={() => setEditingQuestion(null)}>
+                <Button variant="outline" onClick={() => {
+                  setEditingQuestion(null);
+                  setPlayingAudioUrl(null);
+                  audioPreviewRef.current?.pause();
+                }}>
                   Cancel
                 </Button>
                 <Button 
