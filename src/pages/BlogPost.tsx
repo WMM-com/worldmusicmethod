@@ -5,7 +5,7 @@ import { BlogPostMeta } from '@/components/blog/BlogPostMeta';
 import { BlogPostContent } from '@/components/blog/BlogPostContent';
 import { BlogPostSidebar } from '@/components/blog/BlogPostSidebar';
 import { BlogRelatedPosts } from '@/components/blog/BlogRelatedPosts';
-import { BlogCTASection } from '@/components/blog/BlogCTASection';
+
 import { BlogPostSkeleton } from '@/components/blog/BlogPostSkeleton';
 import { Helmet } from 'react-helmet-async';
 import { useBlogPost } from '@/hooks/useBlogPost';
@@ -122,9 +122,6 @@ export default function BlogPost() {
 
           {/* Related Posts */}
           <BlogRelatedPosts posts={mappedRelated} />
-
-          {/* CTA Section */}
-          <BlogCTASection />
         </main>
       </div>
     </>
