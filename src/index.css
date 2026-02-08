@@ -135,9 +135,11 @@
   }
 
   /* Mobile viewport fix – dynamic viewport height handles mobile browser bars */
-  html, body, #root {
-    height: 100dvh;
-    overflow: hidden;
+  @media (max-width: 768px) {
+    html, body, #root {
+      height: 100dvh;
+      overflow: hidden;
+    }
   }
 
   html {
