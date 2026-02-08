@@ -158,6 +158,8 @@ export function ImportCourseData() {
   const [landingPageText, setLandingPageText] = useState("");
   const [wordpressXml, setWordpressXml] = useState("");
   const [xmlResults, setXmlResults] = useState<any>(null);
+  const [blogXml, setBlogXml] = useState("");
+  const [blogImportResults, setBlogImportResults] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [results, setResults] = useState<{
     modulesCreated: number;
@@ -490,10 +492,11 @@ export function ImportCourseData() {
         </div>
         
         <Tabs defaultValue="modules" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="modules">Modules & Lessons</TabsTrigger>
             <TabsTrigger value="landing">Landing Page</TabsTrigger>
             <TabsTrigger value="wordpress">WordPress XML</TabsTrigger>
+            <TabsTrigger value="blog-import">Blog Import</TabsTrigger>
           </TabsList>
           
           <TabsContent value="modules" className="space-y-4">
@@ -1024,6 +1027,167 @@ export function ImportCourseData() {
                       </div>
                     </ScrollArea>
                   </div>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="blog-import" className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">WordPress WXR Export (Blog Posts)</label>
+              <div className="flex gap-2 mb-2">
+                <Input
+                  type="file"
+                  accept=".xml,.wxr"
+                  onChange={handleFileUpload(setBlogXml)}
+                  className="max-w-xs"
+                />
+                {blogXml && (
+                  <span className="text-xs text-muted-foreground self-center">
+                    {(blogXml.length / 1024 / 1024).toFixed(2)} MB loaded
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload a WordPress XML export to import blog posts. Extracts title, content (full HTML with embeds), categories, author, featured images, and auto-calculates reading time. Images are mapped to R2 URLs.
+              </p>
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (!blogXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Previewing blog import...");
+                  try {
+                    const { data, error } = await supabase.functions.invoke('import-wp-blogs', {
+                      body: { xmlContent: blogXml, action: 'preview' },
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data.success) throw new Error(data.error || 'Preview failed');
+
+                    setBlogImportResults(data);
+                    addLog(`Found ${data.postsFound} published blog posts:`);
+                    data.posts?.forEach((p: any) => {
+                      addLog(`  • ${p.title} (${p.slug}) — ${p.author}, ${p.categories.join(', ')}, ${p.imageCount} images`);
+                    });
+                    toast.success(`Found ${data.postsFound} blog posts ready to import`);
+                  } catch (err) {
+                    addLog(`Error: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+                  setImporting(false);
+                }}
+                disabled={importing || !blogXml}
+              >
+                {importing ? "Scanning..." : "👁️ Preview Posts"}
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  if (!blogXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Running blog import DRY RUN...");
+                  try {
+                    const { data, error } = await supabase.functions.invoke('import-wp-blogs', {
+                      body: { xmlContent: blogXml, action: 'import', dryRun: true },
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data.success) throw new Error(data.error || 'Dry run failed');
+
+                    setBlogImportResults(data);
+                    addLog(`=== DRY RUN RESULTS ===`);
+                    addLog(`Would import: ${data.results.imported} posts`);
+                    addLog(`Slugs: ${data.results.slugs.join(', ')}`);
+                    if (data.results.errors.length > 0) {
+                      addLog(`Errors: ${data.results.errors.join(', ')}`);
+                    }
+                    toast.success(`Dry run: would import ${data.results.imported} posts`);
+                  } catch (err) {
+                    addLog(`Error: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+                  setImporting(false);
+                }}
+                disabled={importing || !blogXml}
+              >
+                {importing ? "Checking..." : "📋 Dry Run Import"}
+              </Button>
+
+              <Button
+                onClick={async () => {
+                  if (!blogXml) {
+                    toast.error("Please upload an XML file first");
+                    return;
+                  }
+                  const confirmed = window.confirm(
+                    "This will import/update all blog posts from the XML into the database.\n\nExisting posts with the same slug will be updated.\n\nContinue?"
+                  );
+                  if (!confirmed) return;
+
+                  setImporting(true);
+                  setLogs([]);
+                  addLog("Importing blog posts...");
+                  try {
+                    const { data, error } = await supabase.functions.invoke('import-wp-blogs', {
+                      body: { xmlContent: blogXml, action: 'import', dryRun: false },
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data.success) throw new Error(data.error || 'Import failed');
+
+                    setBlogImportResults(data);
+                    addLog(`=== IMPORT COMPLETE ===`);
+                    addLog(`Imported: ${data.results.imported} posts`);
+                    addLog(`Skipped: ${data.results.skipped}`);
+                    addLog(`Images migrated: ${data.results.imagesMigrated}`);
+                    addLog(`Slugs: ${data.results.slugs.join(', ')}`);
+                    if (data.results.errors.length > 0) {
+                      addLog(`\n--- Errors ---`);
+                      data.results.errors.forEach((e: string) => addLog(`ERROR: ${e}`));
+                    }
+                    toast.success(`Imported ${data.results.imported} blog posts!`);
+                  } catch (err) {
+                    addLog(`Error: ${(err as Error).message}`);
+                    toast.error((err as Error).message);
+                  }
+                  setImporting(false);
+                }}
+                disabled={importing || !blogXml}
+              >
+                {importing ? "Importing..." : "📥 Import Blog Posts"}
+              </Button>
+            </div>
+
+            {blogImportResults && (
+              <div className="mt-4 p-4 bg-muted rounded-lg space-y-2">
+                <h4 className="font-medium">
+                  {blogImportResults.postsFound !== undefined
+                    ? `Preview: ${blogImportResults.postsFound} posts found`
+                    : `Import: ${blogImportResults.results?.imported || 0} imported, ${blogImportResults.results?.skipped || 0} skipped`}
+                </h4>
+                {blogImportResults.posts && (
+                  <ScrollArea className="h-48 mt-2">
+                    <div className="text-xs space-y-1">
+                      {blogImportResults.posts.map((p: any, i: number) => (
+                        <div key={i} className="p-1 bg-background rounded flex justify-between">
+                          <span className="font-medium">{p.title}</span>
+                          <span className="text-muted-foreground">
+                            {p.author} · {p.categories.join(', ')} · {p.imageCount} imgs
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 )}
               </div>
             )}
