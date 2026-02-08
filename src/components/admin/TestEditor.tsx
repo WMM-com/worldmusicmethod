@@ -32,10 +32,13 @@ import {
   Play,
   Pause,
   RefreshCw,
+  Wand2,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { LessonTestWithQuestions, TestQuestionWithAnswers, TestAnswer } from '@/types/test';
+import { useR2AutoMapSingle } from '@/hooks/useR2AudioAutoMap';
 
 interface TestEditorProps {
   lessonId: string;
@@ -61,6 +64,7 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'question' | 'test'; id: string } | null>(null);
   const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const { autoMapQuestion, isMapping: isAutoMapping } = useR2AutoMapSingle();
   const audioPreviewRef = useRef<HTMLAudioElement>(null);
   const audioFileInputRef = useRef<HTMLInputElement>(null);
   const [testSettings, setTestSettings] = useState({
@@ -616,9 +620,29 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
                       <Upload className="w-4 h-4" />
                     )}
                   </Button>
+                  {/* Auto-map from R2 button */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled={isAutoMapping || !editingQuestion.audio_url || !editingQuestion.id}
+                    title="Auto-map audio from R2"
+                    onClick={async () => {
+                      if (!editingQuestion.id || !editingQuestion.audio_url) return;
+                      const result = await autoMapQuestion(editingQuestion.id, editingQuestion.audio_url);
+                      if (result.success && result.newUrl) {
+                        setEditingQuestion({ ...editingQuestion, audio_url: result.newUrl });
+                      }
+                    }}
+                  >
+                    {isAutoMapping ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="w-4 h-4" />
+                    )}
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Paste a URL or click upload to add an MP3 from your device.
+                  Paste a URL or click upload to add an MP3. Use the wand icon to auto-map from R2.
                 </p>
               </div>
               
