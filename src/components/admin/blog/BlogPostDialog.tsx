@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileUpload } from '@/components/ui/file-upload';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { BlogRichTextEditor } from './BlogRichTextEditor';
@@ -222,18 +223,83 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
           <div>
             <Label>Featured Image</Label>
             {form.featured_image ? (
-              <div className="relative mt-1 rounded-xl overflow-hidden border border-border">
-                <img src={form.featured_image} alt="Featured" className="w-full h-48 object-cover" />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-8 w-8"
-                  onClick={() => setForm(prev => ({ ...prev, featured_image: '' }))}
+              <>
+                {/* Live preview with size & position applied */}
+                <div
+                  className="relative mt-1 rounded-xl overflow-hidden border border-border transition-all duration-300"
+                  style={{
+                    height: form.featured_image_size === 'small' ? '150px'
+                      : form.featured_image_size === 'medium' ? '200px'
+                      : form.featured_image_size === 'large' ? '250px'
+                      : '200px',
+                  }}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+                  <img
+                    src={form.featured_image}
+                    alt="Featured"
+                    className="w-full h-full object-cover transition-all duration-300"
+                    style={{ objectPosition: form.featured_image_position }}
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8"
+                    onClick={() => setForm(prev => ({ ...prev, featured_image: '' }))}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  {/* Size & position badge overlay */}
+                  <div className="absolute bottom-2 left-2 flex gap-1.5">
+                    <span className="text-[10px] bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md border border-border">
+                      {IMAGE_SIZES.find(s => s.value === form.featured_image_size)?.label || 'Full Size'}
+                    </span>
+                    <span className="text-[10px] bg-background/80 backdrop-blur-sm text-foreground px-2 py-0.5 rounded-md border border-border">
+                      {IMAGE_POSITIONS.find(p => p.value === form.featured_image_position)?.label || 'Center'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dropdowns row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1">Image Size</Label>
+                    <Select
+                      value={form.featured_image_size}
+                      onValueChange={v => updateField('featured_image_size', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {IMAGE_SIZES.map(s => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label} — {s.desc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1">Image Position</Label>
+                    <Select
+                      value={form.featured_image_position}
+                      onValueChange={v => updateField('featured_image_position', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select position" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {IMAGE_POSITIONS.map(p => (
+                          <SelectItem key={p.value} value={p.value}>
+                            {p.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </>
             ) : (
               <FileUpload
                 onFileSelect={handleImageUpload}
@@ -245,51 +311,6 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
               />
             )}
           </div>
-
-          {/* Image Size & Position */}
-          {form.featured_image && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Image Size</Label>
-                <div className="grid grid-cols-2 gap-2 mt-1">
-                  {IMAGE_SIZES.map(s => (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => updateField('featured_image_size', s.value)}
-                      className={`px-3 py-2 rounded-lg border text-sm text-left transition-colors ${
-                        form.featured_image_size === s.value
-                          ? 'border-primary bg-primary/10 text-primary font-medium'
-                          : 'border-border hover:border-muted-foreground/40 text-muted-foreground'
-                      }`}
-                    >
-                      <span className="block">{s.label}</span>
-                      <span className="text-xs opacity-70">{s.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <Label>Image Position</Label>
-                <div className="grid grid-cols-3 gap-1.5 mt-1">
-                  {IMAGE_POSITIONS.map(p => (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() => updateField('featured_image_position', p.value)}
-                      className={`px-2 py-1.5 rounded-md border text-xs text-center transition-colors ${
-                        form.featured_image_position === p.value
-                          ? 'border-primary bg-primary/10 text-primary font-medium'
-                          : 'border-border hover:border-muted-foreground/40 text-muted-foreground'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
