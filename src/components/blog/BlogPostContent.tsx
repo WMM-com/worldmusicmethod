@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
-import parse, { domToReact, HTMLReactParserOptions, Element, DOMNode } from 'html-react-parser';
+import parse, { HTMLReactParserOptions, Element } from 'html-react-parser';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { YouTubeEmbed } from '@/components/blog/embeds/YouTubeEmbed';
@@ -11,49 +11,70 @@ interface BlogPostContentProps {
   content: string;
 }
 
+/** Render an iframe DOM node as a plain JSX <iframe> (no recursion). */
+function renderIframe(node: Element) {
+  const { src, title, allow, allowfullscreen, loading, width, height, style } =
+    node.attribs || {};
+  return (
+    <iframe
+      src={src}
+      title={title || undefined}
+      allow={allow || undefined}
+      allowFullScreen={allowfullscreen !== undefined}
+      loading={(loading as 'lazy' | 'eager') || 'lazy'}
+      width={width || undefined}
+      height={height || undefined}
+      style={style ? undefined : undefined}
+      className="border-0"
+    />
+  );
+}
+
 export function BlogPostContent({ content }: BlogPostContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
 
-  // Sanitize allowing iframes for embeds (YouTube, Spotify, SoundCloud, social)
-  const sanitized = DOMPurify.sanitize(content, {
+  // 1. Pre-process FIRST (before sanitization) to convert URLs → sentinel divs
+  const preprocessed = preprocessContent(content);
+
+  // 2. Sanitize — allow iframes + the sentinel classes/ids
+  const sanitized = DOMPurify.sanitize(preprocessed, {
     ADD_TAGS: ['iframe'],
     ADD_ATTR: [
       'allow', 'allowfullscreen', 'frameborder', 'scrolling',
-      'src', 'title', 'loading',
-      'data-youtube-embed', 'data-social-embed', 'data-social-src',
+      'src', 'title', 'loading', 'target', 'rel',
+      'width', 'height', 'style',
     ],
   });
-
-  // Pre-process: convert plain URLs & iframes into data-attribute divs
-  const processed = preprocessContent(sanitized);
 
   // html-react-parser options to inject React components
   const parserOptions: HTMLReactParserOptions = {
     replace(domNode) {
       if (!(domNode instanceof Element) || domNode.type !== 'tag') return;
 
-      // YouTube embed
-      const ytId = domNode.attribs?.['data-youtube-embed'];
-      if (ytId) {
-        return <YouTubeEmbed videoId={ytId} title="YouTube Video" />;
+      const classes = domNode.attribs?.class || '';
+      const id = domNode.attribs?.id || '';
+
+      // YouTube sentinel: <div class="yt-embed-placeholder" id="yt-VIDEOID">
+      if (classes.includes('yt-embed-placeholder') && id.startsWith('yt-')) {
+        const videoId = id.replace('yt-', '');
+        return <YouTubeEmbed videoId={videoId} title="YouTube Video" />;
       }
 
-      // Social embed
-      const socialPlatform = domNode.attribs?.['data-social-embed'] as
-        | 'instagram'
-        | 'facebook'
-        | 'tiktok'
-        | undefined;
-      const socialSrc = domNode.attribs?.['data-social-src'];
-      if (socialPlatform && socialSrc) {
-        return <SocialEmbed platform={socialPlatform} src={socialSrc} />;
+      // Social sentinel: <div class="social-embed-placeholder" id="social-PLATFORM" title="SRC">
+      if (classes.includes('social-embed-placeholder') && id.startsWith('social-')) {
+        const platform = id.replace('social-', '') as 'instagram' | 'facebook' | 'tiktok';
+        const src = domNode.attribs?.title || '';
+        if (src) {
+          return <SocialEmbed platform={platform} src={src} />;
+        }
       }
 
-      // Wrap bare iframes that aren't already in a wrapper
+      // Wrap bare iframes — render the <iframe> directly as JSX to avoid recursion
       if (domNode.name === 'iframe') {
         const src = domNode.attribs?.src || '';
-        // YouTube iframes that slipped through
+
+        // YouTube iframes that slipped through preprocessing
         const ytMatch = src.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]{11})/);
         if (ytMatch) {
           return <YouTubeEmbed videoId={ytMatch[1]} title="YouTube Video" />;
@@ -63,7 +84,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
         if (/spotify\.com/i.test(src)) {
           return (
             <div className="blog-embed blog-embed--spotify">
-              {domToReact([domNode as unknown as DOMNode], parserOptions)}
+              {renderIframe(domNode)}
             </div>
           );
         }
@@ -72,7 +93,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
         if (/soundcloud\.com/i.test(src)) {
           return (
             <div className="blog-embed blog-embed--audio">
-              {domToReact([domNode as unknown as DOMNode], parserOptions)}
+              {renderIframe(domNode)}
             </div>
           );
         }
@@ -80,7 +101,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
         // Generic iframe → responsive wrapper
         return (
           <div className="blog-embed blog-embed--generic">
-            {domToReact([domNode as unknown as DOMNode], parserOptions)}
+            {renderIframe(domNode)}
           </div>
         );
       }
@@ -124,7 +145,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
             prose-figure:my-8
             prose-figcaption:text-center prose-figcaption:text-muted-foreground prose-figcaption:text-sm prose-figcaption:mt-2"
         >
-          {parse(processed, parserOptions)}
+          {parse(sanitized, parserOptions)}
         </article>
       </div>
 
