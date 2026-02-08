@@ -785,31 +785,12 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
         open={showR2Browse}
         onOpenChange={setShowR2Browse}
         questionLabel={editingQuestion?.id ? `Q: ${editingQuestion.question_text || 'Audio question'}` : undefined}
-        onSelect={async (url, key) => {
+        onSelect={(url, _key) => {
           if (!editingQuestion) return;
-
-          // If question exists in DB, save directly
-          if (editingQuestion.id) {
-            try {
-              const { error } = await supabase
-                .from('test_questions')
-                .update({ audio_url: url })
-                .eq('id', editingQuestion.id);
-
-              if (error) throw error;
-
-              queryClient.invalidateQueries({ queryKey: ['admin-lesson-test', lessonId] });
-              queryClient.invalidateQueries({ queryKey: ['admin-tests-with-audio'] });
-              queryClient.invalidateQueries({ queryKey: ['lesson-test'] });
-              toast.success('Audio URL saved to database!');
-            } catch (err: any) {
-              toast.error(err.message || 'Failed to save audio URL');
-            }
-          }
-
-          // Update local editing state so user sees it immediately
+          // Only update the local editing state — DB save happens on "Save Question"
           setEditingQuestion({ ...editingQuestion, audio_url: url });
           setShowR2Browse(false);
+          toast.success('Audio URL applied — click Save Question to persist.');
         }}
       />
     </div>
