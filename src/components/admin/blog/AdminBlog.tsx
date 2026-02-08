@@ -186,7 +186,7 @@ export function AdminBlog() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search by title or slug…"
-                className="pl-9"
+                className="pl-10"
               />
             </div>
             <Select value={statusFilter} onValueChange={v => setStatusFilter(v as StatusFilter)}>

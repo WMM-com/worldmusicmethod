@@ -29,7 +29,7 @@ import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from 'date-
 import wmmLogo from '@/assets/wmm-logo.png';
 
 const FALLBACK_IMAGE = wmmLogo;
-const POSTS_PER_PAGE = 10;
+const POSTS_PER_PAGE = 9;
 
 // ─── Types ───────────────────────────────────────────
 interface BlogListPost {
@@ -152,7 +152,10 @@ function BlogCard({ post, featured = false }: { post: BlogListPost; featured?: b
   if (featured) {
     return (
       <Link to={`/blog/${post.slug}`} className="block group col-span-full">
-        <Card className="overflow-hidden border-border bg-card hover:border-secondary/40 transition-all duration-300">
+        <Card className="relative overflow-hidden border-border bg-card hover:border-secondary/40 transition-all duration-300">
+          <div className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center group-hover:bg-secondary/40 transition-colors">
+            <ArrowUpRight className="h-5 w-5 text-secondary" />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
             <div className="relative aspect-[16/10] md:aspect-auto md:min-h-[360px] overflow-hidden">
               <img
@@ -161,9 +164,6 @@ function BlogCard({ post, featured = false }: { post: BlogListPost; featured?: b
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 loading="eager"
               />
-              <div className="absolute top-4 right-4 h-10 w-10 rounded-full bg-secondary/20 flex items-center justify-center group-hover:bg-secondary/40 transition-colors">
-                <ArrowUpRight className="h-5 w-5 text-secondary" />
-              </div>
             </div>
             <CardContent className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
               {post.categories && post.categories.length > 0 && (
@@ -207,7 +207,10 @@ function BlogCard({ post, featured = false }: { post: BlogListPost; featured?: b
 
   return (
     <Link to={`/blog/${post.slug}`} className="block group h-full">
-      <Card className="overflow-hidden border-border bg-card hover:border-secondary/40 transition-all duration-300 h-full flex flex-col">
+      <Card className="relative overflow-hidden border-border bg-card hover:border-secondary/40 transition-all duration-300 h-full flex flex-col">
+        <div className="absolute top-3 right-3 z-10 h-8 w-8 rounded-full bg-secondary/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <ArrowUpRight className="h-4 w-4 text-secondary" />
+        </div>
         <div className="relative aspect-video overflow-hidden">
           <img
             src={post.featured_image || FALLBACK_IMAGE}
@@ -215,9 +218,6 @@ function BlogCard({ post, featured = false }: { post: BlogListPost; featured?: b
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
-          <div className="absolute top-3 right-3 h-8 w-8 rounded-full bg-secondary/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <ArrowUpRight className="h-4 w-4 text-secondary" />
-          </div>
         </div>
         <CardContent className="p-5 flex flex-col flex-1">
           {post.categories && post.categories.length > 0 && (
@@ -353,7 +353,7 @@ export default function Blog() {
                     placeholder="Search posts..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
+                    className="pl-10"
                   />
                 </div>
 
