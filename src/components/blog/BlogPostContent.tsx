@@ -1,45 +1,93 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import DOMPurify from 'dompurify';
+import parse, { domToReact, HTMLReactParserOptions, Element, DOMNode } from 'html-react-parser';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { YouTubeEmbed } from '@/components/blog/embeds/YouTubeEmbed';
+import { SocialEmbed } from '@/components/blog/embeds/SocialEmbed';
+import { preprocessContent } from '@/components/blog/embeds/contentPreprocessor';
 
 interface BlogPostContentProps {
   content: string;
-}
-
-/**
- * Wrap bare iframes in a responsive 16:9 wrapper so they scale properly.
- * Skips iframes that are already inside a wrapper div.
- */
-function wrapIframes(html: string): string {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  doc.querySelectorAll('iframe').forEach((iframe) => {
-    const parent = iframe.parentElement;
-    if (parent?.classList.contains('iframe-wrapper') || parent?.classList.contains('video-wrapper')) {
-      return; // already wrapped
-    }
-    const wrapper = doc.createElement('div');
-    wrapper.className = 'iframe-wrapper';
-    parent?.insertBefore(wrapper, iframe);
-    wrapper.appendChild(iframe);
-  });
-
-  return doc.body.innerHTML;
 }
 
 export function BlogPostContent({ content }: BlogPostContentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
 
-  // Sanitize allowing iframes for embeds (YouTube, Spotify, SoundCloud)
+  // Sanitize allowing iframes for embeds (YouTube, Spotify, SoundCloud, social)
   const sanitized = DOMPurify.sanitize(content, {
     ADD_TAGS: ['iframe'],
-    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'src', 'title', 'loading'],
+    ADD_ATTR: [
+      'allow', 'allowfullscreen', 'frameborder', 'scrolling',
+      'src', 'title', 'loading',
+      'data-youtube-embed', 'data-social-embed', 'data-social-src',
+    ],
   });
 
-  const processed = wrapIframes(sanitized);
+  // Pre-process: convert plain URLs & iframes into data-attribute divs
+  const processed = preprocessContent(sanitized);
+
+  // html-react-parser options to inject React components
+  const parserOptions: HTMLReactParserOptions = {
+    replace(domNode) {
+      if (!(domNode instanceof Element) || domNode.type !== 'tag') return;
+
+      // YouTube embed
+      const ytId = domNode.attribs?.['data-youtube-embed'];
+      if (ytId) {
+        return <YouTubeEmbed videoId={ytId} title="YouTube Video" />;
+      }
+
+      // Social embed
+      const socialPlatform = domNode.attribs?.['data-social-embed'] as
+        | 'instagram'
+        | 'facebook'
+        | 'tiktok'
+        | undefined;
+      const socialSrc = domNode.attribs?.['data-social-src'];
+      if (socialPlatform && socialSrc) {
+        return <SocialEmbed platform={socialPlatform} src={socialSrc} />;
+      }
+
+      // Wrap bare iframes that aren't already in a wrapper
+      if (domNode.name === 'iframe') {
+        const src = domNode.attribs?.src || '';
+        // YouTube iframes that slipped through
+        const ytMatch = src.match(/youtube(?:-nocookie)?\.com\/embed\/([\w-]{11})/);
+        if (ytMatch) {
+          return <YouTubeEmbed videoId={ytMatch[1]} title="YouTube Video" />;
+        }
+
+        // Spotify – keep as responsive iframe
+        if (/spotify\.com/i.test(src)) {
+          return (
+            <div className="blog-embed blog-embed--spotify">
+              {domToReact([domNode as unknown as DOMNode], parserOptions)}
+            </div>
+          );
+        }
+
+        // SoundCloud
+        if (/soundcloud\.com/i.test(src)) {
+          return (
+            <div className="blog-embed blog-embed--audio">
+              {domToReact([domNode as unknown as DOMNode], parserOptions)}
+            </div>
+          );
+        }
+
+        // Generic iframe → responsive wrapper
+        return (
+          <div className="blog-embed blog-embed--generic">
+            {domToReact([domNode as unknown as DOMNode], parserOptions)}
+          </div>
+        );
+      }
+
+      return undefined;
+    },
+  };
 
   return (
     <div className="relative">
@@ -53,7 +101,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
       >
         <article
           ref={articleRef}
-          className="prose prose-invert prose-lg max-w-none
+          className="blog-content prose prose-invert prose-lg max-w-none
             prose-headings:font-display prose-headings:text-foreground prose-headings:tracking-tight
             prose-h1:text-3xl sm:prose-h1:text-4xl prose-h1:mt-8 prose-h1:mb-5
             prose-h2:text-2xl sm:prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-4
@@ -75,8 +123,9 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
             prose-td:border prose-td:border-border prose-td:px-4 prose-td:py-2
             prose-figure:my-8
             prose-figcaption:text-center prose-figcaption:text-muted-foreground prose-figcaption:text-sm prose-figcaption:mt-2"
-          dangerouslySetInnerHTML={{ __html: processed }}
-        />
+        >
+          {parse(processed, parserOptions)}
+        </article>
       </div>
 
       {/* Gradient overlay + Read Full Blog button (only when collapsed) */}
@@ -87,9 +136,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
       >
         {!isExpanded && (
           <div className="absolute bottom-0 left-0 right-0">
-            {/* Gradient fade */}
             <div className="h-40 bg-gradient-to-t from-background via-background/80 to-transparent" />
-            {/* Button container */}
             <div className="bg-background pb-2 flex justify-center">
               <Button
                 variant="secondary"

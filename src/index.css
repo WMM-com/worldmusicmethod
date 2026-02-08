@@ -255,33 +255,131 @@
     scrollbar-color: hsl(var(--primary)) hsl(var(--background));
   }
 
-  /* Blog content: responsive images */
-  .prose img {
+  /* ── Blog content: images ────────────────────────────── */
+  .blog-content img {
     max-width: 100%;
     height: auto;
     border-radius: 0.75rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
   }
 
-  /* Blog content: responsive iframes (YouTube, Spotify, etc.) */
-  .prose iframe {
-    max-width: 100%;
+  /* ── Blog embed base ───────────────────────────────── */
+  .blog-embed {
+    position: relative;
+    width: 100%;
     border-radius: 0.75rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
+    overflow: hidden;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
 
+  /* 16:9 ratio for YouTube & generic iframes */
+  .blog-embed iframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    display: block;
+    border: 0;
+  }
+
+  /* YouTube preview (thumbnail + play) */
+  .blog-embed--preview {
+    cursor: pointer;
+  }
+
+  .blog-embed__thumbnail {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+  }
+
+  .blog-embed__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, hsl(var(--background) / 0.85) 100%);
+    transition: opacity 0.3s;
+  }
+
+  .blog-embed--preview:hover .blog-embed__overlay {
+    opacity: 0.7;
+  }
+
+  .blog-embed__play-btn {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .blog-embed__play-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 9999px;
+    background: hsl(var(--primary) / 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background 0.2s;
+    box-shadow: 0 8px 30px hsl(var(--primary) / 0.4);
+  }
+
+  .blog-embed--preview:hover .blog-embed__play-icon {
+    transform: scale(1.1);
+    background: hsl(var(--primary));
+  }
+
+  /* Bottom bar (title + "Watch on YouTube" link) */
+  .blog-embed__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.625rem 1rem;
+    background: hsl(var(--card));
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  .blog-embed__bar--social {
+    padding: 0.5rem 1rem;
+  }
+
+  /* ── Spotify / Audio overrides ─────────────────────── */
+  .blog-embed--spotify iframe {
+    aspect-ratio: auto;
+    height: 352px;
+    border-radius: 0.75rem;
+  }
+
+  .blog-embed--audio iframe {
+    aspect-ratio: auto;
+    height: 166px;
+  }
+
+  /* ── Social embeds (Instagram / Facebook / TikTok) ── */
+  .blog-embed--social iframe {
+    aspect-ratio: 4 / 5;
+    max-height: 600px;
+  }
+
+  /* ── Legacy .prose iframes (backwards compat) ─────── */
   .prose .iframe-wrapper,
   .prose .video-wrapper {
     position: relative;
     width: 100%;
-    padding-bottom: 56.25%; /* 16:9 */
+    padding-bottom: 56.25%;
     height: 0;
     overflow: hidden;
     border-radius: 0.75rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
   }
 
   .prose .iframe-wrapper iframe,
