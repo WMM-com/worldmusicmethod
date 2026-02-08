@@ -1,4 +1,3 @@
-/* Base styles = mobile. Use sm:, md:, lg: to override on larger screens */
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -39,10 +38,10 @@ const DialogContent = React.forwardRef<
       className={cn(
         /* Centered on ALL devices */
         "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
-        /* Sizing */
-        "w-[calc(100%-2rem)] max-w-md sm:max-w-lg",
-        /* Padding: generous on all sides */
-        "pt-8 pb-10 px-6 sm:px-10",
+        /* Sizing: full-width on mobile with margin, proper max-width on desktop */
+        "w-[calc(100%-2rem)] max-w-lg",
+        /* Padding: compact on mobile, generous on desktop */
+        "p-6 sm:pt-8 sm:pb-10 sm:px-10",
         /* Scrollable content */
         "max-h-[90dvh] overflow-y-auto overscroll-contain",
         /* Appearance */
@@ -58,8 +57,8 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-3 top-3 flex items-center justify-center min-h-12 min-w-12 rounded-md opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-5 w-5" />
+      <DialogPrimitive.Close className="absolute right-3 top-3 flex items-center justify-center h-8 w-8 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-md opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4 sm:h-5 sm:w-5" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
