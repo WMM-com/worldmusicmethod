@@ -62,9 +62,10 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
   
   // Initialize or reset the test
   const initializeTest = useCallback(() => {
-    const ordered = test.randomize_questions 
+    // Shuffle question order if enabled — each question object keeps its own audio_url
+    const ordered = test.randomize_questions === true
       ? shuffleArray(test.questions) 
-      : test.questions;
+      : [...test.questions];
     setQuestionOrder(ordered);
     setAnswers({});
     setCurrentIndex(0);
@@ -263,7 +264,7 @@ export function TestPlayer({ test, onComplete }: TestPlayerProps) {
             <p>• Listen to each audio clip and select the correct answer</p>
             <p>• You can replay the audio as many times as you like</p>
             <p>• Wrong answer? Get one more try for half points</p>
-            <p>• Questions are randomized each attempt</p>
+            {test.randomize_questions && <p>• Questions are randomized each attempt</p>}
           </div>
           
           <Button onClick={handleStart} className="w-full bg-primary hover:bg-primary/90" size="lg">
