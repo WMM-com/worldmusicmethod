@@ -40,7 +40,7 @@ export function ProjectDetailModal({
   );
 
   const [sliderIndex, setSliderIndex] = useState(0);
-  const visibleCount = 3;
+  const visibleCount = 4;
   const maxSliderIndex = Math.max(0, otherProjects.length - visibleCount);
 
   const profileUrl = getProfileUrl(userId, extendedProfile?.username);
@@ -128,7 +128,7 @@ export function ProjectDetailModal({
       )}
 
       <DialogContent
-        className="max-w-[calc(100vw-120px)] w-full p-0 gap-0 overflow-hidden flex flex-col [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-7 [&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-3 [&>button]:top-3 [&>button]:z-30"
+        className="max-w-[calc(100vw-140px)] w-full p-0 gap-0 overflow-hidden flex flex-col [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-7 [&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-3 [&>button]:top-3 [&>button]:z-30"
         style={{ maxHeight: 'calc(100vh - 80px)' }}
         onPointerDownOutside={(e) => {
           // Prevent closing when clicking navigation arrows
@@ -158,9 +158,9 @@ export function ProjectDetailModal({
         </div>
 
         {/* Body – two columns with independent scrolling */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2">
-          {/* Left column – static (no scroll) */}
-          <div className="p-6 space-y-5 overflow-y-auto md:overflow-y-hidden">
+        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[1fr_1.5fr]">
+          {/* Left column – scrollable on mobile, static on desktop */}
+          <div className="p-6 space-y-5 overflow-y-auto">
             {project.description ? (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
@@ -203,7 +203,7 @@ export function ProjectDetailModal({
                 <img
                   src={project.image_url}
                   alt={project.title}
-                  className="w-full h-auto object-contain"
+                  className="w-full h-auto object-contain max-h-none"
                 />
               </div>
             )}
@@ -260,15 +260,15 @@ export function ProjectDetailModal({
                             <img
                               src={op.image_url}
                               alt={op.title}
-                              className="w-full aspect-[4/3] object-cover"
+                              className="w-full aspect-[3/2] object-cover"
                             />
                           ) : (
-                            <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center">
+                            <div className="w-full aspect-[3/2] bg-muted flex items-center justify-center">
                               <span className="text-xs text-muted-foreground">No image</span>
                             </div>
                           )}
-                          <div className="p-2.5">
-                            <p className="text-sm font-medium leading-snug">{op.title}</p>
+                          <div className="p-3">
+                            <p className="text-sm font-medium leading-snug break-words">{op.title}</p>
                           </div>
                         </button>
                       ))}
