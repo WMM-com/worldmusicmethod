@@ -117,7 +117,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
         className={`transition-all duration-500 ease-in-out ${
           isExpanded
             ? 'max-h-none overflow-visible'
-            : 'max-h-[500px] sm:max-h-[650px] overflow-hidden'
+            : 'max-h-[500px] sm:max-h-[650px] overflow-hidden relative z-0'
         }`}
       >
         <article
@@ -156,7 +156,7 @@ export function BlogPostContent({ content }: BlogPostContentProps) {
         }`}
       >
         {!isExpanded && (
-          <div className="absolute bottom-0 left-0 right-0">
+          <div className="absolute bottom-0 left-0 right-0 z-10">
             <div className="h-40 bg-gradient-to-t from-background via-background/80 to-transparent" />
             <div className="bg-background pb-2 flex justify-center">
               <Button
