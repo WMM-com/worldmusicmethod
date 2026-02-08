@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.create-terminal-location]
 verify_jwt = false
+
+[functions.r2-test-audio]
+verify_jwt = true
