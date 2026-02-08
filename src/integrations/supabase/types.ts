@@ -3496,6 +3496,7 @@ export type Database = {
           order_index: number
           soundslice_preset: string | null
           spotify_urls: string[] | null
+          suggested_listening_content: string | null
           title: string
           updated_at: string
           video_url: string | null
@@ -3513,6 +3514,7 @@ export type Database = {
           order_index?: number
           soundslice_preset?: string | null
           spotify_urls?: string[] | null
+          suggested_listening_content?: string | null
           title: string
           updated_at?: string
           video_url?: string | null
@@ -3530,6 +3532,7 @@ export type Database = {
           order_index?: number
           soundslice_preset?: string | null
           spotify_urls?: string[] | null
+          suggested_listening_content?: string | null
           title?: string
           updated_at?: string
           video_url?: string | null

@@ -134,12 +134,9 @@
     @apply border-border;
   }
 
-  /* Mobile viewport fix – dynamic viewport height handles mobile browser bars */
-  @media (max-width: 768px) {
-    html, body, #root {
-      height: 100dvh;
-      overflow: hidden;
-    }
+  /* Mobile viewport fix – use min-height so content pages can scroll naturally */
+  html, body, #root {
+    min-height: 100dvh;
   }
 
   html {
