@@ -22,7 +22,7 @@ export function BlogPostSidebar({ categories, popularPosts, tags }: BlogPostSide
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {categories.map((cat) => (
-              <Link key={cat} to={`/blog?category=${encodeURIComponent(cat)}`}>
+              <Link key={cat} to={`/blog/category/${encodeURIComponent(cat.toLowerCase().replace(/\s+/g, '-'))}`}>
                 <Badge
                   variant="outline"
                   className="cursor-pointer hover:bg-secondary hover:text-secondary-foreground hover:border-secondary transition-colors px-3 py-1 text-xs"

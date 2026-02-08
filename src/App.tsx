@@ -63,6 +63,7 @@ import Download from "./pages/Download";
 import Merchandise from "./pages/Merchandise";
 import FanPayment from "./pages/FanPayment";
 import BlogPost from "./pages/BlogPost";
+import BlogCategory from "./pages/BlogCategory";
 import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
@@ -135,6 +136,7 @@ function AppContent() {
         <Route path="/shared" element={<ProtectedRoute><SharedWithMe /></ProtectedRoute>} />
         <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
         <Route path="/tech-specs" element={<ProtectedRoute><TechSpecs /></ProtectedRoute>} />
+        <Route path="/blog/category/:slug" element={<BlogCategory />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/courses/:courseId" element={<CourseLanding />} />
