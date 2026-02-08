@@ -34,11 +34,13 @@ import {
   RefreshCw,
   Wand2,
   Loader2,
+  FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { LessonTestWithQuestions, TestQuestionWithAnswers, TestAnswer } from '@/types/test';
 import { useR2AutoMapSingle } from '@/hooks/useR2AudioAutoMap';
+import { R2BrowseModal } from './R2BrowseModal';
 
 interface TestEditorProps {
   lessonId: string;
@@ -65,6 +67,7 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
   const [playingAudioUrl, setPlayingAudioUrl] = useState<string | null>(null);
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const { autoMapQuestion, isMapping: isAutoMapping } = useR2AutoMapSingle();
+  const [showR2Browse, setShowR2Browse] = useState(false);
   const audioPreviewRef = useRef<HTMLAudioElement>(null);
   const audioFileInputRef = useRef<HTMLInputElement>(null);
   const [testSettings, setTestSettings] = useState({
@@ -640,9 +643,18 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
                       <Wand2 className="w-4 h-4" />
                     )}
                   </Button>
+                  {/* Browse R2 files */}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Browse R2 audio files"
+                    onClick={() => setShowR2Browse(true)}
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Paste a URL or click upload to add an MP3. Use the wand icon to auto-map from R2.
+                  Paste a URL, upload an MP3, use the wand to auto-map, or browse R2 files.
                 </p>
               </div>
               
@@ -767,6 +779,39 @@ export function TestEditor({ lessonId, lessonTitle, onBack }: TestEditorProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* R2 Browse Modal */}
+      <R2BrowseModal
+        open={showR2Browse}
+        onOpenChange={setShowR2Browse}
+        questionLabel={editingQuestion?.id ? `Q: ${editingQuestion.question_text || 'Audio question'}` : undefined}
+        onSelect={async (url, key) => {
+          if (!editingQuestion) return;
+
+          // If question exists in DB, save directly
+          if (editingQuestion.id) {
+            try {
+              const { error } = await supabase
+                .from('test_questions')
+                .update({ audio_url: url })
+                .eq('id', editingQuestion.id);
+
+              if (error) throw error;
+
+              queryClient.invalidateQueries({ queryKey: ['admin-lesson-test', lessonId] });
+              queryClient.invalidateQueries({ queryKey: ['admin-tests-with-audio'] });
+              queryClient.invalidateQueries({ queryKey: ['lesson-test'] });
+              toast.success('Audio URL saved to database!');
+            } catch (err: any) {
+              toast.error(err.message || 'Failed to save audio URL');
+            }
+          }
+
+          // Update local editing state so user sees it immediately
+          setEditingQuestion({ ...editingQuestion, audio_url: url });
+          setShowR2Browse(false);
+        }}
+      />
     </div>
   );
 }
