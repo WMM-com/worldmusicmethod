@@ -90,7 +90,12 @@ export default function BlogPost() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Hero */}
-          <BlogPostHero title={post.title} heroImage={heroImage} />
+          <BlogPostHero
+            title={post.title}
+            heroImage={heroImage}
+            imageSize={post.featured_image_size || 'full'}
+            imagePosition={post.featured_image_position || 'center center'}
+          />
 
           {/* Metadata row */}
           <BlogPostMeta

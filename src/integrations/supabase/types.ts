@@ -157,6 +157,8 @@ export type Database = {
           deleted_at: string | null
           excerpt: string | null
           featured_image: string | null
+          featured_image_position: string | null
+          featured_image_size: string | null
           id: string
           meta_description: string | null
           meta_title: string | null
@@ -175,6 +177,8 @@ export type Database = {
           deleted_at?: string | null
           excerpt?: string | null
           featured_image?: string | null
+          featured_image_position?: string | null
+          featured_image_size?: string | null
           id?: string
           meta_description?: string | null
           meta_title?: string | null
@@ -193,6 +197,8 @@ export type Database = {
           deleted_at?: string | null
           excerpt?: string | null
           featured_image?: string | null
+          featured_image_position?: string | null
+          featured_image_size?: string | null
           id?: string
           meta_description?: string | null
           meta_title?: string | null

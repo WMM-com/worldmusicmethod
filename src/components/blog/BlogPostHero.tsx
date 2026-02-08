@@ -1,17 +1,35 @@
-import { LazyImage } from '@/components/ui/lazy-image';
-
 interface BlogPostHeroProps {
   title: string;
   heroImage: string;
+  imageSize?: string;
+  imagePosition?: string;
 }
 
-export function BlogPostHero({ title, heroImage }: BlogPostHeroProps) {
+const SIZE_CLASSES: Record<string, string> = {
+  small: 'max-h-[300px] sm:max-h-[350px] lg:max-h-[400px]',
+  medium: 'max-h-[400px] sm:max-h-[450px] lg:max-h-[500px]',
+  large: 'max-h-[500px] sm:max-h-[550px] lg:max-h-[600px]',
+  full: '',
+};
+
+export function BlogPostHero({ title, heroImage, imageSize = 'full', imagePosition = 'center center' }: BlogPostHeroProps) {
+  const sizeClass = SIZE_CLASSES[imageSize] || '';
+  const isFullSize = imageSize === 'full';
+
   return (
-    <section className="relative w-full aspect-[21/9] sm:aspect-[3/1] lg:aspect-[3/1] max-h-[500px] overflow-hidden">
+    <section
+      className={`relative w-full overflow-hidden ${
+        isFullSize
+          ? 'aspect-[21/9] sm:aspect-[3/1] lg:aspect-[3/1] max-h-[500px]'
+          : sizeClass
+      }`}
+      style={!isFullSize ? { minHeight: '200px' } : undefined}
+    >
       <img
         src={heroImage}
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
+        style={{ objectPosition: imagePosition }}
         loading="eager"
       />
       {/* Gradient overlay */}

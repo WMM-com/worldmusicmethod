@@ -12,6 +12,8 @@ export interface BlogPostRow {
   reading_time: number | null;
   meta_title: string | null;
   meta_description: string | null;
+  featured_image_size: string | null;
+  featured_image_position: string | null;
   created_at: string | null;
   updated_at: string | null;
   deleted_at: string | null;

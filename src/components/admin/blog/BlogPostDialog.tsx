@@ -24,6 +24,8 @@ export interface BlogPostFormData {
   content: string;
   excerpt: string;
   featured_image: string;
+  featured_image_size: string;
+  featured_image_position: string;
   author_name: string;
   published_at: string;
   categories: string[];
@@ -33,12 +35,33 @@ export interface BlogPostFormData {
   meta_description: string;
 }
 
+const IMAGE_SIZES = [
+  { value: 'small', label: 'Small', desc: '400px max height' },
+  { value: 'medium', label: 'Medium', desc: '500px max height' },
+  { value: 'large', label: 'Large', desc: '600px max height' },
+  { value: 'full', label: 'Full Size', desc: 'Original dimensions' },
+] as const;
+
+const IMAGE_POSITIONS = [
+  { value: 'top left', label: 'Top Left' },
+  { value: 'top center', label: 'Top Center' },
+  { value: 'top right', label: 'Top Right' },
+  { value: 'center left', label: 'Center Left' },
+  { value: 'center center', label: 'Center' },
+  { value: 'center right', label: 'Center Right' },
+  { value: 'bottom left', label: 'Bottom Left' },
+  { value: 'bottom center', label: 'Bottom Center' },
+  { value: 'bottom right', label: 'Bottom Right' },
+] as const;
+
 const emptyForm: BlogPostFormData = {
   title: '',
   slug: '',
   content: '',
   excerpt: '',
   featured_image: '',
+  featured_image_size: 'full',
+  featured_image_position: 'center center',
   author_name: '',
   published_at: new Date().toISOString().slice(0, 16),
   categories: [],
@@ -86,6 +109,8 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
         content: post.content || '',
         excerpt: post.excerpt || '',
         featured_image: post.featured_image || '',
+        featured_image_size: post.featured_image_size || 'full',
+        featured_image_position: post.featured_image_position || 'center center',
         author_name: post.author_name || '',
         published_at: post.published_at
           ? new Date(post.published_at).toISOString().slice(0, 16)
@@ -221,7 +246,51 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
             )}
           </div>
 
-          {/* Author + Date Row */}
+          {/* Image Size & Position */}
+          {form.featured_image && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Image Size</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {IMAGE_SIZES.map(s => (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => updateField('featured_image_size', s.value)}
+                      className={`px-3 py-2 rounded-lg border text-sm text-left transition-colors ${
+                        form.featured_image_size === s.value
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                          : 'border-border hover:border-muted-foreground/40 text-muted-foreground'
+                      }`}
+                    >
+                      <span className="block">{s.label}</span>
+                      <span className="text-xs opacity-70">{s.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>Image Position</Label>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {IMAGE_POSITIONS.map(p => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => updateField('featured_image_position', p.value)}
+                      className={`px-2 py-1.5 rounded-md border text-xs text-center transition-colors ${
+                        form.featured_image_position === p.value
+                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                          : 'border-border hover:border-muted-foreground/40 text-muted-foreground'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="bp-author">Author</Label>
