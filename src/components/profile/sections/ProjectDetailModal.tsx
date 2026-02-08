@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ProfileProject } from '@/hooks/useProfilePortfolio';
 import { useExtendedProfile } from '@/hooks/useProfilePortfolio';
@@ -40,8 +40,22 @@ export function ProjectDetailModal({
   );
 
   const [sliderIndex, setSliderIndex] = useState(0);
-  const visibleCount = 4;
+  // Responsive visible count: 2 on mobile, 3 on tablet, 4 on desktop
+  const [visibleCount, setVisibleCount] = useState(4);
   const maxSliderIndex = Math.max(0, otherProjects.length - visibleCount);
+
+  // Update visible count based on viewport width
+  useEffect(() => {
+    const updateCount = () => {
+      const w = window.innerWidth;
+      if (w < 640) setVisibleCount(2);
+      else if (w < 1024) setVisibleCount(3);
+      else setVisibleCount(4);
+    };
+    updateCount();
+    window.addEventListener('resize', updateCount);
+    return () => window.removeEventListener('resize', updateCount);
+  }, []);
 
   const profileUrl = getProfileUrl(userId, extendedProfile?.username);
   const displayName = extendedProfile?.full_name || 'this artist';
@@ -108,9 +122,9 @@ export function ProjectDetailModal({
               data-project-nav="prev"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={goToPrev}
-              className="pointer-events-auto absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 h-12 w-12 flex items-center justify-center rounded-full bg-primary/25 backdrop-blur-md shadow-lg opacity-30 hover:opacity-100 hover:bg-primary/80 active:opacity-100 active:bg-primary/90 transition-all duration-200"
+              className="pointer-events-auto absolute left-1 sm:left-2 md:left-3 lg:left-5 top-1/2 -translate-y-1/2 h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 flex items-center justify-center rounded-full bg-primary/25 backdrop-blur-md shadow-lg opacity-60 sm:opacity-30 hover:opacity-100 hover:bg-primary/80 active:opacity-100 active:bg-primary/90 transition-all duration-200"
             >
-              <ChevronLeft className="h-6 w-6 text-primary-foreground" />
+              <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-primary-foreground" />
             </button>
           )}
 
@@ -119,17 +133,17 @@ export function ProjectDetailModal({
               data-project-nav="next"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={goToNext}
-              className="pointer-events-auto absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 h-12 w-12 flex items-center justify-center rounded-full bg-primary/25 backdrop-blur-md shadow-lg opacity-30 hover:opacity-100 hover:bg-primary/80 active:opacity-100 active:bg-primary/90 transition-all duration-200"
+              className="pointer-events-auto absolute right-1 sm:right-2 md:right-3 lg:right-5 top-1/2 -translate-y-1/2 h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 flex items-center justify-center rounded-full bg-primary/25 backdrop-blur-md shadow-lg opacity-60 sm:opacity-30 hover:opacity-100 hover:bg-primary/80 active:opacity-100 active:bg-primary/90 transition-all duration-200"
             >
-              <ChevronRight className="h-6 w-6 text-primary-foreground" />
+              <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-primary-foreground" />
             </button>
           )}
         </div>
       )}
 
       <DialogContent
-        className="max-w-[calc(100vw-140px)] w-full p-0 gap-0 overflow-hidden flex flex-col [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-7 [&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-3 [&>button]:top-3 [&>button]:z-30"
-        style={{ maxHeight: 'calc(100vh - 80px)' }}
+        className="w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] md:w-[calc(100vw-100px)] lg:max-w-[calc(100vw-140px)] max-w-none p-0 gap-0 overflow-hidden flex flex-col [&>button]:bg-primary [&>button]:text-primary-foreground [&>button]:rounded-full [&>button]:h-8 [&>button]:w-8 sm:[&>button]:h-7 sm:[&>button]:w-7 [&>button]:opacity-100 [&>button]:hover:bg-primary/90 [&>button]:right-2 [&>button]:top-2 sm:[&>button]:right-3 sm:[&>button]:top-3 [&>button]:z-30"
+        style={{ maxHeight: 'calc(100dvh - 1rem)', minHeight: 0 }}
         onPointerDownOutside={(e) => {
           // Prevent closing when clicking navigation arrows
           const target = e.target as HTMLElement;
@@ -146,21 +160,22 @@ export function ProjectDetailModal({
       >
 
         {/* Sticky Header */}
-        <div className="shrink-0 flex items-center justify-between px-6 pt-5 pb-3 border-b border-border bg-background">
-          <h2 className="text-lg font-semibold truncate pr-4">{project.title}</h2>
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-border bg-background">
+          <h2 className="text-base sm:text-lg font-semibold truncate pr-4">{project.title}</h2>
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-10"
+            className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0 mr-10"
           >
             <Link2 className="h-4 w-4" />
-            Copy Link
+            <span className="hidden sm:inline">Copy Link</span>
+            <span className="sm:hidden">Copy</span>
           </button>
         </div>
 
-        {/* Body – two columns with independent scrolling */}
-        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[1fr_1.5fr]">
-          {/* Left column – scrollable on mobile, static on desktop */}
-          <div className="p-6 space-y-5 overflow-y-auto">
+        {/* Body – single column on mobile, two columns on md+ */}
+        <div className="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-[1fr_1.5fr] overflow-y-auto md:overflow-hidden">
+          {/* Left column – flows naturally on mobile, scrolls independently on md+ */}
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 md:overflow-y-auto">
             {project.description ? (
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Description</h3>
@@ -196,8 +211,8 @@ export function ProjectDetailModal({
             <ProjectReportForm projectId={project.id} userId={userId} projectTitle={project.title} />
           </div>
 
-          {/* Right column – scrollable */}
-          <div className="p-6 space-y-5 overflow-y-auto">
+          {/* Right column – flows on mobile, scrolls independently on md+ */}
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 md:overflow-y-auto md:border-l md:border-border">
             {project.image_url && (
               <div className="rounded-lg overflow-hidden border border-border">
                 <img
