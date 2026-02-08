@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { FileUpload } from '@/components/ui/file-upload';
 import { useR2Upload } from '@/hooks/useR2Upload';
+import { BlogRichTextEditor } from './BlogRichTextEditor';
 import { Loader2, X } from 'lucide-react';
 import type { BlogPostRow } from './types';
 
@@ -26,6 +27,7 @@ export interface BlogPostFormData {
   author_name: string;
   published_at: string;
   categories: string[];
+  tags: string[];
   is_published: boolean;
   meta_title: string;
   meta_description: string;
@@ -40,6 +42,7 @@ const emptyForm: BlogPostFormData = {
   author_name: '',
   published_at: new Date().toISOString().slice(0, 16),
   categories: [],
+  tags: [],
   is_published: false,
   meta_title: '',
   meta_description: '',
@@ -71,6 +74,7 @@ interface BlogPostDialogProps {
 export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: BlogPostDialogProps) {
   const [form, setForm] = useState<BlogPostFormData>(emptyForm);
   const [categoryInput, setCategoryInput] = useState('');
+  const [tagInput, setTagInput] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
   const { uploadFile, isUploading, progress } = useR2Upload();
 
@@ -87,6 +91,7 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
           ? new Date(post.published_at).toISOString().slice(0, 16)
           : new Date().toISOString().slice(0, 16),
         categories: post.categories || [],
+        tags: post.tags || [],
         is_published: !!post.published_at,
         meta_title: post.meta_title || '',
         meta_description: post.meta_description || '',
@@ -97,6 +102,7 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
       setSlugTouched(false);
     }
     setCategoryInput('');
+    setTagInput('');
   }, [post, open]);
 
   const updateField = useCallback(<K extends keyof BlogPostFormData>(key: K, value: BlogPostFormData[K]) => {
@@ -125,6 +131,18 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
     setForm(prev => ({ ...prev, categories: prev.categories.filter(c => c !== cat) }));
   }, []);
 
+  const addTag = useCallback(() => {
+    const trimmed = tagInput.trim();
+    if (trimmed && !form.tags.includes(trimmed) && form.tags.length < 10) {
+      setForm(prev => ({ ...prev, tags: [...prev.tags, trimmed] }));
+    }
+    setTagInput('');
+  }, [tagInput, form.tags]);
+
+  const removeTag = useCallback((tag: string) => {
+    setForm(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tag) }));
+  }, []);
+
   const handleImageUpload = useCallback(async (file: File) => {
     const result = await uploadFile(file, {
       bucket: 'admin',
@@ -147,7 +165,7 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{post ? 'Edit Blog Post' : 'New Blog Post'}</DialogTitle>
         </DialogHeader>
@@ -261,17 +279,41 @@ export function BlogPostDialog({ open, onOpenChange, post, onSave, isSaving }: B
             )}
           </div>
 
-          {/* Content */}
+          {/* Tags */}
           <div>
-            <Label htmlFor="bp-content">Content (HTML)</Label>
-            <Textarea
-              id="bp-content"
-              value={form.content}
-              onChange={e => updateField('content', e.target.value)}
-              placeholder="<p>Write your blog post content here…</p>"
-              className="min-h-[200px] font-mono text-xs"
-              rows={12}
-            />
+            <Label>Tags <span className="text-muted-foreground text-xs font-normal">(max 10)</span></Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                placeholder="Type & press Enter"
+                className="flex-1"
+                disabled={form.tags.length >= 10}
+              />
+              <Button type="button" variant="outline" onClick={addTag} disabled={form.tags.length >= 10}>Add</Button>
+            </div>
+            {form.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {form.tags.map(tag => (
+                  <Badge key={tag} variant="outline" className="gap-1 cursor-pointer" onClick={() => removeTag(tag)}>
+                    {tag}
+                    <X className="h-3 w-3" />
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Content - Full Rich Text Editor */}
+          <div>
+            <Label>Content</Label>
+            <div className="mt-1">
+              <BlogRichTextEditor
+                value={form.content}
+                onChange={val => updateField('content', val)}
+              />
+            </div>
           </div>
 
           {/* Excerpt */}

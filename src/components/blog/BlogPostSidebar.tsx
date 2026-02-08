@@ -8,9 +8,10 @@ import type { BlogPopularPost } from './blogTypes';
 interface BlogPostSidebarProps {
   categories: string[];
   popularPosts: BlogPopularPost[];
+  tags?: string[];
 }
 
-export function BlogPostSidebar({ categories, popularPosts }: BlogPostSidebarProps) {
+export function BlogPostSidebar({ categories, popularPosts, tags }: BlogPostSidebarProps) {
   return (
     <div className="space-y-6 lg:sticky lg:top-6">
       {/* Categories */}
@@ -65,6 +66,16 @@ export function BlogPostSidebar({ categories, popularPosts }: BlogPostSidebarPro
           ))}
         </CardContent>
       </Card>
+
+      {/* Tags */}
+      {tags && tags.length > 0 && (
+        <div className="px-1">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Tags:</span>{' '}
+            {tags.join(', ')}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
