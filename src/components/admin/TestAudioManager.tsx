@@ -450,34 +450,38 @@ export function TestAudioManager({ onBack }: Props) {
 
   // ── Manual R2 assignment ───────────────────────────────────
 
-  const assignR2Url = (questionId: string, url: string, key: string) => {
-    setMappings((prev) => {
-      const existing = prev.find((m) => m.questionId === questionId);
-      if (existing) {
-        return prev.map((m) =>
-          m.questionId === questionId
-            ? { ...m, suggestedUrl: url, suggestedKey: key, confidence: 'high', accepted: true, reason: 'Manually selected' }
-            : m
-        );
-      }
-      // Add new mapping
-      const question = currentTest?.questions.find((q) => q.id === questionId);
-      return [
-        ...prev,
-        {
-          questionId,
-          currentUrl: question?.audio_url || '',
-          suggestedUrl: url,
-          suggestedKey: key,
-          confidence: 'high' as const,
-          accepted: true,
-          reason: 'Manually selected',
-        },
-      ];
-    });
-    setShowR2Browser(false);
-    setR2BrowserQuestionId(null);
-    toast.success('File selected – click Apply to save');
+  const assignR2Url = async (questionId: string, url: string, key: string) => {
+    // Save directly to DB when manually selecting from R2 browser
+    try {
+      const { error } = await supabase
+        .from('test_questions')
+        .update({ audio_url: url })
+        .eq('id', questionId);
+
+      if (error) throw error;
+
+      // Update local mappings state too
+      setMappings((prev) => {
+        const existing = prev.find((m) => m.questionId === questionId);
+        if (existing) {
+          return prev.map((m) =>
+            m.questionId === questionId
+              ? { ...m, suggestedUrl: url, suggestedKey: key, confidence: 'high', accepted: true, reason: 'Manually selected & saved' }
+              : m
+          );
+        }
+        return prev;
+      });
+
+      // Refetch test data so UI reflects the change
+      queryClient.invalidateQueries({ queryKey: ['admin-tests-with-audio'] });
+
+      setShowR2Browser(false);
+      setR2BrowserQuestionId(null);
+      toast.success('Audio URL saved to database!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save audio URL');
+    }
   };
 
   // ── File upload ────────────────────────────────────────────
