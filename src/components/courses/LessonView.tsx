@@ -17,6 +17,7 @@ import { useTestByLesson } from '@/hooks/useTests';
 import { toast } from 'sonner';
 import { SoundsliceEmbed, SoundslicePreset } from './SoundsliceEmbed';
 import { TestPlayer } from './TestPlayer';
+import { SuggestedListeningBlock } from './SuggestedListeningBlock';
 import type { ModuleLesson } from '@/types/course';
 
 interface LessonViewProps {
@@ -283,8 +284,20 @@ export function LessonView({
           </motion.div>
         )}
 
-        {/* Content */}
-        {lesson.content && (
+        {/* Suggested Listening Block - rich themed view for suggested listening lessons */}
+        {lessonData.suggested_listening_content && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <SuggestedListeningBlock content={lessonData.suggested_listening_content} />
+          </motion.div>
+        )}
+
+        {/* Content - show only if NOT a suggested listening lesson with processed content */}
+        {lesson.content && !lessonData.suggested_listening_content && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
