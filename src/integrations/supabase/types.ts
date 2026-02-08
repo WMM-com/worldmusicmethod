@@ -154,6 +154,7 @@ export type Database = {
           categories: string[] | null
           content: string | null
           created_at: string | null
+          deleted_at: string | null
           excerpt: string | null
           featured_image: string | null
           id: string
@@ -162,6 +163,7 @@ export type Database = {
           published_at: string | null
           reading_time: number | null
           slug: string
+          tags: string[] | null
           title: string
           updated_at: string | null
         }
@@ -170,6 +172,7 @@ export type Database = {
           categories?: string[] | null
           content?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           excerpt?: string | null
           featured_image?: string | null
           id?: string
@@ -178,6 +181,7 @@ export type Database = {
           published_at?: string | null
           reading_time?: number | null
           slug: string
+          tags?: string[] | null
           title: string
           updated_at?: string | null
         }
@@ -186,6 +190,7 @@ export type Database = {
           categories?: string[] | null
           content?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           excerpt?: string | null
           featured_image?: string | null
           id?: string
@@ -194,6 +199,7 @@ export type Database = {
           published_at?: string | null
           reading_time?: number | null
           slug?: string
+          tags?: string[] | null
           title?: string
           updated_at?: string | null
         }
@@ -6123,6 +6129,7 @@ export type Database = {
         Args: { p_conversation_id: string }
         Returns: number
       }
+      purge_old_trashed_blog_posts: { Args: never; Returns: undefined }
       register_play_event: {
         Args: {
           p_content_duration_seconds: number

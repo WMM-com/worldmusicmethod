@@ -114,6 +114,7 @@ export default function BlogPost() {
                 <BlogPostSidebar
                   categories={categories}
                   popularPosts={mappedPopular}
+                  tags={post.tags || []}
                 />
               </aside>
             </div>

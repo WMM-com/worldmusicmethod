@@ -11,6 +11,7 @@ export interface BlogPostData {
   author_name: string | null;
   published_at: string | null;
   categories: string[] | null;
+  tags: string[] | null;
   reading_time: number | null;
   meta_title: string | null;
   meta_description: string | null;
@@ -34,8 +35,9 @@ export interface PopularPostData {
 async function fetchPostBySlug(slug: string): Promise<BlogPostData | null> {
   const { data, error } = await supabase
     .from('blog_posts')
-    .select('id, title, slug, content, excerpt, featured_image, author_name, published_at, categories, reading_time, meta_title, meta_description')
+    .select('id, title, slug, content, excerpt, featured_image, author_name, published_at, categories, tags, reading_time, meta_title, meta_description')
     .eq('slug', slug)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) throw error;
@@ -53,6 +55,7 @@ async function fetchRelatedPosts(
       .select('slug, title, featured_image, excerpt, reading_time')
       .neq('slug', currentSlug)
       .not('published_at', 'is', null)
+      .is('deleted_at', null)
       .overlaps('categories', categories)
       .order('published_at', { ascending: false })
       .limit(3);
@@ -69,6 +72,7 @@ async function fetchRelatedPosts(
         .select('slug, title, featured_image, excerpt, reading_time')
         .not('slug', 'in', `(${existingSlugs.map((s) => `"${s}"`).join(',')})`)
         .not('published_at', 'is', null)
+        .is('deleted_at', null)
         .order('published_at', { ascending: false })
         .limit(3 - data.length);
 
@@ -82,6 +86,7 @@ async function fetchRelatedPosts(
     .select('slug, title, featured_image, excerpt, reading_time')
     .neq('slug', currentSlug)
     .not('published_at', 'is', null)
+    .is('deleted_at', null)
     .order('published_at', { ascending: false })
     .limit(3);
 
@@ -95,6 +100,7 @@ async function fetchPopularPosts(currentSlug: string): Promise<PopularPostData[]
     .select('slug, title, featured_image, published_at')
     .neq('slug', currentSlug)
     .not('published_at', 'is', null)
+    .is('deleted_at', null)
     .order('published_at', { ascending: false })
     .limit(5);
 
@@ -106,7 +112,8 @@ async function fetchAllCategories(): Promise<string[]> {
   const { data, error } = await supabase
     .from('blog_posts')
     .select('categories')
-    .not('published_at', 'is', null);
+    .not('published_at', 'is', null)
+    .is('deleted_at', null);
 
   if (error) throw error;
 
