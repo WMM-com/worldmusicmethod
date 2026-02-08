@@ -30,6 +30,7 @@ import {
   Check,
   X,
   Loader2,
+  Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -69,6 +70,13 @@ interface AudioMapping {
   confidence: 'high' | 'medium' | 'low' | 'none';
   accepted: boolean;
   reason: string;
+}
+
+interface RevertEntry {
+  questionId: string;
+  previousUrl: string | null;
+  newUrl: string;
+  timestamp: number;
 }
 
 interface Props {
@@ -228,6 +236,8 @@ export function TestAudioManager({ onBack }: Props) {
   const [r2BrowserQuestionId, setR2BrowserQuestionId] = useState<string | null>(null);
   const [r2Prefix, setR2Prefix] = useState('2024/08/');
   const [uploadingQuestionId, setUploadingQuestionId] = useState<string | null>(null);
+  const [revertHistory, setRevertHistory] = useState<RevertEntry[]>([]);
+  const [revertingQuestionId, setRevertingQuestionId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -411,6 +421,10 @@ export function TestAudioManager({ onBack }: Props) {
     let errorCount = 0;
 
     for (const mapping of toApply) {
+      // Capture previous URL for revert
+      const question = currentTest?.questions.find((q) => q.id === mapping.questionId);
+      const previousUrl = question?.audio_url || null;
+
       const { error } = await supabase
         .from('test_questions')
         .update({ audio_url: mapping.suggestedUrl })
@@ -421,6 +435,11 @@ export function TestAudioManager({ onBack }: Props) {
         console.error('Failed to update:', mapping.questionId, error);
       } else {
         successCount++;
+        // Track revert history
+        setRevertHistory((prev) => [
+          ...prev.filter((r) => r.questionId !== mapping.questionId),
+          { questionId: mapping.questionId, previousUrl, newUrl: mapping.suggestedUrl!, timestamp: Date.now() },
+        ]);
       }
     }
 
@@ -453,12 +472,22 @@ export function TestAudioManager({ onBack }: Props) {
   const assignR2Url = async (questionId: string, url: string, key: string) => {
     // Save directly to DB when manually selecting from R2 browser
     try {
+      // Capture previous URL for revert
+      const question = currentTest?.questions.find((q) => q.id === questionId);
+      const previousUrl = question?.audio_url || null;
+
       const { error } = await supabase
         .from('test_questions')
         .update({ audio_url: url })
         .eq('id', questionId);
 
       if (error) throw error;
+
+      // Track revert history
+      setRevertHistory((prev) => [
+        ...prev.filter((r) => r.questionId !== questionId),
+        { questionId, previousUrl, newUrl: url, timestamp: Date.now() },
+      ]);
 
       // Update local mappings state too
       setMappings((prev) => {
@@ -481,6 +510,36 @@ export function TestAudioManager({ onBack }: Props) {
       toast.success('Audio URL saved to database!');
     } catch (err: any) {
       toast.error(err.message || 'Failed to save audio URL');
+    }
+  };
+
+  // ── Revert audio URL ──────────────────────────────────────
+
+  const revertAudioUrl = async (questionId: string) => {
+    const entry = revertHistory.find((r) => r.questionId === questionId);
+    if (!entry) return;
+
+    setRevertingQuestionId(questionId);
+    try {
+      const { error } = await supabase
+        .from('test_questions')
+        .update({ audio_url: entry.previousUrl })
+        .eq('id', questionId);
+
+      if (error) throw error;
+
+      // Remove from revert history
+      setRevertHistory((prev) => prev.filter((r) => r.questionId !== questionId));
+
+      // Clear mapping for this question
+      setMappings((prev) => prev.filter((m) => m.questionId !== questionId));
+
+      queryClient.invalidateQueries({ queryKey: ['admin-tests-with-audio'] });
+      toast.success('Audio URL reverted successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to revert audio URL');
+    } finally {
+      setRevertingQuestionId(null);
     }
   };
 
@@ -750,6 +809,20 @@ export function TestAudioManager({ onBack }: Props) {
                         >
                           <FolderOpen className="w-4 h-4" />
                         </Button>
+
+                        {/* Revert button – appears after a URL was saved */}
+                        {revertHistory.find((r) => r.questionId === q.id) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-orange-500 hover:text-orange-700 hover:bg-orange-500/10"
+                            disabled={revertingQuestionId === q.id}
+                            onClick={() => revertAudioUrl(q.id)}
+                            title="Revert to previous audio URL"
+                          >
+                            {revertingQuestionId === q.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+                          </Button>
+                        )}
                       </div>
 
                       {/* Mapping suggestion row */}
