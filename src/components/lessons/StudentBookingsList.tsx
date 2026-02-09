@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useMyBookingRequests } from '@/hooks/useBookings';
 import { createLessonPayment, sendBookingConfirmation, createBookingRoom, sendBookingNotification } from '@/lib/bookingIntegrations';
 import { CreditCard, Video, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatLocalTimeRange } from '@/lib/timezone';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,7 +83,7 @@ export function StudentBookingsList() {
                   <p className="font-medium text-sm">{lesson?.title || 'Lesson'}</p>
                   {confirmedSlot && (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {format(new Date(confirmedSlot.start_time), 'EEE d MMM, h:mma')} – {format(new Date(confirmedSlot.end_time), 'h:mma')}
+                      {formatLocalTimeRange(confirmedSlot.start_time, confirmedSlot.end_time)}
                     </p>
                   )}
                 </div>

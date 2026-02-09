@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTutorBookingRequests, useUpdateBookingStatus, useUpdateSlotStatus } from '@/hooks/useBookings';
 import { useTutorAvailability, expandAvailabilityToSlots } from '@/hooks/useTutorAvailability';
 import { Inbox, Check, X, Clock, CalendarCheck, Video, CreditCard } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatLocalTimeRange } from '@/lib/timezone';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { sendBookingNotification, createBookingRoom } from '@/lib/bookingIntegrations';
@@ -141,9 +141,7 @@ export function TutorRequestManager() {
                       <CalendarCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                     )}
                     <span>
-                      {format(new Date(slot.start_time), 'EEE d MMM, h:mma')}
-                      {' – '}
-                      {format(new Date(slot.end_time), 'h:mma')}
+                      {formatLocalTimeRange(slot.start_time, slot.end_time)}
                     </span>
                     {matches && (
                       <span className="text-xs text-emerald-600 dark:text-emerald-400">Matches availability</span>
