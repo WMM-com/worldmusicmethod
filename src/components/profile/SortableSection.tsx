@@ -158,9 +158,9 @@ function SortableSectionComponent({
             )}
           </div>
 
-          {/* Top-right Layout Selector - offset left to avoid section's own controls */}
+          {/* Top-right Layout Selector - offset to clear section's internal Save/dropdown buttons */}
           {onLayoutChange && (
-            <div className="absolute top-2 right-14 z-10">
+            <div className="absolute top-2 right-[11rem] z-10">
               <LayoutSelector 
                 currentLayout={layout || null} 
                 onLayoutChange={onLayoutChange} 
