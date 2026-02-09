@@ -33,6 +33,7 @@ const defaultForm = {
   track_inventory: false,
   stock_quantity: 0,
   weight_grams: 0,
+  year: '' as string | number,
   is_active: true,
 };
 
@@ -66,6 +67,7 @@ export function MerchProductsTab() {
       track_inventory: p.track_inventory,
       stock_quantity: p.stock_quantity,
       weight_grams: p.weight_grams || 0,
+      year: p.year || '',
       is_active: p.is_active,
     });
     setDialogOpen(true);
@@ -80,6 +82,7 @@ export function MerchProductsTab() {
       sku: form.sku || null,
       cost_price: form.cost_price || null,
       weight_grams: form.weight_grams || null,
+      year: form.year ? parseInt(String(form.year)) : null,
     };
 
     if (editingProduct) {
@@ -195,6 +198,10 @@ export function MerchProductsTab() {
                 <Label>SKU</Label>
                 <Input value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} placeholder="TSHIRT-001" />
               </div>
+            </div>
+            <div>
+              <Label>Year (optional)</Label>
+              <Input type="number" min={1900} max={2099} value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} placeholder="e.g. 2024" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

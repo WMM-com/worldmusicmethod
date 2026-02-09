@@ -18,7 +18,12 @@ Deno.serve(async (req) => {
 
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
-    if (!stripeKey) throw new Error('STRIPE_SECRET_KEY not configured');
+    if (!stripeKey) {
+      throw new Error('STRIPE_SECRET_KEY not configured. Add it in your project secrets.');
+    }
+    if (stripeKey.startsWith('pk_')) {
+      throw new Error('Invalid key: STRIPE_SECRET_KEY contains a publishable key (pk_*). Need a secret key (sk_*).');
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
