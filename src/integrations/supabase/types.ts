@@ -218,6 +218,7 @@ export type Database = {
           lesson_id: string
           status: string | null
           student_id: string
+          video_room_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -225,6 +226,7 @@ export type Database = {
           lesson_id: string
           status?: string | null
           student_id: string
+          video_room_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -232,6 +234,7 @@ export type Database = {
           lesson_id?: string
           status?: string | null
           student_id?: string
+          video_room_id?: string | null
         }
         Relationships: [
           {
@@ -253,6 +256,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_video_room_id_fkey"
+            columns: ["video_room_id"]
+            isOneToOne: false
+            referencedRelation: "video_rooms"
             referencedColumns: ["id"]
           },
         ]

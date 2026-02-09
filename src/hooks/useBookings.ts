@@ -86,7 +86,7 @@ export function useCreateBookingRequest() {
         .from('booking_slots')
         .insert(slotsData);
       if (slotsError) throw slotsError;
-      return request;
+      return request as { id: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-booking-requests'] });
