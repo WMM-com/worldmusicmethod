@@ -7,7 +7,7 @@ import { ProductUpload } from './ProductUpload';
 import { ProductCard } from './ProductCard';
 import { BuyProductModal } from './BuyProductModal';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
-import { Plus, ShoppingBag, Trash2, Settings, X, Pencil } from 'lucide-react';
+import { Plus, ShoppingBag, Trash2, EllipsisVertical, X, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -69,7 +69,7 @@ export function DigitalProductsSection({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings className="h-4 w-4" />
+                <EllipsisVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { 
-  MoveVertical, Settings, Trash2, Pencil
+  MoveVertical, EllipsisVertical, Trash2, Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -72,7 +72,7 @@ export function SpacerBlock({ section, isEditing, onUpdate, onDelete }: SpacerBl
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

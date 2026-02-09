@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { 
-  Heading, Settings, Trash2, AlignLeft, AlignCenter, AlignRight, Pencil
+  Heading, EllipsisVertical, Trash2, AlignLeft, AlignCenter, AlignRight, Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -106,7 +106,7 @@ export function HeadingBlock({ section, isEditing, onUpdate, onDelete }: Heading
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
