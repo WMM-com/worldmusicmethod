@@ -4,10 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useTutorBookingRequests, useUpdateBookingStatus, useUpdateSlotStatus } from '@/hooks/useBookings';
 import { useTutorAvailability, expandAvailabilityToSlots } from '@/hooks/useTutorAvailability';
-import { Inbox, Check, X, Clock, CalendarCheck } from 'lucide-react';
+import { Inbox, Check, X, Clock, CalendarCheck, Video, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { sendBookingNotification, createBookingRoom } from '@/lib/bookingIntegrations';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
@@ -20,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function TutorRequestManager() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { data: requests, isLoading } = useTutorBookingRequests();
   const updateStatus = useUpdateBookingStatus();
   const updateSlotStatus = useUpdateSlotStatus();
@@ -46,6 +49,7 @@ export function TutorRequestManager() {
     try {
       await updateSlotStatus.mutateAsync({ slotId, status: 'selected_by_tutor' });
       await updateStatus.mutateAsync({ requestId, status: 'tutor_reviewed' });
+      sendBookingNotification(requestId, 'tutor_reviewed');
       toast.success('Slot selected. Student will be notified.');
     } catch {
       toast.error('Failed to select slot');
@@ -55,6 +59,7 @@ export function TutorRequestManager() {
   const handleConfirm = async (requestId: string) => {
     try {
       await updateStatus.mutateAsync({ requestId, status: 'payment_pending' });
+      sendBookingNotification(requestId, 'payment_pending');
       toast.success('Request confirmed. Awaiting student payment.');
     } catch {
       toast.error('Failed to confirm request');
@@ -64,9 +69,30 @@ export function TutorRequestManager() {
   const handleCancel = async (requestId: string) => {
     try {
       await updateStatus.mutateAsync({ requestId, status: 'cancelled' });
+      sendBookingNotification(requestId, 'cancelled');
       toast.success('Request cancelled');
     } catch {
       toast.error('Failed to cancel request');
+    }
+  };
+
+  const handleCreateRoom = async (requestId: string, roomId?: string) => {
+    if (roomId) {
+      // Room already exists, navigate to it
+      const { data: room } = await (await import('@/integrations/supabase/client')).supabase
+        .from('video_rooms')
+        .select('room_name')
+        .eq('id', roomId)
+        .single();
+      if (room) navigate(`/meet/${room.room_name}`);
+      return;
+    }
+    const result = await createBookingRoom(requestId);
+    if (result?.room) {
+      toast.success('Video room created!');
+      navigate(`/meet/${result.room.room_name}`);
+    } else {
+      toast.error('Failed to create video room');
     }
   };
 
@@ -150,6 +176,19 @@ export function TutorRequestManager() {
               <Button size="sm" variant="outline" onClick={() => handleCancel(request.id)}>
                 <X className="h-3.5 w-3.5" />
               </Button>
+            </div>
+          )}
+          {request.status === 'confirmed' && (
+            <div className="flex gap-2 pt-1">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => handleCreateRoom(request.id, request.video_room_id)}>
+                <Video className="h-3.5 w-3.5 mr-1" /> {request.video_room_id ? 'Join Video Room' : 'Create Video Room'}
+              </Button>
+            </div>
+          )}
+          {request.status === 'payment_pending' && (
+            <div className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
+              <CreditCard className="h-3.5 w-3.5" />
+              <span>Awaiting student payment...</span>
             </div>
           )}
           {request.status === 'pending' && (

@@ -4,6 +4,7 @@ import { useCreateBookingRequest } from '@/hooks/useBookings';
 import { useAuth } from '@/contexts/AuthContext';
 import { BookingCalendar } from '@/components/lessons/BookingCalendar';
 import { SiteHeader } from '@/components/layout/SiteHeader';
+import { sendBookingNotification } from '@/lib/bookingIntegrations';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,10 +27,14 @@ export default function LessonDetail() {
     if (!lesson) return;
 
     try {
-      await createBooking.mutateAsync({
+      const result = await createBooking.mutateAsync({
         lessonId: lesson.id,
         slots: slots.map(s => ({ start: s.start, end: s.end })),
       });
+      // Send DM notification to tutor
+      if (result?.id) {
+        sendBookingNotification(result.id, 'new_request');
+      }
       toast.success('Booking request sent! The tutor will review your proposed times.');
       navigate('/lessons');
     } catch {
