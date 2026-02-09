@@ -91,7 +91,8 @@ export function ReviewsSection({ courseId, courseTitle }: ReviewsSectionProps) {
   const hasMore = (totalCount ?? 0) > INITIAL_LIMIT && !showAll;
 
   return (
-    <section className="space-y-6">
+    <section className="py-20 bg-muted/30 border-t border-border/30">
+      <div className="max-w-6xl mx-auto px-6 space-y-6">
       <h2 className="text-2xl font-bold">Student Reviews</h2>
 
       {/* Average Rating Summary */}
@@ -172,6 +173,7 @@ export function ReviewsSection({ courseId, courseTitle }: ReviewsSectionProps) {
           </Button>
         </div>
       )}
+      </div>
     </section>
   );
 }
