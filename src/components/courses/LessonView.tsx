@@ -17,6 +17,7 @@ import { useTestByLesson } from '@/hooks/useTests';
 import { toast } from 'sonner';
 import { SoundsliceEmbed, SoundslicePreset } from './SoundsliceEmbed';
 import { TestPlayer } from './TestPlayer';
+import { SuggestedListeningBlock } from './SuggestedListeningBlock';
 import type { ModuleLesson } from '@/types/course';
 
 interface LessonViewProps {
@@ -135,6 +136,7 @@ export function LessonView({
   
   // Access additional fields from database
   const lessonData = lesson as any;
+  const suggestedListeningContent: string | null = lessonData.suggested_listening_content || null;
   const dbYoutubeUrls: string[] = lessonData.youtube_urls || [];
   const dbSpotifyUrls: string[] = lessonData.spotify_urls || [];
   const fileAttachments: { name: string; url: string; type: string }[] = lessonData.file_attachments || [];
@@ -324,8 +326,26 @@ export function LessonView({
           </motion.div>
         )}
 
-        {/* Listening References */}
-        {listeningRefs.length > 0 && (
+        {/* Rich Suggested Listening Content (blog-style formatting) */}
+        {suggestedListeningContent && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-8"
+          >
+            <Card className="p-6 bg-card border-border">
+              <div className="flex items-center gap-2 mb-6">
+                <Headphones className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold text-foreground text-lg">Suggested Listening</h2>
+              </div>
+              <SuggestedListeningBlock html={suggestedListeningContent} />
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Listening References (simple list fallback — only if no rich content) */}
+        {!suggestedListeningContent && listeningRefs.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
