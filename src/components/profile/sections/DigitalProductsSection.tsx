@@ -39,6 +39,12 @@ export function DigitalProductsSection({
   const deleteProduct = useDeleteDigitalProduct();
 
   const handlePurchase = (product: DigitalProduct) => {
+    // Free products: direct download without payment modal
+    const isFree = product.price_type === 'fixed' && product.base_price === 0;
+    if (isFree) {
+      window.open(product.file_url, '_blank');
+      return;
+    }
     setSelectedProduct(product);
     setBuyModalOpen(true);
   };

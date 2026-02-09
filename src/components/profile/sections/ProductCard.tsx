@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useGeoPricing, formatPrice } from '@/contexts/GeoPricingContext';
 import { DigitalProduct } from '@/hooks/useDigitalProducts';
-import { FileIcon, ShoppingCart, Loader2 } from 'lucide-react';
+import { FileIcon, ShoppingCart, Loader2, Download } from 'lucide-react';
 
 interface ProductCardProps {
   product: DigitalProduct;
@@ -12,6 +12,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardProps) {
+  const isFreeProduct = product.price_type === 'fixed' && product.base_price === 0;
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
   
   // Calculate geo-adjusted price
@@ -67,7 +68,14 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
 
         {/* Pricing */}
         <div className="mb-4">
-          {product.price_type === 'fixed' ? (
+          {isFreeProduct ? (
+            <div className="flex items-center gap-2">
+              <Badge className="bg-green-600 hover:bg-green-600 text-white">Free</Badge>
+              <span className="text-2xl font-bold text-yellow-400">
+                {formatPrice(0, product.currency, false)}
+              </span>
+            </div>
+          ) : product.price_type === 'fixed' ? (
             <div className="flex items-baseline gap-2">
               {geoLoading ? (
                 <span className="text-lg font-bold">...</span>
@@ -99,10 +107,12 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
         >
           {isPurchasing ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : isFreeProduct ? (
+            <Download className="h-4 w-4 mr-2" />
           ) : (
             <ShoppingCart className="h-4 w-4 mr-2" />
           )}
-          {product.price_type === 'pwyw' ? 'Name Your Price' : 'Buy Now'}
+          {isFreeProduct ? 'Download Free' : product.price_type === 'pwyw' ? 'Name Your Price' : 'Buy Now'}
         </Button>
       </CardContent>
     </Card>
