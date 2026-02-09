@@ -56,6 +56,7 @@ export default function Account() {
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
   const [showUsernameConfirm, setShowUsernameConfirm] = useState(false);
+  const [pendingUsername, setPendingUsername] = useState('');
   const changeUsername = useChangeUsername();
   const currentSection = (searchParams.get('section') as Section) || 'profile';
   
@@ -162,18 +163,21 @@ export default function Account() {
   };
 
   const handleUsernameClick = () => {
-    if (!usernameInput.trim()) {
+    const trimmed = usernameInput.trim();
+    if (!trimmed) {
       toast.error('Username cannot be empty');
       return;
     }
+    setPendingUsername(trimmed);
     setShowUsernameConfirm(true);
   };
 
   const handleConfirmUsername = async () => {
+    const usernameToSet = pendingUsername;
     setShowUsernameConfirm(false);
     setSavingUsername(true);
     try {
-      const result = await changeUsername.mutateAsync(usernameInput.trim());
+      const result = await changeUsername.mutateAsync(usernameToSet);
       if (result.success) {
         toast.success(result.message || 'Username updated');
         setForm(prev => ({ ...prev, username: result.username || usernameInput.trim() }));
@@ -938,10 +942,10 @@ export default function Account() {
             <DialogTitle>Confirm Username Change</DialogTitle>
             <DialogDescription>
               {usernameChangeCount === 0
-                ? `You're about to set your username to "${usernameInput.trim()}". You'll get one free retry to change it again — after that, you won't be able to change it for 30 days.`
+                ? `You're about to set your username to "${pendingUsername}". You'll get one free retry to change it again — after that, you won't be able to change it for 30 days.`
                 : usernameChangeCount === 1
-                ? `You're about to change your username to "${usernameInput.trim()}". This is your last free change — after this, you won't be able to change it again for 30 days.`
-                : `You're about to change your username to "${usernameInput.trim()}". You won't be able to change it again for 30 days.`}
+                ? `You're about to change your username to "${pendingUsername}". This is your last free change — after this, you won't be able to change it again for 30 days.`
+                : `You're about to change your username to "${pendingUsername}". You won't be able to change it again for 30 days.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
