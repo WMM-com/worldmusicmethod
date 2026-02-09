@@ -1749,17 +1749,7 @@ export default function CourseLanding() {
 
           {/* Reviews Section */}
           {course?.id && (
-            <section className="py-20 bg-muted/30 border-t border-border/30">
-              <div className="max-w-6xl mx-auto px-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                >
-                  <ReviewsSection courseId={course.id} courseTitle={course.title} />
-                </motion.div>
-              </div>
-            </section>
+            <ReviewsSection courseId={course.id} courseTitle={course.title} />
           )}
 
           {/* CTA Section */}
