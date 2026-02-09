@@ -11,6 +11,7 @@ interface ProfileNavProps {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onPageNavigate?: () => void;
+  className?: string;
 }
 
 // Built-in profile tabs (About is now a page, not a tab)
@@ -25,6 +26,7 @@ export function ProfileNav({
   activeTab = 'about',
   onTabChange,
   onPageNavigate,
+  className,
 }: ProfileNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -103,10 +105,10 @@ export function ProfileNav({
 
   return (
     <nav 
-      className="border-b border-border bg-muted/50 rounded-lg"
+      className={cn("border-b border-border bg-muted/50 rounded-lg min-w-0", className)}
     >
-      <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex min-w-min px-2 py-1">
+      <div className="overflow-x-auto scrollbar-hide -webkit-overflow-scrolling-touch">
+        <div className="flex min-w-max px-1 sm:px-2 py-1">
           {/* Custom pages from database */}
           {visiblePages.map((page, index) => {
             const isActive = isCustomPageActive && activePage?.id === page.id;

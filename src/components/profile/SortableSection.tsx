@@ -1,21 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
+import { GripVertical, ChevronUp, ChevronDown, Trash2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
 import { LayoutSelector } from './LayoutSelector';
 import { LayoutType } from './GridLayout';
+import { BreakpointStyleEditor, ResponsiveStyles, resolveResponsiveStyles, useScreenWidth } from './BreakpointStyleEditor';
+import { DeviceType } from './DevicePreviewToggle';
 
 interface SortableSectionProps {
   id: string;
   layout?: string | null;
   isEditing: boolean;
   children: React.ReactNode;
+  sectionType?: string;
+  sectionTitle?: string;
+  responsiveStyles?: ResponsiveStyles;
+  activeBreakpoint?: DeviceType;
   onLayoutChange?: (layout: LayoutType) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   onDelete?: () => void;
+  onStyleChange?: (styles: ResponsiveStyles) => void;
   isFirst?: boolean;
   isLast?: boolean;
 }
@@ -25,13 +32,21 @@ function SortableSectionComponent({
   layout, 
   isEditing, 
   children, 
+  sectionType = 'text_block',
+  sectionTitle = 'Section',
+  responsiveStyles,
+  activeBreakpoint = 'desktop',
   onLayoutChange,
   onMoveUp,
   onMoveDown,
   onDelete,
+  onStyleChange,
   isFirst,
   isLast,
 }: SortableSectionProps) {
+  const [styleEditorOpen, setStyleEditorOpen] = useState(false);
+  const screenWidth = useScreenWidth();
+
   const {
     attributes,
     listeners,
@@ -46,10 +61,16 @@ function SortableSectionComponent({
     transition,
   };
 
+  // Resolve responsive styles based on current screen width
+  const resolvedStyles = resolveResponsiveStyles(responsiveStyles, screenWidth);
+  const hasCustomStyles = responsiveStyles && Object.keys(responsiveStyles).some(
+    k => responsiveStyles[k as DeviceType] && Object.keys(responsiveStyles[k as DeviceType]!).length > 0
+  );
+
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{ ...style, ...resolvedStyles }}
       className={cn(
         getLayoutClass(layout),
         isDragging && 'opacity-50 z-50',
@@ -101,6 +122,23 @@ function SortableSectionComponent({
           >
             <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </button>
+
+          {/* Style Settings Button */}
+          {onStyleChange && (
+            <button
+              type="button"
+              onClick={() => setStyleEditorOpen(true)}
+              className={cn(
+                'p-1 bg-background border-x border-border shadow-sm',
+                'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
+                hasCustomStyles && 'text-primary'
+              )}
+              aria-label="Style settings"
+              title="Responsive style settings"
+            >
+              <Settings className={cn('h-3 w-3', hasCustomStyles ? 'text-primary' : 'text-muted-foreground')} />
+            </button>
+          )}
           
           {/* Delete Button */}
           {onDelete && (
@@ -108,7 +146,9 @@ function SortableSectionComponent({
               type="button"
               onClick={onDelete}
               className={cn(
-                'p-1 rounded-b-md bg-background border border-border border-t-0 shadow-sm',
+                'p-1 bg-background border border-border shadow-sm',
+                !onLayoutChange && 'rounded-b-md border-t-0',
+                onLayoutChange && 'border-t-0',
                 'hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive'
               )}
               aria-label="Delete section"
@@ -129,6 +169,19 @@ function SortableSectionComponent({
         </div>
       )}
       {children}
+
+      {/* Style Editor Modal */}
+      {onStyleChange && (
+        <BreakpointStyleEditor
+          open={styleEditorOpen}
+          onOpenChange={setStyleEditorOpen}
+          sectionType={sectionType}
+          sectionTitle={sectionTitle}
+          currentStyles={responsiveStyles || {}}
+          onSave={onStyleChange}
+          activeBreakpoint={activeBreakpoint}
+        />
+      )}
     </div>
   );
 }

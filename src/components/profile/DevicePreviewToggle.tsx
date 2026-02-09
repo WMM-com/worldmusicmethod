@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Smartphone, Tablet, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +9,7 @@ interface DevicePreviewToggleProps {
   device: DeviceType;
   onChange: (device: DeviceType) => void;
   className?: string;
+  autoDetect?: boolean;
 }
 
 const deviceConfig: Record<DeviceType, { label: string; icon: typeof Smartphone; width: number }> = {
@@ -16,9 +18,29 @@ const deviceConfig: Record<DeviceType, { label: string; icon: typeof Smartphone;
   desktop: { label: 'Desktop', icon: Monitor, width: 1440 },
 };
 
-export function DevicePreviewToggle({ device, onChange, className }: DevicePreviewToggleProps) {
+// Detect device type from screen width
+export function detectDeviceType(width: number): DeviceType {
+  if (width < 768) return 'mobile';
+  if (width < 1024) return 'tablet';
+  return 'desktop';
+}
+
+export function DevicePreviewToggle({ device, onChange, className, autoDetect = true }: DevicePreviewToggleProps) {
+  const hasAutoDetected = useRef(false);
+
+  // Auto-detect on first mount based on current screen width
+  useEffect(() => {
+    if (autoDetect && !hasAutoDetected.current) {
+      hasAutoDetected.current = true;
+      const detected = detectDeviceType(window.innerWidth);
+      if (detected !== device) {
+        onChange(detected);
+      }
+    }
+  }, [autoDetect]); // Only on mount
+
   return (
-    <div className={cn('flex items-center gap-1 p-1 rounded-lg bg-muted', className)}>
+    <div className={cn('flex items-center gap-1 p-1 rounded-lg bg-muted shrink-0', className)}>
       {(Object.keys(deviceConfig) as DeviceType[]).map((d) => {
         const { label, icon: Icon, width } = deviceConfig[d];
         const isActive = device === d;
