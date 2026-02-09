@@ -1,56 +1,71 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import * as ics from "https://esm.sh/ics@3.8.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-// Generate .ics calendar file content
+// Generate .ics calendar file content using the ics library
 function generateICS(
   title: string,
   startTime: string,
   endTime: string,
   description: string,
-  roomUrl: string
-): string {
-  const formatDate = (iso: string) => {
-    return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  roomUrl: string,
+  durationMinutes: number,
+  tutorName: string,
+  tutorEmail: string,
+  studentName: string,
+  studentEmail: string
+): string | null {
+  const start = new Date(startTime);
+  const event: ics.EventAttributes = {
+    start: [
+      start.getUTCFullYear(),
+      start.getUTCMonth() + 1,
+      start.getUTCDate(),
+      start.getUTCHours(),
+      start.getUTCMinutes(),
+    ],
+    startInputType: 'utc',
+    startOutputType: 'utc',
+    duration: { minutes: durationMinutes },
+    title,
+    description,
+    location: 'Online Video Call',
+    url: roomUrl,
+    status: 'CONFIRMED' as const,
+    organizer: { name: tutorName, email: tutorEmail },
+    attendees: [
+      {
+        name: studentName,
+        email: studentEmail,
+        rsvp: true,
+        partstat: 'ACCEPTED',
+        role: 'REQ-PARTICIPANT',
+      },
+      {
+        name: tutorName,
+        email: tutorEmail,
+        rsvp: false,
+        partstat: 'ACCEPTED',
+        role: 'REQ-PARTICIPANT',
+      },
+    ],
+    alarms: [
+      { action: 'display', description: 'Lesson starts in 1 hour', trigger: { before: true, minutes: 60 } },
+      { action: 'display', description: 'Lesson tomorrow', trigger: { before: true, minutes: 1440 } },
+    ],
+    method: 'REQUEST',
   };
 
-  const uid = crypto.randomUUID();
-  const now = formatDate(new Date().toISOString());
-  const dtStart = formatDate(startTime);
-  const dtEnd = formatDate(endTime);
-
-  return [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//World Music Method//Booking//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:REQUEST',
-    'BEGIN:VEVENT',
-    `UID:${uid}@worldmusicmethod.lovable.app`,
-    `DTSTAMP:${now}`,
-    `DTSTART:${dtStart}`,
-    `DTEND:${dtEnd}`,
-    `SUMMARY:${title}`,
-    `DESCRIPTION:${description.replace(/\n/g, '\\n')}`,
-    `URL:${roomUrl}`,
-    `LOCATION:${roomUrl}`,
-    'STATUS:CONFIRMED',
-    'BEGIN:VALARM',
-    'TRIGGER:-PT1H',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:Lesson starts in 1 hour',
-    'END:VALARM',
-    'BEGIN:VALARM',
-    'TRIGGER:-PT24H',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:Lesson tomorrow',
-    'END:VALARM',
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].join('\r\n');
+  const { error, value } = ics.createEvent(event);
+  if (error) {
+    console.error('[send-booking-confirmation] ICS generation error:', error);
+    return null;
+  }
+  return value!;
 }
 
 // Send email via SES using raw MIME (supports attachments)
@@ -265,12 +280,21 @@ Deno.serve(async (req) => {
 
     // Generate .ics file
     const icsContent = generateICS(
-      `Lesson: ${lesson.title}`,
+      `Private Lesson: ${lesson.title}`,
       slot.start_time,
       slot.end_time,
       `Private lesson with ${tutor?.full_name || 'your tutor'}\nJoin: ${roomUrl}`,
-      roomUrl
+      roomUrl,
+      lesson.duration_minutes || 60,
+      tutor?.full_name || 'Tutor',
+      tutor?.email || 'tutor@worldmusicmethod.com',
+      student?.full_name || 'Student',
+      student?.email || 'student@worldmusicmethod.com'
     );
+
+    if (!icsContent) {
+      console.error('[send-booking-confirmation] Failed to generate ICS file');
+    }
 
     const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
 
@@ -310,7 +334,7 @@ Deno.serve(async (req) => {
           `Lesson Confirmed: ${lesson.title} — ${formattedDate}`,
           html,
           fromAddress,
-          icsContent,
+          icsContent || '',
           accessKeyId!,
           secretAccessKey!,
           region
