@@ -357,9 +357,6 @@ export function BuyProductModal({ open, onClose, product, sellerId }: BuyProduct
             )}
           </Button>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Secure payment processed by {selectedMethod === 'stripe' ? 'Stripe' : selectedMethod === 'flutterwave' ? 'Flutterwave' : 'PayPal'}
-          </p>
         </div>
       </DialogContent>
     </Dialog>
