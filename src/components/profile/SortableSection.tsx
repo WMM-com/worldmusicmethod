@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, ChevronUp, ChevronDown, Trash2, Settings } from 'lucide-react';
+import { GripVertical, ChevronUp, ChevronDown, Trash2, Settings, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getLayoutClass } from './GridLayout';
 import { LayoutSelector } from './LayoutSelector';
@@ -78,95 +78,96 @@ function SortableSectionComponent({
       )}
     >
       {isEditing && (
-        <div className="absolute -left-1 sm:-left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Move Up Button */}
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={isFirst}
-            className={cn(
-              'p-1 rounded-t-md bg-background border border-border border-b-0 shadow-sm',
-              'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
-              isFirst && 'opacity-40 cursor-not-allowed'
-            )}
-            aria-label="Move section up"
-          >
-            <ChevronUp className="h-3 w-3 text-muted-foreground" />
-          </button>
-          
-          {/* Drag Handle */}
-          <button
-            {...attributes}
-            {...listeners}
-            className={cn(
-              'p-1.5 bg-background border-x border-border shadow-sm',
-              'cursor-grab active:cursor-grabbing',
-              'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary'
-            )}
-            aria-label="Drag to reorder"
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </button>
-          
-          {/* Move Down Button */}
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={isLast}
-            className={cn(
-              'p-1 bg-background border-x border-border shadow-sm',
-              'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
-              isLast && 'opacity-40 cursor-not-allowed'
-            )}
-            aria-label="Move section down"
-          >
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          </button>
-
-          {/* Style Settings Button */}
-          {onStyleChange && (
+        <>
+          {/* Left sidebar controls */}
+          <div className="absolute -left-1 sm:-left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Move Up Button */}
             <button
               type="button"
-              onClick={() => setStyleEditorOpen(true)}
+              onClick={onMoveUp}
+              disabled={isFirst}
+              className={cn(
+                'p-1 rounded-t-md bg-background border border-border border-b-0 shadow-sm',
+                'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
+                isFirst && 'opacity-40 cursor-not-allowed'
+              )}
+              aria-label="Move section up"
+            >
+              <ChevronUp className="h-3 w-3 text-muted-foreground" />
+            </button>
+            
+            {/* Drag Handle */}
+            <button
+              {...attributes}
+              {...listeners}
+              className={cn(
+                'p-1.5 bg-background border-x border-border shadow-sm',
+                'cursor-grab active:cursor-grabbing',
+                'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary'
+              )}
+              aria-label="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </button>
+            
+            {/* Move Down Button */}
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={isLast}
               className={cn(
                 'p-1 bg-background border-x border-border shadow-sm',
                 'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
-                hasCustomStyles && 'text-primary'
+                isLast && 'opacity-40 cursor-not-allowed'
               )}
-              aria-label="Style settings"
-              title="Responsive style settings"
+              aria-label="Move section down"
             >
-              <Settings className={cn('h-3 w-3', hasCustomStyles ? 'text-primary' : 'text-muted-foreground')} />
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             </button>
-          )}
-          
-          {/* Delete Button */}
-          {onDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className={cn(
-                'p-1 bg-background border border-border shadow-sm',
-                !onLayoutChange && 'rounded-b-md border-t-0',
-                onLayoutChange && 'border-t-0',
-                'hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive'
-              )}
-              aria-label="Delete section"
-            >
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </button>
-          )}
-          
-          {/* Layout Selector */}
+
+            {/* Style Settings Button */}
+            {onStyleChange && (
+              <button
+                type="button"
+                onClick={() => setStyleEditorOpen(true)}
+                className={cn(
+                  'p-1 bg-background border-x border-border shadow-sm',
+                  'hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary',
+                  hasCustomStyles && 'text-primary'
+                )}
+                aria-label="Style settings"
+                title="Responsive style settings"
+              >
+                <Settings className={cn('h-3 w-3', hasCustomStyles ? 'text-primary' : 'text-muted-foreground')} />
+              </button>
+            )}
+            
+            {/* Delete Button */}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className={cn(
+                  'p-1 rounded-b-md bg-background border border-border border-t-0 shadow-sm',
+                  'hover:bg-destructive/10 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-destructive'
+                )}
+                aria-label="Delete section"
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </button>
+            )}
+          </div>
+
+          {/* Top-right Layout Selector */}
           {onLayoutChange && (
-            <div className="mt-1">
+            <div className="absolute top-1 right-1 z-10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
               <LayoutSelector 
                 currentLayout={layout || null} 
                 onLayoutChange={onLayoutChange} 
               />
             </div>
           )}
-        </div>
+        </>
       )}
       {children}
 

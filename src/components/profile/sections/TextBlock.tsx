@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { 
-  Type, Settings, Trash2, AlignLeft, AlignCenter, AlignRight,
+  Type, EllipsisVertical, Trash2, AlignLeft, AlignCenter, AlignRight,
   Heading1, Heading2, Pencil
 } from 'lucide-react';
 import {
@@ -106,7 +106,7 @@ export function TextBlock({ section, isEditing, onUpdate, onDelete }: TextBlockP
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

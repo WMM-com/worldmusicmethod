@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { 
-  Headphones, Settings, Trash2, Upload, Play, Pause, X, Loader2
+  Headphones, EllipsisVertical, Trash2, Upload, Play, Pause, X, Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -163,7 +163,7 @@ export function AudioBlock({ section, isEditing, userId, onUpdate, onDelete }: A
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

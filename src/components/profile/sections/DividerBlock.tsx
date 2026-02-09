@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { 
-  Minus, Settings, Trash2, Pencil
+  Minus, EllipsisVertical, Trash2, Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -93,7 +93,7 @@ export function DividerBlock({ section, isEditing, onUpdate, onDelete }: Divider
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

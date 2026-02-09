@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { 
-  Image as ImageIcon, Settings, Trash2, Upload, Loader2, X, Pencil
+  Image as ImageIcon, EllipsisVertical, Trash2, Upload, Loader2, X, Pencil
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -120,7 +120,7 @@ export function ImageBlock({ section, isEditing, onUpdate, onDelete }: ImageBloc
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">

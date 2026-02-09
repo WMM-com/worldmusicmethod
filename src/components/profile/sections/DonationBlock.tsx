@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
 import { 
-  Heart, Settings, Trash2, DollarSign, Coffee, Gift
+  Heart, EllipsisVertical, Trash2, DollarSign, Coffee, Gift
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -143,7 +143,7 @@ export function DonationBlock({ section, isEditing, userId, onUpdate, onDelete }
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Settings className="h-4 w-4" />
+              <EllipsisVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
