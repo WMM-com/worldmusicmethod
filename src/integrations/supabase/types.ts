@@ -4997,6 +4997,7 @@ export type Database = {
       }
       reviews: {
         Row: {
+          approved_by: string | null
           course_id: string
           created_at: string
           id: string
@@ -5004,10 +5005,12 @@ export type Database = {
           prompt_question: string | null
           rating: number
           review_text: string | null
+          status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          approved_by?: string | null
           course_id: string
           created_at?: string
           id?: string
@@ -5015,10 +5018,12 @@ export type Database = {
           prompt_question?: string | null
           rating: number
           review_text?: string | null
+          status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          approved_by?: string | null
           course_id?: string
           created_at?: string
           id?: string
@@ -5026,6 +5031,7 @@ export type Database = {
           prompt_question?: string | null
           rating?: number
           review_text?: string | null
+          status?: string | null
           updated_at?: string
           user_id?: string
         }

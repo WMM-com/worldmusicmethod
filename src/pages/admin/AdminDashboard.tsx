@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode, Wallet, PenLine } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode, Wallet, PenLine, MessageSquare } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -20,6 +20,7 @@ import { AdminCoupons } from '@/components/admin/AdminCoupons';
 import { AdminMenuEditor } from '@/components/admin/AdminMenuEditor';
 import { AdminPages } from '@/components/admin/AdminPages';
 import { AdminFinances } from '@/components/admin/AdminFinances';
+import { AdminReviews } from '@/components/admin/AdminReviews';
 import { AdminBlog } from '@/components/admin/blog/AdminBlog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ const menuItems = [
   { id: 'streaming', label: 'Streaming', icon: Music },
   { id: 'groups', label: 'Course Groups', icon: FolderOpen },
   { id: 'blog', label: 'Blog', icon: PenLine },
+  { id: 'reviews', label: 'Reviews', icon: MessageSquare },
   { id: 'pages', label: 'Pages', icon: FileCode },
   { id: 'import', label: 'Import', icon: Upload },
   { id: 'landing', label: 'Landing Pages', icon: FileText },
@@ -116,6 +118,7 @@ export default function AdminDashboard() {
       case 'streaming': return <AdminStreaming />;
       case 'groups': return <AdminCourseGroups />;
       case 'blog': return <AdminBlog />;
+      case 'reviews': return <AdminReviews />;
       case 'pages': return <AdminPages />;
       case 'import': return <ImportCourseData />;
       case 'landing': return <LandingPageEditor />;

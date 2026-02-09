@@ -61,6 +61,7 @@ export function useCourseReviews(courseId: string | undefined, limit?: number) {
         .from('reviews')
         .select('*')
         .eq('course_id', courseId)
+        .eq('status', 'approved')
         .order('created_at', { ascending: false });
 
       if (limit) {
@@ -99,7 +100,8 @@ export function useCourseReviewsCount(courseId: string | undefined) {
       const { count, error } = await supabase
         .from('reviews')
         .select('*', { count: 'exact', head: true })
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .eq('status', 'approved');
 
       if (error) throw error;
       return count ?? 0;
@@ -117,7 +119,8 @@ export function useCourseAverageRating(courseId: string | undefined) {
       const { data, error } = await supabase
         .from('reviews')
         .select('rating')
-        .eq('course_id', courseId);
+        .eq('course_id', courseId)
+        .eq('status', 'approved');
 
       if (error) throw error;
       if (!data || data.length === 0) return null;
