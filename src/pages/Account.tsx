@@ -38,7 +38,7 @@ import { ReferralSection } from '@/components/profile/ReferralSection';
 import { 
   User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
   AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle,
-  BadgeCheck, Gift
+  BadgeCheck, Gift, FileText
 } from 'lucide-react';
 import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 import { cn } from '@/lib/utils';
@@ -826,7 +826,22 @@ export default function Account() {
 
               {/* Invite Friends Section */}
               {currentSection === 'referrals' && (
-                <ReferralSection />
+                <div className="space-y-4">
+                  <ReferralSection />
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => {
+                      import('@/lib/generateReferralGuide').then(({ generateReferralGuide }) => {
+                        const doc = generateReferralGuide();
+                        doc.save('Referral-System-Guide.pdf');
+                      });
+                    }}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Download Referral System Guide (PDF)
+                  </Button>
+                </div>
               )}
 
               {/* Security Section */}
