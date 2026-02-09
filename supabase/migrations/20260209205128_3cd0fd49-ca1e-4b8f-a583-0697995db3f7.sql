@@ -1,0 +1,1 @@
+ALTER TABLE public.digital_products ADD COLUMN cover_image_url text;

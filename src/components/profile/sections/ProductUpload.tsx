@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { useR2Upload } from '@/hooks/useR2Upload';
-import { useCreateDigitalProduct, CreateDigitalProductData } from '@/hooks/useDigitalProducts';
-import { Upload, FileIcon, X, DollarSign, Loader2 } from 'lucide-react';
+import { useCreateDigitalProduct, useUpdateDigitalProduct, CreateDigitalProductData, DigitalProduct } from '@/hooks/useDigitalProducts';
+import { Upload, FileIcon, X, Loader2, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CURRENCIES = [
@@ -20,21 +20,29 @@ const CURRENCIES = [
 interface ProductUploadProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  /** Pass existing product to enable edit mode */
+  editProduct?: DigitalProduct;
 }
 
-export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
+export function ProductUpload({ onSuccess, onCancel, editProduct }: ProductUploadProps) {
   const { uploadFile, isUploading, progress } = useR2Upload();
   const createProduct = useCreateDigitalProduct();
+  const updateProduct = useUpdateDigitalProduct();
+  
+  const isEditMode = !!editProduct;
   
   const [file, setFile] = useState<File | null>(null);
-  const [fileUrl, setFileUrl] = useState<string>('');
+  const [fileUrl, setFileUrl] = useState<string>(editProduct?.file_url || '');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string>(editProduct?.cover_image_url || '');
+  const [coverUploading, setCoverUploading] = useState(false);
   const [form, setForm] = useState({
-    title: '',
-    description: '',
-    price_type: 'fixed' as 'fixed' | 'pwyw',
-    base_price: '',
-    min_price: '',
-    currency: 'USD',
+    title: editProduct?.title || '',
+    description: editProduct?.description || '',
+    price_type: (editProduct?.price_type || 'fixed') as 'fixed' | 'pwyw',
+    base_price: editProduct ? String(editProduct.base_price) : '',
+    min_price: editProduct?.min_price != null ? String(editProduct.min_price) : '',
+    currency: editProduct?.currency || 'USD',
   });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,7 +51,6 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
     
     setFile(selectedFile);
     
-    // Upload to R2
     const result = await uploadFile(selectedFile, {
       bucket: 'user',
       folder: 'digital-products',
@@ -53,6 +60,26 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
     if (result) {
       setFileUrl(result.url);
       toast.success('File uploaded successfully');
+    }
+  };
+
+  const handleCoverSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    
+    setCoverFile(selectedFile);
+    setCoverUploading(true);
+    
+    const result = await uploadFile(selectedFile, {
+      bucket: 'user',
+      folder: 'digital-product-covers',
+      trackInDatabase: false,
+    });
+    
+    setCoverUploading(false);
+    if (result) {
+      setCoverUrl(result.url);
+      toast.success('Cover image uploaded');
     }
   };
 
@@ -83,27 +110,56 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
     }
     
     try {
-      const productData: CreateDigitalProductData = {
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        file_url: fileUrl,
-        price_type: form.price_type,
-        base_price: basePrice,
-        min_price: form.price_type === 'pwyw' ? minPrice : undefined,
-        currency: form.currency,
-      };
-      
-      await createProduct.mutateAsync(productData);
-      toast.success('Product created successfully');
+      if (isEditMode) {
+        await updateProduct.mutateAsync({
+          id: editProduct.id,
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          file_url: fileUrl,
+          price_type: form.price_type,
+          base_price: basePrice,
+          min_price: form.price_type === 'pwyw' ? minPrice : null,
+          currency: form.currency,
+          ...(coverUrl ? { cover_image_url: coverUrl } : {}),
+        } as any);
+        toast.success('Product updated successfully');
+      } else {
+        const productData: CreateDigitalProductData = {
+          title: form.title.trim(),
+          description: form.description.trim() || undefined,
+          file_url: fileUrl,
+          price_type: form.price_type,
+          base_price: basePrice,
+          min_price: form.price_type === 'pwyw' ? minPrice : undefined,
+          currency: form.currency,
+        };
+        
+        const created = await createProduct.mutateAsync(productData);
+        
+        // Update cover image if provided
+        if (coverUrl && created?.id) {
+          await updateProduct.mutateAsync({
+            id: created.id,
+            cover_image_url: coverUrl,
+          } as any);
+        }
+        
+        toast.success('Product created successfully');
+      }
       onSuccess?.();
     } catch (error) {
-      toast.error('Failed to create product');
+      toast.error(isEditMode ? 'Failed to update product' : 'Failed to create product');
     }
   };
 
   const clearFile = () => {
     setFile(null);
-    setFileUrl('');
+    setFileUrl(isEditMode ? editProduct.file_url : '');
+  };
+
+  const clearCover = () => {
+    setCoverFile(null);
+    setCoverUrl('');
   };
 
   return (
@@ -111,22 +167,22 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-5 w-5" />
-          Upload Digital Product
+          {isEditMode ? 'Edit Digital Product' : 'Upload Digital Product'}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* File Upload */}
+          {/* Product File Upload */}
           <div className="space-y-2">
             <Label>Product File</Label>
-            {!file ? (
+            {!file && !fileUrl ? (
               <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
                 <input
                   type="file"
                   className="hidden"
                   id="product-file"
                   onChange={handleFileSelect}
-                  accept=".pdf,.zip,.mp3,.mp4,.epub,.png,.jpg,.jpeg"
+                  accept=".pdf,.zip,.rar,.mp3,.mp4,.epub,.png,.jpg,.jpeg,.gif,.webp"
                 />
                 <label htmlFor="product-file" className="cursor-pointer">
                   <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
@@ -134,7 +190,7 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
                     Click to upload your digital product
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    PDF, ZIP, MP3, MP4, EPUB, Images
+                    PDF, ZIP, RAR, MP3, MP4, EPUB, Images
                   </p>
                 </label>
               </div>
@@ -142,20 +198,62 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
               <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                 <FileIcon className="h-8 w-8 text-primary" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  <p className="text-sm font-medium truncate">
+                    {file?.name || (fileUrl ? 'Existing file' : '')}
                   </p>
+                  {file && (
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  )}
                 </div>
                 {isUploading ? (
                   <div className="w-20">
                     <Progress value={progress} className="h-2" />
                   </div>
-                ) : fileUrl ? (
+                ) : (
                   <Button type="button" variant="ghost" size="icon" onClick={clearFile}>
                     <X className="h-4 w-4" />
                   </Button>
-                ) : null}
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Cover Image Upload */}
+          <div className="space-y-2">
+            <Label>Cover Image (optional)</Label>
+            {!coverFile && !coverUrl ? (
+              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+                <input
+                  type="file"
+                  className="hidden"
+                  id="cover-image"
+                  onChange={handleCoverSelect}
+                  accept=".png,.jpg,.jpeg,.gif,.webp"
+                />
+                <label htmlFor="cover-image" className="cursor-pointer flex items-center justify-center gap-2">
+                  <ImagePlus className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Upload cover image</span>
+                </label>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                {coverUrl && (
+                  <img src={coverUrl} alt="Cover" className="h-12 w-12 rounded object-cover" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {coverFile?.name || 'Cover image'}
+                  </p>
+                </div>
+                {coverUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Button type="button" variant="ghost" size="icon" onClick={clearCover}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -197,7 +295,7 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fixed">Fixed Price</SelectItem>
-                  <SelectItem value="pwyw">Pay What You Want</SelectItem>
+                  <SelectItem value="pwyw">Pay What You Feel</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -222,43 +320,35 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
             </div>
           </div>
 
-          {/* Price Fields */}
+          {/* Price Fields — no $ icon inside inputs */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="base_price">
                 {form.price_type === 'fixed' ? 'Price' : 'Suggested Price'}
               </Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="base_price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.base_price}
-                  onChange={(e) => setForm({ ...form, base_price: e.target.value })}
-                  placeholder="0.00"
-                  className="pl-9"
-                />
-              </div>
+              <Input
+                id="base_price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.base_price}
+                onChange={(e) => setForm({ ...form, base_price: e.target.value })}
+                placeholder="0.00"
+              />
             </div>
 
             {form.price_type === 'pwyw' && (
               <div className="space-y-2">
                 <Label htmlFor="min_price">Minimum Price</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="min_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.min_price}
-                    onChange={(e) => setForm({ ...form, min_price: e.target.value })}
-                    placeholder="0.00 (free allowed)"
-                    className="pl-9"
-                  />
-                </div>
+                <Input
+                  id="min_price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.min_price}
+                  onChange={(e) => setForm({ ...form, min_price: e.target.value })}
+                  placeholder="0.00 (free allowed)"
+                />
               </div>
             )}
           </div>
@@ -273,15 +363,15 @@ export function ProductUpload({ onSuccess, onCancel }: ProductUploadProps) {
             <Button 
               type="submit" 
               className="flex-1"
-              disabled={!fileUrl || createProduct.isPending}
+              disabled={!fileUrl || createProduct.isPending || updateProduct.isPending}
             >
-              {createProduct.isPending ? (
+              {(createProduct.isPending || updateProduct.isPending) ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
+                  {isEditMode ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                'Create Product'
+                isEditMode ? 'Update Product' : 'Create Product'
               )}
             </Button>
           </div>
