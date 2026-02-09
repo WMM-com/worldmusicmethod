@@ -452,12 +452,6 @@ export function WriteReviewModal({
             )}
           </div>
 
-          {/* Gamification hint - only show for new reviews */}
-          {!isEditMode && (
-            <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-              💡 <strong>Tip:</strong> Write reviews for your first 5 courses to earn 50 bonus points each!
-            </div>
-          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3">
