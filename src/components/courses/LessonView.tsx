@@ -285,8 +285,8 @@ export function LessonView({
           </motion.div>
         )}
 
-        {/* Content */}
-        {lesson.content && (
+        {/* Content — hide if rich suggested listening content exists (it supersedes plain notes) */}
+        {lesson.content && !suggestedListeningContent && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
