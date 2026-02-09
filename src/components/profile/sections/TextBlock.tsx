@@ -89,7 +89,7 @@ export function TextBlock({ section, isEditing, onUpdate, onDelete }: TextBlockP
           <Button
             variant="secondary"
             size="icon"
-            className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-2 right-2 h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={() => setInlineEdit(true)}
           >
             <Pencil className="h-4 w-4" />

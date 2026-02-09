@@ -115,7 +115,7 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto w-[calc(100vw-1rem)] sm:w-auto">
         <DialogHeader>
           <DialogTitle>Configure Hero Section</DialogTitle>
         </DialogHeader>
@@ -363,7 +363,7 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
 
             {/* Image Size & Position (for standard & slay) */}
             {bgImageEnabled && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Image Size</Label>
                   <Select
@@ -401,9 +401,9 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
             {contentEnabled && (
               <div className="space-y-4">
                 {/* Title Styling */}
-                <div className="border rounded-lg p-4 space-y-3">
+                <div className="border rounded-lg p-3 sm:p-4 space-y-3">
                   <Label className="text-sm font-semibold">Title Style</Label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Size (px)</Label>
                       <Input type="number" min={12} max={120}
@@ -437,9 +437,9 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                 </div>
 
                 {/* Subtitle Styling */}
-                <div className="border rounded-lg p-4 space-y-3">
+                <div className="border rounded-lg p-3 sm:p-4 space-y-3">
                   <Label className="text-sm font-semibold">Subtitle Style</Label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Size (px)</Label>
                       <Input type="number" min={10} max={60}
@@ -473,9 +473,9 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                 </div>
 
                 {/* Description Styling */}
-                <div className="border rounded-lg p-4 space-y-3">
+                <div className="border rounded-lg p-3 sm:p-4 space-y-3">
                   <Label className="text-sm font-semibold">Description Style</Label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Size (px)</Label>
                       <Input type="number" min={10} max={40}

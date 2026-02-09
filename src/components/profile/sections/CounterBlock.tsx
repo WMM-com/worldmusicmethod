@@ -57,7 +57,7 @@ function AnimatedCounter({ value, prefix = '', suffix = '' }: { value: number; p
   }, [value]);
 
   return (
-    <div ref={ref} className="text-4xl font-bold text-primary">
+    <div ref={ref} className="text-2xl sm:text-4xl font-bold text-primary">
       {prefix}{displayValue.toLocaleString()}{suffix}
     </div>
   );
@@ -198,13 +198,19 @@ export function CounterBlock({ section, isEditing, onUpdate }: CounterBlockProps
         <Button
           size="icon"
           variant="secondary"
-          className="absolute -top-2 -right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          className="absolute -top-2 -right-2 h-8 w-8 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity z-10"
           onClick={() => setInlineEdit(true)}
         >
           <Pencil className="h-4 w-4" />
         </Button>
       )}
-      <div className={cn("grid gap-6 py-6", `grid-cols-${columns}`)}>
+      <div className={cn(
+        "grid gap-4 sm:gap-6 py-6",
+        columns === 2 && "grid-cols-2",
+        columns === 3 && "grid-cols-2 sm:grid-cols-3",
+        columns === 4 && "grid-cols-2 sm:grid-cols-4",
+        !columns && "grid-cols-2 sm:grid-cols-3"
+      )}>
         {counters.map((counter, index) => (
           <div key={index} className="text-center">
             <AnimatedCounter value={counter.value} prefix={counter.prefix} suffix={counter.suffix} />

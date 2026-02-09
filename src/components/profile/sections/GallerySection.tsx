@@ -109,7 +109,7 @@ export function GallerySection({ section, userId, isEditing, onUpdate, onDelete 
                     <Button
                       size="icon"
                       variant="destructive"
-                      className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 h-7 w-7 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => deleteItem.mutate(item.id)}
                     >
                       <Trash2 className="h-4 w-4" />

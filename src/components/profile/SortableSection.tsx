@@ -57,7 +57,7 @@ function SortableSectionComponent({
       )}
     >
       {isEditing && (
-        <div className="absolute -left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute -left-1 sm:-left-2 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
           {/* Move Up Button */}
           <button
             type="button"
