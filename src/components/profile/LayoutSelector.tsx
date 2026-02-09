@@ -148,14 +148,13 @@ export function LayoutSelector({ currentLayout, onLayoutChange }: LayoutSelector
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-auto w-auto p-1"
+        <button 
+          type="button"
+          className="p-1 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
           title="Change layout width"
         >
-          <LayoutGrid className="h-3 w-3" />
-        </Button>
+          <LayoutGrid className="h-3 w-3 text-muted-foreground" />
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start" side="right">
         <div className="space-y-4">
