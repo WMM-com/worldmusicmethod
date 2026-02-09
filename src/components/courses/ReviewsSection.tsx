@@ -83,22 +83,9 @@ export function ReviewsSection({ courseId, courseTitle }: ReviewsSectionProps) {
     );
   }
 
-  // Empty state
+  // Hide entire section when no reviews
   if (!reviews || reviews.length === 0) {
-    return (
-      <section className="space-y-6">
-        <h2 className="text-2xl font-bold">Student Reviews</h2>
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Reviews Yet</h3>
-            <p className="text-muted-foreground max-w-sm">
-              Be the first to review this course and help other students decide!
-            </p>
-          </CardContent>
-        </Card>
-      </section>
-    );
+    return null;
   }
 
   const hasMore = (totalCount ?? 0) > INITIAL_LIMIT && !showAll;
@@ -122,7 +109,11 @@ export function ReviewsSection({ courseId, courseTitle }: ReviewsSectionProps) {
       )}
 
       {/* Reviews List */}
-      <div className="space-y-4">
+      <div className={cn(
+        reviews.length > 2
+          ? 'grid grid-cols-1 md:grid-cols-2 gap-4'
+          : 'space-y-4'
+      )}>
         {reviews.map((review) => (
           <Card key={review.id} className="overflow-hidden">
             <CardContent className="p-4 sm:p-6">

@@ -148,9 +148,9 @@ export function WriteReviewModal({
     }
   }, [isEditMode, existingReview, setValue]);
 
-  // Validation: prompt required for ≤4 stars, review text required for 5 stars
-  const isPromptRequired = rating >= 1 && rating <= 4;
-  const isReviewTextRequired = rating === 5;
+   // Validation: prompt answer always required, review text always optional
+   const isPromptRequired = true;
+   const isReviewTextRequired = false;
 
   const onSubmit = async (data: FormData) => {
     if (rating === 0) {
