@@ -84,7 +84,7 @@ import {
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
   Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code,
-  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, Palette, CreditCard, Gift
+  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, CreditCard, Gift
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -620,7 +620,6 @@ export default function Profile(
       <div 
         className="min-h-screen bg-background overflow-x-hidden transition-all duration-300"
         style={{
-          ...(heroSettings?.brand_color ? { '--brand-color': heroSettings.brand_color } : {}),
           ...(deviceMaxWidth ? { maxWidth: deviceMaxWidth, margin: '0 auto', boxShadow: '0 0 0 1px hsl(var(--border))' } : {}),
         } as React.CSSProperties}
       >
@@ -1015,55 +1014,6 @@ export default function Profile(
                         </DropdownMenuContent>
                       </DropdownMenu>
                       
-                      {/* Brand Color Picker - Premium Only */}
-                      <PremiumGate
-                        hasPremiumFeatures={isPremium}
-                        featureName="Brand Colors"
-                        mode="inline"
-                      >
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Palette className="h-4 w-4" />
-                              <span 
-                                className="w-4 h-4 rounded border"
-                                style={{ backgroundColor: heroSettings?.brand_color || 'transparent' }}
-                              />
-                              Brand Color
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-64">
-                            <div className="space-y-3">
-                              <Label>Brand Color</Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  type="color"
-                                  value={heroSettings?.brand_color || '#6366f1'}
-                                  onChange={(e) => updateHeroSettings.mutate({ brand_color: e.target.value })}
-                                  className="w-12 h-10 p-1 cursor-pointer"
-                                />
-                                <Input
-                                  type="text"
-                                  value={heroSettings?.brand_color || ''}
-                                  onChange={(e) => updateHeroSettings.mutate({ brand_color: e.target.value })}
-                                  placeholder="#6366f1"
-                                  className="flex-1"
-                                />
-                              </div>
-                              {heroSettings?.brand_color && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => updateHeroSettings.mutate({ brand_color: null })}
-                                  className="w-full"
-                                >
-                                  Reset to default
-                                </Button>
-                              )}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </PremiumGate>
                       
                       {/* Payment Accounts - Premium Only */}
                       <PremiumGate
@@ -1104,7 +1054,6 @@ export default function Profile(
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <ProfileNav 
                 userId={profileId!} 
-                brandColor={heroSettings?.brand_color}
                 isOwnProfile={isOwnProfile}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
