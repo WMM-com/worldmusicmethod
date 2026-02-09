@@ -826,22 +826,7 @@ export default function Account() {
 
               {/* Invite Friends Section */}
               {currentSection === 'referrals' && (
-                <div className="space-y-4">
-                  <ReferralSection />
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => {
-                      import('@/lib/generateReferralGuide').then(({ generateReferralGuide }) => {
-                        const doc = generateReferralGuide();
-                        doc.save('Referral-System-Guide.pdf');
-                      });
-                    }}
-                  >
-                    <FileText className="h-4 w-4" />
-                    Download Referral System Guide (PDF)
-                  </Button>
-                </div>
+                <ReferralSection />
               )}
 
               {/* Security Section */}
