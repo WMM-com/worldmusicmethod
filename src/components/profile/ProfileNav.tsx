@@ -7,7 +7,6 @@ import { Home, FileText, Image } from 'lucide-react';
 
 interface ProfileNavProps {
   userId: string;
-  brandColor?: string;
   isOwnProfile?: boolean;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
@@ -22,7 +21,6 @@ const BUILT_IN_TABS = [
 
 export function ProfileNav({
   userId,
-  brandColor,
   isOwnProfile,
   activeTab = 'about',
   onTabChange,
@@ -106,9 +104,6 @@ export function ProfileNav({
   return (
     <nav 
       className="border-b border-border bg-muted/50 rounded-lg"
-      style={{
-        '--brand-color': brandColor || 'hsl(var(--primary))',
-      } as React.CSSProperties}
     >
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex min-w-min px-2 py-1">
