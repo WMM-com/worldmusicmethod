@@ -937,6 +937,7 @@ export type Database = {
       digital_products: {
         Row: {
           base_price: number
+          cover_image_url: string | null
           created_at: string
           currency: string
           description: string | null
@@ -952,6 +953,7 @@ export type Database = {
         }
         Insert: {
           base_price?: number
+          cover_image_url?: string | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -967,6 +969,7 @@ export type Database = {
         }
         Update: {
           base_price?: number
+          cover_image_url?: string | null
           created_at?: string
           currency?: string
           description?: string | null

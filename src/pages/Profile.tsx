@@ -1075,7 +1075,7 @@ export default function Profile(
                           variant="outline" 
                           size="sm" 
                           className="gap-2"
-                          onClick={() => navigate('/settings?section=payments')}
+                          onClick={() => navigate('/account?section=payments')}
                         >
                           <CreditCard className="h-4 w-4" />
                           Connect Payments

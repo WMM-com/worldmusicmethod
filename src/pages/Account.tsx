@@ -35,8 +35,9 @@ import { toast } from 'sonner';
 import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
 import { ReferralSection } from '@/components/profile/ReferralSection';
+import { PaymentAccountsSettings } from '@/components/settings/PaymentAccountsSettings';
 import { 
-  User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
+  User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, CreditCard,
   AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle,
   BadgeCheck, Gift, FileText
 } from 'lucide-react';
@@ -46,7 +47,7 @@ import { useChangeUsername } from '@/hooks/useUsernameResolution';
 import { useCheckUsername } from '@/hooks/useCheckUsername';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
-type Section = 'profile' | 'orders' | 'notifications' | 'security' | 'referrals';
+type Section = 'profile' | 'orders' | 'notifications' | 'security' | 'referrals' | 'payments';
 
 export default function Account() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -316,6 +317,7 @@ export default function Account() {
     { id: 'profile', label: 'Profile & Display', icon: User },
     { id: 'orders', label: 'Orders & Subscriptions', icon: ShoppingBag },
     { id: 'referrals', label: 'Invite Friends', icon: Gift },
+    { id: 'payments', label: 'Payment Accounts', icon: CreditCard },
     { id: 'notifications', label: 'Notification Preferences', icon: Bell },
     { id: 'security', label: 'Security', icon: Lock },
   ];
@@ -942,6 +944,11 @@ export default function Account() {
                     </CardContent>
                   </Card>
                 </>
+              )}
+
+              {/* Payment Accounts Section */}
+              {currentSection === 'payments' && (
+                <PaymentAccountsSettings />
               )}
             </div>
           </div>

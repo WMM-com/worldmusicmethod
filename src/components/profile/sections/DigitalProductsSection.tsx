@@ -7,7 +7,7 @@ import { ProductUpload } from './ProductUpload';
 import { ProductCard } from './ProductCard';
 import { BuyProductModal } from './BuyProductModal';
 import { ProfileSection } from '@/hooks/useProfilePortfolio';
-import { Plus, ShoppingBag, Trash2, Settings, X } from 'lucide-react';
+import { Plus, ShoppingBag, Trash2, Settings, X, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   DropdownMenu,
@@ -32,6 +32,7 @@ export function DigitalProductsSection({
   onDelete 
 }: DigitalProductsSectionProps) {
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState<DigitalProduct | null>(null);
   const [buyModalOpen, setBuyModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<DigitalProduct | null>(null);
   const { data: products, isLoading } = useDigitalProducts(userId);
@@ -49,6 +50,10 @@ export function DigitalProductsSection({
     } catch (error) {
       toast.error('Failed to delete product');
     }
+  };
+
+  const handleEditProduct = (product: DigitalProduct) => {
+    setEditProduct(product);
   };
 
   return (
@@ -110,14 +115,24 @@ export function DigitalProductsSection({
             {products.map((product) => (
               <div key={product.id} className="relative">
                 {isEditing && (
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 z-10"
-                    onClick={() => handleDeleteProduct(product.id)}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  <div className="absolute -top-2 -right-2 z-10 flex gap-1">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => handleEditProduct(product)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => handleDeleteProduct(product.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
                 <ProductCard 
                   product={product} 
@@ -143,6 +158,19 @@ export function DigitalProductsSection({
           </div>
         )}
       </CardContent>
+
+      {/* Edit Product Modal */}
+      {editProduct && (
+        <Dialog open={!!editProduct} onOpenChange={(open) => !open && setEditProduct(null)}>
+          <DialogContent className="max-w-lg">
+            <ProductUpload
+              editProduct={editProduct}
+              onSuccess={() => setEditProduct(null)}
+              onCancel={() => setEditProduct(null)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Buy Product Modal */}
       {selectedProduct && (

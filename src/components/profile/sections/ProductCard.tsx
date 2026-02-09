@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useGeoPricing, formatPrice } from '@/contexts/GeoPricingContext';
 import { DigitalProduct } from '@/hooks/useDigitalProducts';
-import { FileIcon, ShoppingCart, Heart, Loader2 } from 'lucide-react';
+import { FileIcon, ShoppingCart, Loader2 } from 'lucide-react';
 
 interface ProductCardProps {
   product: DigitalProduct;
@@ -26,7 +26,6 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
   
   const displayPrice = geoPrice?.price ?? product.base_price;
   const displayCurrency = geoPrice?.currency ?? product.currency;
-  const minPrice = product.min_price ?? 0;
 
   const getFileExtension = (url: string) => {
     const match = url.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
@@ -35,6 +34,16 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      {/* Cover Image */}
+      {product.cover_image_url && (
+        <div className="aspect-video overflow-hidden bg-muted">
+          <img
+            src={product.cover_image_url}
+            alt={product.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
       <CardContent className="p-4">
         {/* File Type Badge */}
         <div className="flex items-start gap-3 mb-3">
@@ -63,55 +72,38 @@ export function ProductCard({ product, onPurchase, isPurchasing }: ProductCardPr
               {geoLoading ? (
                 <span className="text-lg font-bold">...</span>
               ) : (
-                <span className="text-2xl font-bold text-primary">
+                <span className="text-2xl font-bold text-yellow-400">
                   {formatPrice(displayPrice, displayCurrency, false)}
-                </span>
-              )}
-              {geoPrice && geoPrice.discount_percentage > 0 && (
-                <span className="text-sm text-muted-foreground line-through">
-                  {formatPrice(product.base_price, product.currency, false)}
                 </span>
               )}
             </div>
           ) : (
             <div className="space-y-1">
               <Badge variant="outline" className="text-xs">
-                Pay What You Want
+                Pay What You Feel
               </Badge>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-bold text-primary">
-                  From {formatPrice(minPrice, displayCurrency, false)}
+                <span className="text-xl font-bold text-yellow-400">
+                  {formatPrice(displayPrice, displayCurrency, false)}
                 </span>
-                {displayPrice > minPrice && (
-                  <span className="text-xs text-muted-foreground">
-                    (suggested: {formatPrice(displayPrice, displayCurrency, false)})
-                  </span>
-                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button 
-            className="flex-1" 
-            onClick={onPurchase}
-            disabled={isPurchasing}
-          >
-            {isPurchasing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <ShoppingCart className="h-4 w-4 mr-2" />
-            )}
-            {product.price_type === 'pwyw' && minPrice === 0 
-              ? 'Name Your Price' 
-              : 'Buy Now'}
-          </Button>
-          <Button variant="outline" size="icon">
-            <Heart className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Action Button */}
+        <Button 
+          className="w-full" 
+          onClick={onPurchase}
+          disabled={isPurchasing}
+        >
+          {isPurchasing ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <ShoppingCart className="h-4 w-4 mr-2" />
+          )}
+          {product.price_type === 'pwyw' ? 'Name Your Price' : 'Buy Now'}
+        </Button>
       </CardContent>
     </Card>
   );

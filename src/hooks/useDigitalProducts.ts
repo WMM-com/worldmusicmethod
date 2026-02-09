@@ -14,6 +14,7 @@ export interface DigitalProduct {
   geo_pricing: Record<string, any>;
   currency: string;
   is_active: boolean;
+  cover_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
