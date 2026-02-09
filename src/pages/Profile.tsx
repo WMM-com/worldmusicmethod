@@ -152,6 +152,18 @@ export default function Profile(
   const { data: stats } = useUserStats(profileId!);
   const { data: friendships } = useFriendships();
 
+  // Redirect /profile and /profile/pages/:slug to branded URL when username exists
+  useEffect(() => {
+    if (!isProfileManageRoute || !profile) return;
+    const username = (profile as any)?.username;
+    if (!username) return;
+    
+    const pagesMatch = location.pathname.match(/^\/profile\/pages\/(.+)/);
+    const pageSlug = pagesMatch?.[1];
+    const target = pageSlug ? `/${username}/${pageSlug}` : `/${username}`;
+    navigate(target, { replace: true });
+  }, [isProfileManageRoute, profile, location.pathname, navigate]);
+
   // Fetch active subscription product IDs for premium fallback check
   const { data: activeSubscriptionProductIds } = useQuery({
     queryKey: ['user-active-subscriptions', profileId],

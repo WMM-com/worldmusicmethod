@@ -67,7 +67,18 @@ export function ProfileNav({
     onTabChange?.('page');
     onPageNavigate?.();
 
-    // On /profile (own profile management), keep navigation inside /profile
+    // Always prefer branded URL if username exists
+    const username = profile?.username;
+    if (username) {
+      if (page.is_home) {
+        navigate(`/${username}`, { replace: true });
+      } else {
+        navigate(`/${username}/${page.slug}`, { replace: true });
+      }
+      return;
+    }
+
+    // Fallback: on /profile (own profile management, no username set)
     if (isOnProfileRoute) {
       if (page.is_home) {
         navigate('/profile', { replace: true });
@@ -77,22 +88,11 @@ export function ProfileNav({
       return;
     }
 
-    // Public profile navigation — use branded URL if username exists,
-    // otherwise fall back to /profile/:userId paths (legacy-safe)
-    const username = profile?.username;
-    if (username) {
-      if (page.is_home) {
-        navigate(`/${username}`);
-      } else {
-        navigate(`/${username}/${page.slug}`);
-      }
+    // No username set — use /profile/:userId routes
+    if (page.is_home) {
+      navigate(`/profile/${userId}`);
     } else {
-      // No username set — use /profile/:userId routes
-      if (page.is_home) {
-        navigate(`/profile/${userId}`);
-      } else {
-        navigate(`/profile/${userId}/${page.slug}`);
-      }
+      navigate(`/profile/${userId}/${page.slug}`);
     }
   };
 

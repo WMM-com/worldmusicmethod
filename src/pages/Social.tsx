@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { CreatePost } from '@/components/social/CreatePost';
 import { PostCard } from '@/components/social/PostCard';
@@ -19,7 +19,7 @@ import { Users, Newspaper, UsersRound, UserSearch, LogIn, UserPlus, User } from 
 import { useSearchParams, Link } from 'react-router-dom';
 
 export default function Social() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: posts, isLoading } = useFeed();
   
@@ -129,7 +129,7 @@ export default function Social() {
                   </TabsTrigger>
                   {user && (
                     <TabsTrigger value="profile" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm data-[state=active]:bg-accent data-[state=active]:text-accent-foreground" asChild>
-                      <Link to="/profile">
+                      <Link to={(profile as any)?.username ? `/${(profile as any).username}` : '/profile'}>
                         <User className="h-4 w-4 shrink-0" />
                         <span className="hidden sm:inline">My Profile</span>
                       </Link>
