@@ -213,25 +213,40 @@ export type Database = {
       }
       booking_requests: {
         Row: {
+          confirmation_email_sent: boolean | null
+          confirmed_slot_end: string | null
+          confirmed_slot_start: string | null
           created_at: string | null
           id: string
           lesson_id: string
+          reminder_1h_sent: boolean | null
+          reminder_24h_sent: boolean | null
           status: string | null
           student_id: string
           video_room_id: string | null
         }
         Insert: {
+          confirmation_email_sent?: boolean | null
+          confirmed_slot_end?: string | null
+          confirmed_slot_start?: string | null
           created_at?: string | null
           id?: string
           lesson_id: string
+          reminder_1h_sent?: boolean | null
+          reminder_24h_sent?: boolean | null
           status?: string | null
           student_id: string
           video_room_id?: string | null
         }
         Update: {
+          confirmation_email_sent?: boolean | null
+          confirmed_slot_end?: string | null
+          confirmed_slot_start?: string | null
           created_at?: string | null
           id?: string
           lesson_id?: string
+          reminder_1h_sent?: boolean | null
+          reminder_24h_sent?: boolean | null
           status?: string | null
           student_id?: string
           video_room_id?: string | null
