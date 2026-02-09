@@ -805,7 +805,7 @@ export default function Profile(
                         >
                           {isEditing ? (
                             <>
-                              <Check className="h-4 w-4 mr-2" /> Done Editing
+                              <Check className="h-4 w-4 mr-2" /> Finished Editing
                             </>
                           ) : (
                             <>
@@ -1380,7 +1380,7 @@ export default function Profile(
               size="lg"
             >
               <Check className="h-4 w-4 mr-2" />
-              Done Editing
+              Finished Editing
             </Button>
           </div>
         )}
