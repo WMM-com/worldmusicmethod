@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { useCreateDigitalProduct, useUpdateDigitalProduct, CreateDigitalProductData, DigitalProduct } from '@/hooks/useDigitalProducts';
@@ -36,6 +37,8 @@ export function ProductUpload({ onSuccess, onCancel, editProduct }: ProductUploa
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverUrl, setCoverUrl] = useState<string>(editProduct?.cover_image_url || '');
   const [coverUploading, setCoverUploading] = useState(false);
+  const isProductFree = editProduct ? (editProduct.price_type === 'fixed' && editProduct.base_price === 0) : false;
+  const [isFree, setIsFree] = useState(isProductFree);
   const [form, setForm] = useState({
     title: editProduct?.title || '',
     description: editProduct?.description || '',
@@ -96,15 +99,16 @@ export function ProductUpload({ onSuccess, onCancel, editProduct }: ProductUploa
       return;
     }
     
-    const basePrice = parseFloat(form.base_price) || 0;
+    const basePrice = isFree ? 0 : (parseFloat(form.base_price) || 0);
     const minPrice = parseFloat(form.min_price) || 0;
+    const priceType = isFree ? 'fixed' : form.price_type;
     
-    if (form.price_type === 'fixed' && basePrice <= 0) {
+    if (!isFree && priceType === 'fixed' && basePrice <= 0) {
       toast.error('Please enter a valid price');
       return;
     }
     
-    if (form.price_type === 'pwyw' && minPrice < 0) {
+    if (!isFree && priceType === 'pwyw' && minPrice < 0) {
       toast.error('Minimum price cannot be negative');
       return;
     }
@@ -116,9 +120,9 @@ export function ProductUpload({ onSuccess, onCancel, editProduct }: ProductUploa
           title: form.title.trim(),
           description: form.description.trim() || null,
           file_url: fileUrl,
-          price_type: form.price_type,
+          price_type: priceType,
           base_price: basePrice,
-          min_price: form.price_type === 'pwyw' ? minPrice : null,
+          min_price: priceType === 'pwyw' ? minPrice : null,
           currency: form.currency,
           ...(coverUrl ? { cover_image_url: coverUrl } : {}),
         } as any);
@@ -128,9 +132,9 @@ export function ProductUpload({ onSuccess, onCancel, editProduct }: ProductUploa
           title: form.title.trim(),
           description: form.description.trim() || undefined,
           file_url: fileUrl,
-          price_type: form.price_type,
+          price_type: priceType,
           base_price: basePrice,
-          min_price: form.price_type === 'pwyw' ? minPrice : undefined,
+          min_price: priceType === 'pwyw' ? minPrice : undefined,
           currency: form.currency,
         };
         
@@ -282,76 +286,99 @@ export function ProductUpload({ onSuccess, onCancel, editProduct }: ProductUploa
             />
           </div>
 
-          {/* Pricing Type */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Pricing Type</Label>
-              <Select
-                value={form.price_type}
-                onValueChange={(v: 'fixed' | 'pwyw') => setForm({ ...form, price_type: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fixed">Fixed Price</SelectItem>
-                  <SelectItem value="pwyw">Pay What You Feel</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Currency</Label>
-              <Select
-                value={form.currency}
-                onValueChange={(v) => setForm({ ...form, currency: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.symbol} {c.code}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Price Fields — no $ icon inside inputs */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="base_price">
-                {form.price_type === 'fixed' ? 'Price' : 'Suggested Price'}
-              </Label>
-              <Input
-                id="base_price"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.base_price}
-                onChange={(e) => setForm({ ...form, base_price: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-
-            {form.price_type === 'pwyw' && (
-              <div className="space-y-2">
-                <Label htmlFor="min_price">Minimum Price</Label>
-                <Input
-                  id="min_price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={form.min_price}
-                  onChange={(e) => setForm({ ...form, min_price: e.target.value })}
-                  placeholder="0.00 (free allowed)"
-                />
+          {/* Free or Paid */}
+          <div className="space-y-2">
+            <Label>Product Type</Label>
+            <RadioGroup
+              value={isFree ? 'free' : 'paid'}
+              onValueChange={(v) => setIsFree(v === 'free')}
+              className="flex gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="free" id="type-free" />
+                <Label htmlFor="type-free" className="cursor-pointer font-normal">Free</Label>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="paid" id="type-paid" />
+                <Label htmlFor="type-paid" className="cursor-pointer font-normal">Paid</Label>
+              </div>
+            </RadioGroup>
           </div>
+
+          {/* Pricing (only shown for paid products) */}
+          {!isFree && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Pricing Type</Label>
+                  <Select
+                    value={form.price_type}
+                    onValueChange={(v: 'fixed' | 'pwyw') => setForm({ ...form, price_type: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Fixed Price</SelectItem>
+                      <SelectItem value="pwyw">Pay What You Feel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <Select
+                    value={form.currency}
+                    onValueChange={(v) => setForm({ ...form, currency: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.symbol} {c.code}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Price Fields */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="base_price">
+                    {form.price_type === 'fixed' ? 'Price' : 'Suggested Price'}
+                  </Label>
+                  <Input
+                    id="base_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.base_price}
+                    onChange={(e) => setForm({ ...form, base_price: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                {form.price_type === 'pwyw' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="min_price">Minimum Price</Label>
+                    <Input
+                      id="min_price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.min_price}
+                      onChange={(e) => setForm({ ...form, min_price: e.target.value })}
+                      placeholder="0.00 (free allowed)"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
