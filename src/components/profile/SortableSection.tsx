@@ -141,6 +141,16 @@ function SortableSectionComponent({
                 <Settings className={cn('h-3 w-3', hasCustomStyles ? 'text-primary' : 'text-muted-foreground')} />
               </button>
             )}
+
+            {/* Layout Selector Button */}
+            {onLayoutChange && (
+              <div className="bg-background border-x border-border shadow-sm">
+                <LayoutSelector 
+                  currentLayout={layout || null} 
+                  onLayoutChange={onLayoutChange} 
+                />
+              </div>
+            )}
             
             {/* Delete Button */}
             {onDelete && (
@@ -157,16 +167,6 @@ function SortableSectionComponent({
               </button>
             )}
           </div>
-
-          {/* Top-right Layout Selector - offset to clear section's internal Save/dropdown buttons */}
-          {onLayoutChange && (
-            <div className="absolute top-2 right-[11rem] z-10">
-              <LayoutSelector 
-                currentLayout={layout || null} 
-                onLayoutChange={onLayoutChange} 
-              />
-            </div>
-          )}
         </>
       )}
       {children}
