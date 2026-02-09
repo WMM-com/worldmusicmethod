@@ -3306,6 +3306,7 @@ export type Database = {
           updated_at: string
           user_id: string
           weight_grams: number | null
+          year: number | null
         }
         Insert: {
           base_price?: number
@@ -3325,6 +3326,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           weight_grams?: number | null
+          year?: number | null
         }
         Update: {
           base_price?: number
@@ -3344,6 +3346,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weight_grams?: number | null
+          year?: number | null
         }
         Relationships: []
       }

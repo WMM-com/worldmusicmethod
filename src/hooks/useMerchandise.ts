@@ -20,6 +20,7 @@ export interface MerchProduct {
   track_inventory: boolean;
   stock_quantity: number;
   weight_grams: number | null;
+  year: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

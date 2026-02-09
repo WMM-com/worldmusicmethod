@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingBag, Plus, Minus, Trash2, CreditCard, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, CreditCard, CheckCircle, XCircle, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -20,6 +20,8 @@ interface CartItem {
   quantity: number;
 }
 
+const DESC_PREVIEW_LENGTH = 120;
+
 export default function FanPayment() {
   const { gigId } = useParams<{ gigId: string }>();
   const [searchParams] = useSearchParams();
@@ -30,6 +32,7 @@ export default function FanPayment() {
   const [customAmount, setCustomAmount] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
   // Fetch gig details (public read via RLS)
   const { data: gig, isLoading: gigLoading } = useQuery({
@@ -118,6 +121,7 @@ export default function FanPayment() {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       if (data?.url) {
         window.location.href = data.url;
       } else {
@@ -139,6 +143,9 @@ export default function FanPayment() {
             <CheckCircle className="h-16 w-16 text-primary mx-auto" />
             <h1 className="text-2xl font-bold">Payment Successful!</h1>
             <p className="text-muted-foreground">Thank you for your purchase. The artist has been notified.</p>
+            <Button variant="outline" onClick={() => window.location.href = `/pay/${gigId}`}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Shop
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -183,35 +190,49 @@ export default function FanPayment() {
     );
   }
 
+  const imageUrls = (p: any): string[] => {
+    if (p.image_urls?.length) return p.image_urls;
+    if (p.image_url) return [p.image_url];
+    return [];
+  };
+
   return (
     <div className="min-h-screen bg-background pb-32">
       {/* Header */}
-      <div className="bg-card border-b px-4 py-5 text-center">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <ShoppingBag className="h-5 w-5 text-primary" />
-          <h1 className="text-xl font-bold">{gig.name}</h1>
+      <div className="bg-card border-b px-4 py-5">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <ShoppingBag className="h-5 w-5 text-primary" />
+            <h1 className="text-xl font-bold">{gig.name}</h1>
+          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            {format(new Date(gig.gig_date), 'EEEE, d MMMM yyyy')}
+            {gig.venue && ` · ${gig.venue}`}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {format(new Date(gig.gig_date), 'EEEE, d MMMM yyyy')}
-          {gig.venue && ` · ${gig.venue}`}
-        </p>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
         {/* Products */}
         {products.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Products</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Shop</h2>
             {products.map(product => {
               const cartItem = cart.find(i => i.product_id === product.id);
+              const imgs = imageUrls(product);
+              const desc = (product as any).description || '';
+              const year = (product as any).year;
+              const hasMore = desc.length > DESC_PREVIEW_LENGTH || imgs.length > 1;
+
               return (
                 <Card key={product.id} className="overflow-hidden">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    {product.image_url ? (
+                  <CardContent className="p-4 flex items-start gap-4">
+                    {imgs[0] ? (
                       <img
-                        src={product.image_url}
+                        src={imgs[0]}
                         alt={product.title}
-                        className="h-16 w-16 rounded-lg object-cover shrink-0"
+                        className="h-16 w-16 rounded-lg object-cover shrink-0 cursor-pointer"
+                        onClick={() => setSelectedProduct(product)}
                       />
                     ) : (
                       <div className="h-16 w-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
@@ -219,26 +240,46 @@ export default function FanPayment() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{product.title}</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className="font-medium truncate">{product.title}</p>
+                        {year && <span className="text-xs text-muted-foreground shrink-0">({year})</span>}
+                      </div>
                       <p className="text-sm font-semibold text-primary">
                         {formatCurrency(Number(product.base_price), currency)}
                       </p>
+                      {desc && (
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          {desc.length > DESC_PREVIEW_LENGTH
+                            ? desc.slice(0, DESC_PREVIEW_LENGTH) + '…'
+                            : desc}
+                          {hasMore && (
+                            <button
+                              className="text-primary ml-1 hover:underline inline-flex items-center"
+                              onClick={() => setSelectedProduct(product)}
+                            >
+                              More <ChevronRight className="h-3 w-3" />
+                            </button>
+                          )}
+                        </p>
+                      )}
                     </div>
-                    {cartItem ? (
-                      <div className="flex items-center gap-2">
-                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(product.id, -1)}>
-                          <Minus className="h-3 w-3" />
+                    <div className="shrink-0 self-center">
+                      {cartItem ? (
+                        <div className="flex items-center gap-2">
+                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(product.id, -1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-6 text-center text-sm font-medium">{cartItem.quantity}</span>
+                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(product.id, 1)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="secondary" onClick={() => addToCart(product)}>
+                          Add
                         </Button>
-                        <span className="w-6 text-center text-sm font-medium">{cartItem.quantity}</span>
-                        <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => updateQuantity(product.id, 1)}>
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="secondary" onClick={() => addToCart(product)}>
-                        Add
-                      </Button>
-                    )}
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -284,7 +325,6 @@ export default function FanPayment() {
       {grandTotal > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4 z-50">
           <div className="max-w-lg mx-auto space-y-3">
-            {/* Cart summary */}
             {cart.length > 0 && (
               <div className="space-y-1">
                 {cart.map(item => (
@@ -323,6 +363,78 @@ export default function FanPayment() {
           </div>
         </div>
       )}
+
+      {/* Product detail modal */}
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          {selectedProduct && (() => {
+            const imgs = imageUrls(selectedProduct);
+            const desc = (selectedProduct as any).description || '';
+            const year = (selectedProduct as any).year;
+            const cartItem = cart.find(i => i.product_id === selectedProduct.id);
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-baseline gap-2">
+                    {selectedProduct.title}
+                    {year && <span className="text-sm font-normal text-muted-foreground">({year})</span>}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {/* Image gallery */}
+                  {imgs.length > 0 && (
+                    <div className="space-y-2">
+                      <img
+                        src={imgs[0]}
+                        alt={selectedProduct.title}
+                        className="w-full rounded-lg object-cover max-h-72"
+                      />
+                      {imgs.length > 1 && (
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {imgs.slice(1).map((url: string, i: number) => (
+                            <img
+                              key={i}
+                              src={url}
+                              alt={`${selectedProduct.title} ${i + 2}`}
+                              className="h-20 w-20 rounded-lg object-cover shrink-0"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-lg font-bold text-primary">
+                    {formatCurrency(Number(selectedProduct.base_price), currency)}
+                  </p>
+
+                  {desc && (
+                    <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{desc}</p>
+                  )}
+
+                  <div className="pt-2">
+                    {cartItem ? (
+                      <div className="flex items-center gap-3">
+                        <Button size="icon" variant="outline" onClick={() => updateQuantity(selectedProduct.id, -1)}>
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="text-lg font-medium w-8 text-center">{cartItem.quantity}</span>
+                        <Button size="icon" variant="outline" onClick={() => updateQuantity(selectedProduct.id, 1)}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button className="w-full" onClick={() => addToCart(selectedProduct)}>
+                        Add to Cart
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
