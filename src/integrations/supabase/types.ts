@@ -4634,6 +4634,7 @@ export type Database = {
           tip_jar_enabled: boolean | null
           updated_at: string
           username: string | null
+          username_change_count: number
           vat_number: string | null
           visibility: Database["public"]["Enums"]["profile_visibility"] | null
           website_url: string | null
@@ -4690,6 +4691,7 @@ export type Database = {
           tip_jar_enabled?: boolean | null
           updated_at?: string
           username?: string | null
+          username_change_count?: number
           vat_number?: string | null
           visibility?: Database["public"]["Enums"]["profile_visibility"] | null
           website_url?: string | null
@@ -4746,6 +4748,7 @@ export type Database = {
           tip_jar_enabled?: boolean | null
           updated_at?: string
           username?: string | null
+          username_change_count?: number
           vat_number?: string | null
           visibility?: Database["public"]["Enums"]["profile_visibility"] | null
           website_url?: string | null
