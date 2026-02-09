@@ -13,10 +13,10 @@ export async function sendBookingNotification(bookingRequestId: string, type: No
   }
 }
 
-export async function createLessonPayment(bookingRequestId: string): Promise<{ url?: string; free?: boolean } | null> {
+export async function createLessonPayment(bookingRequestId: string, provider?: 'stripe' | 'flutterwave'): Promise<{ url?: string; free?: boolean; provider?: string } | null> {
   try {
     const { data, error } = await supabase.functions.invoke('create-lesson-payment', {
-      body: { bookingRequestId },
+      body: { bookingRequestId, provider },
     });
     if (error) throw error;
     return data;
