@@ -3,10 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { useR2Upload } from '@/hooks/useR2Upload';
 import { HeroType, HeroConfig } from './HeroSection';
 import { 
@@ -18,7 +21,8 @@ import {
   Loader2,
   Sparkles,
   Type,
-  Scissors
+  Scissors,
+  Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -34,8 +38,14 @@ const HERO_TEMPLATES: { type: HeroType; label: string; description: string; icon
   { 
     type: 'standard', 
     label: 'Standard', 
-    description: 'Full background image with text overlay',
+    description: 'Cover image for your hero section',
     icon: Image
+  },
+  { 
+    type: 'slay', 
+    label: 'Slay', 
+    description: 'Full background image with text overlay',
+    icon: Layers
   },
   { 
     type: 'cut-out', 
@@ -51,16 +61,19 @@ const HERO_TEMPLATES: { type: HeroType; label: string; description: string; icon
   },
 ];
 
+// Templates that support content editing
+const CONTENT_ENABLED_TEMPLATES: HeroType[] = ['slay', 'cut-out', 'minimal'];
+// Templates that use background images
+const BG_IMAGE_TEMPLATES: HeroType[] = ['standard', 'slay'];
+
 export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditorProps) {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<HeroType>(heroType || 'standard');
   const [config, setConfig] = useState<HeroConfig>(heroConfig || {});
   const { uploadFile, isUploading, progress } = useR2Upload();
 
-  // Sync state when props change (e.g., after save and refetch)
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen) {
-      // Reset to current saved values when opening
       setSelectedType(heroType || 'standard');
       setConfig(heroConfig || {});
     }
@@ -89,6 +102,9 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
     setOpen(false);
   };
 
+  const contentEnabled = CONTENT_ENABLED_TEMPLATES.includes(selectedType);
+  const bgImageEnabled = BG_IMAGE_TEMPLATES.includes(selectedType);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -107,7 +123,9 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
         <Tabs defaultValue="template" className="mt-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="template">Template</TabsTrigger>
-            <TabsTrigger value="content">Content</TabsTrigger>
+            <TabsTrigger value="content" disabled={!contentEnabled}>
+              Content {!contentEnabled && '🔒'}
+            </TabsTrigger>
             <TabsTrigger value="style">Style</TabsTrigger>
           </TabsList>
 
@@ -148,85 +166,95 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
             </div>
           </TabsContent>
 
-          {/* Content */}
+          {/* Content - locked for Standard */}
           <TabsContent value="content" className="space-y-4 mt-4">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <Label>Title</Label>
-                <span className="text-xs text-muted-foreground">
-                  {(config.title || '').length}/60
-                </span>
+            {!contentEnabled ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Type className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Content editing is not available for the Standard template.</p>
+                <p className="text-sm mt-1">Switch to Slay, Cut-out, or Minimal to add text.</p>
               </div>
-              <Input
-                value={config.title || ''}
-                onChange={(e) => {
-                  if (e.target.value.length <= 60) {
-                    setConfig(prev => ({ ...prev, title: e.target.value }));
-                  }
-                }}
-                placeholder="Your Name or Brand"
-                maxLength={60}
-              />
-            </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>Title</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {(config.title || '').length}/60
+                    </span>
+                  </div>
+                  <Input
+                    value={config.title || ''}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 60) {
+                        setConfig(prev => ({ ...prev, title: e.target.value }));
+                      }
+                    }}
+                    placeholder="Your Name or Brand"
+                    maxLength={60}
+                  />
+                </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <Label>Subtitle</Label>
-                <span className="text-xs text-muted-foreground">
-                  {(config.subtitle || '').length}/120
-                </span>
-              </div>
-              <Input
-                value={config.subtitle || ''}
-                onChange={(e) => {
-                  if (e.target.value.length <= 120) {
-                    setConfig(prev => ({ ...prev, subtitle: e.target.value }));
-                  }
-                }}
-                placeholder="Musician • Producer • Artist"
-                maxLength={120}
-              />
-            </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>Subtitle</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {(config.subtitle || '').length}/120
+                    </span>
+                  </div>
+                  <Input
+                    value={config.subtitle || ''}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 120) {
+                        setConfig(prev => ({ ...prev, subtitle: e.target.value }));
+                      }
+                    }}
+                    placeholder="Musician • Producer • Artist"
+                    maxLength={120}
+                  />
+                </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <Label>Description</Label>
-                <span className="text-xs text-muted-foreground">
-                  {(config.description || '').length}/300
-                </span>
-              </div>
-              <Textarea
-                value={config.description || ''}
-                onChange={(e) => {
-                  if (e.target.value.length <= 300) {
-                    setConfig(prev => ({ ...prev, description: e.target.value }));
-                  }
-                }}
-                placeholder="A brief introduction..."
-                rows={3}
-                maxLength={300}
-              />
-            </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label>Description</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {(config.description || '').length}/300
+                    </span>
+                  </div>
+                  <Textarea
+                    value={config.description || ''}
+                    onChange={(e) => {
+                      if (e.target.value.length <= 300) {
+                        setConfig(prev => ({ ...prev, description: e.target.value }));
+                      }
+                    }}
+                    placeholder="A brief introduction..."
+                    rows={3}
+                    maxLength={300}
+                  />
+                </div>
 
-            <div className="space-y-3">
-              <Label>Text Alignment</Label>
-              <div className="flex gap-2">
-                {(['left', 'center', 'right'] as const).map((align) => (
-                  <Button
-                    key={align}
-                    type="button"
-                    variant={config.textAlign === align ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setConfig(prev => ({ ...prev, textAlign: align }))}
-                    className="flex-1"
-                  >
-                    {align === 'left' && <AlignLeft className="h-4 w-4" />}
-                    {align === 'center' && <AlignCenter className="h-4 w-4" />}
-                    {align === 'right' && <AlignRight className="h-4 w-4" />}
-                  </Button>
-                ))}
-              </div>
-            </div>
+                <div className="space-y-3">
+                  <Label>Text Alignment</Label>
+                  <div className="flex gap-2">
+                    {(['left', 'center', 'right'] as const).map((align) => (
+                      <Button
+                        key={align}
+                        type="button"
+                        variant={config.textAlign === align ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setConfig(prev => ({ ...prev, textAlign: align }))}
+                        className="flex-1"
+                      >
+                        {align === 'left' && <AlignLeft className="h-4 w-4" />}
+                        {align === 'center' && <AlignCenter className="h-4 w-4" />}
+                        {align === 'right' && <AlignRight className="h-4 w-4" />}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </TabsContent>
 
           {/* Style */}
@@ -251,8 +279,8 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
               </div>
             </div>
 
-            {/* Background Image (for standard only) */}
-            {selectedType === 'standard' && (
+            {/* Background Image (for standard & slay) */}
+            {bgImageEnabled && (
               <div className="space-y-3">
                 <Label>Background Image</Label>
                 {config.backgroundImage ? (
@@ -295,6 +323,131 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                     </label>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Overlay Settings (for standard & slay) */}
+            {bgImageEnabled && (
+              <div className="space-y-3 border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <Label>Image Overlay</Label>
+                  <Switch
+                    checked={config.overlayEnabled ?? false}
+                    onCheckedChange={(checked) => setConfig(prev => ({ ...prev, overlayEnabled: checked }))}
+                  />
+                </div>
+                {config.overlayEnabled && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={config.overlayColor || '#000000'}
+                        onChange={(e) => setConfig(prev => ({ ...prev, overlayColor: e.target.value }))}
+                        className="w-14 h-10 p-1 cursor-pointer"
+                      />
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-xs">Opacity ({config.overlayOpacity ?? 40}%)</Label>
+                        <Slider
+                          value={[config.overlayOpacity ?? 40]}
+                          onValueChange={(v) => setConfig(prev => ({ ...prev, overlayOpacity: v[0] }))}
+                          min={0}
+                          max={100}
+                          step={5}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Image Size & Position (for standard & slay) */}
+            {bgImageEnabled && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Image Size</Label>
+                  <Select
+                    value={config.imageSize || 'cover'}
+                    onValueChange={(v) => setConfig(prev => ({ ...prev, imageSize: v as HeroConfig['imageSize'] }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cover">Cover (Fill)</SelectItem>
+                      <SelectItem value="contain">Contain (Fit)</SelectItem>
+                      <SelectItem value="auto">Original Size</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Image Position</Label>
+                  <Select
+                    value={config.imagePosition || 'center'}
+                    onValueChange={(v) => setConfig(prev => ({ ...prev, imagePosition: v as HeroConfig['imagePosition'] }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="top">Top</SelectItem>
+                      <SelectItem value="bottom">Bottom</SelectItem>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            {/* Text Styling (for templates with text) */}
+            {contentEnabled && (
+              <div className="space-y-3 border rounded-lg p-4">
+                <Label className="text-sm font-semibold">Text Styling</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Font Size</Label>
+                    <Select
+                      value={config.fontSize || 'medium'}
+                      onValueChange={(v) => setConfig(prev => ({ ...prev, fontSize: v as HeroConfig['fontSize'] }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Small</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="large">Large</SelectItem>
+                        <SelectItem value="xlarge">X-Large</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Line Height</Label>
+                    <Select
+                      value={config.lineHeight || 'normal'}
+                      onValueChange={(v) => setConfig(prev => ({ ...prev, lineHeight: v as HeroConfig['lineHeight'] }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tight">Tight</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="relaxed">Relaxed</SelectItem>
+                        <SelectItem value="loose">Loose</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Spacing</Label>
+                    <Select
+                      value={config.letterSpacing || 'normal'}
+                      onValueChange={(v) => setConfig(prev => ({ ...prev, letterSpacing: v as HeroConfig['letterSpacing'] }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="tight">Tight</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="wide">Wide</SelectItem>
+                        <SelectItem value="wider">Wider</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             )}
 
