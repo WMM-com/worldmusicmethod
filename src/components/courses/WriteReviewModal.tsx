@@ -181,6 +181,7 @@ export function WriteReviewModal({
         review_text: data.reviewText || undefined,
         prompt_question: selectedPrompt || undefined,
         prompt_answer: data.promptAnswer || undefined,
+        courseName: courseTitle,
       });
     }
 

@@ -163,7 +163,7 @@ export function useCreateReview() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (input: CreateReviewInput) => {
+    mutationFn: async (input: CreateReviewInput & { courseName?: string }) => {
       if (!user?.id) throw new Error('Must be logged in to submit a review');
 
       const { data, error } = await supabase
@@ -185,6 +185,29 @@ export function useCreateReview() {
         }
         throw error;
       }
+
+      // Get user's name for the notification
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      const userName = profile?.full_name || 'A student';
+      const courseName = input.courseName || 'a course';
+
+      // Fire-and-forget: notify admins via edge function (in-app + email)
+      supabase.functions.invoke('notify-admin-review', {
+        body: {
+          review_id: data.id,
+          user_name: userName,
+          course_name: courseName,
+          rating: input.rating,
+          review_text: input.review_text || null,
+          prompt_question: input.prompt_question || null,
+          prompt_answer: input.prompt_answer || null,
+        },
+      }).catch(err => console.error('Failed to notify admins:', err));
 
       return data as Review;
     },
