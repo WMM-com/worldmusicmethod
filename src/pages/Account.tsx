@@ -1,4 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,6 +55,7 @@ export default function Account() {
   const [saving, setSaving] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
+  const [showUsernameConfirm, setShowUsernameConfirm] = useState(false);
   const changeUsername = useChangeUsername();
   const currentSection = (searchParams.get('section') as Section) || 'profile';
   
@@ -152,11 +161,16 @@ export default function Account() {
     setSaving(false);
   };
 
-  const handleSaveUsername = async () => {
+  const handleUsernameClick = () => {
     if (!usernameInput.trim()) {
       toast.error('Username cannot be empty');
       return;
     }
+    setShowUsernameConfirm(true);
+  };
+
+  const handleConfirmUsername = async () => {
+    setShowUsernameConfirm(false);
     setSavingUsername(true);
     try {
       const result = await changeUsername.mutateAsync(usernameInput.trim());
@@ -172,14 +186,21 @@ export default function Account() {
     setSavingUsername(false);
   };
 
-  // Calculate cooldown info
+  // Calculate cooldown info with retry logic
+  const usernameChangeCount = (profile as any)?.username_change_count ?? 0;
   const cooldownInfo = useMemo(() => {
     const lastChange = (profile as any)?.last_username_change;
+    const changeCount = (profile as any)?.username_change_count ?? 0;
+    
+    // First time or free retry (count 0 or 1) = no cooldown
+    if (changeCount < 2) return { canChange: true, daysRemaining: 0 };
+    
+    // After using retry, cooldown applies
     if (!lastChange) return { canChange: true, daysRemaining: 0 };
     const daysSince = Math.floor((Date.now() - new Date(lastChange).getTime()) / (1000 * 60 * 60 * 24));
     const cooldownDays = 30;
     return {
-      canChange: daysSince >= cooldownDays || !(profile as any)?.username,
+      canChange: daysSince >= cooldownDays,
       daysRemaining: Math.max(0, cooldownDays - daysSince),
     };
   }, [profile]);
@@ -527,7 +548,7 @@ export default function Account() {
                             </div>
                           </div>
                           <Button 
-                            onClick={handleSaveUsername} 
+                            onClick={handleUsernameClick} 
                             disabled={
                               savingUsername || 
                               usernameInput === form.username || 
@@ -577,6 +598,13 @@ export default function Account() {
                           <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                             <Clock className="h-3 w-3" />
                             Username can be changed again in {cooldownInfo.daysRemaining} days
+                          </p>
+                        )}
+
+                        {cooldownInfo.canChange && usernameChangeCount === 1 && form.username && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                            <AlertCircle className="h-3 w-3" />
+                            You have one free retry to change your username. After that, a 30-day cooldown applies.
                           </p>
                         )}
                         
