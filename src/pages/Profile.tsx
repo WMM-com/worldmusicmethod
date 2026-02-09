@@ -132,7 +132,7 @@ export default function Profile(
   const params = useParams<{ userId?: string; slug?: string }>();
   const userId = routeUserId ?? params.userId;
   const slug = routeSlug ?? params.slug;
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, profile: authProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // Profile route detection: /@username (legacy) or /username (clean URL) resolved through AtProfile
@@ -153,16 +153,19 @@ export default function Profile(
   const { data: friendships } = useFriendships();
 
   // Redirect /profile and /profile/pages/:slug to branded URL when username exists
+  // Use auth context profile (loads first) for instant redirect, fall back to fetched profile
+  const authUsername = (authProfile as any)?.username;
+  const fetchedUsername = (profile as any)?.username;
+  const resolvedUsername = authUsername || fetchedUsername;
+  
   useEffect(() => {
-    if (!isProfileManageRoute || !profile) return;
-    const username = (profile as any)?.username;
-    if (!username) return;
+    if (!isProfileManageRoute || !resolvedUsername) return;
     
     const pagesMatch = location.pathname.match(/^\/profile\/pages\/(.+)/);
     const pageSlug = pagesMatch?.[1];
-    const target = pageSlug ? `/${username}/${pageSlug}` : `/${username}`;
+    const target = pageSlug ? `/${resolvedUsername}/${pageSlug}` : `/${resolvedUsername}`;
     navigate(target, { replace: true });
-  }, [isProfileManageRoute, profile, location.pathname, navigate]);
+  }, [isProfileManageRoute, resolvedUsername, location.pathname, navigate]);
 
   // Fetch active subscription product IDs for premium fallback check
   const { data: activeSubscriptionProductIds } = useQuery({
