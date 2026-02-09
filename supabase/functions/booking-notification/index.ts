@@ -119,14 +119,30 @@ const emailWrapper = (content: string) => `
 </body>
 </html>`;
 
-// ── Time formatting ─────────────────────────────────────────────────────────
-function formatTimeUTC(isoStr: string): string {
+// ── Time formatting (timezone-aware) ────────────────────────────────────────
+function formatTime(isoStr: string, tz: string = 'UTC'): string {
   const d = new Date(isoStr);
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  try {
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+  } catch {
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  }
 }
-function formatDateUTC(isoStr: string): string {
+function formatDate(isoStr: string, tz: string = 'UTC'): string {
   const d = new Date(isoStr);
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  try {
+    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
+  } catch {
+    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  }
+}
+function getTzAbbr(isoStr: string, tz: string = 'UTC'): string {
+  const d = new Date(isoStr);
+  try {
+    return d.toLocaleTimeString('en-GB', { timeZoneName: 'short', timeZone: tz }).split(' ').pop() || tz;
+  } catch {
+    return 'UTC';
+  }
 }
 
 Deno.serve(async (req) => {
@@ -184,10 +200,10 @@ Deno.serve(async (req) => {
     const studentId = booking.student_id;
     const tutorId = lesson.tutor_id;
 
-    // Get profiles for student + tutor
+    // Get profiles for student + tutor (including timezone)
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, email')
+      .select('id, full_name, email, timezone')
       .in('id', [studentId, tutorId]);
 
     const student = profiles?.find(p => p.id === studentId);
@@ -219,13 +235,15 @@ Deno.serve(async (req) => {
           .eq('status', 'proposed')
           .order('start_time', { ascending: true });
 
+        const tutorTz = (tutor as any)?.timezone || 'UTC';
         const slotsHtml = (slots || []).map(s => {
-          const date = formatDateUTC(s.start_time);
-          const start = formatTimeUTC(s.start_time);
-          const end = formatTimeUTC(s.end_time);
+          const date = formatDate(s.start_time, tutorTz);
+          const start = formatTime(s.start_time, tutorTz);
+          const end = formatTime(s.end_time, tutorTz);
+          const abbr = getTzAbbr(s.start_time, tutorTz);
           return `<li style="margin:6px 0;padding:10px 14px;background:#f8f8f8;border-radius:8px;border-left:3px solid #dc2626;font-size:14px;">
             📅 <strong>${date}</strong><br/>
-            🕐 ${start} – ${end} UTC
+            🕐 ${start} – ${end} ${abbr}
           </li>`;
         }).join('');
 
@@ -247,7 +265,6 @@ Deno.serve(async (req) => {
           <ul style="list-style:none;padding:0;margin:0 0 24px;">
             ${slotsHtml || '<li style="color:#999;font-size:14px;">No specific times proposed</li>'}
           </ul>
-          <p style="margin:0 0 4px;color:#888;font-size:12px;">Times shown in UTC</p>
           <div style="text-align:center;margin:24px 0;">
             <a href="${dashboardUrl}" style="display:inline-block;background:#dc2626;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
               View &amp; Respond

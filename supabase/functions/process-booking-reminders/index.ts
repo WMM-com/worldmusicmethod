@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       const profileIds = [booking.student_id, lesson.tutor_id];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, timezone')
         .in('id', profileIds);
 
       let roomUrl = 'https://worldmusicmethod.lovable.app/lessons';
@@ -144,16 +144,24 @@ Deno.serve(async (req) => {
         if (room) roomUrl = `https://worldmusicmethod.lovable.app/meet/${room.room_name}`;
       }
 
-      const startDate = new Date(booking.confirmed_slot_start!);
-      const formattedDate = startDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const formattedTime = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
       for (const profile of profiles || []) {
         if (!profile.email) continue;
         const isStudent = profile.id === booking.student_id;
         const otherName = isStudent
           ? (profiles?.find(p => p.id === lesson.tutor_id)?.full_name || 'your tutor')
           : (profiles?.find(p => p.id === booking.student_id)?.full_name || 'the student');
+        const tz = (profile as any).timezone || 'UTC';
+        const startDate = new Date(booking.confirmed_slot_start!);
+        let formattedDate: string, formattedTime: string, tzAbbr: string;
+        try {
+          formattedDate = startDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz });
+          formattedTime = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+          tzAbbr = startDate.toLocaleTimeString('en-GB', { timeZoneName: 'short', timeZone: tz }).split(' ').pop() || tz;
+        } catch {
+          formattedDate = startDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+          formattedTime = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+          tzAbbr = 'UTC';
+        }
 
         const html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -161,7 +169,7 @@ Deno.serve(async (req) => {
             <div style="background: #f8f8f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
               <h2 style="margin: 0 0 12px; color: #333;">${lesson.title}</h2>
               <p style="margin: 4px 0; color: #666;">📅 <strong>${formattedDate}</strong></p>
-              <p style="margin: 4px 0; color: #666;">🕐 <strong>${formattedTime} UTC</strong></p>
+              <p style="margin: 4px 0; color: #666;">🕐 <strong>${formattedTime} ${tzAbbr}</strong></p>
               <p style="margin: 4px 0; color: #666;">👤 With <strong>${otherName}</strong></p>
             </div>
             <a href="${roomUrl}" style="display: inline-block; background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
@@ -173,7 +181,7 @@ Deno.serve(async (req) => {
         `;
 
         try {
-          await sendEmailViaSES(profile.email, `Reminder: ${lesson.title} — Tomorrow at ${formattedTime} UTC`, html, fromAddress, accessKeyId!, secretAccessKey!, sesRegion);
+          await sendEmailViaSES(profile.email, `Reminder: ${lesson.title} — Tomorrow at ${formattedTime} ${tzAbbr}`, html, fromAddress, accessKeyId!, secretAccessKey!, sesRegion);
           sent24h++;
         } catch (e) {
           console.error(`[process-booking-reminders] 24h email failed for ${profile.email}:`, e);
@@ -199,7 +207,7 @@ Deno.serve(async (req) => {
       const profileIds = [booking.student_id, lesson.tutor_id];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, timezone')
         .in('id', profileIds);
 
       let roomUrl = 'https://worldmusicmethod.lovable.app/lessons';
@@ -212,22 +220,29 @@ Deno.serve(async (req) => {
         if (room) roomUrl = `https://worldmusicmethod.lovable.app/meet/${room.room_name}`;
       }
 
-      const startDate = new Date(booking.confirmed_slot_start!);
-      const formattedTime = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
       // Send email reminders
       for (const profile of profiles || []) {
         if (!profile.email) continue;
         const otherName = profile.id === booking.student_id
           ? (profiles?.find(p => p.id === lesson.tutor_id)?.full_name || 'your tutor')
           : (profiles?.find(p => p.id === booking.student_id)?.full_name || 'the student');
+        const tz = (profile as any).timezone || 'UTC';
+        const startDate = new Date(booking.confirmed_slot_start!);
+        let formattedTime: string, tzAbbr: string;
+        try {
+          formattedTime = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+          tzAbbr = startDate.toLocaleTimeString('en-GB', { timeZoneName: 'short', timeZone: tz }).split(' ').pop() || tz;
+        } catch {
+          formattedTime = startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+          tzAbbr = 'UTC';
+        }
 
         const html = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #1a1a1a; font-size: 24px;">🔔 Lesson Starts in 1 Hour!</h1>
             <div style="background: #fef3cd; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #ffc107;">
               <h2 style="margin: 0 0 8px; color: #333;">${lesson.title}</h2>
-              <p style="margin: 4px 0; color: #666;">🕐 <strong>Starting at ${formattedTime} UTC</strong></p>
+              <p style="margin: 4px 0; color: #666;">🕐 <strong>Starting at ${formattedTime} ${tzAbbr}</strong></p>
               <p style="margin: 4px 0; color: #666;">👤 With <strong>${otherName}</strong></p>
             </div>
             <a href="${roomUrl}" style="display: inline-block; background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">

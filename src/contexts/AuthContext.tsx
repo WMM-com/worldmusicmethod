@@ -81,6 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!error && data) {
       setProfile(data as Profile);
       setEmailVerified((data as any).email_verified === true);
+
+      // Auto-sync browser timezone to profile for localized emails
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (browserTz && (data as any).timezone !== browserTz) {
+        supabase.from('profiles').update({ timezone: browserTz }).eq('id', userId).then(() => {});
+      }
     }
   };
 
