@@ -3,6 +3,13 @@ import { CoverSettings } from '@/hooks/useHeroSettings';
 
 export type HeroType = 'standard' | 'slay' | 'cut-out' | 'minimal';
 
+export interface TextStyle {
+  fontSize?: number;
+  lineHeight?: number;
+  letterSpacing?: number;
+  color?: string;
+}
+
 export interface HeroConfig {
   title?: string;
   subtitle?: string;
@@ -14,11 +21,15 @@ export interface HeroConfig {
   // Overlay
   overlayEnabled?: boolean;
   overlayColor?: string;
-  overlayOpacity?: number; // 0-100
-  // Text styling
-  fontSize?: number; // px value, default 48
-  lineHeight?: number; // px value, default 56
-  letterSpacing?: number; // px value, default 0
+  overlayOpacity?: number;
+  // Per-element text styling
+  titleStyle?: TextStyle;
+  subtitleStyle?: TextStyle;
+  descriptionStyle?: TextStyle;
+  // Legacy single values (kept for backward compat)
+  fontSize?: number;
+  lineHeight?: number;
+  letterSpacing?: number;
   // Image sizing/positioning
   imageSize?: 'cover' | 'contain' | 'auto';
   imagePosition?: 'top' | 'center' | 'bottom' | 'left' | 'right';
@@ -50,12 +61,16 @@ function getFocalPointStyle(settings?: CoverSettings): string {
   return `${x}% ${y}%`;
 }
 
-// Build inline text styles from numeric px values
-function getTextStyle(config: HeroConfig): React.CSSProperties {
+// Build inline text styles from TextStyle object, with fallback to legacy single values
+function toCSS(s?: TextStyle, fallback?: { fontSize?: number; lineHeight?: number; letterSpacing?: number }): React.CSSProperties {
+  const fs = s?.fontSize ?? fallback?.fontSize;
+  const lh = s?.lineHeight ?? fallback?.lineHeight;
+  const ls = s?.letterSpacing ?? fallback?.letterSpacing;
   return {
-    fontSize: config.fontSize ? `${config.fontSize}px` : undefined,
-    lineHeight: config.lineHeight ? `${config.lineHeight}px` : undefined,
-    letterSpacing: config.letterSpacing ? `${config.letterSpacing}px` : undefined,
+    fontSize: fs ? `${fs}px` : undefined,
+    lineHeight: lh ? `${lh}px` : undefined,
+    letterSpacing: ls != null && ls !== 0 ? `${ls}px` : undefined,
+    color: s?.color || undefined,
   };
 }
 
@@ -116,7 +131,10 @@ export function HeroSection({
     right: 'text-right items-end',
   }[textAlign];
 
-  const textStyle = getTextStyle(heroConfig);
+  const legacy = { fontSize: heroConfig.fontSize, lineHeight: heroConfig.lineHeight, letterSpacing: heroConfig.letterSpacing };
+  const titleCSS = toCSS(heroConfig.titleStyle, legacy);
+  const subtitleCSS = toCSS(heroConfig.subtitleStyle);
+  const descriptionCSS = toCSS(heroConfig.descriptionStyle);
   
   const bgSize = getImageSizeStyle(imageSize);
   const bgPosition = getImagePositionStyle(imagePosition) || focalPoint;
@@ -215,17 +233,17 @@ export function HeroSection({
           textAlignClass
         )}>
           {subtitle && (
-            <p className="text-sm md:text-base font-medium text-white/70 mb-3 uppercase" style={{ letterSpacing: textStyle.letterSpacing }}>
+            <p className="text-sm md:text-base font-medium text-white/70 mb-3 uppercase" style={subtitleCSS}>
               {subtitle}
             </p>
           )}
           {(title || fallbackName) && (
-            <h1 className="font-bold mb-4 text-white drop-shadow-lg text-3xl md:text-5xl lg:text-6xl" style={textStyle}>
+            <h1 className="font-bold mb-4 text-white drop-shadow-lg text-3xl md:text-5xl lg:text-6xl" style={titleCSS}>
               {displayTitle}
             </h1>
           )}
           {description && (
-            <p className={cn("text-base md:text-lg lg:text-xl text-white/80 max-w-2xl leading-relaxed drop-shadow")}>
+            <p className="text-base md:text-lg lg:text-xl text-white/80 max-w-2xl leading-relaxed drop-shadow" style={descriptionCSS}>
               {description}
             </p>
           )}
@@ -258,17 +276,17 @@ export function HeroSection({
             textAlign === 'right' ? 'order-2' : 'order-1'
           )}>
             {subtitle && (
-              <p className="text-sm md:text-base font-medium text-foreground/70 mb-3 uppercase tracking-widest">
+              <p className="text-sm md:text-base font-medium text-foreground/70 mb-3 uppercase tracking-widest" style={subtitleCSS}>
                 {subtitle}
               </p>
             )}
             {(title || fallbackName) && (
-              <h1 className="font-bold mb-4 text-foreground text-3xl md:text-5xl lg:text-6xl" style={textStyle}>
+              <h1 className="font-bold mb-4 text-foreground text-3xl md:text-5xl lg:text-6xl" style={titleCSS}>
                 {displayTitle}
               </h1>
             )}
             {description && (
-              <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-xl leading-relaxed">
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-xl leading-relaxed" style={descriptionCSS}>
                 {description}
               </p>
             )}
@@ -316,17 +334,17 @@ export function HeroSection({
         textAlignClass
       )}>
         {subtitle && (
-          <p className="text-sm md:text-base font-medium text-foreground/70 mb-3 uppercase tracking-widest">
+          <p className="text-sm md:text-base font-medium text-foreground/70 mb-3 uppercase tracking-widest" style={subtitleCSS}>
             {subtitle}
           </p>
         )}
         {(title || fallbackName) && (
-          <h1 className="font-bold mb-4 text-foreground text-3xl md:text-5xl lg:text-6xl" style={textStyle}>
+          <h1 className="font-bold mb-4 text-foreground text-3xl md:text-5xl lg:text-6xl" style={titleCSS}>
             {displayTitle}
           </h1>
         )}
         {description && (
-          <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+          <p className="text-base md:text-lg lg:text-xl text-muted-foreground max-w-2xl leading-relaxed" style={descriptionCSS}>
             {description}
           </p>
         )}

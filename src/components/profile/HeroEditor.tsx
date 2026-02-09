@@ -399,39 +399,112 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
 
             {/* Text Styling (for templates with text) */}
             {contentEnabled && (
-              <div className="space-y-3 border rounded-lg p-4">
-                <Label className="text-sm font-semibold">Text Styling</Label>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Font Size (px)</Label>
-                    <Input
-                      type="number"
-                      min={12}
-                      max={120}
-                      value={config.fontSize ?? 48}
-                      onChange={(e) => setConfig(prev => ({ ...prev, fontSize: Number(e.target.value) }))}
-                    />
+              <div className="space-y-4">
+                {/* Title Styling */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-semibold">Title Style</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Size (px)</Label>
+                      <Input type="number" min={12} max={120}
+                        value={config.titleStyle?.fontSize ?? 48}
+                        onChange={(e) => setConfig(prev => ({ ...prev, titleStyle: { ...prev.titleStyle, fontSize: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Height (px)</Label>
+                      <Input type="number" min={12} max={150}
+                        value={config.titleStyle?.lineHeight ?? 56}
+                        onChange={(e) => setConfig(prev => ({ ...prev, titleStyle: { ...prev.titleStyle, lineHeight: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Spacing (px)</Label>
+                      <Input type="number" min={-5} max={20} step={0.5}
+                        value={config.titleStyle?.letterSpacing ?? 0}
+                        onChange={(e) => setConfig(prev => ({ ...prev, titleStyle: { ...prev.titleStyle, letterSpacing: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Color</Label>
+                      <Input type="color"
+                        value={config.titleStyle?.color || '#ffffff'}
+                        onChange={(e) => setConfig(prev => ({ ...prev, titleStyle: { ...prev.titleStyle, color: e.target.value } }))}
+                        className="h-10 p-1 cursor-pointer"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Line Height (px)</Label>
-                    <Input
-                      type="number"
-                      min={12}
-                      max={150}
-                      value={config.lineHeight ?? 56}
-                      onChange={(e) => setConfig(prev => ({ ...prev, lineHeight: Number(e.target.value) }))}
-                    />
+                </div>
+
+                {/* Subtitle Styling */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-semibold">Subtitle Style</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Size (px)</Label>
+                      <Input type="number" min={10} max={60}
+                        value={config.subtitleStyle?.fontSize ?? 14}
+                        onChange={(e) => setConfig(prev => ({ ...prev, subtitleStyle: { ...prev.subtitleStyle, fontSize: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Height (px)</Label>
+                      <Input type="number" min={10} max={80}
+                        value={config.subtitleStyle?.lineHeight ?? 20}
+                        onChange={(e) => setConfig(prev => ({ ...prev, subtitleStyle: { ...prev.subtitleStyle, lineHeight: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Spacing (px)</Label>
+                      <Input type="number" min={-2} max={20} step={0.5}
+                        value={config.subtitleStyle?.letterSpacing ?? 2}
+                        onChange={(e) => setConfig(prev => ({ ...prev, subtitleStyle: { ...prev.subtitleStyle, letterSpacing: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Color</Label>
+                      <Input type="color"
+                        value={config.subtitleStyle?.color || '#cccccc'}
+                        onChange={(e) => setConfig(prev => ({ ...prev, subtitleStyle: { ...prev.subtitleStyle, color: e.target.value } }))}
+                        className="h-10 p-1 cursor-pointer"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Spacing (px)</Label>
-                    <Input
-                      type="number"
-                      min={-5}
-                      max={20}
-                      step={0.5}
-                      value={config.letterSpacing ?? 0}
-                      onChange={(e) => setConfig(prev => ({ ...prev, letterSpacing: Number(e.target.value) }))}
-                    />
+                </div>
+
+                {/* Description Styling */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-semibold">Description Style</Label>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Size (px)</Label>
+                      <Input type="number" min={10} max={40}
+                        value={config.descriptionStyle?.fontSize ?? 18}
+                        onChange={(e) => setConfig(prev => ({ ...prev, descriptionStyle: { ...prev.descriptionStyle, fontSize: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Height (px)</Label>
+                      <Input type="number" min={10} max={60}
+                        value={config.descriptionStyle?.lineHeight ?? 28}
+                        onChange={(e) => setConfig(prev => ({ ...prev, descriptionStyle: { ...prev.descriptionStyle, lineHeight: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Spacing (px)</Label>
+                      <Input type="number" min={-2} max={10} step={0.5}
+                        value={config.descriptionStyle?.letterSpacing ?? 0}
+                        onChange={(e) => setConfig(prev => ({ ...prev, descriptionStyle: { ...prev.descriptionStyle, letterSpacing: Number(e.target.value) } }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Color</Label>
+                      <Input type="color"
+                        value={config.descriptionStyle?.color || '#aaaaaa'}
+                        onChange={(e) => setConfig(prev => ({ ...prev, descriptionStyle: { ...prev.descriptionStyle, color: e.target.value } }))}
+                        className="h-10 p-1 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
