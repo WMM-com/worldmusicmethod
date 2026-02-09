@@ -931,6 +931,28 @@ export default function Account() {
             </div>
           </div>
         </div>
+      {/* Username Confirmation Modal */}
+      <Dialog open={showUsernameConfirm} onOpenChange={setShowUsernameConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Username Change</DialogTitle>
+            <DialogDescription>
+              {usernameChangeCount === 0
+                ? `You're about to set your username to "${usernameInput.trim()}". You'll get one free retry to change it again — after that, you won't be able to change it for 30 days.`
+                : usernameChangeCount === 1
+                ? `You're about to change your username to "${usernameInput.trim()}". This is your last free change — after this, you won't be able to change it again for 30 days.`
+                : `You're about to change your username to "${usernameInput.trim()}". You won't be able to change it again for 30 days.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUsernameConfirm(false)}>Cancel</Button>
+            <Button onClick={handleConfirmUsername} disabled={savingUsername}>
+              {savingUsername ? 'Saving...' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       </main>
     </div>
   );
