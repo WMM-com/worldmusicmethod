@@ -22,6 +22,7 @@ import { AdminPages } from '@/components/admin/AdminPages';
 import { AdminFinances } from '@/components/admin/AdminFinances';
 import { AdminReviews } from '@/components/admin/AdminReviews';
 import { AdminBlog } from '@/components/admin/blog/AdminBlog';
+import { PendingReviewsBanner } from '@/components/admin/PendingReviewsBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -199,6 +200,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden bg-background">
       <SiteHeader />
+      <PendingReviewsBanner onNavigate={() => handleTabChange('reviews')} />
       <div className="flex flex-1 min-h-0">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex w-56 flex-col flex-shrink-0 border-r border-border bg-card overflow-y-auto">
