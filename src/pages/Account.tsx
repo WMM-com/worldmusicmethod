@@ -179,8 +179,12 @@ export default function Account() {
     try {
       const result = await changeUsername.mutateAsync(usernameToSet);
       if (result.success) {
+        const newUsername = result.username || usernameToSet;
         toast.success(result.message || 'Username updated');
-        setForm(prev => ({ ...prev, username: result.username || usernameInput.trim() }));
+        setForm(prev => ({ ...prev, username: newUsername }));
+        setUsernameInput(newUsername);
+        // Navigate to the new branded URL so the address bar updates immediately
+        navigate(`/${newUsername}`, { replace: true });
       } else {
         toast.error(result.error || 'Failed to change username');
       }
