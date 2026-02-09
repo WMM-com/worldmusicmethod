@@ -118,7 +118,7 @@ export function ReferralSection() {
           </div>
           <Badge variant="secondary" className="gap-1">
             <DollarSign className="h-3 w-3" />
-            ${formatCredits(credits?.balance || 0)} credits
+            {formatCredits(credits?.balance || 0)} credits
           </Badge>
         </div>
         <CardDescription>
