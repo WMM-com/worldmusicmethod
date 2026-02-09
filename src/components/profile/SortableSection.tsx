@@ -160,7 +160,7 @@ function SortableSectionComponent({
 
           {/* Top-right Layout Selector - beside section dropdown */}
           {onLayoutChange && (
-            <div className="absolute top-1 right-10 z-10">
+            <div className="absolute top-2 right-10 z-10">
               <LayoutSelector 
                 currentLayout={layout || null} 
                 onLayoutChange={onLayoutChange} 
