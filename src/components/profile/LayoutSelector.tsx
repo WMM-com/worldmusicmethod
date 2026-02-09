@@ -151,10 +151,10 @@ export function LayoutSelector({ currentLayout, onLayoutChange }: LayoutSelector
         <Button 
           variant="ghost" 
           size="icon" 
-          className="h-8 w-8"
+          className="h-auto w-auto p-1"
           title="Change layout width"
         >
-          <LayoutGrid className="h-4 w-4" />
+          <LayoutGrid className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start" side="right">
