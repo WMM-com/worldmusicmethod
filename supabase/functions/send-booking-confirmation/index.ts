@@ -266,17 +266,29 @@ Deno.serve(async (req) => {
     // Get student + tutor profiles
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, email')
+      .select('id, full_name, email, timezone')
       .in('id', [booking.student_id, booking.lesson.tutor_id]);
 
     const student = profiles?.find(p => p.id === booking.student_id);
     const tutor = profiles?.find(p => p.id === booking.lesson.tutor_id);
     const lesson = booking.lesson;
 
-    const startDate = new Date(slot.start_time);
-    const endDate = new Date(slot.end_time);
-    const formattedDate = startDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const formattedTime = `${startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} – ${endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} UTC`;
+    // Helper to format in a specific timezone
+    const fmtDate = (iso: string, tz: string) => {
+      const d = new Date(iso);
+      try { return d.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: tz }); }
+      catch { return d.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }); }
+    };
+    const fmtTime = (iso: string, tz: string) => {
+      const d = new Date(iso);
+      try { return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz }); }
+      catch { return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }); }
+    };
+    const fmtTzAbbr = (iso: string, tz: string) => {
+      const d = new Date(iso);
+      try { return d.toLocaleTimeString('en-GB', { timeZoneName: 'short', timeZone: tz }).split(' ').pop() || tz; }
+      catch { return 'UTC'; }
+    };
 
     // Generate .ics file
     const icsContent = generateICS(
@@ -306,6 +318,9 @@ Deno.serve(async (req) => {
 
       const isStudent = recipient.id === booking.student_id;
       const otherName = isStudent ? (tutor?.full_name || 'your tutor') : (student?.full_name || 'the student');
+      const recipientTz = (recipient as any)?.timezone || 'UTC';
+      const formattedDate = fmtDate(slot.start_time, recipientTz);
+      const formattedTime = `${fmtTime(slot.start_time, recipientTz)} – ${fmtTime(slot.end_time, recipientTz)} ${fmtTzAbbr(slot.start_time, recipientTz)}`;
 
       const html = `
 <!DOCTYPE html>

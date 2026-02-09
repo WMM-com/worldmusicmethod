@@ -4792,6 +4792,7 @@ export type Database = {
           tags: string[] | null
           tax_country: string | null
           tax_id: string | null
+          timezone: string | null
           tip_jar_enabled: boolean | null
           updated_at: string
           username: string | null
@@ -4849,6 +4850,7 @@ export type Database = {
           tags?: string[] | null
           tax_country?: string | null
           tax_id?: string | null
+          timezone?: string | null
           tip_jar_enabled?: boolean | null
           updated_at?: string
           username?: string | null
@@ -4906,6 +4908,7 @@ export type Database = {
           tags?: string[] | null
           tax_country?: string | null
           tax_id?: string | null
+          timezone?: string | null
           tip_jar_enabled?: boolean | null
           updated_at?: string
           username?: string | null
