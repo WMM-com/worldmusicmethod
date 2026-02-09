@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useMyBookingRequests } from '@/hooks/useBookings';
 import { createLessonPayment, sendBookingConfirmation, createBookingRoom, sendBookingNotification } from '@/lib/bookingIntegrations';
-import { CreditCard, Video, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CreditCard, Video, Clock, CheckCircle, XCircle, Loader2, ChevronDown } from 'lucide-react';
 import { formatLocalTimeRange } from '@/lib/timezone';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -22,12 +23,35 @@ const STATUS_LABELS: Record<string, { label: string; icon: typeof Clock; classNa
 export function StudentBookingsList() {
   const { data: bookings, isLoading } = useMyBookingRequests();
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [tutorProviders, setTutorProviders] = useState<Record<string, string[]>>({});
   const navigate = useNavigate();
 
-  const handlePay = async (bookingId: string) => {
+  // Fetch available payment providers for each tutor
+  useEffect(() => {
+    if (!bookings?.length) return;
+    const tutorIds = [...new Set(bookings.filter(b => b.status === 'payment_pending').map(b => b.lesson?.tutor_id).filter(Boolean))];
+    if (!tutorIds.length) return;
+
+    supabase
+      .from('payment_accounts')
+      .select('user_id, provider')
+      .in('user_id', tutorIds)
+      .eq('onboarding_complete', true)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string[]> = {};
+        data.forEach(a => {
+          if (!map[a.user_id]) map[a.user_id] = [];
+          map[a.user_id].push(a.provider);
+        });
+        setTutorProviders(map);
+      });
+  }, [bookings]);
+
+  const handlePay = async (bookingId: string, provider?: 'stripe' | 'flutterwave') => {
     setPayingId(bookingId);
     try {
-      const result = await createLessonPayment(bookingId);
+      const result = await createLessonPayment(bookingId, provider);
       if (result?.free) {
         toast.success('Free lesson confirmed!');
         return;
@@ -101,20 +125,52 @@ export function StudentBookingsList() {
               )}
 
               {/* Pay button */}
-              {booking.status === 'payment_pending' && (
-                <Button
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handlePay(booking.id)}
-                  disabled={payingId === booking.id}
-                >
-                  {payingId === booking.id ? (
-                    <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing...</>
-                  ) : (
-                    <><CreditCard className="h-3.5 w-3.5 mr-1" /> Pay Now – {lesson?.currency === 'GBP' ? '£' : lesson?.currency === 'EUR' ? '€' : '$'}{lesson?.price}</>
-                  )}
-                </Button>
-              )}
+              {booking.status === 'payment_pending' && (() => {
+                const providers = tutorProviders[lesson?.tutor_id] || [];
+                const hasStripe = providers.includes('stripe');
+                const hasFlutterwave = providers.includes('flutterwave');
+                const hasBoth = hasStripe && hasFlutterwave;
+                const priceLabel = `${lesson?.currency === 'GBP' ? '£' : lesson?.currency === 'EUR' ? '€' : '$'}${lesson?.price}`;
+
+                if (payingId === booking.id) {
+                  return (
+                    <Button size="sm" className="w-full" disabled>
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Processing...
+                    </Button>
+                  );
+                }
+
+                if (hasBoth) {
+                  return (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" className="w-full">
+                          <CreditCard className="h-3.5 w-3.5 mr-1" /> Pay Now – {priceLabel}
+                          <ChevronDown className="h-3 w-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handlePay(booking.id, 'stripe')}>
+                          Pay with Stripe
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handlePay(booking.id, 'flutterwave')}>
+                          Pay with Flutterwave
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                }
+
+                return (
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handlePay(booking.id, hasFlutterwave ? 'flutterwave' : 'stripe')}
+                  >
+                    <CreditCard className="h-3.5 w-3.5 mr-1" /> Pay Now – {priceLabel}
+                  </Button>
+                );
+              })()}
 
               {/* Join video room */}
               {booking.status === 'confirmed' && (booking as any).video_room_id && (

@@ -9,7 +9,7 @@ export interface BookingRequest {
   created_at: string;
   // Joined
   student?: { id: string; full_name: string | null; avatar_url: string | null; email: string | null };
-  lesson?: { id: string; title: string; price: number | null; currency: string; duration_minutes: number };
+  lesson?: { id: string; title: string; price: number | null; currency: string; duration_minutes: number; tutor_id: string };
   slots?: BookingSlot[];
 }
 
