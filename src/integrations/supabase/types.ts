@@ -211,6 +211,87 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_requests: {
+        Row: {
+          created_at: string | null
+          id: string
+          lesson_id: string
+          status: string | null
+          student_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lesson_id: string
+          status?: string | null
+          student_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lesson_id?: string
+          status?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_requests_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_slots: {
+        Row: {
+          created_at: string | null
+          end_time: string
+          id: string
+          request_id: string
+          start_time: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_time: string
+          id?: string
+          request_id: string
+          start_time: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          request_id?: string
+          start_time?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_slots_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "booking_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_connections: {
         Row: {
           access_token: string | null
@@ -2594,15 +2675,7 @@ export type Database = {
           tutor_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "lesson_bookings_availability_id_fkey"
-            columns: ["availability_id"]
-            isOneToOne: false
-            referencedRelation: "tutor_availability"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       lesson_conversations: {
         Row: {
@@ -2715,6 +2788,63 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: true
             referencedRelation: "module_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          image_url: string | null
+          price: number | null
+          title: string
+          tutor_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          image_url?: string | null
+          price?: number | null
+          title: string
+          tutor_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          image_url?: string | null
+          price?: number | null
+          title?: string
+          tutor_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -5508,36 +5638,67 @@ export type Database = {
       }
       tutor_availability: {
         Row: {
-          available_at: string
-          booking_token: string | null
-          created_at: string
-          duration_minutes: number
+          active: boolean | null
+          created_at: string | null
+          day_of_week: number | null
+          end_time: string | null
           id: string
-          is_booked: boolean | null
+          is_recurring: boolean | null
+          lesson_id: string | null
+          specific_date: string | null
+          start_time: string | null
+          timezone: string
           tutor_id: string
-          updated_at: string
         }
         Insert: {
-          available_at: string
-          booking_token?: string | null
-          created_at?: string
-          duration_minutes?: number
+          active?: boolean | null
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time?: string | null
           id?: string
-          is_booked?: boolean | null
+          is_recurring?: boolean | null
+          lesson_id?: string | null
+          specific_date?: string | null
+          start_time?: string | null
+          timezone: string
           tutor_id: string
-          updated_at?: string
         }
         Update: {
-          available_at?: string
-          booking_token?: string | null
-          created_at?: string
-          duration_minutes?: number
+          active?: boolean | null
+          created_at?: string | null
+          day_of_week?: number | null
+          end_time?: string | null
           id?: string
-          is_booked?: boolean | null
+          is_recurring?: boolean | null
+          lesson_id?: string | null
+          specific_date?: string | null
+          start_time?: string | null
+          timezone?: string
           tutor_id?: string
-          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tutor_availability_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_availability_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tutor_availability_tutor_id_fkey"
+            columns: ["tutor_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tutor_commission_payments: {
         Row: {
