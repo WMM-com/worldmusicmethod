@@ -32,6 +32,7 @@ import { PageManager } from '@/components/profile/PageManager';
 // CoverImageUploader removed - cover upload now handled by HeroOverlayControls
 import { DevicePreviewToggle, DeviceType, getDeviceMaxWidth } from '@/components/profile/DevicePreviewToggle';
 import { SortableSection } from '@/components/profile/SortableSection';
+import { resolveResponsiveStyles, useScreenWidth } from '@/components/profile/BreakpointStyleEditor';
 import { getLayoutClass } from '@/components/profile/GridLayout';
 import { PremiumGate, PremiumActiveBadge, usePremiumCheck, BETA_MEMBERSHIP_PRODUCT_ID } from '@/components/profile/PremiumGate';
 import { AddSectionModal } from '@/components/profile/AddSectionModal';
@@ -208,6 +209,7 @@ export default function Profile(
   const ensureHomePage = useEnsureHomePage();
   const updatePage = useUpdatePage();
 
+  const screenWidth = useScreenWidth();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('page');
   const [inviteFriendsOpen, setInviteFriendsOpen] = useState(false);
@@ -379,6 +381,17 @@ export default function Profile(
 
   const handleUpdateSection = async (sectionId: string, content: Record<string, any>) => {
     await updateSection.mutateAsync({ id: sectionId, content });
+  };
+
+  const handleUpdateSectionStyles = async (sectionId: string, responsiveStyles: Record<string, any>) => {
+    // Find the current section to merge with existing content
+    const section = sections?.find(s => s.id === sectionId);
+    const existingContent = section?.content || {};
+    await updateSection.mutateAsync({ 
+      id: sectionId, 
+      content: { ...existingContent, responsive_styles: responsiveStyles } 
+    });
+    toast.success('Styles saved');
   };
 
   const handleDeleteSection = async (sectionId: string) => {
@@ -1051,12 +1064,13 @@ export default function Profile(
           {/* Main Content with Tabs */}
           <div className="py-8">
             {/* Unified Navigation - ProfileNav with built-in About/Posts/Media tabs */}
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2 sm:gap-4 mb-6">
               <ProfileNav 
                 userId={profileId!} 
                 isOwnProfile={isOwnProfile}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                className="flex-1 min-w-0"
               />
               
               {/* Device Preview Toggle - only in edit mode */}
@@ -1176,10 +1190,15 @@ export default function Profile(
                                 id={section.id}
                                 layout={section.layout}
                                 isEditing={isEditing}
+                                sectionType={section.section_type}
+                                sectionTitle={section.title || section.section_type}
+                                responsiveStyles={section.content?.responsive_styles}
+                                activeBreakpoint={previewDevice}
                                 onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                 onMoveUp={() => handleMoveSection(section.id, 'up', mainSections)}
                                 onMoveDown={() => handleMoveSection(section.id, 'down', mainSections)}
                                 onDelete={() => handleDeleteSection(section.id)}
+                                onStyleChange={(styles) => handleUpdateSectionStyles(section.id, styles)}
                                 isFirst={index === 0}
                                 isLast={index === mainSections.length - 1}
                               >
@@ -1192,7 +1211,11 @@ export default function Profile(
                     ) : (
                       <div className="grid grid-cols-12 gap-4">
                         {mainSections.map(section => (
-                          <div key={section.id} className={getLayoutClass(section.layout)}>
+                          <div 
+                            key={section.id} 
+                            className={getLayoutClass(section.layout)}
+                            style={resolveResponsiveStyles(section.content?.responsive_styles, screenWidth)}
+                          >
                             {renderSection(section, false)}
                           </div>
                         ))}
@@ -1233,10 +1256,15 @@ export default function Profile(
                                     id={section.id}
                                     layout={section.layout}
                                     isEditing={isEditing}
+                                    sectionType={section.section_type}
+                                    sectionTitle={section.title || section.section_type}
+                                    responsiveStyles={section.content?.responsive_styles}
+                                    activeBreakpoint={previewDevice}
                                     onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                     onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
                                     onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
                                     onDelete={() => handleDeleteSection(section.id)}
+                                    onStyleChange={(styles) => handleUpdateSectionStyles(section.id, styles)}
                                     isFirst={index === 0}
                                     isLast={index === sidebarSections.length - 1}
                                   >
@@ -1273,10 +1301,15 @@ export default function Profile(
                                   id={section.id}
                                   layout={section.layout}
                                   isEditing={isEditing}
+                                  sectionType={section.section_type}
+                                  sectionTitle={section.title || section.section_type}
+                                  responsiveStyles={section.content?.responsive_styles}
+                                  activeBreakpoint={previewDevice}
                                   onLayoutChange={(layout) => handleUpdateSectionLayout(section.id, layout)}
                                   onMoveUp={() => handleMoveSection(section.id, 'up', sidebarSections)}
                                   onMoveDown={() => handleMoveSection(section.id, 'down', sidebarSections)}
                                   onDelete={() => handleDeleteSection(section.id)}
+                                  onStyleChange={(styles) => handleUpdateSectionStyles(section.id, styles)}
                                   isFirst={index === 0}
                                   isLast={index === sidebarSections.length - 1}
                                 >

@@ -254,7 +254,15 @@
     scrollbar-color: hsl(var(--primary)) hsl(var(--background));
   }
 
-  /* ── Blog content: images ────────────────────────────── */
+  /* Scrollbar hide utility */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   .blog-content img {
     max-width: 100%;
     height: auto;
