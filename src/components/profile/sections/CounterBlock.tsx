@@ -115,7 +115,7 @@ export function CounterBlock({ section, isEditing, onUpdate }: CounterBlockProps
                 <X className="h-4 w-4" />
               </Button>
               <Button size="sm" onClick={handleSave}>
-                <Check className="h-4 w-4 mr-1" /> Save
+                <Check className="h-4 w-4 mr-1" /> Save Changes
               </Button>
             </div>
           </div>
@@ -182,6 +182,10 @@ export function CounterBlock({ section, isEditing, onUpdate }: CounterBlockProps
 
           <Button variant="outline" className="w-full" onClick={addCounter}>
             <Plus className="h-4 w-4 mr-2" /> Add Counter
+          </Button>
+
+          <Button className="w-full" onClick={handleSave}>
+            <Check className="h-4 w-4 mr-1" /> Save Changes
           </Button>
         </CardContent>
       </Card>
