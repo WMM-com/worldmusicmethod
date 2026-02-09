@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { CoverSettings } from '@/hooks/useHeroSettings';
 
-export type HeroType = 'standard' | 'cut-out' | 'minimal';
+export type HeroType = 'standard' | 'slay' | 'cut-out' | 'minimal';
 
 export interface HeroConfig {
   title?: string;
@@ -11,6 +11,17 @@ export interface HeroConfig {
   backgroundColor?: string;
   backgroundImage?: string;
   cutoutImage?: string;
+  // Overlay
+  overlayEnabled?: boolean;
+  overlayColor?: string;
+  overlayOpacity?: number; // 0-100
+  // Text styling
+  fontSize?: 'small' | 'medium' | 'large' | 'xlarge';
+  lineHeight?: 'tight' | 'normal' | 'relaxed' | 'loose';
+  letterSpacing?: 'tight' | 'normal' | 'wide' | 'wider';
+  // Image sizing/positioning
+  imageSize?: 'cover' | 'contain' | 'auto';
+  imagePosition?: 'top' | 'center' | 'bottom' | 'left' | 'right';
 }
 
 interface HeroSectionProps {
@@ -39,6 +50,53 @@ function getFocalPointStyle(settings?: CoverSettings): string {
   return `${x}% ${y}%`;
 }
 
+// Get font size classes
+function getFontSizeClasses(size?: HeroConfig['fontSize']) {
+  switch (size) {
+    case 'small': return 'text-2xl md:text-3xl lg:text-4xl';
+    case 'large': return 'text-4xl md:text-6xl lg:text-7xl';
+    case 'xlarge': return 'text-5xl md:text-7xl lg:text-8xl';
+    case 'medium':
+    default: return 'text-3xl md:text-5xl lg:text-6xl';
+  }
+}
+
+function getLineHeightClass(lh?: HeroConfig['lineHeight']) {
+  switch (lh) {
+    case 'tight': return 'leading-tight';
+    case 'relaxed': return 'leading-relaxed';
+    case 'loose': return 'leading-loose';
+    default: return 'leading-normal';
+  }
+}
+
+function getLetterSpacingClass(ls?: HeroConfig['letterSpacing']) {
+  switch (ls) {
+    case 'tight': return 'tracking-tight';
+    case 'wide': return 'tracking-wide';
+    case 'wider': return 'tracking-wider';
+    default: return 'tracking-normal';
+  }
+}
+
+function getImageSizeStyle(size?: HeroConfig['imageSize']) {
+  switch (size) {
+    case 'contain': return 'contain';
+    case 'auto': return 'auto';
+    default: return 'cover';
+  }
+}
+
+function getImagePositionStyle(pos?: HeroConfig['imagePosition']) {
+  switch (pos) {
+    case 'top': return 'top center';
+    case 'bottom': return 'bottom center';
+    case 'left': return 'center left';
+    case 'right': return 'center right';
+    default: return undefined; // use focal point
+  }
+}
+
 export function HeroSection({ 
   heroType, 
   heroConfig, 
@@ -55,6 +113,14 @@ export function HeroSection({
     backgroundColor,
     backgroundImage,
     cutoutImage,
+    overlayEnabled,
+    overlayColor,
+    overlayOpacity,
+    fontSize,
+    lineHeight,
+    letterSpacing,
+    imageSize,
+    imagePosition,
   } = heroConfig;
 
   const displayTitle = title || fallbackName || 'Welcome';
@@ -70,7 +136,20 @@ export function HeroSection({
     right: 'text-right items-end',
   }[textAlign];
 
-  // Standard: Full background image (cover image only, no text overlay)
+  const titleSizeClass = getFontSizeClasses(fontSize);
+  const lineHeightClass = getLineHeightClass(lineHeight);
+  const letterSpacingClass = getLetterSpacingClass(letterSpacing);
+  
+  const bgSize = getImageSizeStyle(imageSize);
+  const bgPosition = getImagePositionStyle(imagePosition) || focalPoint;
+
+  // Overlay style
+  const overlayStyle = overlayEnabled ? {
+    backgroundColor: overlayColor || 'rgba(0,0,0,0.5)',
+    opacity: (overlayOpacity ?? 40) / 100,
+  } : undefined;
+
+  // Standard: Cover image only, no text overlay
   if (heroType === 'standard') {
     return (
       <section
@@ -83,29 +162,96 @@ export function HeroSection({
           backgroundColor: backgroundColor || 'hsl(var(--muted))',
         }}
       >
-        {/* Background Image */}
         {actualBackgroundImage && (
           <div
-            className="absolute inset-0 bg-cover"
+            className="absolute inset-0"
             style={{ 
               backgroundImage: `url(${actualBackgroundImage})`,
-              backgroundPosition: focalPoint,
+              backgroundSize: bgSize,
+              backgroundPosition: bgPosition,
+              backgroundRepeat: 'no-repeat',
             }}
           />
         )}
         
-        {/* Dark overlay for better contrast */}
-        <div 
-          className="absolute inset-0 pointer-events-none bg-black/20"
-        />
+        {/* Overlay */}
+        {overlayEnabled ? (
+          <div className="absolute inset-0 pointer-events-none" style={overlayStyle} />
+        ) : (
+          <div className="absolute inset-0 pointer-events-none bg-black/20" />
+        )}
         
-        {/* Gradient overlay at bottom for visual polish */}
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
             background: 'linear-gradient(to top, hsl(var(--background) / 0.4) 0%, transparent 40%)'
           }}
         />
+      </section>
+    );
+  }
+
+  // Slay: Full background image WITH text overlay
+  if (heroType === 'slay') {
+    return (
+      <section
+        className={cn(
+          'relative w-full overflow-hidden',
+          heroHeightClass,
+          className
+        )}
+        style={{
+          backgroundColor: backgroundColor || 'hsl(var(--muted))',
+        }}
+      >
+        {actualBackgroundImage && (
+          <div
+            className="absolute inset-0"
+            style={{ 
+              backgroundImage: `url(${actualBackgroundImage})`,
+              backgroundSize: bgSize,
+              backgroundPosition: bgPosition,
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+        )}
+        
+        {/* Overlay */}
+        {overlayEnabled ? (
+          <div className="absolute inset-0 pointer-events-none" style={overlayStyle} />
+        ) : (
+          <div className="absolute inset-0 pointer-events-none bg-black/20" />
+        )}
+        
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(to top, hsl(var(--background) / 0.4) 0%, transparent 40%)'
+          }}
+        />
+
+        {/* Text content */}
+        <div className={cn(
+          'relative z-10 flex flex-col justify-center h-full p-6 md:p-10 lg:p-12',
+          heroHeightClass,
+          textAlignClass
+        )}>
+          {subtitle && (
+            <p className={cn("text-sm md:text-base font-medium text-white/70 mb-3 uppercase", letterSpacingClass)}>
+              {subtitle}
+            </p>
+          )}
+          {(title || fallbackName) && (
+            <h1 className={cn("font-bold mb-4 text-white drop-shadow-lg", titleSizeClass, lineHeightClass, letterSpacingClass)}>
+              {displayTitle}
+            </h1>
+          )}
+          {description && (
+            <p className={cn("text-base md:text-lg lg:text-xl text-white/80 max-w-2xl leading-relaxed drop-shadow")}>
+              {description}
+            </p>
+          )}
+        </div>
       </section>
     );
   }
@@ -139,7 +285,7 @@ export function HeroSection({
               </p>
             )}
             {(title || fallbackName) && (
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 text-foreground">
+              <h1 className={cn("font-bold mb-4 text-foreground", titleSizeClass, lineHeightClass, letterSpacingClass)}>
                 {displayTitle}
               </h1>
             )}
@@ -197,7 +343,7 @@ export function HeroSection({
           </p>
         )}
         {(title || fallbackName) && (
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 text-foreground">
+          <h1 className={cn("font-bold mb-4 text-foreground", titleSizeClass, lineHeightClass, letterSpacingClass)}>
             {displayTitle}
           </h1>
         )}

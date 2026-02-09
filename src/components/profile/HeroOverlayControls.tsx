@@ -33,7 +33,7 @@ interface HeroOverlayControlsProps {
 }
 
 // Check if the template uses background images
-const templateUsesBackgroundImage = (type: HeroType) => type === 'standard';
+const templateUsesBackgroundImage = (type: HeroType) => type === 'standard' || type === 'slay';
 
 const heightOptions = [
   { value: 'small', label: 'Small', pixels: '192px' },
@@ -256,7 +256,7 @@ export function HeroOverlayControls({
           heroConfig={heroConfig}
           onSave={onUpdateHero}
           trigger={
-            <Button variant="secondary" size="sm" className="gap-2 shadow-lg">
+            <Button size="sm" className="gap-2 shadow-lg bg-background text-foreground border border-border hover:bg-muted">
               <Edit2 className="h-4 w-4" />
               Edit Hero
             </Button>
