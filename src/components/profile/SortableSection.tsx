@@ -158,9 +158,9 @@ function SortableSectionComponent({
             )}
           </div>
 
-          {/* Top-right Layout Selector */}
+          {/* Top-right Layout Selector - beside section dropdown */}
           {onLayoutChange && (
-            <div className="absolute top-1 right-1 z-10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-1 right-10 z-10">
               <LayoutSelector 
                 currentLayout={layout || null} 
                 onLayoutChange={onLayoutChange} 
