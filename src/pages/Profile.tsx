@@ -84,7 +84,7 @@ import {
   User, Camera, Edit2, MessageSquare, UserPlus, Check, Users, FileText, 
   Settings, Eye, EyeOff, Plus, GripVertical, Music, Video, Image, 
   Calendar, Share2, Layout, DollarSign, Globe, Lock, Headphones, Code,
-  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, Palette, CreditCard
+  Newspaper, UsersRound, UserSearch, ShoppingBag, Crown, Palette, CreditCard, Gift
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -815,11 +815,9 @@ export default function Profile(
                         </Button>
                         <Button
                           variant="outline"
-                          size="icon"
                           onClick={() => setInviteFriendsOpen(true)}
-                          aria-label="Invite friends"
                         >
-                          <Settings className="h-4 w-4" />
+                          <Gift className="h-4 w-4 mr-2" /> Invite Friends
                         </Button>
                       </>
                     ) : (

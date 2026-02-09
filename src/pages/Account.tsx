@@ -34,10 +34,11 @@ import { toast } from 'sonner';
 
 import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
+import { ReferralSection } from '@/components/profile/ReferralSection';
 import { 
   User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, 
   AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle,
-  BadgeCheck
+  BadgeCheck, Gift
 } from 'lucide-react';
 import { VerifiedBadge, isUserVerified } from '@/components/profile/VerifiedBadge';
 import { cn } from '@/lib/utils';
@@ -45,7 +46,7 @@ import { useChangeUsername } from '@/hooks/useUsernameResolution';
 import { useCheckUsername } from '@/hooks/useCheckUsername';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
-type Section = 'profile' | 'orders' | 'notifications' | 'security';
+type Section = 'profile' | 'orders' | 'notifications' | 'security' | 'referrals';
 
 export default function Account() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -314,6 +315,7 @@ export default function Account() {
   const sidebarItems: { id: Section; label: string; icon: React.ElementType }[] = [
     { id: 'profile', label: 'Profile & Display', icon: User },
     { id: 'orders', label: 'Orders & Subscriptions', icon: ShoppingBag },
+    { id: 'referrals', label: 'Invite Friends', icon: Gift },
     { id: 'notifications', label: 'Notification Preferences', icon: Bell },
     { id: 'security', label: 'Security', icon: Lock },
   ];
@@ -820,6 +822,11 @@ export default function Account() {
                     </Button>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Invite Friends Section */}
+              {currentSection === 'referrals' && (
+                <ReferralSection />
               )}
 
               {/* Security Section */}
