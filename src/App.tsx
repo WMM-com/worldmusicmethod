@@ -66,6 +66,9 @@ import BlogPost from "./pages/BlogPost";
 import BlogCategory from "./pages/BlogCategory";
 import Blog from "./pages/Blog";
 import Index from "./pages/Index";
+import Lessons from "./pages/Lessons";
+import LessonDetail from "./pages/LessonDetail";
+import TutorDashboard from "./pages/TutorDashboard";
 
 const queryClient = new QueryClient();
 
@@ -150,6 +153,9 @@ function AppContent() {
         <Route path="/payment-cancelled" element={<PaymentCancelled />} />
         <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/lessons" element={<Lessons />} />
+        <Route path="/lessons/:id" element={<LessonDetail />} />
+        <Route path="/tutor-dashboard" element={<ProtectedRoute><TutorDashboard /></ProtectedRoute>} />
 
         {/* Community is publicly viewable */}
         <Route path="/community" element={<Social />} />
