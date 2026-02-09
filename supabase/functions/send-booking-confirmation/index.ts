@@ -1,0 +1,356 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Generate .ics calendar file content
+function generateICS(
+  title: string,
+  startTime: string,
+  endTime: string,
+  description: string,
+  roomUrl: string
+): string {
+  const formatDate = (iso: string) => {
+    return new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  };
+
+  const uid = crypto.randomUUID();
+  const now = formatDate(new Date().toISOString());
+  const dtStart = formatDate(startTime);
+  const dtEnd = formatDate(endTime);
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//World Music Method//Booking//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${uid}@worldmusicmethod.lovable.app`,
+    `DTSTAMP:${now}`,
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${description.replace(/\n/g, '\\n')}`,
+    `URL:${roomUrl}`,
+    `LOCATION:${roomUrl}`,
+    'STATUS:CONFIRMED',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT1H',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Lesson starts in 1 hour',
+    'END:VALARM',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT24H',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Lesson tomorrow',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+// Send email via SES using raw MIME (supports attachments)
+async function sendRawEmailViaSES(
+  to: string,
+  subject: string,
+  htmlBody: string,
+  fromAddress: string,
+  icsContent: string,
+  accessKeyId: string,
+  secretAccessKey: string,
+  region: string
+) {
+  const boundary = `boundary_${crypto.randomUUID().replace(/-/g, '')}`;
+  const icsBase64 = btoa(icsContent);
+
+  const rawMessage = [
+    `From: ${fromAddress}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: 7bit',
+    '',
+    htmlBody,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/calendar; charset=UTF-8; method=REQUEST',
+    'Content-Transfer-Encoding: base64',
+    'Content-Disposition: attachment; filename="lesson.ics"',
+    '',
+    icsBase64,
+    '',
+    `--${boundary}--`,
+  ].join('\r\n');
+
+  const rawMessageBase64 = btoa(rawMessage);
+
+  const url = new URL(`https://email.${region}.amazonaws.com/`);
+  const params = new URLSearchParams();
+  params.append('Action', 'SendRawEmail');
+  params.append('Version', '2010-12-01');
+  params.append('RawMessage.Data', rawMessageBase64);
+
+  const body = params.toString();
+  const encoder = new TextEncoder();
+  const now = new Date();
+  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '');
+  const dateStamp = amzDate.slice(0, 8);
+
+  // AWS SigV4 signing
+  const headers = new Headers({
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Host': url.host,
+    'X-Amz-Date': amzDate,
+  });
+
+  const signedHeaders = 'content-type;host;x-amz-date';
+  const payloadHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(body))))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const canonicalHeaders =
+    `content-type:${headers.get('Content-Type')}\n` +
+    `host:${url.host}\n` +
+    `x-amz-date:${amzDate}\n`;
+
+  const canonicalRequest = ['POST', url.pathname, '', canonicalHeaders, signedHeaders, payloadHash].join('\n');
+
+  const credentialScope = `${dateStamp}/${region}/ses/aws4_request`;
+  const canonicalRequestHash = Array.from(new Uint8Array(
+    await crypto.subtle.digest('SHA-256', encoder.encode(canonicalRequest))
+  )).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  const stringToSign = ['AWS4-HMAC-SHA256', amzDate, credentialScope, canonicalRequestHash].join('\n');
+
+  const getSignatureKey = async (key: string, ds: string, rg: string, sv: string) => {
+    const kDate = await crypto.subtle.sign('HMAC',
+      await crypto.subtle.importKey('raw', encoder.encode('AWS4' + key), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(ds));
+    const kRegion = await crypto.subtle.sign('HMAC',
+      await crypto.subtle.importKey('raw', kDate, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(rg));
+    const kService = await crypto.subtle.sign('HMAC',
+      await crypto.subtle.importKey('raw', kRegion, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(sv));
+    return await crypto.subtle.sign('HMAC',
+      await crypto.subtle.importKey('raw', kService, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode('aws4_request'));
+  };
+
+  const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, 'ses');
+  const signature = Array.from(new Uint8Array(
+    await crypto.subtle.sign('HMAC',
+      await crypto.subtle.importKey('raw', signingKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']),
+      encoder.encode(stringToSign))
+  )).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  headers.set('Authorization', `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`);
+
+  const response = await fetch(url.toString(), { method: 'POST', headers, body });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    console.error('[send-booking-confirmation] SES error:', responseText);
+    throw new Error(`SES error: ${response.status}`);
+  }
+
+  return responseText;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const accessKeyId = Deno.env.get('AWS_SES_ACCESS_KEY_ID');
+    const secretAccessKey = Deno.env.get('AWS_SES_SECRET_ACCESS_KEY');
+    const region = Deno.env.get('AWS_SES_REGION') || 'eu-west-1';
+
+    if (!accessKeyId || !secretAccessKey) {
+      return new Response(JSON.stringify({ error: 'SES not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Auth check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { bookingRequestId } = await req.json();
+    if (!bookingRequestId) {
+      return new Response(JSON.stringify({ error: 'Missing bookingRequestId' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Fetch booking with all details
+    const { data: booking, error: bErr } = await supabase
+      .from('booking_requests')
+      .select('*, lesson:lessons(id, title, tutor_id, price, currency, duration_minutes)')
+      .eq('id', bookingRequestId)
+      .single();
+
+    if (bErr || !booking) {
+      return new Response(JSON.stringify({ error: 'Booking not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get confirmed slot
+    const { data: slot } = await supabase
+      .from('booking_slots')
+      .select('start_time, end_time')
+      .eq('request_id', bookingRequestId)
+      .eq('status', 'selected_by_tutor')
+      .order('start_time', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (!slot) {
+      return new Response(JSON.stringify({ error: 'No confirmed slot found' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get video room URL
+    let roomUrl = 'https://worldmusicmethod.lovable.app/lessons';
+    if (booking.video_room_id) {
+      const { data: room } = await supabase
+        .from('video_rooms')
+        .select('room_name')
+        .eq('id', booking.video_room_id)
+        .single();
+      if (room) {
+        roomUrl = `https://worldmusicmethod.lovable.app/meet/${room.room_name}`;
+      }
+    }
+
+    // Get student + tutor profiles
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', [booking.student_id, booking.lesson.tutor_id]);
+
+    const student = profiles?.find(p => p.id === booking.student_id);
+    const tutor = profiles?.find(p => p.id === booking.lesson.tutor_id);
+    const lesson = booking.lesson;
+
+    const startDate = new Date(slot.start_time);
+    const endDate = new Date(slot.end_time);
+    const formattedDate = startDate.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedTime = `${startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} – ${endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} UTC`;
+
+    // Generate .ics file
+    const icsContent = generateICS(
+      `Lesson: ${lesson.title}`,
+      slot.start_time,
+      slot.end_time,
+      `Private lesson with ${tutor?.full_name || 'your tutor'}\nJoin: ${roomUrl}`,
+      roomUrl
+    );
+
+    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+
+    // Send to both student and tutor
+    const recipients = [student, tutor].filter(p => p?.email);
+
+    for (const recipient of recipients) {
+      if (!recipient?.email) continue;
+
+      const isStudent = recipient.id === booking.student_id;
+      const otherName = isStudent ? (tutor?.full_name || 'your tutor') : (student?.full_name || 'the student');
+
+      const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">🎵 Lesson Confirmed!</h1>
+          <div style="background: #f8f8f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
+            <h2 style="margin: 0 0 12px; color: #333;">${lesson.title}</h2>
+            <p style="margin: 4px 0; color: #666;">📅 <strong>${formattedDate}</strong></p>
+            <p style="margin: 4px 0; color: #666;">🕐 <strong>${formattedTime}</strong></p>
+            <p style="margin: 4px 0; color: #666;">👤 With <strong>${otherName}</strong></p>
+            <p style="margin: 4px 0; color: #666;">⏱ <strong>${lesson.duration_minutes} minutes</strong></p>
+          </div>
+          <a href="${roomUrl}" style="display: inline-block; background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0;">
+            Join Video Room
+          </a>
+          <p style="color: #888; font-size: 13px; margin-top: 20px;">
+            An .ics calendar file is attached — open it to add this lesson to your calendar (Google, Outlook, Apple).
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">World Music Method — Private Lessons</p>
+        </div>
+      `;
+
+      try {
+        await sendRawEmailViaSES(
+          recipient.email,
+          `Lesson Confirmed: ${lesson.title} — ${formattedDate}`,
+          html,
+          fromAddress,
+          icsContent,
+          accessKeyId!,
+          secretAccessKey!,
+          region
+        );
+        console.log(`[send-booking-confirmation] Email sent to ${recipient.email}`);
+      } catch (emailErr) {
+        console.error(`[send-booking-confirmation] Failed for ${recipient.email}:`, emailErr);
+      }
+    }
+
+    // Update booking: mark confirmation sent + store confirmed slot times
+    await supabase
+      .from('booking_requests')
+      .update({
+        confirmation_email_sent: true,
+        confirmed_slot_start: slot.start_time,
+        confirmed_slot_end: slot.end_time,
+      })
+      .eq('id', bookingRequestId);
+
+    // Log in email_send_log
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    for (const recipient of recipients) {
+      if (!recipient?.email) continue;
+      await supabaseAdmin.from('email_send_log').insert({
+        email: recipient.email,
+        from_email: fromAddress,
+        subject: `Lesson Confirmed: ${lesson.title}`,
+        status: 'sent',
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('[send-booking-confirmation] Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

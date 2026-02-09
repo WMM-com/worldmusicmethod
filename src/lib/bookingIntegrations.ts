@@ -38,3 +38,14 @@ export async function createBookingRoom(bookingRequestId: string) {
     return null;
   }
 }
+
+export async function sendBookingConfirmation(bookingRequestId: string) {
+  try {
+    const { error } = await supabase.functions.invoke('send-booking-confirmation', {
+      body: { bookingRequestId },
+    });
+    if (error) console.error('[send-booking-confirmation] Error:', error);
+  } catch (err) {
+    console.error('[send-booking-confirmation] Failed:', err);
+  }
+}
