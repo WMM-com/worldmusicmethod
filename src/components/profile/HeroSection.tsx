@@ -16,9 +16,9 @@ export interface HeroConfig {
   overlayColor?: string;
   overlayOpacity?: number; // 0-100
   // Text styling
-  fontSize?: 'small' | 'medium' | 'large' | 'xlarge';
-  lineHeight?: 'tight' | 'normal' | 'relaxed' | 'loose';
-  letterSpacing?: 'tight' | 'normal' | 'wide' | 'wider';
+  fontSize?: number; // px value, default 48
+  lineHeight?: number; // px value, default 56
+  letterSpacing?: number; // px value, default 0
   // Image sizing/positioning
   imageSize?: 'cover' | 'contain' | 'auto';
   imagePosition?: 'top' | 'center' | 'bottom' | 'left' | 'right';
@@ -50,33 +50,13 @@ function getFocalPointStyle(settings?: CoverSettings): string {
   return `${x}% ${y}%`;
 }
 
-// Get font size classes
-function getFontSizeClasses(size?: HeroConfig['fontSize']) {
-  switch (size) {
-    case 'small': return 'text-2xl md:text-3xl lg:text-4xl';
-    case 'large': return 'text-4xl md:text-6xl lg:text-7xl';
-    case 'xlarge': return 'text-5xl md:text-7xl lg:text-8xl';
-    case 'medium':
-    default: return 'text-3xl md:text-5xl lg:text-6xl';
-  }
-}
-
-function getLineHeightClass(lh?: HeroConfig['lineHeight']) {
-  switch (lh) {
-    case 'tight': return 'leading-tight';
-    case 'relaxed': return 'leading-relaxed';
-    case 'loose': return 'leading-loose';
-    default: return 'leading-normal';
-  }
-}
-
-function getLetterSpacingClass(ls?: HeroConfig['letterSpacing']) {
-  switch (ls) {
-    case 'tight': return 'tracking-tight';
-    case 'wide': return 'tracking-wide';
-    case 'wider': return 'tracking-wider';
-    default: return 'tracking-normal';
-  }
+// Build inline text styles from numeric px values
+function getTextStyle(config: HeroConfig): React.CSSProperties {
+  return {
+    fontSize: config.fontSize ? `${config.fontSize}px` : undefined,
+    lineHeight: config.lineHeight ? `${config.lineHeight}px` : undefined,
+    letterSpacing: config.letterSpacing ? `${config.letterSpacing}px` : undefined,
+  };
 }
 
 function getImageSizeStyle(size?: HeroConfig['imageSize']) {
@@ -136,9 +116,7 @@ export function HeroSection({
     right: 'text-right items-end',
   }[textAlign];
 
-  const titleSizeClass = getFontSizeClasses(fontSize);
-  const lineHeightClass = getLineHeightClass(lineHeight);
-  const letterSpacingClass = getLetterSpacingClass(letterSpacing);
+  const textStyle = getTextStyle(heroConfig);
   
   const bgSize = getImageSizeStyle(imageSize);
   const bgPosition = getImagePositionStyle(imagePosition) || focalPoint;
@@ -237,12 +215,12 @@ export function HeroSection({
           textAlignClass
         )}>
           {subtitle && (
-            <p className={cn("text-sm md:text-base font-medium text-white/70 mb-3 uppercase", letterSpacingClass)}>
+            <p className="text-sm md:text-base font-medium text-white/70 mb-3 uppercase" style={{ letterSpacing: textStyle.letterSpacing }}>
               {subtitle}
             </p>
           )}
           {(title || fallbackName) && (
-            <h1 className={cn("font-bold mb-4 text-white drop-shadow-lg", titleSizeClass, lineHeightClass, letterSpacingClass)}>
+            <h1 className="font-bold mb-4 text-white drop-shadow-lg text-3xl md:text-5xl lg:text-6xl" style={textStyle}>
               {displayTitle}
             </h1>
           )}
@@ -285,7 +263,7 @@ export function HeroSection({
               </p>
             )}
             {(title || fallbackName) && (
-              <h1 className={cn("font-bold mb-4 text-foreground", titleSizeClass, lineHeightClass, letterSpacingClass)}>
+              <h1 className="font-bold mb-4 text-foreground text-3xl md:text-5xl lg:text-6xl" style={textStyle}>
                 {displayTitle}
               </h1>
             )}
@@ -343,7 +321,7 @@ export function HeroSection({
           </p>
         )}
         {(title || fallbackName) && (
-          <h1 className={cn("font-bold mb-4 text-foreground", titleSizeClass, lineHeightClass, letterSpacingClass)}>
+          <h1 className="font-bold mb-4 text-foreground text-3xl md:text-5xl lg:text-6xl" style={textStyle}>
             {displayTitle}
           </h1>
         )}

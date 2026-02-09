@@ -403,49 +403,35 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
                 <Label className="text-sm font-semibold">Text Styling</Label>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
-                    <Label className="text-xs">Font Size</Label>
-                    <Select
-                      value={config.fontSize || 'medium'}
-                      onValueChange={(v) => setConfig(prev => ({ ...prev, fontSize: v as HeroConfig['fontSize'] }))}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="small">Small</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="large">Large</SelectItem>
-                        <SelectItem value="xlarge">X-Large</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs">Font Size (px)</Label>
+                    <Input
+                      type="number"
+                      min={12}
+                      max={120}
+                      value={config.fontSize ?? 48}
+                      onChange={(e) => setConfig(prev => ({ ...prev, fontSize: Number(e.target.value) }))}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Line Height</Label>
-                    <Select
-                      value={config.lineHeight || 'normal'}
-                      onValueChange={(v) => setConfig(prev => ({ ...prev, lineHeight: v as HeroConfig['lineHeight'] }))}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="tight">Tight</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="relaxed">Relaxed</SelectItem>
-                        <SelectItem value="loose">Loose</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs">Line Height (px)</Label>
+                    <Input
+                      type="number"
+                      min={12}
+                      max={150}
+                      value={config.lineHeight ?? 56}
+                      onChange={(e) => setConfig(prev => ({ ...prev, lineHeight: Number(e.target.value) }))}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">Spacing</Label>
-                    <Select
-                      value={config.letterSpacing || 'normal'}
-                      onValueChange={(v) => setConfig(prev => ({ ...prev, letterSpacing: v as HeroConfig['letterSpacing'] }))}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="tight">Tight</SelectItem>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="wide">Wide</SelectItem>
-                        <SelectItem value="wider">Wider</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs">Spacing (px)</Label>
+                    <Input
+                      type="number"
+                      min={-5}
+                      max={20}
+                      step={0.5}
+                      value={config.letterSpacing ?? 0}
+                      onChange={(e) => setConfig(prev => ({ ...prev, letterSpacing: Number(e.target.value) }))}
+                    />
                   </div>
                 </div>
               </div>
