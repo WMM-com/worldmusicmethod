@@ -308,24 +308,94 @@ Deno.serve(async (req) => {
       const otherName = isStudent ? (tutor?.full_name || 'your tutor') : (student?.full_name || 'the student');
 
       const html = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #1a1a1a; font-size: 24px;">🎵 Lesson Confirmed!</h1>
-          <div style="background: #f8f8f8; border-radius: 12px; padding: 20px; margin: 20px 0;">
-            <h2 style="margin: 0 0 12px; color: #333;">${lesson.title}</h2>
-            <p style="margin: 4px 0; color: #666;">📅 <strong>${formattedDate}</strong></p>
-            <p style="margin: 4px 0; color: #666;">🕐 <strong>${formattedTime}</strong></p>
-            <p style="margin: 4px 0; color: #666;">👤 With <strong>${otherName}</strong></p>
-            <p style="margin: 4px 0; color: #666;">⏱ <strong>${lesson.duration_minutes} minutes</strong></p>
-          </div>
-          <a href="${roomUrl}" style="display: inline-block; background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 16px 0;">
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+      <!-- Header -->
+      <div style="background:#0a0a0a;padding:24px 32px;">
+        <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.3px;">
+          🎵 World Music Method
+        </h1>
+      </div>
+      <!-- Content -->
+      <div style="padding:32px;">
+        <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:22px;font-weight:700;">
+          Lesson Confirmed!
+        </h2>
+        <p style="margin:0 0 20px;color:#666;font-size:15px;">
+          Hi ${recipient?.full_name || 'there'},
+        </p>
+        <p style="margin:0 0 20px;color:#333;font-size:15px;">
+          Your private lesson is confirmed! Here are the details:
+        </p>
+
+        <!-- Details Card -->
+        <div style="background:#f8f8f8;border-radius:12px;padding:20px;margin:0 0 24px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <tr>
+              <td style="padding:8px 0;color:#888;font-size:14px;width:100px;">📅 Date</td>
+              <td style="padding:8px 0;color:#1a1a1a;font-size:14px;font-weight:600;">${formattedDate}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:#888;font-size:14px;">🕐 Time</td>
+              <td style="padding:8px 0;color:#1a1a1a;font-size:14px;font-weight:600;">${formattedTime}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:#888;font-size:14px;">⏱ Duration</td>
+              <td style="padding:8px 0;color:#1a1a1a;font-size:14px;font-weight:600;">${lesson.duration_minutes} minutes</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:#888;font-size:14px;">👤 With</td>
+              <td style="padding:8px 0;color:#1a1a1a;font-size:14px;font-weight:600;">${otherName}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;color:#888;font-size:14px;">🎵 Lesson</td>
+              <td style="padding:8px 0;color:#1a1a1a;font-size:14px;font-weight:600;">${lesson.title}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- CTA Button -->
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${roomUrl}" style="display:inline-block;background:#dc2626;color:#ffffff;padding:16px 36px;border-radius:8px;text-decoration:none;font-weight:700;font-size:16px;">
             Join Video Room
           </a>
-          <p style="color: #888; font-size: 13px; margin-top: 20px;">
-            An .ics calendar file is attached — open it to add this lesson to your calendar (Google, Outlook, Apple).
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="color: #999; font-size: 12px;">World Music Method — Private Lessons</p>
         </div>
+
+        <!-- Calendar attachment note -->
+        <div style="background:#fef3c7;border-radius:8px;padding:14px 16px;margin:20px 0;">
+          <p style="margin:0;color:#92400e;font-size:13px;">
+            📎 <strong>Calendar file attached</strong> — Open the .ics file to add this lesson to your Google Calendar, Outlook, or Apple Calendar.
+          </p>
+        </div>
+
+        <!-- Reminders info -->
+        <div style="margin:20px 0 0;">
+          <p style="margin:0 0 8px;color:#333;font-size:14px;font-weight:600;">
+            Reminders:
+          </p>
+          <p style="margin:0 0 4px;color:#666;font-size:13px;">
+            ⏰ You'll receive a reminder <strong>24 hours</strong> before your lesson
+          </p>
+          <p style="margin:0;color:#666;font-size:13px;">
+            ⏰ And another <strong>1 hour</strong> before the lesson starts
+          </p>
+        </div>
+      </div>
+      <!-- Footer -->
+      <div style="padding:20px 32px;background:#fafafa;border-top:1px solid #f0f0f0;">
+        <p style="margin:0;color:#999;font-size:12px;text-align:center;">
+          World Music Method — Private Lessons
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
       `;
 
       try {
