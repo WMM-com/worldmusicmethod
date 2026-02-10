@@ -137,3 +137,20 @@ export function useUpdateLesson() {
     },
   });
 }
+
+export function useDeleteLesson() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('lessons')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-lessons'] });
+      queryClient.invalidateQueries({ queryKey: ['lessons'] });
+    },
+  });
+}
