@@ -12,9 +12,9 @@
 
 // ── YouTube helpers ─────────────────────────────────────────────
 
-// Match WordPress embed blocks wrapping a YouTube URL
+// Match WordPress embed blocks wrapping a YouTube URL (including embed-handler variants)
 const WP_EMBED_BLOCK_RE =
-  /<figure[^>]*wp-block-embed-youtube[^>]*>[\s\S]*?<div[^>]*wp-block-embed__wrapper[^>]*>\s*(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{11})[^\s<]*)\s*<\/div>[\s\S]*?<\/figure>/gi;
+  /<figure[^>]*wp-block-embed[^>]*>[\s\S]*?<div[^>]*wp-block-embed__wrapper[^>]*>\s*(https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})[^\s<]*)\s*<\/div>[\s\S]*?<\/figure>/gi;
 
 // Match YouTube URLs inside <a> tags
 const YT_ANCHOR_RE =
@@ -22,7 +22,7 @@ const YT_ANCHOR_RE =
 
 // Match plain YouTube URLs (possibly wrapped in <p> or <div>)
 const YT_URL_RE =
-  /(?:<(?:p|div)[^>]*>)?\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{11})(?:[^\s<]*)?\s*(?:<\/(?:p|div)>)?/gi;
+  /(?:<(?:p|div)[^>]*>)?\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})(?:[^\s<]*)?\s*(?:<\/(?:p|div)>)?/gi;
 
 // Match existing YouTube iframes
 const YT_IFRAME_RE =
@@ -30,7 +30,7 @@ const YT_IFRAME_RE =
 
 export function extractYouTubeId(url: string): string | null {
   const m =
-    url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{11})/) ?? null;
+    url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/) ?? null;
   return m ? m[1] : null;
 }
 
