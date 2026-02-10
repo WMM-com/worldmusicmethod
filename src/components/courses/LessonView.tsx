@@ -334,10 +334,10 @@ export function LessonView({
             transition={{ delay: 0.25 }}
             className="mb-8"
           >
-            <Card className="p-6 bg-card border-border">
+            <Card className="p-6 bg-gray-50 border-gray-200">
               <div className="flex items-center gap-2 mb-6">
                 <Headphones className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold text-foreground text-lg">Suggested Listening</h2>
+                <h2 className="font-semibold text-gray-900 text-lg">Suggested Listening</h2>
               </div>
               <SuggestedListeningBlock html={suggestedListeningContent} />
             </Card>
