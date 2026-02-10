@@ -42,7 +42,7 @@ export function ConnectDashboard() {
   const { data: status, isLoading: statusLoading } = useConnectAccountStatus();
   const createAccount = useCreateConnectAccount();
   const startOnboarding = useStartOnboarding();
-  const { data: products, isLoading: productsLoading } = useConnectProducts();
+  const { data: products, isLoading: productsLoading } = useConnectProducts(!!status?.hasAccount && !!status?.readyToProcessPayments);
   const createProduct = useCreateConnectProduct();
   const startSubscription = useConnectSubscription();
   const openPortal = useConnectBillingPortal();

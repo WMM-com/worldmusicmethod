@@ -128,7 +128,7 @@ export function useConnectAccountStatus() {
 /**
  * Lists products on the authenticated user's connected account.
  */
-export function useConnectProducts() {
+export function useConnectProducts(enabled = true) {
   const { user } = useAuth();
 
   return useQuery<StripeProduct[]>({
@@ -140,7 +140,7 @@ export function useConnectProducts() {
       if (error) throw error;
       return data?.products || [];
     },
-    enabled: !!user,
+    enabled: !!user && enabled,
   });
 }
 
