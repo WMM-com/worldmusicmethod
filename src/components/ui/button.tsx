@@ -12,7 +12,7 @@ const buttonVariants = cva(
         // Primary CTA - Red background
         default: "bg-primary text-primary-foreground hover:bg-[hsl(355,74%,32%)]",
         // Secondary - Yellow outline
-        secondary: "bg-transparent border-2 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-[hsl(54,82%,38%)]",
         // Tertiary - Blue background
         tertiary: "bg-accent text-accent-foreground hover:bg-[hsl(222,100%,10%)]",
         // Destructive - Same as primary (red)
