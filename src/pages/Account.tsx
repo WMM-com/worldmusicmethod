@@ -36,6 +36,7 @@ import { UserOrders } from '@/components/account/UserOrders';
 import { UserSubscriptions } from '@/components/account/UserSubscriptions';
 import { ReferralSection } from '@/components/profile/ReferralSection';
 import { PaymentAccountsSettings } from '@/components/settings/PaymentAccountsSettings';
+import { ConnectDashboard } from '@/components/connect/ConnectDashboard';
 import { 
   User, Bell, ShoppingBag, Lock, AlertTriangle, Trash2, CreditCard,
   AtSign, Eye, EyeOff, ChevronRight, Globe, Users, Clock, Link2, AlertCircle,
@@ -948,7 +949,10 @@ export default function Account() {
 
               {/* Payment Accounts Section */}
               {currentSection === 'payments' && (
-                <PaymentAccountsSettings />
+                <>
+                  <PaymentAccountsSettings />
+                  <ConnectDashboard />
+                </>
               )}
             </div>
           </div>
