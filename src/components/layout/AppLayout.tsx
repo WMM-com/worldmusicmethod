@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music, Video, Store } from 'lucide-react';
+import { Brain, Calendar, FileText, PieChart, Settings, LogOut, Menu, X, Receipt, FolderOpen, Music, Video, Store, GraduationCap, ClipboardList } from 'lucide-react';
 import { useState } from 'react';
 import { SiteHeader } from './SiteHeader';
 
@@ -42,6 +42,8 @@ const techSpecNavItems = [
 
 // Tutor section
 const tutorNavItems = [
+  { href: '/lessons', label: 'Private Lessons', icon: GraduationCap },
+  { href: '/tutor-dashboard', label: 'Tutor Dashboard', icon: ClipboardList },
   { href: '/tutor/rooms', label: 'Tutor Rooms', icon: Video },
 ];
 
