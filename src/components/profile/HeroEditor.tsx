@@ -38,14 +38,8 @@ const HERO_TEMPLATES: { type: HeroType; label: string; description: string; icon
   { 
     type: 'standard', 
     label: 'Standard', 
-    description: 'Cover image for your hero section',
+    description: 'Cover image with optional text overlay',
     icon: Image
-  },
-  { 
-    type: 'slay', 
-    label: 'Slay', 
-    description: 'Full background image with text overlay',
-    icon: Layers
   },
   { 
     type: 'cut-out', 
@@ -61,8 +55,8 @@ const HERO_TEMPLATES: { type: HeroType; label: string; description: string; icon
   },
 ];
 
-// Templates that support content editing
-const CONTENT_ENABLED_TEMPLATES: HeroType[] = ['slay', 'cut-out', 'minimal'];
+// All templates now support content editing
+const CONTENT_ENABLED_TEMPLATES: HeroType[] = ['standard', 'slay', 'cut-out', 'minimal'];
 // Templates that use background images
 const BG_IMAGE_TEMPLATES: HeroType[] = ['standard', 'slay'];
 
@@ -166,13 +160,12 @@ export function HeroEditor({ heroType, heroConfig, onSave, trigger }: HeroEditor
             </div>
           </TabsContent>
 
-          {/* Content - locked for Standard */}
+          {/* Content */}
           <TabsContent value="content" className="space-y-4 mt-4">
             {!contentEnabled ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Type className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Content editing is not available for the Standard template.</p>
-                <p className="text-sm mt-1">Switch to Slay, Cut-out, or Minimal to add text.</p>
+                <p>Content editing is not available for this template.</p>
               </div>
             ) : (
               <>
