@@ -22,7 +22,7 @@ const YT_ANCHOR_RE =
 
 // Match plain YouTube URLs (possibly wrapped in <p> or <div>)
 const YT_URL_RE =
-  /(?:<(?:p|div)[^>]*>)?\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{11})(?:[^\s<]*)?\s*(?:<\/(?:p|div)>)?/gi;
+  /(?:<(?:p|div)[^>]*>)?\s*(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})(?:[^\s<]*)?\s*(?:<\/(?:p|div)>)?/gi;
 
 // Match existing YouTube iframes
 const YT_IFRAME_RE =
