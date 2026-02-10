@@ -44,8 +44,12 @@ export function useConnectStripe() {
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
 
+      const origin = window.location.origin;
       const { data, error } = await supabase.functions.invoke('stripe-connect-onboard', {
-        body: { user_id: user.id },
+        body: { 
+          returnUrl: `${origin}/settings?stripe_success=true`,
+          refreshUrl: `${origin}/settings?stripe_refresh=true`,
+        },
       });
 
       if (error) throw error;
