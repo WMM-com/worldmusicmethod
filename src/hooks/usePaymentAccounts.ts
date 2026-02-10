@@ -44,11 +44,34 @@ export function useConnectStripe() {
     mutationFn: async () => {
       if (!user) throw new Error('Not authenticated');
 
+      // Step 1: Check if user already has a Stripe account
+      const { data: existing } = await supabase
+        .from('payment_accounts')
+        .select('account_id')
+        .eq('user_id', user.id)
+        .eq('provider', 'stripe')
+        .single();
+
+      let accountId = existing?.account_id;
+
+      // Step 2: If no account, create one via V2 API
+      if (!accountId) {
+        const { data: createData, error: createError } = await supabase.functions.invoke('stripe-connect-v2-create', {
+          body: {
+            display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'Artist',
+            contact_email: user.email,
+          },
+        });
+        if (createError) throw createError;
+        accountId = createData?.accountId;
+      }
+
+      // Step 3: Create onboarding link via V2 API
       const origin = window.location.origin;
-      const { data, error } = await supabase.functions.invoke('stripe-connect-onboard', {
-        body: { 
-          returnUrl: `${origin}/settings?stripe_success=true`,
-          refreshUrl: `${origin}/settings?stripe_refresh=true`,
+      const { data, error } = await supabase.functions.invoke('stripe-connect-v2-onboard', {
+        body: {
+          returnUrl: `${origin}/account?section=payments&stripe_success=true`,
+          refreshUrl: `${origin}/account?section=payments&stripe_refresh=true`,
         },
       });
 
