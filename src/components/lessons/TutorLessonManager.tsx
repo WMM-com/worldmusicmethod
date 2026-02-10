@@ -7,8 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { useMyLessons, useCreateLesson, useUpdateLesson } from '@/hooks/useLessons';
-import { BookOpen, Plus, Pencil, Loader2, Users, Clock, Shield, Repeat } from 'lucide-react';
+import { useMyLessons, useCreateLesson, useUpdateLesson, useDeleteLesson } from '@/hooks/useLessons';
+import { BookOpen, Plus, Pencil, Trash2, Loader2, Users, Clock, Shield, Repeat } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 
 const CURRENCIES = [
@@ -27,6 +38,7 @@ export function TutorLessonManager() {
   const { data: lessons, isLoading } = useMyLessons();
   const createLesson = useCreateLesson();
   const updateLesson = useUpdateLesson();
+  const deleteLesson = useDeleteLesson();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -306,11 +318,42 @@ export function TutorLessonManager() {
                       {!lesson.active && <Badge variant="outline" className="text-xs">Inactive</Badge>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     <Switch checked={lesson.active} onCheckedChange={() => toggleActive(lesson.id, lesson.active)} aria-label="Toggle active" />
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(lesson)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Lesson</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{lesson.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={async () => {
+                              try {
+                                await deleteLesson.mutateAsync(lesson.id);
+                                toast.success('Lesson deleted');
+                              } catch {
+                                toast.error('Failed to delete lesson');
+                              }
+                            }}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>
