@@ -41,9 +41,9 @@
   - Checks and awards any signup milestones ($10 bonus per 5 signups)
   - Clears the referral cookie
 
-### Step 4: Earning Credits (⚠️ Partially Missing)
-- **What works**: $10 milestone bonuses on signup counts (5, 10, 20, 50, 100)
-- **What's missing**: Commission credits when a referred user makes a purchase (see "What's Missing" section below)
+### Step 4: Earning Credits (✅ Fully Working)
+- **Signup milestones**: $10 bonus per 5/10/20/50/100 referred signups
+- **Purchase commissions**: 200% of first subscription month, 30% of course purchases (via Stripe webhook)
 
 ### Step 5: Spending Credits
 - At checkout, the `CreditPaymentSection` component appears if user has credits
@@ -104,11 +104,13 @@
 3. Calculate the referral commission (200% for subscriptions, 30% for courses)
 4. Call `award_referral_credit()` to credit the referrer
 
-### 2. Applying Credits to Existing Subscriptions
+### 2. Applying Credits to Existing Subscriptions — ✅ Built
 
-**The Problem**: If a user has credits and an active subscription, those credits should automatically discount their next subscription invoice.
-
-**The Solution**: On `invoice.payment_succeeded` webhook, check if the subscriber has credits and create a Stripe credit note or customer balance adjustment.
+Credits are **automatically applied** to subscription renewal invoices:
+- When Stripe creates a new invoice (`invoice.created`), the webhook checks if the subscriber has referral credits
+- Credits are converted to the invoice currency using stored exchange rates
+- A negative invoice item is added to discount the invoice
+- The user's credit balance is deducted and a `spent_subscription` transaction is logged
 
 ### 3. Stripe Webhook Secret
 
@@ -133,8 +135,9 @@
 | Trigger | Reward | Status |
 |---|---|---|
 | Referred user signs up (every 5 signups) | $10 milestone bonus | ✅ Working |
-| Referred user buys a subscription | 200% of first month's price | ⚠️ Needs webhook |
-| Referred user buys a course | 30% of course price | ⚠️ Needs webhook |
+| Referred user buys a subscription | 200% of first month's price | ✅ Working (webhook) |
+| Referred user buys a course | 30% of course price | ✅ Working (webhook) |
+| Auto-apply to subscription renewal | Credits discount next invoice | ✅ Working (invoice.created) |
 
 ---
 
@@ -143,17 +146,14 @@
 | Secret Name | Purpose | Status |
 |---|---|---|
 | `STRIPE_SECRET_KEY` | Create payment intents, manage customers | ✅ Configured |
-| `STRIPE_WEBHOOK_SECRET` | Verify webhook signatures from Stripe | ❌ Needs to be added |
+| `STRIPE_WEBHOOK_SECRET` | Verify webhook signatures from Stripe | ✅ Configured |
 
 ---
 
-## Next Steps (In Order)
+## Next Steps
 
-1. **Create Stripe Webhook Endpoint** in Stripe Dashboard (see instructions above)
-2. **Add `STRIPE_WEBHOOK_SECRET`** to project secrets
-3. **Build `stripe-webhook` edge function** to handle payment events and award conversion credits
-4. **Add subscription credit application** logic to auto-apply credits to upcoming invoices
-5. **Test end-to-end**: Share link → Signup → Purchase → Credits awarded → Credits spent
+1. **Add `invoice.created` to Stripe webhook events** — In Stripe Dashboard → Developers → Webhooks → your platform webhook endpoint, add the `invoice.created` event so credits auto-apply to renewals
+2. **Test end-to-end**: Share link → Signup → Purchase → Credits awarded → Credits auto-applied to renewal
 
 ---
 

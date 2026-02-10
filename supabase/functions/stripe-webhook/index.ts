@@ -104,6 +104,11 @@ Deno.serve(async (req) => {
       await handleBetaMembershipSubscription(event, stripe, supabase)
     }
 
+    // ── Auto-apply referral credits to upcoming subscription invoices ──
+    if (event.type === 'invoice.created') {
+      await handleInvoiceCreatedApplyCredits(event, stripe, supabase)
+    }
+
     // ── Existing referral/subscription/digital product handling ──
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.payment_succeeded') {
       await handlePaymentEvent(event, stripe, supabase)
@@ -660,7 +665,174 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
   if (awardError) {
     logStep('Error awarding credit', { error: awardError.message })
     throw awardError
+}
+
+// ── Auto-apply referral credits to subscription invoice before payment ──
+async function handleInvoiceCreatedApplyCredits(
+  event: Stripe.Event,
+  stripe: Stripe,
+  supabase: any
+) {
+  const invoice = event.data.object as Stripe.Invoice
+
+  // Only apply to subscription renewal invoices, not the first one
+  if (!invoice.subscription) {
+    logStep('Skipping non-subscription invoice for credit application')
+    return
   }
+
+  // Skip draft invoices that are manually created
+  if (invoice.billing_reason === 'manual') {
+    logStep('Skipping manual invoice')
+    return
+  }
+
+  const customerEmail = invoice.customer_email
+  if (!customerEmail) {
+    logStep('No customer email on invoice, cannot check credits')
+    return
+  }
+
+  // Find the user by email
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', customerEmail)
+    .maybeSingle()
+
+  if (profileError || !profile) {
+    logStep('User not found for credit application', { email: customerEmail })
+    return
+  }
+
+  const userId = profile.id
+
+  // Check if user has credits
+  const { data: credits, error: creditsError } = await supabase
+    .from('user_credits')
+    .select('balance')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (creditsError || !credits || credits.balance <= 0) {
+    logStep('No credits to apply', { userId, balance: credits?.balance || 0 })
+    return
+  }
+
+  const balanceCents = credits.balance // Already in USD cents
+  const invoiceAmountCents = invoice.amount_due // Invoice amount in smallest currency unit
+
+  // Convert credit (USD cents) to invoice currency if needed
+  // For simplicity, if the invoice is in USD, apply directly
+  // For other currencies, we'd need exchange rate conversion
+  const invoiceCurrency = (invoice.currency || 'usd').toLowerCase()
+  
+  let creditToApply: number
+  
+  if (invoiceCurrency === 'usd') {
+    // Apply up to the invoice amount or the full credit balance, whichever is less
+    creditToApply = Math.min(balanceCents, invoiceAmountCents)
+  } else {
+    // For non-USD invoices, look up exchange rate
+    const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+    const { data: rate } = await supabase
+      .from('exchange_rates')
+      .select('rate')
+      .eq('from_currency', 'USD')
+      .eq('to_currency', invoiceCurrency.toUpperCase())
+      .eq('rate_month', currentMonth)
+      .maybeSingle()
+
+    if (!rate) {
+      logStep('No exchange rate found, skipping credit application', {
+        currency: invoiceCurrency,
+      })
+      return
+    }
+
+    // Convert credit balance to invoice currency
+    const creditInInvoiceCurrency = Math.round(balanceCents * rate.rate)
+    creditToApply = Math.min(creditInInvoiceCurrency, invoiceAmountCents)
+    
+    logStep('Currency conversion for credit', {
+      usdCents: balanceCents,
+      rate: rate.rate,
+      convertedCents: creditInInvoiceCurrency,
+      invoiceCurrency,
+    })
+  }
+
+  if (creditToApply <= 0) {
+    logStep('Credit amount too small to apply')
+    return
+  }
+
+  logStep('Applying referral credits to invoice', {
+    userId,
+    creditBalance: balanceCents,
+    invoiceAmount: invoiceAmountCents,
+    creditToApply,
+    invoiceCurrency,
+    invoiceId: invoice.id,
+  })
+
+  try {
+    // Add a negative invoice item to discount the invoice
+    await stripe.invoiceItems.create({
+      customer: invoice.customer as string,
+      invoice: invoice.id,
+      amount: -creditToApply, // Negative = discount
+      currency: invoiceCurrency,
+      description: `Referral credit applied ($${(creditToApply / 100).toFixed(2)} ${invoiceCurrency.toUpperCase()})`,
+    })
+
+    // Calculate how many USD cents were actually spent
+    let usdCentsSpent: number
+    if (invoiceCurrency === 'usd') {
+      usdCentsSpent = creditToApply
+    } else {
+      // Reverse-convert from invoice currency back to USD
+      const currentMonth = new Date().toISOString().slice(0, 7)
+      const { data: rate } = await supabase
+        .from('exchange_rates')
+        .select('rate')
+        .eq('from_currency', 'USD')
+        .eq('to_currency', invoiceCurrency.toUpperCase())
+        .eq('rate_month', currentMonth)
+        .maybeSingle()
+
+      usdCentsSpent = rate ? Math.round(creditToApply / rate.rate) : creditToApply
+    }
+
+    // Deduct credits from user balance
+    const { error: deductError } = await supabase
+      .from('user_credits')
+      .update({ balance: credits.balance - usdCentsSpent })
+      .eq('user_id', userId)
+
+    if (deductError) {
+      logStep('Error deducting credits', { error: deductError.message })
+    }
+
+    // Log the credit transaction
+    await supabase.from('credit_transactions').insert({
+      user_id: userId,
+      amount: -usdCentsSpent,
+      type: 'spent_subscription',
+      description: `Auto-applied to subscription renewal (${invoiceCurrency.toUpperCase()})`,
+      reference_id: invoice.id,
+    })
+
+    logStep('Credits successfully applied to invoice', {
+      userId,
+      usdCentsSpent,
+      newBalance: credits.balance - usdCentsSpent,
+    })
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err)
+    logStep('Error applying credits to invoice', { error: errMsg })
+  }
+}
 
   logStep('Referral credit awarded successfully', result)
 }
