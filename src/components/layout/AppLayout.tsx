@@ -18,7 +18,6 @@ const sectionGuides: Record<string, string> = {
   '/tech-specs': 'Create visual stage plots and channel lists to share with venues and sound engineers.',
   '/merchandise': 'Manage your merch catalogue, track inventory, and record sales from gigs and online.',
   '/left-brain-settings': 'Customize your Left Brain experience, invoice templates, and preferences.',
-  '/lessons': 'Browse available private lessons and manage your bookings with expert tutors.',
   '/tutor-dashboard': 'Manage your lesson offerings, availability schedule, and incoming booking requests.',
   '/tutor/rooms': 'Create and manage video rooms for your private tutoring sessions.',
 };
