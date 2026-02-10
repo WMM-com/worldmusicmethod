@@ -665,6 +665,9 @@ async function handlePaymentEvent(event: Stripe.Event, stripe: Stripe, supabase:
   if (awardError) {
     logStep('Error awarding credit', { error: awardError.message })
     throw awardError
+  }
+
+  logStep('Referral credit awarded successfully', result)
 }
 
 // ── Auto-apply referral credits to subscription invoice before payment ──
@@ -832,7 +835,4 @@ async function handleInvoiceCreatedApplyCredits(
     const errMsg = err instanceof Error ? err.message : String(err)
     logStep('Error applying credits to invoice', { error: errMsg })
   }
-}
-
-  logStep('Referral credit awarded successfully', result)
 }
