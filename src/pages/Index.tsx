@@ -22,7 +22,7 @@ import bassImg from '@/assets/lessons/bass.jpg';
 import drumsImg from '@/assets/lessons/drums.jpg';
 import vocalsImg from '@/assets/lessons/vocals.jpg';
 
-const HERO_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4';
+const HERO_VIDEO_URL = '/videos/LANDING_PAGE_VIDEO.mp4';
 
 const instruments = [
   { 
