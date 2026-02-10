@@ -148,6 +148,33 @@ export type Database = {
           },
         ]
       }
+      availability_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slots: Json
+          tutor_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slots?: Json
+          tutor_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slots?: Json
+          tutor_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       blog_posts: {
         Row: {
           author_name: string | null
@@ -211,8 +238,43 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          request_id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          request_id: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          request_id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_participants_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "booking_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_requests: {
         Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           confirmation_email_sent: boolean | null
           confirmed_slot_end: string | null
           confirmed_slot_start: string | null
@@ -221,11 +283,17 @@ export type Database = {
           lesson_id: string
           reminder_1h_sent: boolean | null
           reminder_24h_sent: boolean | null
+          rescheduled_from_id: string | null
+          series_id: string | null
+          series_index: number | null
           status: string | null
           student_id: string
           video_room_id: string | null
         }
         Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           confirmation_email_sent?: boolean | null
           confirmed_slot_end?: string | null
           confirmed_slot_start?: string | null
@@ -234,11 +302,17 @@ export type Database = {
           lesson_id: string
           reminder_1h_sent?: boolean | null
           reminder_24h_sent?: boolean | null
+          rescheduled_from_id?: string | null
+          series_id?: string | null
+          series_index?: number | null
           status?: string | null
           student_id: string
           video_room_id?: string | null
         }
         Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           confirmation_email_sent?: boolean | null
           confirmed_slot_end?: string | null
           confirmed_slot_start?: string | null
@@ -247,6 +321,9 @@ export type Database = {
           lesson_id?: string
           reminder_1h_sent?: boolean | null
           reminder_24h_sent?: boolean | null
+          rescheduled_from_id?: string | null
+          series_id?: string | null
+          series_index?: number | null
           status?: string | null
           student_id?: string
           video_room_id?: string | null
@@ -257,6 +334,13 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_requests_rescheduled_from_id_fkey"
+            columns: ["rescheduled_from_id"]
+            isOneToOne: false
+            referencedRelation: "booking_requests"
             referencedColumns: ["id"]
           },
           {
@@ -2773,6 +2857,92 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_notes: {
+        Row: {
+          author_id: string
+          booking_request_id: string
+          content: string
+          created_at: string
+          id: string
+          is_private: boolean
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          booking_request_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_private?: boolean
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          booking_request_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_private?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_notes_booking_request_id_fkey"
+            columns: ["booking_request_id"]
+            isOneToOne: false
+            referencedRelation: "booking_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lesson_ratings: {
+        Row: {
+          booking_request_id: string
+          created_at: string
+          id: string
+          lesson_id: string
+          rating: number
+          review: string | null
+          student_id: string
+          tutor_id: string
+        }
+        Insert: {
+          booking_request_id: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          rating: number
+          review?: string | null
+          student_id: string
+          tutor_id: string
+        }
+        Update: {
+          booking_request_id?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          rating?: number
+          review?: string | null
+          student_id?: string
+          tutor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_ratings_booking_request_id_fkey"
+            columns: ["booking_request_id"]
+            isOneToOne: false
+            referencedRelation: "booking_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_ratings_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_tests: {
         Row: {
           allow_retry: boolean | null
@@ -2820,39 +2990,57 @@ export type Database = {
       lessons: {
         Row: {
           active: boolean | null
+          allow_rescheduling: boolean
+          buffer_minutes: number
+          cancellation_policy_hours: number
           created_at: string | null
           currency: string | null
           description: string | null
           duration_minutes: number | null
           id: string
           image_url: string | null
+          lesson_type: string
+          max_students: number
           price: number | null
+          recurring_config: Json | null
           title: string
           tutor_id: string
           updated_at: string | null
         }
         Insert: {
           active?: boolean | null
+          allow_rescheduling?: boolean
+          buffer_minutes?: number
+          cancellation_policy_hours?: number
           created_at?: string | null
           currency?: string | null
           description?: string | null
           duration_minutes?: number | null
           id?: string
           image_url?: string | null
+          lesson_type?: string
+          max_students?: number
           price?: number | null
+          recurring_config?: Json | null
           title: string
           tutor_id: string
           updated_at?: string | null
         }
         Update: {
           active?: boolean | null
+          allow_rescheduling?: boolean
+          buffer_minutes?: number
+          cancellation_policy_hours?: number
           created_at?: string | null
           currency?: string | null
           description?: string | null
           duration_minutes?: number | null
           id?: string
           image_url?: string | null
+          lesson_type?: string
+          max_students?: number
           price?: number | null
+          recurring_config?: Json | null
           title?: string
           tutor_id?: string
           updated_at?: string | null

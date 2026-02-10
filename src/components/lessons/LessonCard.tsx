@@ -2,9 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, DollarSign } from 'lucide-react';
+import { Clock, Users, Repeat, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Lesson } from '@/hooks/useLessons';
+import { useTutorAverageRating } from '@/hooks/useLessonRatings';
 
 interface LessonCardProps {
   lesson: Lesson;
@@ -14,12 +15,15 @@ interface LessonCardProps {
 export function LessonCard({ lesson, index = 0 }: LessonCardProps) {
   const navigate = useNavigate();
   const tutor = lesson.tutor;
+  const { data: ratingData } = useTutorAverageRating(lesson.tutor_id);
 
   const formatPrice = () => {
     if (!lesson.price || lesson.price === 0) return 'Free';
     const symbol = lesson.currency === 'GBP' ? '£' : lesson.currency === 'EUR' ? '€' : '$';
     return `${symbol}${lesson.price}`;
   };
+
+  const lessonType = lesson.lesson_type || 'single';
 
   return (
     <motion.div
@@ -45,9 +49,19 @@ export function LessonCard({ lesson, index = 0 }: LessonCardProps) {
               <Clock className="h-12 w-12 text-primary/30" />
             </div>
           )}
-          <Badge className="absolute top-3 right-3 text-sm font-semibold">
-            {formatPrice()}
-          </Badge>
+          <div className="absolute top-3 right-3 flex gap-1.5">
+            <Badge className="text-sm font-semibold">{formatPrice()}</Badge>
+            {lessonType === 'recurring' && (
+              <Badge variant="secondary" className="text-xs gap-0.5">
+                <Repeat className="h-3 w-3" /> Series
+              </Badge>
+            )}
+            {lessonType === 'group' && (
+              <Badge variant="secondary" className="text-xs gap-0.5">
+                <Users className="h-3 w-3" /> Group
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Content */}
@@ -72,9 +86,18 @@ export function LessonCard({ lesson, index = 0 }: LessonCardProps) {
                     {tutor.full_name?.charAt(0) || '?'}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm text-muted-foreground truncate max-w-[120px]">
-                  {tutor.full_name || 'Tutor'}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-muted-foreground truncate max-w-[100px]">
+                    {tutor.full_name || 'Tutor'}
+                  </span>
+                  {ratingData && ratingData.count > 0 && (
+                    <span className="flex items-center gap-0.5 text-xs text-amber-600">
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      {ratingData.average}
+                      <span className="text-muted-foreground">({ratingData.count})</span>
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 
@@ -83,6 +106,23 @@ export function LessonCard({ lesson, index = 0 }: LessonCardProps) {
               <span>{lesson.duration_minutes} min</span>
             </div>
           </div>
+
+          {/* Recurring info */}
+          {lessonType === 'recurring' && lesson.recurring_config && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              {lesson.recurring_config.total_sessions} sessions · {lesson.recurring_config.frequency}
+              {lesson.recurring_config.series_price != null && (
+                <> · Series price: {lesson.currency === 'GBP' ? '£' : lesson.currency === 'EUR' ? '€' : '$'}{lesson.recurring_config.series_price}</>
+              )}
+            </div>
+          )}
+
+          {/* Group info */}
+          {lessonType === 'group' && lesson.max_students > 1 && (
+            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+              <Users className="h-3 w-3" /> Up to {lesson.max_students} students
+            </div>
+          )}
         </div>
       </Card>
     </motion.div>
