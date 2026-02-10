@@ -92,13 +92,12 @@ export function SuggestedListeningBlock({ html }: SuggestedListeningBlockProps) 
   };
 
   return (
-    <article className="suggested-listening-content prose prose-lg max-w-none
+    <article className="suggested-listening-content prose max-w-none
       prose-headings:font-display prose-headings:text-gray-900 prose-headings:tracking-tight
-      prose-h3:text-xl sm:prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-3
-      prose-h3:border-b prose-h3:border-gray-200 prose-h3:pb-3
+      prose-h3:text-xl prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-3
       prose-h4:text-lg prose-h4:mt-6 prose-h4:mb-2
-      prose-p:text-gray-600 prose-p:leading-relaxed prose-p:mb-5
-      prose-li:text-gray-600 prose-li:leading-relaxed prose-li:marker:text-primary
+      prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
+      prose-li:text-gray-700 prose-li:leading-relaxed prose-li:marker:text-primary
       prose-strong:text-gray-900 prose-strong:font-semibold
       prose-em:text-gray-800
       prose-a:text-primary prose-a:no-underline hover:prose-a:underline
