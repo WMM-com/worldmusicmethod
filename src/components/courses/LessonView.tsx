@@ -268,8 +268,8 @@ export function LessonView({
           </motion.div>
         )}
 
-        {/* Extra embeds found in lesson content (YouTube/Spotify) */}
-        {(youtubeIdsToRender.length > 0 || spotifyPathsToRender.length > 0) && (
+        {/* Extra embeds found in lesson content (YouTube/Spotify) — skip if rich suggested listening handles them */}
+        {!suggestedListeningContent && (youtubeIdsToRender.length > 0 || spotifyPathsToRender.length > 0) && (
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
