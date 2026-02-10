@@ -30,7 +30,7 @@ const YT_IFRAME_RE =
 
 export function extractYouTubeId(url: string): string | null {
   const m =
-    url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{11})/) ?? null;
+    url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/) ?? null;
   return m ? m[1] : null;
 }
 
