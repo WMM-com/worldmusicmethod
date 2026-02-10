@@ -44,8 +44,29 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
   const cartItemCount = getItemCount();
 
-  // Fetch menu items from database
-  const { data: menuItems = [] } = useQuery({
+  // Hardcoded fallback menu so the header is never empty
+  const FALLBACK_MENU: MenuItem[] = [
+    { id: 'fb-learn', menu_type: 'desktop', label: 'Learn', href: null, icon: 'BookOpen', parent_id: null, order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-learn-courses', menu_type: 'desktop', label: 'Courses', href: '/courses', icon: null, parent_id: 'fb-learn', order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-learn-my', menu_type: 'desktop', label: 'My Courses', href: '/my-courses', icon: null, parent_id: 'fb-learn', order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-learn-lessons', menu_type: 'desktop', label: 'Private Lessons', href: '/lessons', icon: null, parent_id: 'fb-learn', order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-membership', menu_type: 'desktop', label: 'Membership', href: '/membership', icon: null, parent_id: null, order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-community', menu_type: 'desktop', label: 'Community', href: '/community', icon: 'Users', parent_id: null, order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-listen', menu_type: 'desktop', label: 'Listen', href: '/listen', icon: null, parent_id: null, order_index: 4, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-blog', menu_type: 'desktop', label: 'Blog', href: '/blog', icon: null, parent_id: null, order_index: 5, is_visible: true, requires_auth: false, requires_admin: false },
+    // Mobile fallbacks
+    { id: 'fb-m-learn', menu_type: 'mobile', label: 'Learn', href: null, icon: 'BookOpen', parent_id: null, order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-courses', menu_type: 'mobile', label: 'Courses', href: '/courses', icon: 'BookOpen', parent_id: 'fb-m-learn', order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-my', menu_type: 'mobile', label: 'My Courses', href: '/my-courses', icon: 'BookOpen', parent_id: 'fb-m-learn', order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-lessons', menu_type: 'mobile', label: 'Private Lessons', href: '/lessons', icon: 'Calendar', parent_id: 'fb-m-learn', order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-membership', menu_type: 'mobile', label: 'Membership', href: '/membership', icon: 'Star', parent_id: null, order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-community', menu_type: 'mobile', label: 'Community', href: '/community', icon: 'Users', parent_id: null, order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-listen', menu_type: 'mobile', label: 'Listen', href: '/listen', icon: 'Music', parent_id: null, order_index: 4, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-blog', menu_type: 'mobile', label: 'Blog', href: '/blog', icon: 'FileText', parent_id: null, order_index: 5, is_visible: true, requires_auth: false, requires_admin: false },
+  ];
+
+  // Fetch menu items from database with fallback
+  const { data: menuItems = FALLBACK_MENU } = useQuery({
     queryKey: ['menu-items'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -54,9 +75,11 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
         .eq('is_visible', true)
         .order('order_index');
       if (error) throw error;
-      return (data || []) as MenuItem[];
+      return (data && data.length > 0 ? data : FALLBACK_MENU) as MenuItem[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev ?? FALLBACK_MENU,
+    retry: 2,
   });
 
   // Check artist dashboard access
@@ -212,6 +235,16 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
               src={wmmLogo} 
               alt="World Music Method" 
               className="h-10 w-auto"
+              loading="eager"
+              decoding="sync"
+              onError={(e) => {
+                // Retry loading the logo once on failure
+                const img = e.currentTarget;
+                if (!img.dataset.retried) {
+                  img.dataset.retried = 'true';
+                  img.src = wmmLogo;
+                }
+              }}
             />
           </Link>
 
