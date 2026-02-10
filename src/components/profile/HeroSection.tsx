@@ -145,50 +145,10 @@ export function HeroSection({
     opacity: (overlayOpacity ?? 40) / 100,
   } : undefined;
 
-  // Standard: Cover image only, no text overlay
-  if (heroType === 'standard') {
-    return (
-      <section
-        className={cn(
-          'relative w-full overflow-hidden',
-          heroHeightClass,
-          className
-        )}
-        style={{
-          backgroundColor: backgroundColor || 'hsl(var(--muted))',
-        }}
-      >
-        {actualBackgroundImage && (
-          <div
-            className="absolute inset-0"
-            style={{ 
-              backgroundImage: `url(${actualBackgroundImage})`,
-              backgroundSize: bgSize,
-              backgroundPosition: bgPosition,
-              backgroundRepeat: 'no-repeat',
-            }}
-          />
-        )}
-        
-        {/* Overlay */}
-        {overlayEnabled ? (
-          <div className="absolute inset-0 pointer-events-none" style={overlayStyle} />
-        ) : (
-          <div className="absolute inset-0 pointer-events-none bg-black/20" />
-        )}
-        
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to top, hsl(var(--background) / 0.4) 0%, transparent 40%)'
-          }}
-        />
-      </section>
-    );
-  }
-
-  // Slay: Full background image WITH text overlay
-  if (heroType === 'slay') {
+  // Standard (and legacy 'slay'): Cover image, with optional text overlay when content exists
+  if (heroType === 'standard' || heroType === 'slay') {
+    const hasTextContent = !!(title || subtitle || description);
+    
     return (
       <section
         className={cn(
@@ -226,28 +186,30 @@ export function HeroSection({
           }}
         />
 
-        {/* Text content */}
-        <div className={cn(
-          'relative z-10 flex flex-col justify-center h-full p-6 md:p-10 lg:p-12',
-          heroHeightClass,
-          textAlignClass
-        )}>
-          {subtitle && (
-            <p className="text-sm md:text-base font-medium text-white/70 mb-3 uppercase" style={subtitleCSS}>
-              {subtitle}
-            </p>
-          )}
-          {(title || fallbackName) && (
-            <h1 className="font-bold mb-4 text-white drop-shadow-lg text-3xl md:text-5xl lg:text-6xl" style={titleCSS}>
-              {displayTitle}
-            </h1>
-          )}
-          {description && (
-            <p className="text-base md:text-lg lg:text-xl text-white/80 max-w-2xl leading-relaxed drop-shadow" style={descriptionCSS}>
-              {description}
-            </p>
-          )}
-        </div>
+        {/* Text content - only rendered when user has added content */}
+        {hasTextContent && (
+          <div className={cn(
+            'relative z-10 flex flex-col justify-center h-full p-6 md:p-10 lg:p-12',
+            heroHeightClass,
+            textAlignClass
+          )}>
+            {subtitle && (
+              <p className="text-sm md:text-base font-medium text-white/70 mb-3 uppercase" style={subtitleCSS}>
+                {subtitle}
+              </p>
+            )}
+            {(title || fallbackName) && (
+              <h1 className="font-bold mb-4 text-white drop-shadow-lg text-3xl md:text-5xl lg:text-6xl" style={titleCSS}>
+                {displayTitle}
+              </h1>
+            )}
+            {description && (
+              <p className="text-base md:text-lg lg:text-xl text-white/80 max-w-2xl leading-relaxed drop-shadow" style={descriptionCSS}>
+                {description}
+              </p>
+            )}
+          </div>
+        )}
       </section>
     );
   }
