@@ -67,6 +67,8 @@ import BlogCategory from "./pages/BlogCategory";
 import Blog from "./pages/Blog";
 import Index from "./pages/Index";
 import Lessons from "./pages/Lessons";
+import ConnectStorefront from "./pages/ConnectStorefront";
+import ConnectStorefrontSuccess from "./pages/ConnectStorefrontSuccess";
 import LessonDetail from "./pages/LessonDetail";
 import TutorDashboard from "./pages/TutorDashboard";
 
@@ -186,6 +188,10 @@ function AppContent() {
         <Route path="/tutor/rooms" element={<ProtectedRoute><TutorRooms /></ProtectedRoute>} />
         <Route path="/download/:token" element={<Download />} />
         <Route path="/pay/:gigId" element={<FanPayment />} />
+        {/* Stripe Connect V2 Storefront — public pages per connected account */}
+        {/* TODO: In production, use a username/slug instead of accountId */}
+        <Route path="/store/:accountId" element={<ConnectStorefront />} />
+        <Route path="/store/:accountId/success" element={<ConnectStorefrontSuccess />} />
         <Route path="/sitemap.xml" element={<Sitemap />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

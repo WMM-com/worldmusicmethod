@@ -535,6 +535,42 @@ export type Database = {
           },
         ]
       }
+      connected_account_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          connected_account_id: string
+          created_at: string
+          current_period_end: string | null
+          id: string
+          price_id: string | null
+          status: string
+          subscription_id: string
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          connected_account_id: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          price_id?: string | null
+          status?: string
+          subscription_id: string
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          connected_account_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          price_id?: string | null
+          status?: string
+          subscription_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           clauses: Json | null
