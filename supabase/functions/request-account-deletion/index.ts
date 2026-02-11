@@ -114,7 +114,7 @@ async function sendEmailViaSES(
   const params = new URLSearchParams();
   params.append('Action', 'SendEmail');
   params.append('Version', '2010-12-01');
-  params.append('Source', 'World Music Method <info@worldmusicmethod.com>');
+  params.append('Source', `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`);
   params.append('Destination.ToAddresses.member.1', to);
   params.append('Message.Subject.Data', subject);
   params.append('Message.Subject.Charset', 'UTF-8');

@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const origin = req.headers.get('origin') || 'https://worldmusicmethod.lovable.app';
+    const origin = req.headers.get('origin') || Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app';
 
     // Get student profile for Flutterwave customer info
     const { data: studentProfile } = await supabase

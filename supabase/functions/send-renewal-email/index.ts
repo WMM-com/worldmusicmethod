@@ -243,7 +243,7 @@ function getRenewalEmailHtml(
           <p style="color: #333; font-size: 16px; margin-bottom: 20px;">
             Continue enjoying your subscription benefits.
           </p>
-          <a href="https://worldmusicmethod.com/my-courses" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app'}/my-courses" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Go to My Courses
           </a>
         </div>
@@ -263,8 +263,8 @@ function getRenewalEmailHtml(
             Learn authentic world music from master musicians
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
-            Questions? Contact us at <a href="mailto:info@worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">info@worldmusicmethod.com</a><br>
-            <a href="https://worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">worldmusicmethod.com</a>
+            Questions? Contact us at <a href="mailto:info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}" style="color: #BE1E2D; text-decoration: none;">info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a><br>
+            <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app'}" style="color: #BE1E2D; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
           </p>
         </div>
       </div>
@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
 
     const result = await sendEmailViaSES(
       [email],

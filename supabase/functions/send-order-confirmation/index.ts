@@ -190,7 +190,9 @@ function getOrderConfirmationHtml(
   orderItems: OrderItem[],
   totalAmount: number,
   currency: string,
-  isSubscription: boolean
+  isSubscription: boolean,
+  siteUrl: string,
+  siteDomain: string
 ): string {
   const itemsHtml = orderItems.map(item => `
     <tr>
@@ -248,7 +250,7 @@ function getOrderConfirmationHtml(
           <p style="color: #333; font-size: 16px; margin-bottom: 20px;">
             You can access your courses from your account dashboard.
           </p>
-          <a href="https://worldmusicmethod.com/my-courses" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+          <a href="${siteUrl}/my-courses" style="display: inline-block; background-color: #BE1E2D; color: #ffffff !important; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
             Go to My Courses
           </a>
         </div>
@@ -261,8 +263,8 @@ function getOrderConfirmationHtml(
             Learn authentic world music from master musicians
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
-            Questions? Contact us at <a href="mailto:info@worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">info@worldmusicmethod.com</a><br>
-            <a href="https://worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">worldmusicmethod.com</a>
+            Questions? Contact us at <a href="mailto:info@${siteDomain}" style="color: #BE1E2D; text-decoration: none;">info@${siteDomain}</a><br>
+            <a href="${siteUrl}" style="color: #BE1E2D; text-decoration: none;">${siteDomain}</a>
           </p>
         </div>
       </div>
@@ -315,13 +317,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const siteDomain = Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com';
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const fromAddress = `World Music Method <info@${siteDomain}>`;
     const subject = 'Order Confirmed - World Music Method';
 
     const result = await sendEmailViaSES(
       [email],
       subject,
-      getOrderConfirmationHtml(firstName || '', orderItems, totalAmount, currency || 'usd', isSubscription || false),
+      getOrderConfirmationHtml(firstName || '', orderItems, totalAmount, currency || 'usd', isSubscription || false, siteUrl, siteDomain),
       fromAddress,
       accessKeyId,
       secretAccessKey,

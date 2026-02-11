@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
             const params = new URLSearchParams();
             params.append('Action', 'SendEmail');
             params.append('Version', '2010-12-01');
-            params.append('Source', 'World Music Method <info@worldmusicmethod.com>');
+            params.append('Source', `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`);
             params.append('Destination.ToAddresses.member.1', email);
             params.append('Message.Subject.Data', `Project Issue Reported: ${title}`);
             params.append('Message.Subject.Charset', 'UTF-8');
@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
             // Log the send
             await admin.from('email_send_log').insert({
               email,
-              from_email: 'info@worldmusicmethod.com',
+              from_email: `info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}`,
               subject: `Project Issue Reported: ${title}`,
               status: sesRes.ok ? 'sent' : 'failed',
             });

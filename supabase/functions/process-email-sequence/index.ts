@@ -111,7 +111,7 @@ serve(async (req) => {
           cart_items: Array.isArray(metadata.cart_items) 
             ? metadata.cart_items.map((i: any) => i.name || i.productName).join(", ")
             : "",
-          checkout_url: `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.lovable.app')}/checkout`,
+          checkout_url: `${(Deno.env.get("SITE_URL") || "https://worldmusicmethod.lovable.app").replace(/\/$/, '')}/checkout`,
           unsubscribe_url: "#unsubscribe",
         };
 

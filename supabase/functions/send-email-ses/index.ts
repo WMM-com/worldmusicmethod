@@ -6,12 +6,15 @@ const corsHeaders = {
 };
 
 // Supported sender domains for email separation
-type SenderDomain = 'worldmusicmethod.com' | 'arts-admin.com';
+type SenderDomain = 'primary' | 'arts-admin.com';
 
-const SENDER_ADDRESSES: Record<SenderDomain, string> = {
-  'worldmusicmethod.com': 'World Music Method <info@worldmusicmethod.com>',
-  'arts-admin.com': 'Left Brain <info@arts-admin.com>',
-};
+function getSenderAddresses(): Record<SenderDomain, string> {
+  const primaryDomain = Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com';
+  return {
+    'primary': `World Music Method <info@${primaryDomain}>`,
+    'arts-admin.com': 'Left Brain <info@arts-admin.com>',
+  };
+}
 
 interface EmailRequest {
   to: string | string[];
@@ -280,9 +283,10 @@ Deno.serve(async (req) => {
     const recipients = Array.isArray(to) ? to : [to];
     
     // Determine the sender address based on sender_domain parameter
-    // Default to worldmusicmethod.com for backward compatibility
-    const domain: SenderDomain = sender_domain === 'arts-admin.com' ? 'arts-admin.com' : 'worldmusicmethod.com';
-    const fromAddress = SENDER_ADDRESSES[domain];
+    // Default to primary domain for backward compatibility
+    const domain: SenderDomain = sender_domain === 'arts-admin.com' ? 'arts-admin.com' : 'primary';
+    const senderAddresses = getSenderAddresses();
+    const fromAddress = senderAddresses[domain];
 
     console.log(`Sending email to ${recipients.join(', ')} from ${fromAddress} (domain: ${domain})`);
 
