@@ -33,7 +33,10 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [signupNotice, setSignupNotice] = useState<{ email: string } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [showPreloader, setShowPreloader] = useState(true);
+  const [showPreloader, setShowPreloader] = useState(() => {
+    const count = parseInt(localStorage.getItem('auth_preloader_count') || '0', 10);
+    return count < 3;
+  });
   const { signIn, signUp } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const { validateSubmission } = useHoneypotValidator();
@@ -145,7 +148,11 @@ export default function Auth() {
 
   return (
     <>
-      {showPreloader && <AuthPreloader onComplete={() => setShowPreloader(false)} />}
+      {showPreloader && <AuthPreloader onComplete={() => {
+        const count = parseInt(localStorage.getItem('auth_preloader_count') || '0', 10);
+        localStorage.setItem('auth_preloader_count', String(count + 1));
+        setShowPreloader(false);
+      }} />}
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
