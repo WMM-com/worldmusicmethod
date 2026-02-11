@@ -383,6 +383,8 @@ Deno.serve(async (req) => {
       'profile_gallery',
       'profile_projects',
       'profile_sections',
+      'profile_pages',
+      'extended_profiles',
       'pinned_audio',
       'events',
       'expenses',
@@ -402,9 +404,33 @@ Deno.serve(async (req) => {
       'tech_specs',
       'account_deletion_requests',
       'media_library',
-      'profiles',
-      'user_roles',
+      'play_events',
+      'credit_transactions',
+      'user_credits',
+      'referrals',
+      'username_history',
+      'user_tags',
+      'digital_products',
+      'digital_product_purchases',
+      'artist_dashboard_access',
+      'connected_account_subscriptions',
     ];
+
+    // Delete booking-related data (has FK to profiles via student_id)
+    // First delete child tables, then parent
+    const { data: bookingRequests } = await adminClient
+      .from('booking_requests')
+      .select('id')
+      .eq('student_id', userId);
+
+    if (bookingRequests && bookingRequests.length > 0) {
+      const requestIds = bookingRequests.map(r => r.id);
+      await adminClient.from('booking_participants').delete().in('request_id', requestIds);
+      await adminClient.from('booking_slots').delete().in('request_id', requestIds);
+      await adminClient.from('booking_requests').delete().eq('student_id', userId);
+    }
+
+    // Now delete from the main tables list
 
     for (const table of tablesToDelete) {
       try {
@@ -413,6 +439,10 @@ Deno.serve(async (req) => {
         console.log(`Could not delete from ${table}:`, e);
       }
     }
+
+    // Delete profiles and user_roles last (other tables have FK references to profiles)
+    await adminClient.from('profiles').delete().eq('id', userId);
+    await adminClient.from('user_roles').delete().eq('user_id', userId);
 
     // Delete conversations where user is a participant
     await adminClient
