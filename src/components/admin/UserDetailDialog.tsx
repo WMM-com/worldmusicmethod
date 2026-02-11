@@ -208,16 +208,18 @@ export function UserDetailDialog({
   // Add tag mutation
   const addTagMutation = useMutation({
     mutationFn: async ({ userId, email, tagId }: { userId: string; email: string; tagId: string }) => {
-      const { error } = await supabase.from('user_tags').insert({
+      const { error } = await supabase.from('user_tags').upsert({
         user_id: userId,
-        email: email,
+        email: email.toLowerCase(),
         tag_id: tagId,
         source: 'admin',
-      });
+        assigned_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,tag_id', ignoreDuplicates: true });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-user-tags'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('Tag added');
     },
     onError: (error: any) => {
@@ -323,6 +325,35 @@ export function UserDetailDialog({
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to enroll in group');
+    },
+  });
+
+  // Remove course group enrollment
+  const removeGroupMutation = useMutation({
+    mutationFn: async ({ userId, groupId }: { userId: string; groupId: string }) => {
+      const group = courseGroups?.find(g => g.id === groupId);
+      if (!group) throw new Error('Group not found');
+
+      const courseIds = (group.course_group_courses as any[])?.map(c => c.course_id) || [];
+      const enrolledGroupCourseIds = courseIds.filter(id => enrolledCourseIds.includes(id));
+
+      if (enrolledGroupCourseIds.length === 0) {
+        throw new Error('Not enrolled in any courses from this group');
+      }
+
+      const { error } = await supabase
+        .from('course_enrollments')
+        .delete()
+        .eq('user_id', userId)
+        .in('course_id', enrolledGroupCourseIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-enrollments'] });
+      toast.success('Group courses removed');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to remove group courses');
     },
   });
 
@@ -478,7 +509,7 @@ export function UserDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-hidden flex flex-col w-[calc(100vw-2rem)] sm:w-full">
+      <DialogContent className="max-w-2xl max-h-[85dvh] overflow-hidden flex flex-col w-[calc(100vw-2rem)] sm:w-full">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-3">
             {user.avatar_url ? (
@@ -840,19 +871,39 @@ export function UserDetailDialog({
                 {/* Course groups quick enroll - moved to top for visibility */}
                 {courseGroups && courseGroups.length > 0 && (
                   <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
-                    <Label className="text-xs font-medium">Quick enroll by group:</Label>
+                    <Label className="text-xs font-medium">Course groups:</Label>
                     <div className="flex flex-wrap gap-1.5">
-                      {courseGroups.map((group: any) => (
-                        <Badge
-                          key={group.id}
-                          variant="outline"
-                          className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground py-1.5 px-2.5"
-                          onClick={() => enrollInGroupMutation.mutate({ userId: user.id, groupId: group.id })}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          {group.name} ({group.course_group_courses?.length || 0})
-                        </Badge>
-                      ))}
+                      {courseGroups.map((group: any) => {
+                        const groupCourseIds = (group.course_group_courses as any[])?.map((c: any) => c.course_id) || [];
+                        const enrolledInGroup = groupCourseIds.filter((id: string) => enrolledCourseIds.includes(id)).length;
+                        const isFullyEnrolled = enrolledInGroup === groupCourseIds.length && groupCourseIds.length > 0;
+
+                        return isFullyEnrolled ? (
+                          <Badge
+                            key={group.id}
+                            variant="secondary"
+                            className="text-xs gap-1 pr-1 py-1.5 px-2.5"
+                          >
+                            {group.name} ({groupCourseIds.length})
+                            <button
+                              onClick={() => removeGroupMutation.mutate({ userId: user.id, groupId: group.id })}
+                              className="ml-1 hover:bg-destructive/20 rounded p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ) : (
+                          <Badge
+                            key={group.id}
+                            variant="outline"
+                            className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground py-1.5 px-2.5"
+                            onClick={() => enrollInGroupMutation.mutate({ userId: user.id, groupId: group.id })}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            {group.name} ({enrolledInGroup}/{groupCourseIds.length})
+                          </Badge>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
