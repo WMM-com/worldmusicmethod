@@ -1672,7 +1672,7 @@ export default function CourseLanding() {
                     </div>
                     <div className="md:col-span-2">
                       <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
-                      <h3 className="text-xl text-primary mb-6">{courseConfig.expert.name}</h3>
+                      <h3 className="text-xl text-foreground mb-6">{courseConfig.expert.name}</h3>
                       <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
                         {courseConfig.expert.bio.map((paragraph, i) => (
                           <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} />
