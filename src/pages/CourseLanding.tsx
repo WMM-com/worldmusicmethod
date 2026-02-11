@@ -1056,7 +1056,7 @@ export default function CourseLanding() {
   };
 
   // SEO meta tags - use course-specific SEO fields with fallbacks
-  const siteUrl = 'https://worldmusicmethod.lovable.app';
+  const siteUrl = 'https://worldmusicmethod.com';
   const pageUrl = `${siteUrl}/courses/${course?.slug || courseId}`;
   const metaTitle = course?.meta_title || course?.title || 'Course';
   const metaDescription = course?.meta_description || course?.description || `Learn ${course?.title} with World Music Method`;

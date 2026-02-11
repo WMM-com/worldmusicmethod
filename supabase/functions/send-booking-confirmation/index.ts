@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
     }
 
     // Get video room URL
-    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com').replace(/\/$/, '');
     let roomUrl = `${siteUrl}/lessons`;
     if (booking.video_room_id) {
       const { data: room } = await supabase

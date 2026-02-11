@@ -192,7 +192,7 @@ serve(async (req) => {
     logStep("Found due campaigns", { count: dueCampaigns?.length || 0 });
 
     const results = [];
-    const baseUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const baseUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com').replace(/\/$/, '');
 
     for (const campaign of dueCampaigns || []) {
       logStep("Sending scheduled campaign", { id: campaign.id, name: campaign.name });

@@ -92,7 +92,7 @@ serve(async (req) => {
     }
 
     // Generate download URL
-    const baseUrl = (Deno.env.get("SITE_URL") || "https://worldmusicmethod.lovable.app").replace(/\/$/, '');
+    const baseUrl = (Deno.env.get("SITE_URL") || "https://worldmusicmethod.com").replace(/\/$/, '');
     const downloadUrl = `${baseUrl}/download/${downloadToken}`;
 
     // Send email with download link

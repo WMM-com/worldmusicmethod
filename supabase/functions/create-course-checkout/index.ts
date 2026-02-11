@@ -69,7 +69,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || Deno.env.get("SITE_URL") || "https://worldmusicmethod.lovable.app";
+    const origin = req.headers.get("origin") || Deno.env.get("SITE_URL") || "https://worldmusicmethod.com";
 
     // Build checkout session options
     const sessionOptions: Stripe.Checkout.SessionCreateParams = {
