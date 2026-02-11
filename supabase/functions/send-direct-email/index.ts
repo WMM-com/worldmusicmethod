@@ -1,9 +1,8 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: any) => {
@@ -118,7 +117,7 @@ async function signRequest(
   return headers;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -140,22 +139,24 @@ serve(async (req) => {
       );
     }
 
-    // 2. Validate JWT and get user
+    // 2. Validate JWT using getClaims
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !user) {
-      logStep("ERROR", { message: "Unauthorized - invalid token", error: userError?.message });
+    const token = authHeader.replace('Bearer ', '');
+    const { data, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !data?.claims) {
+      logStep("ERROR", { message: "Unauthorized - invalid token", error: claimsError?.message });
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    const userId = data.claims.sub;
+    logStep("User authenticated", { userId });
 
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -169,7 +170,7 @@ serve(async (req) => {
     }
 
     const { to, subject, body } = await req.json();
-    logStep("Email request", { to, subject, userId: user.id });
+    logStep("Email request", { to, subject, userId });
 
     if (!to || !subject || !body) {
       throw new Error("to, subject, and body are required");
@@ -207,7 +208,7 @@ serve(async (req) => {
       status: "sent",
     });
 
-    logStep("Email sent successfully", { to, userId: user.id });
+    logStep("Email sent successfully", { to, userId });
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
