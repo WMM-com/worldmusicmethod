@@ -896,7 +896,7 @@ export default function Profile(
                 {isOwnProfile && isEditing && (
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex flex-wrap gap-4 items-center">
-                      {isPremium && <PremiumActiveBadge />}
+                      {isPremium && isAdmin && <PremiumActiveBadge />}
                       {/* Hero Editor - for quick access */}
                       <HeroEditor
                         heroType={heroSettings?.hero_type || 'standard'}
@@ -1028,12 +1028,8 @@ export default function Profile(
                       </DropdownMenu>
                       
                       
-                      {/* Payment Accounts - Premium Only */}
-                      <PremiumGate
-                        hasPremiumFeatures={isPremium}
-                        featureName="Payment Accounts"
-                        mode="inline"
-                      >
+                      {/* Payment Accounts - shown for premium users, gate visible only to admins */}
+                      {isPremium ? (
                         <Button 
                           variant="outline" 
                           size="sm" 
@@ -1043,7 +1039,23 @@ export default function Profile(
                           <CreditCard className="h-4 w-4" />
                           Connect Payments
                         </Button>
-                      </PremiumGate>
+                      ) : isAdmin ? (
+                        <PremiumGate
+                          hasPremiumFeatures={false}
+                          featureName="Payment Accounts"
+                          mode="inline"
+                        >
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="gap-2"
+                            onClick={() => navigate('/account?section=payments')}
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            Connect Payments
+                          </Button>
+                        </PremiumGate>
+                      ) : null}
                     </div>
                     
                     {/* Page Manager - for creating/managing website pages */}

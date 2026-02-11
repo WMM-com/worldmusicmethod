@@ -9,6 +9,7 @@
  * 4. Storefront link
  */
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ import {
 } from 'lucide-react';
 
 export function ConnectDashboard() {
+  const { isAdmin } = useAuth();
   const { data: status, isLoading: statusLoading } = useConnectAccountStatus();
   const createAccount = useCreateConnectAccount();
   const startOnboarding = useStartOnboarding();
@@ -331,8 +333,8 @@ export function ConnectDashboard() {
         </Card>
       )}
 
-      {/* ─── Section 3: Platform Subscription ──────────────────────── */}
-      {status?.hasAccount && (
+      {/* ─── Section 3: Platform Subscription (Admin only) ──────────────────────── */}
+      {status?.hasAccount && isAdmin && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
