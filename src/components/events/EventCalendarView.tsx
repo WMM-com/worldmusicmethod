@@ -21,6 +21,7 @@ interface EventCalendarViewProps {
   events: Event[];
   onEventClick?: (event: Event) => void;
   onEventReschedule?: (eventId: string, newDate: Date) => void;
+  onDateClick?: (date: Date) => void;
 }
 
 interface DraggableEventProps {
@@ -67,20 +68,28 @@ interface DroppableDayProps {
   isSameMonthDay: boolean;
   events: Event[];
   onEventClick?: (event: Event) => void;
+  onDateClick?: (date: Date) => void;
   getStatusColor: (status: string) => string;
 }
 
-function DroppableDay({ day, isToday, isSameMonthDay, events, onEventClick, getStatusColor }: DroppableDayProps) {
+function DroppableDay({ day, isToday, isSameMonthDay, events, onEventClick, onDateClick, getStatusColor }: DroppableDayProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: day.toISOString(),
     data: { day },
   });
 
+  const handleDayClick = (e: React.MouseEvent) => {
+    // Only trigger if clicking the day cell itself, not an event
+    if ((e.target as HTMLElement).closest('button[data-event]')) return;
+    onDateClick?.(day);
+  };
+
   return (
     <div
       ref={setNodeRef}
+      onClick={handleDayClick}
       className={cn(
-        "min-h-[80px] p-1 rounded-lg border transition-all",
+        "min-h-[80px] p-1 rounded-lg border transition-all cursor-pointer hover:bg-secondary/30",
         isToday ? 'border-primary bg-primary/5' : 'border-border/50',
         !isSameMonthDay && 'opacity-50',
         isOver && 'bg-primary/10 border-primary ring-2 ring-primary/30'
@@ -99,6 +108,7 @@ function DroppableDay({ day, isToday, isSameMonthDay, events, onEventClick, getS
             event={event}
             onEventClick={onEventClick}
             getStatusColor={getStatusColor}
+            data-event
           />
         ))}
         {events.length > 3 && (
@@ -111,7 +121,7 @@ function DroppableDay({ day, isToday, isSameMonthDay, events, onEventClick, getS
   );
 }
 
-export function EventCalendarView({ events, onEventClick, onEventReschedule }: EventCalendarViewProps) {
+export function EventCalendarView({ events, onEventClick, onEventReschedule, onDateClick }: EventCalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [activeEvent, setActiveEvent] = useState<Event | null>(null);
 
@@ -215,6 +225,7 @@ export function EventCalendarView({ events, onEventClick, onEventReschedule }: E
                   isSameMonthDay={isSameMonth(day, currentMonth)}
                   events={dayEvents}
                   onEventClick={onEventClick}
+                  onDateClick={onDateClick}
                   getStatusColor={getStatusColor}
                 />
               );

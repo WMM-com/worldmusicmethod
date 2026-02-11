@@ -11,12 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { CalendarIcon, Trash2, Save, Copy, FileText, Send } from 'lucide-react';
-import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
+import { Event, EventType, EventStatus, PaymentStatus, PreciseTiming } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { eventSchema } from '@/lib/validations';
 import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { supabase } from '@/integrations/supabase/client';
+import { PreciseTimings } from '@/components/events/PreciseTimings';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,6 +64,7 @@ export function EventDetailDialog({
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [sendingInvoice, setSendingInvoice] = useState(false);
   const [estimatedDefaultAmount, setEstimatedDefaultAmount] = useState<number>(0);
+  const [preciseTimings, setPreciseTimings] = useState<PreciseTiming[]>([]);
   const queryClient = useQueryClient();
 
   const defaultCurrency = profile?.default_currency || 'GBP';
@@ -88,6 +90,10 @@ export function EventDetailDialog({
 
       // Set estimated amount
       setEstimatedDefaultAmount(convertCurrency(event.fee || 0, eventCurrency, defaultCurrency));
+      
+      // Set precise timings
+      const timings = (event as any).precise_timings;
+      setPreciseTimings(Array.isArray(timings) ? timings : []);
     }
   }, [event, defaultCurrency]);
 
@@ -139,6 +145,7 @@ export function EventDetailDialog({
       ...editedEvent,
       start_time: startTime.toISOString(),
       time_tbc: timeTbc,
+      precise_timings: preciseTimings.length > 0 ? preciseTimings : null,
     } as any);
     
     onOpenChange(false);
@@ -234,6 +241,7 @@ export function EventDetailDialog({
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   initialFocus
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
@@ -261,6 +269,8 @@ export function EventDetailDialog({
               className={cn(timeTbc && "opacity-50")}
             />
           </div>
+
+          <PreciseTimings timings={preciseTimings} onChange={setPreciseTimings} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -389,6 +399,25 @@ export function EventDetailDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {editedEvent.payment_status === 'partial' && (
+            <div className="space-y-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
+              <Label>Amount Already Received</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">{getCurrencySymbol(editedEvent.currency || defaultCurrency)}</span>
+                <Input 
+                  type="number" 
+                  value={(editedEvent as any).amount_paid || 0}
+                  onChange={(e) => setEditedEvent({...editedEvent, amount_paid: parseFloat(e.target.value) || 0} as any)}
+                  placeholder="0.00"
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Outstanding: {getCurrencySymbol(editedEvent.currency || defaultCurrency)}{Math.max(0, (editedEvent.fee || 0) - ((editedEvent as any).amount_paid || 0)).toFixed(2)}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Notes</Label>
