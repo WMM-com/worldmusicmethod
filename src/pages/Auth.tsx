@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Mail, CheckCircle } from 'lucide-react';
 import wmmLogo from '@/assets/wmm-logo.png';
 import { HoneypotField, useHoneypotValidator } from '@/components/ui/honeypot-field';
+import { AuthPreloader } from '@/components/auth/AuthPreloader';
 import { usePersistentRateLimiter } from '@/hooks/useRateLimiter';
 import { Turnstile, useTurnstileVerification } from '@/components/ui/turnstile';
 import { getReferralCode } from '@/lib/referralCookies';
@@ -32,6 +33,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [signupNotice, setSignupNotice] = useState<{ email: string } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [showPreloader, setShowPreloader] = useState(true);
   const { signIn, signUp } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const { validateSubmission } = useHoneypotValidator();
@@ -142,6 +144,8 @@ export default function Auth() {
   };
 
   return (
+    <>
+      {showPreloader && <AuthPreloader onComplete={() => setShowPreloader(false)} />}
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
@@ -323,5 +327,6 @@ export default function Auth() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }
