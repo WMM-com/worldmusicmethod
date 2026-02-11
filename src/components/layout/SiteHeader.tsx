@@ -53,8 +53,8 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
     { id: 'fb-learn-lessons', menu_type: 'desktop', label: 'Private Lessons', href: '/lessons', icon: null, parent_id: 'fb-learn', order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-membership', menu_type: 'desktop', label: 'Membership', href: '/membership', icon: null, parent_id: null, order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-community', menu_type: 'desktop', label: 'Community', href: '/community', icon: 'Users', parent_id: null, order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
-    { id: 'fb-listen', menu_type: 'desktop', label: 'Listen', href: '/listen', icon: null, parent_id: null, order_index: 4, is_visible: true, requires_auth: false, requires_admin: false },
-    { id: 'fb-blog', menu_type: 'desktop', label: 'Blog', href: '/blog', icon: null, parent_id: null, order_index: 5, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-listen', menu_type: 'desktop', label: 'Listen', href: '/listen', icon: null, parent_id: null, order_index: 4, is_visible: false, requires_auth: false, requires_admin: false },
+    { id: 'fb-blog', menu_type: 'desktop', label: 'Blog', href: '/blog', icon: null, parent_id: null, order_index: 5, is_visible: false, requires_auth: false, requires_admin: false },
     // Mobile fallbacks
     { id: 'fb-m-home', menu_type: 'mobile', label: 'Home', href: '/', icon: 'Home', parent_id: null, order_index: -1, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-m-learn', menu_type: 'mobile', label: 'Learn', href: null, icon: 'BookOpen', parent_id: null, order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
@@ -63,8 +63,8 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
     { id: 'fb-m-lessons', menu_type: 'mobile', label: 'Private Lessons', href: '/lessons', icon: 'Calendar', parent_id: 'fb-m-learn', order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-m-membership', menu_type: 'mobile', label: 'Membership', href: '/membership', icon: 'Star', parent_id: null, order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-m-community', menu_type: 'mobile', label: 'Community', href: '/community', icon: 'Users', parent_id: null, order_index: 2, is_visible: true, requires_auth: false, requires_admin: false },
-    { id: 'fb-m-listen', menu_type: 'mobile', label: 'Listen', href: '/listen', icon: 'Music', parent_id: null, order_index: 4, is_visible: true, requires_auth: false, requires_admin: false },
-    { id: 'fb-m-blog', menu_type: 'mobile', label: 'Blog', href: '/blog', icon: 'FileText', parent_id: null, order_index: 5, is_visible: true, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-listen', menu_type: 'mobile', label: 'Listen', href: '/listen', icon: 'Music', parent_id: null, order_index: 4, is_visible: false, requires_auth: false, requires_admin: false },
+    { id: 'fb-m-blog', menu_type: 'mobile', label: 'Blog', href: '/blog', icon: 'FileText', parent_id: null, order_index: 5, is_visible: false, requires_auth: false, requires_admin: false },
   ];
 
   // Fetch menu items from database with fallback
