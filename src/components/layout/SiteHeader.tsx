@@ -46,6 +46,7 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
 
   // Hardcoded fallback menu so the header is never empty
   const FALLBACK_MENU: MenuItem[] = [
+    { id: 'fb-home', menu_type: 'desktop', label: 'Home', href: '/', icon: 'Home', parent_id: null, order_index: -1, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-learn', menu_type: 'desktop', label: 'Learn', href: null, icon: 'BookOpen', parent_id: null, order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-learn-courses', menu_type: 'desktop', label: 'Courses', href: '/courses', icon: null, parent_id: 'fb-learn', order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-learn-my', menu_type: 'desktop', label: 'My Courses', href: '/my-courses', icon: null, parent_id: 'fb-learn', order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },
@@ -55,6 +56,7 @@ export function SiteHeader({ rightAddon, className, nonSticky = false }: { right
     { id: 'fb-listen', menu_type: 'desktop', label: 'Listen', href: '/listen', icon: null, parent_id: null, order_index: 4, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-blog', menu_type: 'desktop', label: 'Blog', href: '/blog', icon: null, parent_id: null, order_index: 5, is_visible: true, requires_auth: false, requires_admin: false },
     // Mobile fallbacks
+    { id: 'fb-m-home', menu_type: 'mobile', label: 'Home', href: '/', icon: 'Home', parent_id: null, order_index: -1, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-m-learn', menu_type: 'mobile', label: 'Learn', href: null, icon: 'BookOpen', parent_id: null, order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-m-courses', menu_type: 'mobile', label: 'Courses', href: '/courses', icon: 'BookOpen', parent_id: 'fb-m-learn', order_index: 0, is_visible: true, requires_auth: false, requires_admin: false },
     { id: 'fb-m-my', menu_type: 'mobile', label: 'My Courses', href: '/my-courses', icon: 'BookOpen', parent_id: 'fb-m-learn', order_index: 1, is_visible: true, requires_auth: false, requires_admin: false },

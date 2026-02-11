@@ -407,7 +407,7 @@ export default function Index() {
           </button>
           <video
             ref={trailerVideoRef}
-            src={HERO_VIDEO_URL}
+            src="https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4"
             className="w-full aspect-video"
             controls
             autoPlay

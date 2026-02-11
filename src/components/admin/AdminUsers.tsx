@@ -1234,7 +1234,10 @@ export function AdminUsers() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => setSelectedUserId(user.id)}
+                              onClick={() => {
+                                setSelectedUserId(user.id);
+                                setEnrollDialogOpen(true);
+                              }}
                             >
                               <BookOpen className="h-4 w-4 mr-1" />
                               Enroll
