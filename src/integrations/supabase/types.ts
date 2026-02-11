@@ -1765,6 +1765,7 @@ export type Database = {
       }
       events: {
         Row: {
+          amount_paid: number | null
           arrival_time: string | null
           client_email: string | null
           client_name: string | null
@@ -1781,6 +1782,7 @@ export type Database = {
           notes: string | null
           payment_date: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
+          precise_timings: Json | null
           share_token: string | null
           start_time: string
           status: Database["public"]["Enums"]["event_status"]
@@ -1793,6 +1795,7 @@ export type Database = {
           venue_name: string | null
         }
         Insert: {
+          amount_paid?: number | null
           arrival_time?: string | null
           client_email?: string | null
           client_name?: string | null
@@ -1809,6 +1812,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          precise_timings?: Json | null
           share_token?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["event_status"]
@@ -1821,6 +1825,7 @@ export type Database = {
           venue_name?: string | null
         }
         Update: {
+          amount_paid?: number | null
           arrival_time?: string | null
           client_email?: string | null
           client_name?: string | null
@@ -1837,6 +1842,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          precise_timings?: Json | null
           share_token?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["event_status"]

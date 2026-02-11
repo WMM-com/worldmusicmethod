@@ -45,6 +45,12 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface PreciseTiming {
+  id: string;
+  label: string;
+  time: string;
+}
+
 export interface Event {
   id: string;
   user_id: string;
@@ -67,6 +73,9 @@ export interface Event {
   tags: string[] | null;
   is_recurring: boolean;
   share_token: string;
+  amount_paid: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  precise_timings: PreciseTiming[] | any | null;
   created_at: string;
   updated_at: string;
 }

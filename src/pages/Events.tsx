@@ -25,8 +25,9 @@ import { InvoiceCreateDialog } from '@/components/invoices/InvoiceCreateDialog';
 import { MapboxAddressInput } from '@/components/ui/mapbox-address-input';
 import { format } from 'date-fns';
 import { Plus, CalendarIcon, Search, Share2, List, LayoutGrid, Trash2, Copy, X, CheckSquare, FileText, Users, Mail } from 'lucide-react';
-import { Event, EventType, EventStatus, PaymentStatus } from '@/types/database';
+import { Event, EventType, EventStatus, PaymentStatus, PreciseTiming } from '@/types/database';
 import { cn } from '@/lib/utils';
+import { PreciseTimings } from '@/components/events/PreciseTimings';
 import { CURRENCIES, getCurrencySymbol, convertCurrency } from '@/lib/currency';
 
 import { eventSchema } from '@/lib/validations';
@@ -81,6 +82,7 @@ export default function Events() {
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [invoiceEvent, setInvoiceEvent] = useState<Event | null>(null);
   const [estimatedDefaultAmount, setEstimatedDefaultAmount] = useState<number>(0);
+  const [preciseTimings, setPreciseTimings] = useState<PreciseTiming[]>([]);
   
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -96,6 +98,7 @@ export default function Events() {
     status: 'pencilled' as EventStatus,
     payment_status: 'unpaid' as PaymentStatus,
     notes: '',
+    amount_paid: 0,
   });
 
   // Update currency when profile loads
@@ -172,6 +175,7 @@ export default function Events() {
       tags: null,
       is_recurring: false,
       time_tbc: timeUnknown,
+      precise_timings: preciseTimings.length > 0 ? preciseTimings : null,
     } as any);
     
     setDialogOpen(false);
@@ -193,11 +197,13 @@ export default function Events() {
       status: 'pencilled',
       payment_status: 'unpaid',
       notes: '',
+      amount_paid: 0,
     });
     setSelectedDate(undefined);
     setTimeUnknown(false);
     setErrors({});
     setEstimatedDefaultAmount(0);
+    setPreciseTimings([]);
   };
 
   const formatCurrencyAmount = (amount: number, currency: string = defaultCurrency) => {
@@ -395,6 +401,7 @@ export default function Events() {
                             if (errors.date) setErrors({...errors, date: undefined});
                           }}
                           initialFocus
+                          className="pointer-events-auto"
                         />
                       </PopoverContent>
                     </Popover>
@@ -423,6 +430,8 @@ export default function Events() {
                       className={cn(timeUnknown && "opacity-50")}
                     />
                   </div>
+
+                  <PreciseTimings timings={preciseTimings} onChange={setPreciseTimings} />
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -542,6 +551,25 @@ export default function Events() {
                     </Select>
                   </div>
 
+                  {newEvent.payment_status === 'partial' && (
+                    <div className="space-y-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
+                      <Label>Amount Already Received</Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">{getCurrencySymbol(newEvent.currency)}</span>
+                        <Input 
+                          type="number" 
+                          value={newEvent.amount_paid}
+                          onChange={(e) => setNewEvent({...newEvent, amount_paid: parseFloat(e.target.value) || 0})}
+                          placeholder="0.00"
+                          className="flex-1"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Outstanding: {getCurrencySymbol(newEvent.currency)}{Math.max(0, (newEvent.fee || 0) - (newEvent.amount_paid || 0)).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label>Notes</Label>
                     <Textarea 
@@ -592,6 +620,10 @@ export default function Events() {
                 events={filteredEvents} 
                 onEventClick={handleEventClick}
                 onEventReschedule={(eventId, newDate) => rescheduleEvent.mutate({ id: eventId, newDate })}
+                onDateClick={(date) => {
+                  setSelectedDate(date);
+                  setDialogOpen(true);
+                }}
               />
             ) : filteredEvents.length === 0 ? (
               <Card className="glass">
@@ -739,9 +771,10 @@ export default function Events() {
                               </span>
                               <span className={`text-xs px-2 py-0.5 rounded-full ${
                                 event.payment_status === 'paid' ? 'bg-success/20 text-success' :
+                                event.payment_status === 'partial' ? 'bg-warning/20 text-warning' :
                                 event.payment_status === 'overdue' ? 'bg-destructive/20 text-destructive' :
                                 'bg-muted text-muted-foreground'
-                              }`}>{event.payment_status}</span>
+                              }`}>{event.payment_status}{event.payment_status === 'partial' && (event as any).amount_paid > 0 ? ` (${getCurrencySymbol(event.currency || defaultCurrency)}${((event.fee || 0) - ((event as any).amount_paid || 0)).toFixed(0)} due)` : ''}</span>
                             </div>
                             {eventInvoices[event.id]?.sent_at && (
                               <div className="flex items-center gap-1 sm:justify-end text-xs text-muted-foreground">
@@ -778,6 +811,18 @@ export default function Events() {
                                 </Button>
                               }
                             />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Delete event"
+                              className="h-8 w-8 sm:h-10 sm:w-10 text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteEvent(event.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       </div>
