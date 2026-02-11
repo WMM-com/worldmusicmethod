@@ -758,6 +758,19 @@ export default function CourseLanding() {
   const { calculatePrice, isLoading: geoLoading } = useGeoPricing();
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [trailerPreloaded, setTrailerPreloaded] = useState(false);
+
+  // Preload trailer video on hover/touch intent for instant playback
+  const preloadTrailer = () => {
+    if (trailerPreloaded || !courseConfig?.trailerVideo) return;
+    setTrailerPreloaded(true);
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'video';
+    link.href = courseConfig.trailerVideo;
+    link.setAttribute('type', 'video/mp4');
+    document.head.appendChild(link);
+  };
   const [activeSection, setActiveSection] = useState('overview');
   const [showNavWheel, setShowNavWheel] = useState(false);
   const isMobile = useIsMobile();
@@ -1129,6 +1142,8 @@ export default function CourseLanding() {
                       handleSidebarToggle(false);
                       setShowVideoModal(true);
                     }}
+                    onMouseEnter={preloadTrailer}
+                    onTouchStart={preloadTrailer}
                     className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-primary hover:bg-muted/50 transition-colors border-b border-border"
                   >
                     <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1211,6 +1226,8 @@ export default function CourseLanding() {
               {courseConfig?.trailerVideo && (
                 <button
                   onClick={() => setShowVideoModal(true)}
+                  onMouseEnter={preloadTrailer}
+                  onTouchStart={preloadTrailer}
                   className="w-full px-4 py-3 flex items-center gap-3 text-sm font-medium text-primary hover:bg-muted/50 transition-colors border-b border-border"
                 >
                   <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1356,6 +1373,8 @@ export default function CourseLanding() {
                     <div 
                       className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group border-2 border-white/80"
                       onClick={() => setShowVideoModal(true)}
+                      onMouseEnter={preloadTrailer}
+                      onTouchStart={preloadTrailer}
                     >
                       {courseConfig?.courseImage || course.cover_image_url ? (
                         <img 
@@ -1453,6 +1472,8 @@ export default function CourseLanding() {
                   <div 
                     className="relative w-full aspect-video rounded-lg mb-4 overflow-hidden cursor-pointer group"
                     onClick={() => courseConfig?.trailerVideo && setShowVideoModal(true)}
+                    onMouseEnter={preloadTrailer}
+                    onTouchStart={preloadTrailer}
                   >
                     {courseConfig?.courseImage || course.cover_image_url ? (
                       <img 
@@ -1799,6 +1820,8 @@ export default function CourseLanding() {
               src={courseConfig.trailerVideo}
               controls
               autoPlay
+              preload="auto"
+              playsInline
               controlsList="nodownload noplaybackrate"
               disablePictureInPicture
               className="w-full aspect-video"

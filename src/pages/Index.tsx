@@ -23,6 +23,7 @@ import drumsImg from '@/assets/lessons/drums.jpg';
 import vocalsImg from '@/assets/lessons/vocals.jpg';
 
 const HERO_VIDEO_URL = '/videos/LANDING_PAGE_VIDEO.mp4';
+const TRAILER_VIDEO_URL = 'https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4';
 
 const instruments = [
   { 
@@ -72,12 +73,25 @@ export default function Index() {
   const trailerVideoRef = useRef<HTMLVideoElement>(null);
   const [selectedInstrument, setSelectedInstrument] = useState<typeof instruments[0] | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
+  const [trailerPreloaded, setTrailerPreloaded] = useState(false);
 
   useEffect(() => {
     if (heroVideoRef.current) {
       heroVideoRef.current.play().catch(() => {});
     }
   }, []);
+
+  // Preload trailer video on hover/touch intent
+  const preloadTrailer = () => {
+    if (trailerPreloaded) return;
+    setTrailerPreloaded(true);
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'video';
+    link.href = TRAILER_VIDEO_URL;
+    link.setAttribute('type', 'video/mp4');
+    document.head.appendChild(link);
+  };
 
   const handleClosePopup = () => {
     setSelectedInstrument(null);
@@ -96,6 +110,7 @@ export default function Index() {
       <Helmet>
         <title>World Music Method | Master Your Instrument, Unlock Musical Freedom</title>
         <meta name="description" content="Accelerate your musical journey with world-class instructors, cutting-edge technology, and a vibrant global community. Access an entire world of musical knowledge." />
+        <link rel="preload" href={HERO_VIDEO_URL} as="video" type="video/mp4" />
       </Helmet>
       
       <SiteHeader />
@@ -112,6 +127,7 @@ export default function Index() {
               loop
               playsInline
               autoPlay
+              preload="auto"
             />
             <div className="absolute inset-0 bg-black/30" />
             
@@ -121,6 +137,8 @@ export default function Index() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.7, delay: 0.5 }}
               onClick={() => setShowTrailer(true)}
+              onMouseEnter={preloadTrailer}
+              onTouchStart={preloadTrailer}
               className="absolute inset-0 flex flex-col items-center justify-center gap-4 group cursor-pointer"
             >
               <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
@@ -208,6 +226,8 @@ export default function Index() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group mb-4 border-2 border-border"
             onClick={() => setShowTrailer(true)}
+            onMouseEnter={preloadTrailer}
+            onTouchStart={preloadTrailer}
           >
             <video
               src={HERO_VIDEO_URL}
@@ -216,6 +236,7 @@ export default function Index() {
               playsInline
               autoPlay
               loop
+              preload="auto"
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 group-active:bg-black/40 transition-colors">
               <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
@@ -405,13 +426,17 @@ export default function Index() {
           >
             <X className="w-5 h-5 text-primary-foreground" />
           </button>
-          <video
-            ref={trailerVideoRef}
-            src="https://pub-cbdecee3a4d44866a8523b54ebfd19f8.r2.dev/2026/02/Funnel-Trailer-YT-FINAL-2.mp4"
-            className="w-full aspect-video"
-            controls
-            autoPlay
-          />
+          {showTrailer && (
+            <video
+              ref={trailerVideoRef}
+              src={TRAILER_VIDEO_URL}
+              className="w-full aspect-video"
+              controls
+              autoPlay
+              preload="auto"
+              playsInline
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>
