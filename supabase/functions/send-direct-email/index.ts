@@ -177,7 +177,7 @@ serve(async (req) => {
 
     const url = new URL(`https://email.${region}.amazonaws.com/`);
     // Fixed sender - do not allow custom senderEmail to prevent spoofing
-    const from = 'World Music Method <info@worldmusicmethod.com>';
+    const from = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
     
     const params = new URLSearchParams();
     params.append('Action', 'SendEmail');

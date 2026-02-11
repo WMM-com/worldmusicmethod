@@ -57,8 +57,8 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     
-    // Site hostname - using the published URL
-    const hostname = 'https://worldmusicmethod.lovable.app';
+    // Site hostname - using SITE_URL secret or fallback to published URL
+    const hostname = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
     
     const urls: SitemapUrl[] = [];
     const now = new Date().toISOString().split('T')[0];

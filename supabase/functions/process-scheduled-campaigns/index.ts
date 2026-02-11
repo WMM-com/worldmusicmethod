@@ -127,7 +127,7 @@ async function sendEmail(
   region: string
 ): Promise<boolean> {
   const url = new URL(`https://email.${region}.amazonaws.com/`);
-  const from = 'World Music Method <info@worldmusicmethod.com>';
+  const from = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
   
   const params = new URLSearchParams();
   params.append('Action', 'SendEmail');
@@ -192,7 +192,7 @@ serve(async (req) => {
     logStep("Found due campaigns", { count: dueCampaigns?.length || 0 });
 
     const results = [];
-    const baseUrl = 'https://worldmusicmethod.lovable.app';
+    const baseUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
 
     for (const campaign of dueCampaigns || []) {
       logStep("Sending scheduled campaign", { id: campaign.id, name: campaign.name });

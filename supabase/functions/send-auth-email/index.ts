@@ -185,7 +185,7 @@ function getEmailFooter(): string {
       </p>
       <p style="color: #999; font-size: 11px; margin-top: 12px;">
         This is an automated message, please do not reply.<br>
-        <a href="https://worldmusicmethod.com" style="color: #f97316; text-decoration: none;">worldmusicmethod.com</a>
+        <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app'}" style="color: #f97316; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
       </p>
     </div>
   `;
@@ -316,7 +316,7 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const siteUrl = 'https://worldmusicmethod.com';
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
 
     let subject: string;
     let html: string;
@@ -347,7 +347,7 @@ Deno.serve(async (req) => {
         html = getEmailConfirmationHtml(confirmLink);
     }
 
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
 
     console.log(`Sending ${email_action_type} email to ${email}`);
 

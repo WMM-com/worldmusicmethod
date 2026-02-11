@@ -479,7 +479,7 @@ serve(async (req) => {
             logStep('Payment method updated directly', { paymentMethodId: data.paymentMethodId });
           } else {
             // Fallback to portal session
-            const origin = data?.returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+            const origin = data?.returnUrl || Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.lovable.app";
             
             const portalSession = await stripe.billingPortal.sessions.create({
               customer: customerId,
@@ -503,7 +503,7 @@ serve(async (req) => {
           );
           
           const customerId = stripeSub.customer as string;
-          const origin = data?.returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+          const origin = data?.returnUrl || Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.lovable.app";
           
           const portalSession = await stripe.billingPortal.sessions.create({
             customer: customerId,
@@ -644,7 +644,7 @@ serve(async (req) => {
           const fullName = profile?.full_name || subscription.customer_name || '';
           
           // Create PayPal subscription
-          const origin = returnUrl || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.com";
+          const origin = returnUrl || Deno.env.get("SITE_URL") || Deno.env.get("FRONTEND_URL") || "https://worldmusicmethod.lovable.app";
           
           const ppSubscriptionPayload = {
             plan_id: plan.id,

@@ -207,7 +207,7 @@ function getPasswordResetEmailHtml(resetLink: string, firstName: string): string
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
             This is an automated message, please do not reply.<br>
-            <a href="https://worldmusicmethod.com" style="color: #BE1E2D; text-decoration: none;">worldmusicmethod.com</a>
+            <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app'}" style="color: #BE1E2D; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
           </p>
         </div>
       </div>
@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const origin = req.headers.get('origin') ?? 'https://worldmusicmethod.com';
+    const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? 'https://worldmusicmethod.lovable.app';
     const normalizedOrigin = origin.replace(/\/$/, '');
     const defaultRedirectTo = `${normalizedOrigin}/reset-password`;
 
@@ -309,7 +309,7 @@ Deno.serve(async (req) => {
     const resetLink = linkData.properties.action_link;
     logStep("Reset link generated", { hasLink: !!resetLink, redirectTo: safeRedirectTo });
 
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
 
     const result = await sendEmailViaSES(
       [email],

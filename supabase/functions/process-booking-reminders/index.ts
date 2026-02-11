@@ -110,7 +110,8 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
     let sent24h = 0;
     let sent1h = 0;
     let inAppSent = 0;
@@ -134,14 +135,14 @@ Deno.serve(async (req) => {
         .select('id, full_name, email, timezone')
         .in('id', profileIds);
 
-      let roomUrl = 'https://worldmusicmethod.lovable.app/lessons';
+      let roomUrl = `${siteUrl}/lessons`;
       if (booking.video_room_id) {
         const { data: room } = await supabase
           .from('video_rooms')
           .select('room_name')
           .eq('id', booking.video_room_id)
           .single();
-        if (room) roomUrl = `https://worldmusicmethod.lovable.app/meet/${room.room_name}`;
+        if (room) roomUrl = `${siteUrl}/meet/${room.room_name}`;
       }
 
       for (const profile of profiles || []) {
@@ -210,14 +211,14 @@ Deno.serve(async (req) => {
         .select('id, full_name, email, timezone')
         .in('id', profileIds);
 
-      let roomUrl = 'https://worldmusicmethod.lovable.app/lessons';
+      let roomUrl = `${siteUrl}/lessons`;
       if (booking.video_room_id) {
         const { data: room } = await supabase
           .from('video_rooms')
           .select('room_name')
           .eq('id', booking.video_room_id)
           .single();
-        if (room) roomUrl = `https://worldmusicmethod.lovable.app/meet/${room.room_name}`;
+        if (room) roomUrl = `${siteUrl}/meet/${room.room_name}`;
       }
 
       // Send email reminders

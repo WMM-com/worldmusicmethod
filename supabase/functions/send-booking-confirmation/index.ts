@@ -251,7 +251,8 @@ Deno.serve(async (req) => {
     }
 
     // Get video room URL
-    let roomUrl = 'https://worldmusicmethod.lovable.app/lessons';
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    let roomUrl = `${siteUrl}/lessons`;
     if (booking.video_room_id) {
       const { data: room } = await supabase
         .from('video_rooms')
@@ -259,7 +260,7 @@ Deno.serve(async (req) => {
         .eq('id', booking.video_room_id)
         .single();
       if (room) {
-        roomUrl = `https://worldmusicmethod.lovable.app/meet/${room.room_name}`;
+        roomUrl = `${siteUrl}/meet/${room.room_name}`;
       }
     }
 
@@ -299,16 +300,16 @@ Deno.serve(async (req) => {
       roomUrl,
       lesson.duration_minutes || 60,
       tutor?.full_name || 'Tutor',
-      tutor?.email || 'tutor@worldmusicmethod.com',
+      tutor?.email || `tutor@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}`,
       student?.full_name || 'Student',
-      student?.email || 'student@worldmusicmethod.com'
+      student?.email || `student@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}`
     );
 
     if (!icsContent) {
       console.error('[send-booking-confirmation] Failed to generate ICS file');
     }
 
-    const fromAddress = 'World Music Method <info@worldmusicmethod.com>';
+    const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
 
     // Send to both student and tutor
     const recipients = [student, tutor].filter(p => p?.email);
