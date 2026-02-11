@@ -165,6 +165,19 @@ export default function Auth() {
             {mode === 'signup' && 'Create your account to get started.'}
             {mode === 'forgot' && 'Enter your email to reset your password.'}
           </CardDescription>
+          {mode === 'login' && (
+            <p className="mt-3 text-xs text-muted-foreground/80 text-center leading-relaxed">
+              This is a brand new version of the platform.{' '}
+              <button
+                type="button"
+                onClick={() => setMode('forgot')}
+                className="text-secondary hover:underline font-medium"
+              >
+                Request a new password
+              </button>{' '}
+              to gain access.
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {signupNotice ? (
