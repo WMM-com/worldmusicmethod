@@ -1526,10 +1526,10 @@ export default function CourseLanding() {
                 viewport={{ once: true }}
               >
                 <h2 className="text-3xl font-bold mb-8 text-center">{courseConfig?.overviewHeading || 'Course Overview'}</h2>
-                <div className="prose prose-lg dark:prose-invert max-w-none mb-8 space-y-6">
+                <div className="prose prose-lg dark:prose-invert max-w-none mb-8 space-y-6 text-foreground">
                   {courseConfig?.courseOverview ? (
                     courseConfig.courseOverview.map((paragraph, i) => (
-                      <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} />
+                      <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} className="text-foreground"/>
                     ))
                   ) : (
                     <>
@@ -1673,9 +1673,9 @@ export default function CourseLanding() {
                     <div className="md:col-span-2">
                       <h2 className="text-3xl font-bold mb-2">Meet Your Expert</h2>
                       <h3 className="text-xl text-foreground mb-6">{courseConfig.expert.name}</h3>
-                      <div className="prose prose-lg dark:prose-invert max-w-none space-y-6">
+                      <div className="prose prose-lg dark:prose-invert max-w-none space-y-6 text-foreground">
                         {courseConfig.expert.bio.map((paragraph, i) => (
-                          <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} />
+                          <div key={i} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(paragraph) }} className="text-foreground"/>
                         ))}
                       </div>
                     </div>
