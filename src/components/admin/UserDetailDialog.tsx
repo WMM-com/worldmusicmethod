@@ -837,27 +837,29 @@ export function UserDetailDialog({
                   <span className="font-medium">Course Enrollments ({userEnrollments.length})</span>
                 </div>
 
-                {/* Current enrollments with remove button */}
-                <div className="space-y-1 max-h-32 overflow-auto">
-                  {userEnrollments.length === 0 ? (
-                    <span className="text-sm text-muted-foreground">Not enrolled in any courses</span>
-                  ) : (
-                    userEnrollments.map((e) => (
-                      <div key={e.course_id} className="text-sm py-1 px-2 bg-muted/50 rounded flex items-center justify-between">
-                        <span>{(e.courses as any)?.title || 'Unknown course'}</span>
-                        <button
-                          onClick={() => removeEnrollmentMutation.mutate({ userId: user.id, courseId: e.course_id })}
-                          className="text-destructive hover:bg-destructive/20 rounded p-1"
+                {/* Course groups quick enroll - moved to top for visibility */}
+                {courseGroups && courseGroups.length > 0 && (
+                  <div className="space-y-2 p-3 bg-muted/30 rounded-lg border border-border">
+                    <Label className="text-xs font-medium">Quick enroll by group:</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {courseGroups.map((group: any) => (
+                        <Badge
+                          key={group.id}
+                          variant="outline"
+                          className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground py-1.5 px-2.5"
+                          onClick={() => enrollInGroupMutation.mutate({ userId: user.id, groupId: group.id })}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+                          <Plus className="h-3 w-3 mr-1" />
+                          {group.name} ({group.course_group_courses?.length || 0})
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Add course search */}
                 <div className="space-y-2">
+                  <Label className="text-xs font-medium">Add individual course:</Label>
                   <div className="relative">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                     <Input
@@ -867,43 +869,51 @@ export function UserDetailDialog({
                       className="h-8 pl-7 text-xs"
                     />
                   </div>
-                  {enrollSearch && filteredCourses.length > 0 && (
-                    <div className="space-y-1 max-h-24 overflow-auto">
-                      {filteredCourses.slice(0, 5).map((course) => (
+                  {filteredCourses.length > 0 && (
+                    <div className="space-y-1 max-h-40 overflow-auto border border-border rounded-lg p-1">
+                      {filteredCourses.slice(0, enrollSearch ? 10 : 8).map((course) => (
                         <div
                           key={course.id}
-                          className="text-xs py-1 px-2 bg-muted/30 rounded cursor-pointer hover:bg-primary/10 flex items-center gap-2"
+                          className="text-xs py-1.5 px-2 bg-muted/30 rounded cursor-pointer hover:bg-primary/10 flex items-center gap-2"
                           onClick={() => {
                             addEnrollmentMutation.mutate({ userId: user.id, courseId: course.id });
                             setEnrollSearch('');
                           }}
                         >
-                          <Plus className="h-3 w-3" />
+                          <Plus className="h-3 w-3 flex-shrink-0" />
                           {course.title}
                         </div>
                       ))}
+                      {filteredCourses.length > (enrollSearch ? 10 : 8) && (
+                        <div className="text-xs text-muted-foreground text-center py-1">
+                          {filteredCourses.length - (enrollSearch ? 10 : 8)} more — type to search
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Course groups quick enroll */}
-                {courseGroups && courseGroups.length > 0 && (
+                {/* Current enrollments with remove button */}
+                {userEnrollments.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Quick enroll by group:</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {courseGroups.map((group: any) => (
-                        <Badge
-                          key={group.id}
-                          variant="outline"
-                          className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                          onClick={() => enrollInGroupMutation.mutate({ userId: user.id, groupId: group.id })}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          {group.name} ({group.course_group_courses?.length || 0})
-                        </Badge>
+                    <Label className="text-xs font-medium">Currently enrolled ({userEnrollments.length}):</Label>
+                    <div className="space-y-1 max-h-40 overflow-auto">
+                      {userEnrollments.map((e) => (
+                        <div key={e.course_id} className="text-sm py-1 px-2 bg-muted/50 rounded flex items-center justify-between">
+                          <span>{(e.courses as any)?.title || 'Unknown course'}</span>
+                          <button
+                            onClick={() => removeEnrollmentMutation.mutate({ userId: user.id, courseId: e.course_id })}
+                            className="text-destructive hover:bg-destructive/20 rounded p-1"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
+                )}
+                {userEnrollments.length === 0 && (
+                  <span className="text-sm text-muted-foreground">Not enrolled in any courses</span>
                 )}
               </div>
             </TabsContent>
