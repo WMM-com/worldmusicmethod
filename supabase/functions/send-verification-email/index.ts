@@ -197,7 +197,7 @@ function getVerificationEmailHtml(verifyLink: string, firstName: string): string
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
             This is an automated message, please do not reply.<br>
-            <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app'}" style="color: #BE1E2D; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
+            <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com'}" style="color: #BE1E2D; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
           </p>
         </div>
       </div>
@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
     const firstName = profileData?.first_name || '';
 
     // Build the verification link
-    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com').replace(/\/$/, '');
     const verifyLink = `${siteUrl}/verify-email?token=${tokenData.token}`;
 
     console.log(`Sending verification email to ${tokenData.email}`);

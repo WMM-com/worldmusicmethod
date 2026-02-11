@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
         .filter((e): e is string => !!e) || [];
 
       if (adminEmails.length > 0) {
-        const adminUrl = 'https://worldmusicmethod.lovable.app/admin';
+        const adminUrl = `${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com'}/admin`;
         const html = buildEmailHtml(user_name, course_name, rating, review_text, prompt_question, prompt_answer, adminUrl);
 
         const fromAddress = 'World Music Method <info@worldmusicmethod.com>';

@@ -349,7 +349,7 @@ serve(async (req) => {
       .eq("id", campaignId);
 
     // Use the production Lovable URL for unsubscribe links
-    const baseUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const baseUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com').replace(/\/$/, '');
 
     // For large campaigns (>500 recipients), use background processing
     // This prevents Edge Function timeout (150s limit)

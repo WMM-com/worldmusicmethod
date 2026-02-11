@@ -184,7 +184,7 @@ export default function Index() {
                   asChild
                   className="text-base px-8 py-6 h-auto"
                 >
-                  <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
+                  <a href="/membership">Start Your Free Trial</a>
                 </Button>
                 <Button
                   variant="secondary"
@@ -192,7 +192,7 @@ export default function Index() {
                   asChild
                   className="text-base px-8 py-6 h-auto"
                 >
-                  <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+                  <a href="/courses">View Courses</a>
                 </Button>
               </motion.div>
 
@@ -264,10 +264,10 @@ export default function Index() {
             className="flex flex-col gap-3"
           >
             <Button size="lg" asChild className="text-base py-5 h-auto w-full">
-              <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
+              <a href="/membership">Start Your Free Trial</a>
             </Button>
             <Button variant="secondary" size="lg" asChild className="text-base py-5 h-auto w-full">
-              <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+              <a href="/courses">View Courses</a>
             </Button>
           </motion.div>
 
@@ -355,10 +355,10 @@ export default function Index() {
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <Button size="lg" asChild className="text-base px-8 py-6 h-auto">
-                <a href="https://worldmusicmethod.lovable.app/membership">Start Your Free Trial</a>
+                <a href="/membership">Start Your Free Trial</a>
               </Button>
               <Button variant="secondary" size="lg" asChild className="text-base px-8 py-6 h-auto">
-                <a href="https://worldmusicmethod.lovable.app/courses">View Courses</a>
+                <a href="/courses">View Courses</a>
               </Button>
             </motion.div>
           </div>

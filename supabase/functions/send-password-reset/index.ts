@@ -207,7 +207,7 @@ function getPasswordResetEmailHtml(resetLink: string, firstName: string): string
           </p>
           <p style="color: #999; font-size: 11px; margin-top: 12px;">
             This is an automated message, please do not reply.<br>
-            <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app'}" style="color: #BE1E2D; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
+            <a href="${Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com'}" style="color: #BE1E2D; text-decoration: none;">${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}</a>
           </p>
         </div>
       </div>
@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? 'https://worldmusicmethod.lovable.app';
+    const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? 'https://worldmusicmethod.com';
     const normalizedOrigin = origin.replace(/\/$/, '');
     const defaultRedirectTo = `${normalizedOrigin}/reset-password`;
 

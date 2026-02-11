@@ -603,7 +603,7 @@ export default function Account() {
                         {form.username && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                             <Globe className="h-3 w-3" />
-                            Your profile URL: <span className="font-mono font-medium text-foreground">worldmusicmethod.lovable.app/{form.username}</span>
+                            Your profile URL: <span className="font-mono font-medium text-foreground">worldmusicmethod.com/{form.username}</span>
                           </p>
                         )}
                         
