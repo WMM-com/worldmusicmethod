@@ -269,24 +269,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check if user exists by looking up their profile by email
-    // Note: listUsers() has pagination limits, so we use profile lookup instead
-    const { data: profileData, error: profileError } = await supabaseClient
+    // Look up profile for first name (optional - not all users have profiles)
+    const { data: profileData } = await supabaseClient
       .from('profiles')
       .select('id, first_name, email')
       .ilike('email', email)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profileData) {
-      // Return success even if user doesn't exist (security best practice)
-      logStep("User not found in profiles, returning success anyway for security", { email });
-      return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    logStep("User found", { userId: profileData.id, firstName: profileData.first_name });
+    const firstName = profileData?.first_name || '';
+    logStep("Profile lookup", { hasProfile: !!profileData, firstName });
 
     // Generate a password reset link using Supabase admin API
     const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
@@ -298,10 +289,11 @@ Deno.serve(async (req) => {
     });
 
     if (linkError || !linkData?.properties?.action_link) {
-      logStep("ERROR: Failed to generate reset link", { error: linkError });
+      // Return success even if user doesn't exist (security best practice - don't reveal account existence)
+      logStep("Failed to generate reset link (user may not exist)", { error: linkError?.message });
       return new Response(
-        JSON.stringify({ error: 'Failed to generate reset link' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -314,7 +306,7 @@ Deno.serve(async (req) => {
     const result = await sendEmailViaSES(
       [email],
       'Reset Your Password - World Music Method',
-      getPasswordResetEmailHtml(resetLink, profileData.first_name || ''),
+      getPasswordResetEmailHtml(resetLink, firstName),
       fromAddress,
       accessKeyId,
       secretAccessKey,
