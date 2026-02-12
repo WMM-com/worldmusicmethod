@@ -99,8 +99,9 @@ export default function Auth() {
     try {
       if (mode === 'forgot') {
         // Use custom password reset function that sends from info@worldmusicmethod.com
+        const siteUrl = (import.meta.env.VITE_SUPABASE_URL ? 'https://worldmusicmethod.com' : window.location.origin);
         const { error: fnError } = await supabase.functions.invoke('send-password-reset', {
-          body: { email, redirectTo: `${window.location.origin}/reset-password` }
+          body: { email, redirectTo: `${siteUrl}/reset-password` }
         });
         if (fnError) {
           toast.error('Failed to send reset email. Please try again.');
