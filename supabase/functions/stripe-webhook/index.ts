@@ -110,6 +110,11 @@ Deno.serve(async (req) => {
       await handleInvoiceCreatedApplyCredits(event, stripe, supabase)
     }
 
+    // ── Create order records for subscription charges (trial-end & renewals) ──
+    if (event.type === 'invoice.payment_succeeded') {
+      await handleSubscriptionInvoiceOrder(event, stripe, supabase)
+    }
+
     // ── Existing referral/subscription/digital product handling ──
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.payment_succeeded') {
       await handlePaymentEvent(event, stripe, supabase)
@@ -128,6 +133,110 @@ Deno.serve(async (req) => {
     })
   }
 })
+
+// ── Create order records when subscription invoices are actually charged ──
+async function handleSubscriptionInvoiceOrder(
+  event: Stripe.Event,
+  stripe: Stripe,
+  supabase: any
+) {
+  const invoice = event.data.object as Stripe.Invoice
+  if (!invoice.subscription) return
+  if (invoice.amount_paid <= 0) {
+    logStep('Skipping zero-amount invoice for order creation')
+    return
+  }
+
+  // Only create orders for actual charges: subscription_cycle (renewals) and subscription_create (first charge after trial)
+  const validReasons = ['subscription_cycle', 'subscription_create']
+  if (!validReasons.includes(invoice.billing_reason || '')) {
+    logStep('Skipping invoice - not a billable cycle', { billing_reason: invoice.billing_reason })
+    return
+  }
+
+  const stripeSubId = typeof invoice.subscription === 'string' ? invoice.subscription : (invoice.subscription as any)?.id
+  if (!stripeSubId) return
+
+  // Find the DB subscription
+  const { data: dbSub } = await supabase
+    .from('subscriptions')
+    .select('id, user_id, product_id, product_name, amount, currency')
+    .eq('provider_subscription_id', stripeSubId)
+    .maybeSingle()
+
+  if (!dbSub) {
+    logStep('No DB subscription found for invoice order', { stripeSubId })
+    return
+  }
+
+  // Idempotency: check if order already exists for this invoice
+  const { data: existingOrder } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('provider_payment_id', invoice.id)
+    .maybeSingle()
+
+  if (existingOrder) {
+    logStep('Order already exists for this invoice', { invoiceId: invoice.id })
+    return
+  }
+
+  // Get Stripe fee from the charge's balance transaction
+  let stripeFee = 0
+  try {
+    if (invoice.charge) {
+      const chargeId = typeof invoice.charge === 'string' ? invoice.charge : (invoice.charge as any)?.id
+      if (chargeId) {
+        const charge = await stripe.charges.retrieve(chargeId)
+        if (charge.balance_transaction) {
+          const btId = typeof charge.balance_transaction === 'string'
+            ? charge.balance_transaction
+            : (charge.balance_transaction as any)?.id
+          if (btId) {
+            const bt = await stripe.balanceTransactions.retrieve(btId)
+            stripeFee = bt.fee / 100
+          }
+        }
+      }
+    }
+  } catch (e) {
+    logStep('Could not retrieve fee for invoice order', { error: (e as Error).message })
+  }
+
+  const amount = invoice.amount_paid / 100
+  const currency = (invoice.currency || 'usd').toUpperCase()
+  const netAmount = amount - stripeFee
+
+  const { error: orderError } = await supabase
+    .from('orders')
+    .insert({
+      user_id: dbSub.user_id,
+      product_id: dbSub.product_id,
+      subscription_id: dbSub.id,
+      amount,
+      currency,
+      payment_provider: 'stripe',
+      provider_payment_id: invoice.id,
+      status: 'completed',
+      stripe_fee: stripeFee,
+      net_amount: netAmount,
+      customer_name: invoice.customer_name || null,
+      email: invoice.customer_email || null,
+    })
+
+  if (orderError) {
+    logStep('Error creating order from invoice', { error: orderError.message, invoiceId: invoice.id })
+  } else {
+    logStep('Order created from subscription invoice', {
+      invoiceId: invoice.id,
+      userId: dbSub.user_id,
+      productId: dbSub.product_id,
+      amount,
+      currency,
+      billingReason: invoice.billing_reason,
+    })
+  }
+}
 
 // ── Beta Membership: grant premium features on subscription ──
 async function handleBetaMembershipSubscription(

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode, Wallet, PenLine, MessageSquare } from 'lucide-react';
+import { Users, BookOpen, Package, Image, Shield, FolderOpen, Upload, FileText, Mail, Flag, DollarSign, Music, Tag, Menu, LayoutGrid, FileCode, Wallet, PenLine, MessageSquare, Wrench } from 'lucide-react';
 import { AdminUsers } from '@/components/admin/AdminUsers';
 import { AdminCourses } from '@/components/admin/AdminCourses';
 import { AdminProducts } from '@/components/admin/AdminProducts';
@@ -22,6 +22,7 @@ import { AdminPages } from '@/components/admin/AdminPages';
 import { AdminFinances } from '@/components/admin/AdminFinances';
 import { AdminReviews } from '@/components/admin/AdminReviews';
 import { AdminBlog } from '@/components/admin/blog/AdminBlog';
+import { AdminSubscriptionTools } from '@/components/admin/AdminSubscriptionTools';
 import { PendingReviewsBanner } from '@/components/admin/PendingReviewsBanner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ const menuItems = [
   { id: 'email-crm', label: 'Email CRM', icon: Mail },
   { id: 'reports', label: 'Reports', icon: Flag },
   { id: 'menu-editor', label: 'Menu Editor', icon: LayoutGrid },
+  { id: 'sub-tools', label: 'Sub Tools', icon: Wrench },
 ];
 
 export default function AdminDashboard() {
@@ -126,6 +128,7 @@ export default function AdminDashboard() {
       case 'email-crm': return <AdminEmailCRM />;
       case 'reports': return <AdminReports />;
       case 'menu-editor': return <AdminMenuEditor />;
+      case 'sub-tools': return <AdminSubscriptionTools />;
       default: return <AdminUsers />;
     }
   };
