@@ -2,3 +2,45 @@ project_id = "mhmdjalantsouizsypzh"
 
 [functions.send-direct-email]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.stripe-connect-v2-account-webhook]
+verify_jwt = false
+
+[functions.stripe-connect-v2-sub-webhook]
+verify_jwt = false
+
+[functions.complete-stripe-payment]
+verify_jwt = false
+
+[functions.create-payment-intent]
+verify_jwt = false
+
+[functions.create-subscription]
+verify_jwt = false
+
+[functions.create-free-trial-subscription]
+verify_jwt = false
+
+[functions.get-stripe-publishable-key]
+verify_jwt = false
+
+[functions.stripe-connect-v2-checkout]
+verify_jwt = false
+
+[functions.stripe-connect-v2-subscription]
+verify_jwt = false
+
+[functions.stripe-connect-v2-storefront]
+verify_jwt = false
+
+[functions.create-digital-product-stripe-checkout]
+verify_jwt = false
+
+[functions.validate-coupon]
+verify_jwt = false
+
+[functions.process-refund]
+verify_jwt = false
