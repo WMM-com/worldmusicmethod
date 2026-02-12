@@ -37,7 +37,7 @@ serve(async (req) => {
   }
 
   try {
-    const { productId, productIds, email, fullName, couponCode, returnUrl, cancelUrl, currency, amounts, amount } = await req.json();
+    const { productId, productIds, email, fullName, password, couponCode, returnUrl, cancelUrl, currency, amounts, amount } = await req.json();
     
     // Support both single productId (legacy) and multiple productIds
     const productIdList = productIds || (productId ? [productId] : []);
@@ -119,6 +119,7 @@ serve(async (req) => {
         product_details: itemDetails,
         email,
         full_name: fullName,
+        customer_password: password || null,
         coupon_code: couponCode || null,
         currency: paymentCurrency,
         total_amount: totalAmount,
