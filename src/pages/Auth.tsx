@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Mail, CheckCircle } from 'lucide-react';
 import wmmLogo from '@/assets/wmm-logo.png';
 import { HoneypotField, useHoneypotValidator } from '@/components/ui/honeypot-field';
-import { AuthPreloader } from '@/components/auth/AuthPreloader';
+
 import { usePersistentRateLimiter } from '@/hooks/useRateLimiter';
 import { Turnstile, useTurnstileVerification } from '@/components/ui/turnstile';
 import { getReferralCode } from '@/lib/referralCookies';
@@ -33,10 +33,6 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [signupNotice, setSignupNotice] = useState<{ email: string } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [showPreloader, setShowPreloader] = useState(() => {
-    const count = parseInt(localStorage.getItem('auth_preloader_count') || '0', 10);
-    return count < 3;
-  });
   const { signIn, signUp } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const { validateSubmission } = useHoneypotValidator();
@@ -149,11 +145,6 @@ export default function Auth() {
 
   return (
     <>
-      {showPreloader && <AuthPreloader onComplete={() => {
-        const count = parseInt(localStorage.getItem('auth_preloader_count') || '0', 10);
-        localStorage.setItem('auth_preloader_count', String(count + 1));
-        setShowPreloader(false);
-      }} />}
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
@@ -177,19 +168,6 @@ export default function Auth() {
             {mode === 'signup' && 'Create your account to get started.'}
             {mode === 'forgot' && 'Enter your email to reset your password.'}
           </CardDescription>
-          {mode === 'login' && (
-            <p className="mt-3 text-xs text-muted-foreground/80 text-center leading-relaxed">
-              This is a brand new version of the platform.{' '}
-              <button
-                type="button"
-                onClick={() => setMode('forgot')}
-                className="text-secondary hover:underline font-medium"
-              >
-                Request a new password
-              </button>{' '}
-              to gain access.
-            </p>
-          )}
         </CardHeader>
         <CardContent>
           {signupNotice ? (
