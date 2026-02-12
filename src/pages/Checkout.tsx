@@ -150,21 +150,32 @@ const PayPalButton = ({
             return activateData;
           };
 
-          const handleAutoSignIn = async (authToken: string) => {
+          const handleAutoSignIn = async (authToken: string): Promise<boolean> => {
             try {
               const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
                 body: { token: authToken },
               });
               if (tokenData?.tokenHash && tokenData?.email) {
-                await supabase.auth.verifyOtp({
+                const { data: sessionData, error: verifyError } = await supabase.auth.verifyOtp({
                   email: tokenData.email,
                   token: tokenData.tokenHash,
                   type: 'magiclink',
                 });
-                console.log('[PayPal] Auto sign-in successful via token');
+                if (verifyError) {
+                  console.warn('[PayPal] Auto sign-in failed:', verifyError);
+                  return false;
+                }
+                if (sessionData?.session) {
+                  console.log('[PayPal] Auto sign-in successful, session established');
+                  // Wait for session to propagate to AuthContext
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                  return true;
+                }
               }
+              return false;
             } catch (signInErr) {
               console.warn('[PayPal] Auto sign-in failed:', signInErr);
+              return false;
             }
           };
 
@@ -187,11 +198,18 @@ const PayPalButton = ({
                   toast.info('Activating your subscription...');
                   const activateData = await activateSubscription(subIdToActivate, dbSubscriptionId);
                   
+                  let signedIn = false;
                   if (activateData?.authToken) {
-                    await handleAutoSignIn(activateData.authToken);
+                    signedIn = await handleAutoSignIn(activateData.authToken);
                   }
                   
                   toast.success('Subscription activated!');
+                  
+                  // Give AuthContext time to update if we signed in
+                  if (signedIn) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                  }
+                  
                   onSuccess();
                 } catch (activateErr: any) {
                   console.error('[PayPal] Activation failed after retries:', activateErr);
@@ -299,25 +317,6 @@ const PayPalButton = ({
               throw lastError;
             }
 
-            // Auto sign-in using one-time auth token
-            if (captureData?.authToken) {
-              try {
-                const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
-                  body: { token: captureData.authToken },
-                });
-                if (tokenData?.tokenHash && tokenData?.email) {
-                  await supabase.auth.verifyOtp({
-                    email: tokenData.email,
-                    token: tokenData.tokenHash,
-                    type: 'magiclink',
-                  });
-                  console.log('[PayPal] Auto sign-in successful via token');
-                }
-              } catch (signInErr) {
-                console.warn('[PayPal] Auto sign-in failed:', signInErr);
-              }
-            }
-
             return captureData;
           };
 
@@ -338,8 +337,38 @@ const PayPalButton = ({
               // Always attempt capture when popup closes - PayPal may have approved
               // even if postMessage/storage failed
               try {
-                await capturePayPalOrder(captureOrderId);
+                const captureData = await capturePayPalOrder(captureOrderId);
+                
+                // Auto sign-in using one-time auth token
+                let signedIn = false;
+                if (captureData?.authToken) {
+                  try {
+                    const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
+                      body: { token: captureData.authToken },
+                    });
+                    if (tokenData?.tokenHash && tokenData?.email) {
+                      const { data: sessionData, error: verifyError } = await supabase.auth.verifyOtp({
+                        email: tokenData.email,
+                        token: tokenData.tokenHash,
+                        type: 'magiclink',
+                      });
+                      if (!verifyError && sessionData?.session) {
+                        console.log('[PayPal] Auto sign-in successful via token');
+                        signedIn = true;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                      }
+                    }
+                  } catch (signInErr) {
+                    console.warn('[PayPal] Auto sign-in failed:', signInErr);
+                  }
+                }
+                
                 toast.success('Payment successful!');
+                
+                if (signedIn) {
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                }
+                
                 onSuccess();
               } catch (captureErr: any) {
                 console.error('[PayPal] Capture failed after retries:', captureErr);
