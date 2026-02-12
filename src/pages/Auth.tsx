@@ -94,26 +94,19 @@ export default function Auth() {
 
     try {
       if (mode === 'forgot') {
-        // Check if user exists first
-        const { data: existingProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email.trim().toLowerCase())
-          .maybeSingle();
-
-        if (profileError || !existingProfile) {
-          toast.error('No user account exists for this email address. Create a new account.');
-          setLoading(false);
-          return;
-        }
-
-        // Use custom password reset function that sends from info@worldmusicmethod.com
+        // Use custom password reset function that checks auth.users directly
         const siteUrl = 'https://worldmusicmethod.com';
-        const { error: fnError } = await supabase.functions.invoke('send-password-reset', {
-          body: { email, redirectTo: `${siteUrl}/reset-password` }
+        const { data: fnData, error: fnError } = await supabase.functions.invoke('send-password-reset', {
+          body: { email: email.trim().toLowerCase(), redirectTo: `${siteUrl}/reset-password` }
         });
-        if (fnError) {
-          toast.error('Failed to send reset email. Please try again.');
+
+        if (fnError || fnData?.error) {
+          const errorMsg = fnData?.error || fnError?.message || '';
+          if (errorMsg.includes('No user') || errorMsg.includes('not found')) {
+            toast.error('No user account exists for this email address. Create a new account.');
+          } else {
+            toast.error('Failed to send reset email. Please try again.');
+          }
         } else {
           toast.success('Password reset email sent! Check your inbox.');
           setMode('login');

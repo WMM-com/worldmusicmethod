@@ -289,11 +289,10 @@ Deno.serve(async (req) => {
     });
 
     if (linkError || !linkData?.properties?.action_link) {
-      // Return success even if user doesn't exist (security best practice - don't reveal account existence)
       logStep("Failed to generate reset link (user may not exist)", { error: linkError?.message });
       return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'No user account found for this email address.' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
