@@ -40,7 +40,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') {
         setSession(session);
         setUser(session?.user ?? null);
-        window.location.replace('/reset-password');
+        if (!window.location.pathname.includes('/reset-password')) {
+          window.location.replace('/reset-password');
+        }
         return;
       }
 
