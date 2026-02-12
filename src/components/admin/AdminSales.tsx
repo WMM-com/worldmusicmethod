@@ -275,6 +275,25 @@ export function AdminSales() {
     }
   };
 
+  const handleManualCharge = async (subscription: any) => {
+    if (!confirm(`Charge ${subscription.amount} ${subscription.currency} now and update billing date for ${subscription.customer_email}?`)) {
+      return;
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke('manual-charge-subscription', {
+        body: { subscriptionId: subscription.id, action: 'charge_now' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Charged ${data.charged} ${data.currency}. Next billing: ${new Date(data.nextBilling).toLocaleDateString()}`);
+      queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-sales-stats'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to charge subscription');
+    }
+  };
+
   const handlePriceUpdate = async () => {
     if (!newPrice || isNaN(parseFloat(newPrice))) {
       toast.error('Please enter a valid price');
@@ -801,6 +820,18 @@ export function AdminSales() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
+                            {(sub.status === 'active' || sub.status === 'trialing') && sub.payment_provider === 'stripe' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleManualCharge(sub)}
+                                title="Charge Now"
+                                disabled={manageSub.isPending}
+                              >
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                            )}
                             {(sub.status === 'active' || sub.status === 'trialing') && (
                               <>
                                 <Button
