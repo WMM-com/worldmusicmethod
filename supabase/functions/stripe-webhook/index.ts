@@ -1,5 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
-import Stripe from 'https://esm.sh/stripe@14.21.0'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2'
+import Stripe from 'https://esm.sh/stripe@18.5.0'
 import { getStripeSecretKey } from "../_shared/stripe-key.ts"
 
 const corsHeaders = {
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' })
+  const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' })
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   try {
@@ -47,7 +47,13 @@ Deno.serve(async (req) => {
     // Verify webhook signature if secret is configured
     if (webhookSecret && signature) {
       try {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+        event = await stripe.webhooks.constructEventAsync(
+          body,
+          signature,
+          webhookSecret,
+          undefined,
+          Stripe.createSubtleCryptoProvider()
+        )
         logStep('Webhook signature verified')
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : String(err)

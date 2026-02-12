@@ -399,15 +399,35 @@ serve(async (req) => {
         // detail.amount is already the geo-adjusted price
         const geoCurrency = paymentCurrency.toLowerCase();
         const priceAmount = Math.round((detail.amount || productInfo.base_price_usd || 0) * 100);
-        const lookupKey = `sub_${detail.id}_${stripeInterval}_${geoCurrency}`;
+        // Use v2 lookup key that includes amount to match create-subscription format
+        const lookupKeyV2 = `sub_${detail.id}_${stripeInterval}_${geoCurrency}_${priceAmount}`;
+        const legacyLookupKey = `sub_${detail.id}_${stripeInterval}_${geoCurrency}`;
         
-        const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
-        let priceId: string;
+        // Try v2 key first (with amount baked in)
+        const v2Prices = await stripe.prices.list({ lookup_keys: [lookupKeyV2], limit: 1 });
+        let priceId: string | null = v2Prices.data.length > 0 ? v2Prices.data[0].id : null;
         
-        if (prices.data.length > 0) {
-          priceId = prices.data[0].id;
-          logStep("Existing Stripe price found", { priceId, currency: geoCurrency });
-        } else {
+        if (priceId) {
+          logStep("Existing Stripe price found (v2)", { priceId, currency: geoCurrency, unitAmount: priceAmount });
+        }
+        
+        // Fallback: try legacy key, only reuse if amount matches
+        if (!priceId) {
+          const legacyPrices = await stripe.prices.list({ lookup_keys: [legacyLookupKey], limit: 1 });
+          const legacy = legacyPrices.data[0];
+          
+          if (legacy && legacy.unit_amount === priceAmount && legacy.currency === geoCurrency) {
+            priceId = legacy.id;
+            logStep("Existing Stripe price found (legacy, matches)", { priceId, currency: geoCurrency, unitAmount: priceAmount });
+          } else if (legacy) {
+            logStep("Legacy Stripe price mismatch; will create new price", {
+              legacyUnitAmount: legacy.unit_amount,
+              desiredUnitAmount: priceAmount,
+            });
+          }
+        }
+        
+        if (!priceId) {
           // Find or create Stripe product
           const stripeProducts = await stripe.products.list({ limit: 100 });
           const existingProduct = stripeProducts.data.find((p: any) => 
@@ -431,7 +451,7 @@ serve(async (req) => {
             unit_amount: priceAmount,
             currency: geoCurrency,
             recurring: { interval: stripeInterval },
-            lookup_key: lookupKey,
+            lookup_key: lookupKeyV2,
           });
           priceId = newPrice.id;
           logStep("Created Stripe price", { priceId, interval: stripeInterval, currency: geoCurrency, amount: priceAmount });
