@@ -179,6 +179,50 @@ Deno.serve(async (req) => {
 
     logStep("Free credit checkout completed successfully");
 
+    // Send order confirmation email
+    try {
+      const orderItems = (products || [])
+        .filter((p: any) => productIds.includes(p.id))
+        .map((p: any) => ({ name: p.name || 'Course', amount: 0 }));
+
+      // Fallback if no products found
+      if (orderItems.length === 0) {
+        orderItems.push({ name: 'Course Purchase', amount: 0 });
+      }
+
+      const { data: userProfile } = await supabaseClient
+        .from('profiles')
+        .select('first_name')
+        .eq('id', userId)
+        .single();
+
+      const firstName = userProfile?.first_name || fullName?.split(' ')[0] || '';
+
+      const emailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-order-confirmation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          email,
+          firstName,
+          orderItems,
+          totalAmount: 0,
+          currency: 'USD',
+          isSubscription: false,
+        }),
+      });
+
+      if (emailResponse.ok) {
+        logStep("Order confirmation email sent");
+      } else {
+        logStep("Order confirmation email failed (non-fatal)", { status: emailResponse.status });
+      }
+    } catch (emailError) {
+      logStep("Order confirmation email error (non-fatal)", { error: String(emailError) });
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
