@@ -16,6 +16,7 @@
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@20.2.0';
+import { getStripeSecretKey } from "../_shared/stripe-key.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
     // Step 3: Initialize Stripe client
     // PLACEHOLDER: The STRIPE_SECRET_KEY must be set in your project secrets.
     // Get it from https://dashboard.stripe.com/apikeys
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    const stripeSecretKey = getStripeSecretKey();
     if (!stripeSecretKey) {
       console.error('[stripe-connect-v2-create] STRIPE_SECRET_KEY is not configured');
       return new Response(JSON.stringify({ 

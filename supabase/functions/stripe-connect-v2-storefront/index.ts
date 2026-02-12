@@ -11,6 +11,7 @@
  * public identifier to the account ID on the server side.
  */
 import Stripe from 'https://esm.sh/stripe@20.2.0';
+import { getStripeSecretKey } from "../_shared/stripe-key.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +24,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    const stripeSecretKey = getStripeSecretKey();
     if (!stripeSecretKey) {
       return new Response(JSON.stringify({ 
         error: 'Stripe is not configured. Please add STRIPE_SECRET_KEY to your project secrets.' 
