@@ -290,21 +290,8 @@ function useStripePublishableKey() {
           return;
         }
 
-        // Try localStorage
-        const stored = localStorage.getItem('stripe_publishable_key');
-        if (stored && stored.startsWith('pk_')) {
-          setPk(stored);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch from backend
-        const { data, error } = await supabase.functions.invoke('get-stripe-publishable-key');
-        if (error) throw error;
-        const fetched = data?.publishableKey as string | undefined;
-        if (!cancelled && fetched && fetched.startsWith('pk_')) {
-          setPk(fetched);
-        }
+        // No fallbacks - env var is the only source for publishable key
+        console.warn('VITE_STRIPE_PUBLISHABLE_KEY not set or invalid');
       } catch (err) {
         console.error('Failed to get Stripe publishable key:', err);
       } finally {
