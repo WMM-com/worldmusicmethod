@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -16,8 +16,8 @@ serve(async (req) => {
     
     if (!token) {
       return new Response(
-        JSON.stringify({ error: "Token is required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ success: false, error: "Token is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
@@ -37,29 +37,20 @@ serve(async (req) => {
     if (rpcError) {
       console.error("[CONSUME-AUTH-TOKEN] RPC error:", rpcError);
       return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        JSON.stringify({ success: false, error: "Invalid or expired token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
     if (!userId) {
       console.log("[CONSUME-AUTH-TOKEN] Token not found or already used");
       return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        JSON.stringify({ success: false, error: "Invalid or expired token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
     console.log("[CONSUME-AUTH-TOKEN] Token consumed successfully", { userId });
-
-    // Generate a magic link for the user to sign in
-    const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
-      type: 'magiclink',
-      email: '', // We'll get this from user lookup
-      options: {
-        redirectTo: `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '.supabase.co')}/auth/v1/callback`,
-      },
-    });
 
     // Get user email
     const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
@@ -67,8 +58,8 @@ serve(async (req) => {
     if (userError || !userData.user) {
       console.error("[CONSUME-AUTH-TOKEN] User lookup error:", userError);
       return new Response(
-        JSON.stringify({ error: "User not found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+        JSON.stringify({ success: false, error: "User not found" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
@@ -82,8 +73,8 @@ serve(async (req) => {
     if (sessionError || !sessionData) {
       console.error("[CONSUME-AUTH-TOKEN] Session generation error:", sessionError);
       return new Response(
-        JSON.stringify({ error: "Failed to generate session" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        JSON.stringify({ success: false, error: "Failed to generate session" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
@@ -97,14 +88,14 @@ serve(async (req) => {
         tokenHash: sessionData.properties?.hashed_token,
         verifyType: 'magiclink',
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[CONSUME-AUTH-TOKEN] Error:", errorMessage);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });
