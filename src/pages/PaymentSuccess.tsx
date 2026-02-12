@@ -64,11 +64,13 @@ export default function PaymentSuccess() {
         payerId: paypalPayerId,
       }, window.location.origin);
 
-      // Store in sessionStorage as backup
-      sessionStorage.setItem('paypal_success', JSON.stringify({
+      // Store in both localStorage (cross-window) and sessionStorage as backup
+      const successPayload = JSON.stringify({
         orderId: paypalToken,
         payerId: paypalPayerId,
-      }));
+      });
+      localStorage.setItem('paypal_otp_success', successPayload);
+      sessionStorage.setItem('paypal_success', successPayload);
 
       sessionStorage.removeItem('paypal_return_params_v1');
 
