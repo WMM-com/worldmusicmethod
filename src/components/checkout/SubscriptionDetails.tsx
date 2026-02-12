@@ -40,18 +40,25 @@ export function SubscriptionDetails({
   
   // Calculate next payment date based on trial or billing cycle
   const getNextPaymentDate = () => {
-    if (trialEnabled && trialLengthDays && trialLengthDays > 0) {
-      return addDays(today, trialLengthDays);
+    try {
+      const safeDays = typeof trialLengthDays === 'number' && isFinite(trialLengthDays) ? trialLengthDays : 0;
+      if (trialEnabled && safeDays > 0) {
+        return addDays(today, safeDays);
+      }
+      // If no trial, next payment is after first billing cycle
+      if (normalizedInterval === 'annual' || normalizedInterval === 'year') {
+        return addYears(today, 1);
+      }
+      return addMonths(today, 1);
+    } catch {
+      // Fallback to 30 days from now if date calculation fails
+      return addDays(today, 30);
     }
-    // If no trial, next payment is after first billing cycle
-    if (normalizedInterval === 'annual' || normalizedInterval === 'year') {
-      return addYears(today, 1);
-    }
-    return addMonths(today, 1);
   };
 
   const nextPaymentDate = getNextPaymentDate();
-  const hasTrial = trialEnabled && trialLengthDays && trialLengthDays > 0;
+  const safeTrialDays = typeof trialLengthDays === 'number' && isFinite(trialLengthDays) ? trialLengthDays : 0;
+  const hasTrial = trialEnabled && safeTrialDays > 0;
   const isFreeTrial = hasTrial && (!trialPrice || trialPrice === 0);
   
   // Apply payment method discount to prices
