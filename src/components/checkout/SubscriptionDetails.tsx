@@ -1,6 +1,18 @@
-import { format, addDays, addMonths, addYears } from 'date-fns';
+import { format, addDays, addMonths, addYears, isValid } from 'date-fns';
 import { Calendar, CheckCircle } from 'lucide-react';
 import { formatPrice } from '@/hooks/useGeoPricing';
+
+// Safe date formatter that never throws "Invalid time value"
+function safeFormat(date: Date, fmt: string): string {
+  try {
+    if (!date || !isValid(date)) {
+      return 'upcoming';
+    }
+    return format(date, fmt);
+  } catch {
+    return 'upcoming';
+  }
+}
 
 interface SubscriptionDetailsProps {
   productName: string;
@@ -10,7 +22,7 @@ interface SubscriptionDetailsProps {
   trialEnabled?: boolean;
   trialLengthDays?: number;
   trialPrice?: number;
-  paymentMethodDiscount?: number; // Amount saved with card payment
+  paymentMethodDiscount?: number;
 }
 
 export function SubscriptionDetails({
@@ -25,7 +37,7 @@ export function SubscriptionDetails({
 }: SubscriptionDetailsProps) {
   const today = new Date();
   
-  // Normalize interval to handle various formats - map to full word labels
+  // Normalize interval to handle various formats
   const normalizedInterval = interval?.toLowerCase().replace('ly', '') || 'month';
   const intervalLabels: Record<string, string> = {
     'day': 'day',
@@ -38,26 +50,25 @@ export function SubscriptionDetails({
   };
   const intervalLabel = intervalLabels[normalizedInterval] || normalizedInterval;
   
+  // Safe trial days - ensure it's always a valid finite number
+  const safeTrialDays = typeof trialLengthDays === 'number' && isFinite(trialLengthDays) ? trialLengthDays : 0;
+
   // Calculate next payment date based on trial or billing cycle
   const getNextPaymentDate = () => {
     try {
-      const safeDays = typeof trialLengthDays === 'number' && isFinite(trialLengthDays) ? trialLengthDays : 0;
-      if (trialEnabled && safeDays > 0) {
-        return addDays(today, safeDays);
+      if (trialEnabled && safeTrialDays > 0) {
+        return addDays(today, safeTrialDays);
       }
-      // If no trial, next payment is after first billing cycle
       if (normalizedInterval === 'annual' || normalizedInterval === 'year') {
         return addYears(today, 1);
       }
       return addMonths(today, 1);
     } catch {
-      // Fallback to 30 days from now if date calculation fails
       return addDays(today, 30);
     }
   };
 
   const nextPaymentDate = getNextPaymentDate();
-  const safeTrialDays = typeof trialLengthDays === 'number' && isFinite(trialLengthDays) ? trialLengthDays : 0;
   const hasTrial = trialEnabled && safeTrialDays > 0;
   const isFreeTrial = hasTrial && (!trialPrice || trialPrice === 0);
   
@@ -74,12 +85,12 @@ export function SubscriptionDetails({
             <>
               <p className="font-medium text-foreground">
                 {isFreeTrial 
-                  ? `${trialLengthDays}-day free trial` 
-                  : `${trialLengthDays}-day trial for ${formatPrice(effectiveTrialPrice, currency)}`
+                  ? `${safeTrialDays}-day free trial` 
+                  : `${safeTrialDays}-day trial for ${formatPrice(effectiveTrialPrice, currency)}`
                 }
               </p>
               <p className="text-muted-foreground">
-                Then {formatPrice(effectivePrice, currency)}/{intervalLabel} from {format(nextPaymentDate, 'MMM d, yyyy')}
+                Then {formatPrice(effectivePrice, currency)}/{intervalLabel} from {safeFormat(nextPaymentDate, 'MMM d, yyyy')}
               </p>
             </>
           ) : (
@@ -88,7 +99,7 @@ export function SubscriptionDetails({
                 {formatPrice(effectivePrice, currency)}/{intervalLabel}
               </p>
               <p className="text-muted-foreground">
-                Next payment: {format(nextPaymentDate, 'MMM d, yyyy')}
+                Next payment: {safeFormat(nextPaymentDate, 'MMM d, yyyy')}
               </p>
             </>
           )}
