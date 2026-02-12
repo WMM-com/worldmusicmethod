@@ -1310,6 +1310,7 @@ function CheckoutContent() {
                               fullName: data.fullName,
                               password: data.password,
                               creditAmountUsed: data.creditAmountUsed,
+                              couponCode: appliedCoupon?.code || null,
                               productDetails: isCartMode 
                                 ? cartItems.map(item => ({ id: item.productId, name: item.name }))
                                 : [{ id: productId, name: product?.name }],
