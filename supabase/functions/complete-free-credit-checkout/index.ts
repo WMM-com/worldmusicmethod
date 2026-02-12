@@ -18,15 +18,14 @@ Deno.serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { productIds, productDetails, email, fullName, password, creditAmountUsed } = await req.json();
+    const { productIds, productDetails, email, fullName, password, creditAmountUsed, couponCode } = await req.json();
     
-    logStep("Request parsed", { productIds, email, creditAmountUsed });
+    logStep("Request parsed", { productIds, email, creditAmountUsed, couponCode });
 
     if (!productIds || !email) {
       throw new Error("Missing required fields: productIds, email");
     }
 
-    // creditAmountUsed can be 0 for coupon-only free checkouts
     const creditToUse = creditAmountUsed || 0;
 
     const supabaseClient = createClient(
@@ -38,7 +37,6 @@ Deno.serve(async (req) => {
     let userId: string;
     let isNewUser = false;
 
-    // Check if user exists
     const { data: existingUsers } = await supabaseClient.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(u => u.email === email);
 
@@ -46,7 +44,6 @@ Deno.serve(async (req) => {
       userId = existingUser.id;
       logStep("Existing user found", { userId });
     } else if (password) {
-      // Create new user
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
         email,
         password,
@@ -97,12 +94,8 @@ Deno.serve(async (req) => {
       }
 
       logStep("Credits deducted", { newBalance });
-    } else {
-      logStep("No credits to deduct (coupon-only free checkout)");
-    }
 
-    // Record the credit transaction (only if credits were used)
-    if (creditToUse > 0) {
+      // Record credit transaction
       const { error: txError } = await supabaseClient
         .from('credit_transactions')
         .insert({
@@ -116,37 +109,54 @@ Deno.serve(async (req) => {
       if (txError) {
         logStep("Warning: Failed to record credit transaction", { error: txError.message });
       }
-    }
-
-    // Create order record
-    const { data: order, error: orderError } = await supabaseClient
-      .from('orders')
-      .insert({
-        user_id: userId,
-        email,
-        amount: 0,
-        currency: 'USD',
-        status: 'completed',
-        payment_method: creditToUse > 0 ? 'credit' : 'coupon',
-        credit_amount_used: creditToUse,
-        product_details: productDetails || productIds.map((id: string) => ({ id })),
-      })
-      .select()
-      .single();
-
-    if (orderError) {
-      logStep("Warning: Failed to create order record", { error: orderError.message });
     } else {
-      logStep("Order created", { orderId: order?.id });
+      logStep("No credits to deduct (coupon-only free checkout)");
     }
 
-    // Handle course enrollments if any products are courses
-    const parsedDetails = typeof productDetails === 'string' 
-      ? JSON.parse(productDetails) 
-      : productDetails || [];
+    // Look up product details from database to get course_id
+    const { data: products, error: productsError } = await supabaseClient
+      .from('products')
+      .select('id, name, course_id')
+      .in('id', productIds);
 
-    for (const product of parsedDetails) {
-      if (product.course_id) {
+    if (productsError) {
+      logStep("Warning: Failed to fetch products", { error: productsError.message });
+    }
+
+    logStep("Products fetched", { count: products?.length });
+
+    // Create order records for each product (matching orders table schema)
+    for (const pid of productIds) {
+      const product = products?.find((p: any) => p.id === pid);
+      
+      const { data: order, error: orderError } = await supabaseClient
+        .from('orders')
+        .insert({
+          user_id: userId,
+          email,
+          product_id: pid,
+          amount: 0,
+          currency: 'USD',
+          payment_provider: creditToUse > 0 ? 'credit' : 'coupon',
+          provider_payment_id: `free_${Date.now()}_${pid}`,
+          status: 'completed',
+          customer_name: fullName || email,
+          coupon_code: couponCode || null,
+          coupon_discount: 0,
+          stripe_fee: 0,
+          net_amount: 0,
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        logStep("Warning: Failed to create order record", { productId: pid, error: orderError.message });
+      } else {
+        logStep("Order created", { orderId: order?.id, productId: pid });
+      }
+
+      // Create course enrollment if product has a course_id
+      if (product?.course_id) {
         const { error: enrollError } = await supabaseClient
           .from('course_enrollments')
           .upsert({
@@ -157,9 +167,9 @@ Deno.serve(async (req) => {
           }, { onConflict: 'user_id,course_id' });
 
         if (enrollError) {
-          logStep("Warning: Failed to create course enrollment", { 
-            courseId: product.course_id, 
-            error: enrollError.message 
+          logStep("Warning: Failed to create course enrollment", {
+            courseId: product.course_id,
+            error: enrollError.message,
           });
         } else {
           logStep("Course enrollment created", { courseId: product.course_id });
