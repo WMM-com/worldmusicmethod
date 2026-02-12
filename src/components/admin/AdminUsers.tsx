@@ -133,7 +133,7 @@ export function AdminUsers() {
 
   const totalPages = Math.ceil((totalCount || 0) / USERS_PER_PAGE);
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, error: usersError } = useQuery({
     queryKey: ['admin-users', searchQuery, currentPage],
     queryFn: async () => {
       const from = (currentPage - 1) * USERS_PER_PAGE;
@@ -150,10 +150,15 @@ export function AdminUsers() {
         query = query.or(`email.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
+      const { data, error, status, statusText } = await query;
+      if (error) {
+        console.error('Admin users query failed:', { error, status, statusText, searchQuery });
+        throw new Error(`Query failed (${status}): ${error.message}`);
+      }
+      console.log(`Admin users query returned ${data?.length ?? 0} results (page ${currentPage}, search: "${searchQuery}")`);
       return data;
     },
+    retry: 1,
   });
 
   const { data: courses } = useQuery({
@@ -1157,10 +1162,22 @@ export function AdminUsers() {
                   Loading...
                 </TableCell>
               </TableRow>
+            ) : usersError ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-destructive">
+                  Error loading users: {usersError.message}
+                  <button 
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-users'] })}
+                    className="ml-2 underline hover:no-underline"
+                  >
+                    Retry
+                  </button>
+                </TableCell>
+              </TableRow>
             ) : users?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No users found
+                  No users found{searchQuery ? ` matching "${searchQuery}"` : ''}
                 </TableCell>
               </TableRow>
             ) : (
