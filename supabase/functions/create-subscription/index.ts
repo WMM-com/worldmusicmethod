@@ -80,8 +80,10 @@ serve(async (req) => {
     // Fetch regional pricing to get the geo-specific minimum price
     let geoMinPrice = product.min_price || 0;
     let geoMinCurrency = 'USD';
+    let resolvedRegionalPrice: number | null = null;
+    let resolvedRegionalCurrency: string | null = null;
 
-    if (productIsPwyf && countryCode) {
+    if (countryCode) {
       // Map country code to pricing region
       const { data: regionMapping } = await supabaseClient
         .from("country_region_mapping")
@@ -103,7 +105,9 @@ serve(async (req) => {
       if (regionalPricing) {
         geoMinPrice = regionalPricing.fixed_price;
         geoMinCurrency = regionalPricing.currency;
-        logStep("Geo-min price resolved", { geoMinPrice, geoMinCurrency, region: buyerRegion });
+        resolvedRegionalPrice = regionalPricing.fixed_price;
+        resolvedRegionalCurrency = regionalPricing.currency;
+        logStep("Regional price resolved", { price: resolvedRegionalPrice, currency: resolvedRegionalCurrency, region: buyerRegion });
       }
     }
 
@@ -149,10 +153,25 @@ serve(async (req) => {
 
       // Use geo-adjusted currency and amount passed from frontend
       // For PWYF products, the amount is the custom price selected by the user
-      const geoCurrency = (currency || 'USD').toLowerCase();
-      let geoAmount = (typeof amount === 'number' && isFinite(amount))
-        ? amount
-        : (product.base_price_usd || 0);
+      // For non-PWYF products with regional pricing, use the regional price
+      const geoCurrency = (resolvedRegionalCurrency || currency || 'USD').toLowerCase();
+      let geoAmount: number;
+      
+      if (productIsPwyf) {
+        // PWYF: use the amount the user chose
+        geoAmount = (typeof amount === 'number' && isFinite(amount))
+          ? amount
+          : (product.base_price_usd || 0);
+      } else if (resolvedRegionalPrice !== null) {
+        // Non-PWYF with regional pricing: use the regional price
+        geoAmount = resolvedRegionalPrice;
+        logStep("Using regional price for non-PWYF product", { geoAmount, geoCurrency });
+      } else {
+        // Fallback: use the amount from frontend or base price
+        geoAmount = (typeof amount === 'number' && isFinite(amount))
+          ? amount
+          : (product.base_price_usd || 0);
+      }
 
       // Validate PWYF price bounds using geo-specific minimum
       if (productIsPwyf) {
@@ -292,10 +311,12 @@ serve(async (req) => {
       const invoice = subscription.latest_invoice as Stripe.Invoice;
       const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent;
 
-      // Use passed currency (from geo pricing) or default to USD
-      const subscriptionCurrency = (typeof currency === 'string' && currency.trim()) 
-        ? currency.trim().toUpperCase() 
-        : 'USD';
+      // Use resolved regional currency, then passed currency, then default to USD
+      const subscriptionCurrency = resolvedRegionalCurrency 
+        ? resolvedRegionalCurrency.toUpperCase()
+        : (typeof currency === 'string' && currency.trim()) 
+          ? currency.trim().toUpperCase() 
+          : 'USD';
 
       // Save to database
       const { data: dbSubscription, error: dbError } = await supabaseClient
@@ -530,6 +551,16 @@ serve(async (req) => {
       // The coupon_discount field stores the discount value, and the UI calculates the effective price.
       const basePrice = product.base_price_usd || 0;
       
+      // Use regional price if available, otherwise base price
+      const paypalStoreAmount = resolvedRegionalPrice !== null ? resolvedRegionalPrice : basePrice;
+      const paypalStoreCurrency = resolvedRegionalCurrency ? resolvedRegionalCurrency.toUpperCase() : currencyCode;
+      
+      // Calculate correct trial end date using actual trial days
+      const trialDays = product.trial_enabled ? (product.trial_length_days || 0) : 0;
+      const trialEndDate = trialDays > 0
+        ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
       // Save to database
       const { data: dbSubscription, error: dbSubError } = await supabaseClient
         .from('subscriptions')
@@ -539,15 +570,16 @@ serve(async (req) => {
           product_name: product.name,
           payment_provider: 'paypal',
           provider_subscription_id: paypalSubscription.id,
-          status: 'pending',
+          status: trialDays > 0 ? 'trialing' : 'pending',
           customer_name: fullName,
           customer_email: email,
-          amount: basePrice, // Store base price, NOT discounted amount
-          currency: currencyCode,
+          amount: paypalStoreAmount,
+          currency: paypalStoreCurrency,
           interval: product.billing_interval,
-          trial_ends_at: product.trial_enabled && product.trial_length_days 
-            ? new Date(Date.now() + product.trial_length_days * 24 * 60 * 60 * 1000).toISOString()
-            : null,
+          current_period_start: new Date().toISOString(),
+          current_period_end: trialEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          trial_ends_at: trialEndDate,
+          trial_end: trialEndDate,
           coupon_code: couponCode || null,
           coupon_discount: typeof couponDiscount === 'number' ? couponDiscount : null,
         })

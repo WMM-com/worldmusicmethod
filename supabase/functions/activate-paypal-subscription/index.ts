@@ -215,7 +215,7 @@ serve(async (req) => {
       logStep("Auth token generated", { userId });
     }
 
-    // Compute period start/end
+    // Compute period start/end using actual PayPal billing data
     const startIso = paypalSub?.start_time
       ? new Date(paypalSub.start_time).toISOString()
       : new Date().toISOString();
@@ -229,21 +229,65 @@ serve(async (req) => {
       yearly: 365,
     };
 
-    const daysToAdd = daysMap[String(interval).toLowerCase()] ?? 30;
-    const periodEnd = new Date(startIso);
-    periodEnd.setDate(periodEnd.getDate() + daysToAdd);
+    // Use PayPal's actual next_billing_time if available, otherwise calculate
+    let periodEndIso: string;
+    let trialEndIso: string | null = null;
+
+    const nextBillingTime = paypalSub?.billing_info?.next_billing_time;
+    
+    if (nextBillingTime) {
+      periodEndIso = new Date(nextBillingTime).toISOString();
+      logStep("Using PayPal next_billing_time", { nextBillingTime: periodEndIso });
+    } else {
+      const daysToAdd = daysMap[String(interval).toLowerCase()] ?? 30;
+      const periodEnd = new Date(startIso);
+      periodEnd.setDate(periodEnd.getDate() + daysToAdd);
+      periodEndIso = periodEnd.toISOString();
+      logStep("Calculated period end", { periodEnd: periodEndIso });
+    }
+
+    // Check trial status from PayPal billing cycles
+    if (paypalSub?.billing_info?.cycle_executions) {
+      const trialCycle = paypalSub.billing_info.cycle_executions.find(
+        (cycle: any) => cycle.tenure_type === 'TRIAL'
+      );
+      
+      if (trialCycle && trialCycle.cycles_remaining > 0 && nextBillingTime) {
+        trialEndIso = new Date(nextBillingTime).toISOString();
+        logStep("Trial still active", { trialEnd: trialEndIso });
+      }
+    }
+
+    // Also check product trial settings for initial activation
+    if (!trialEndIso && product.trial_enabled && product.trial_length_days) {
+      const trialEnd = new Date(startIso);
+      trialEnd.setDate(trialEnd.getDate() + product.trial_length_days);
+      // Only set trial if the trial end is in the future
+      if (trialEnd > new Date()) {
+        trialEndIso = trialEnd.toISOString();
+        periodEndIso = trialEndIso; // During trial, period end = trial end
+        logStep("Using product trial settings", { trialDays: product.trial_length_days, trialEnd: trialEndIso });
+      }
+    }
 
     // Activate subscription in DB
+    const updateData: Record<string, any> = {
+      status: trialEndIso ? "trialing" : "active",
+      user_id: userId,
+      customer_email: email,
+      customer_name: customerName,
+      current_period_start: startIso,
+      current_period_end: periodEndIso,
+    };
+    
+    if (trialEndIso) {
+      updateData.trial_end = trialEndIso;
+      updateData.trial_ends_at = trialEndIso;
+    }
+
     const { error: activateError } = await supabaseClient
       .from("subscriptions")
-      .update({
-        status: "active",
-        user_id: userId,
-        customer_email: email,
-        customer_name: customerName,
-        current_period_start: startIso,
-        current_period_end: periodEnd.toISOString(),
-      })
+      .update(updateData)
       .eq("id", dbSub.id);
 
     if (activateError) throw new Error(`Failed to activate subscription: ${activateError.message}`);

@@ -1,5 +1,5 @@
-import Stripe from 'https://esm.sh/stripe@14.21.0';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import Stripe from 'https://esm.sh/stripe@18.5.0';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.2';
 import { getStripeSecretKey } from '../_shared/stripe-key.ts';
 
 const corsHeaders = {
@@ -18,11 +18,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, action } = await req.json();
+    const { email, subscriptionId, action } = await req.json();
 
-    if (!email || !action) {
+    if (!action) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Email and action are required' }),
+        JSON.stringify({ success: false, error: 'Action is required' }),
         { status: 200, headers: corsHeaders }
       );
     }
@@ -35,38 +35,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' });
+    const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Find user
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, email')
-      .ilike('email', email)
-      .maybeSingle();
+    // Find subscription either by ID or by email
+    let subscription: any = null;
 
-    if (!profile) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'User not found' }),
-        { status: 200, headers: corsHeaders }
-      );
+    if (subscriptionId) {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('id', subscriptionId)
+        .maybeSingle();
+      subscription = data;
+    } else if (email) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .ilike('email', email)
+        .maybeSingle();
+
+      if (!profile) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'User not found' }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', profile.id)
+        .eq('payment_provider', 'stripe')
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      subscription = data;
     }
-
-    logStep('Found user', { userId: profile.id, email: profile.email });
-
-    // Find active Stripe subscription
-    const { data: subscription } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', profile.id)
-      .eq('payment_provider', 'stripe')
-      .in('status', ['active', 'trialing'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
 
     if (!subscription) {
       return new Response(
@@ -85,7 +94,13 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Create an invoice item and invoice for the subscription
+      if (subscription.payment_provider !== 'stripe') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Only Stripe subscriptions can be manually charged' }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
       const stripeSub = await stripe.subscriptions.retrieve(subscription.provider_subscription_id);
       const customerId = stripeSub.customer as string;
 
@@ -98,7 +113,6 @@ Deno.serve(async (req) => {
 
       logStep('Invoice created', { invoiceId: invoice.id });
 
-      // Finalize and pay
       await stripe.invoices.finalizeInvoice(invoice.id);
       const paidInvoice = await stripe.invoices.pay(invoice.id);
 
@@ -126,8 +140,8 @@ Deno.serve(async (req) => {
       // Create order record
       const chargedAmount = paidInvoice.amount_paid / 100;
       const { error: orderError } = await supabase.from('orders').insert({
-        user_id: profile.id,
-        email: profile.email,
+        user_id: subscription.user_id,
+        email: subscription.customer_email,
         product_id: subscription.product_id,
         subscription_id: subscription.id,
         amount: chargedAmount,
