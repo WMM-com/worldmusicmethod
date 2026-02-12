@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const origin = req.headers.get('origin') ?? Deno.env.get('SITE_URL') ?? 'https://worldmusicmethod.com';
+    const origin = Deno.env.get('SITE_URL') ?? req.headers.get('origin') ?? 'https://worldmusicmethod.com';
     const normalizedOrigin = origin.replace(/\/$/, '');
     const defaultRedirectTo = `${normalizedOrigin}/reset-password`;
 

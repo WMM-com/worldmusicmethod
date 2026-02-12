@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
     let emailHtml = '';
     let emailRecipient = '';
 
-    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.lovable.app').replace(/\/$/, '');
+    const siteUrl = (Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com').replace(/\/$/, '');
     const dashboardUrl = `${siteUrl}/lessons`;
     const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
 
