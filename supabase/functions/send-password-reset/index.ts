@@ -291,8 +291,8 @@ Deno.serve(async (req) => {
     if (linkError || !linkData?.properties?.action_link) {
       logStep("Failed to generate reset link (user may not exist)", { error: linkError?.message });
       return new Response(
-        JSON.stringify({ error: 'No user account found for this email address.' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'No user account found for this email address.' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

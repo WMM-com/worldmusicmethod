@@ -95,35 +95,46 @@ export default function Auth() {
     try {
       if (mode === 'forgot') {
         const siteUrl = 'https://worldmusicmethod.com';
-        const { data: resetData, error: fnError } = await supabase.functions.invoke('send-password-reset', {
-          body: { email: email.trim().toLowerCase(), redirectTo: `${siteUrl}/reset-password` }
-        });
+        
+        try {
+          const { data: resetData, error: fnError } = await supabase.functions.invoke('send-password-reset', {
+            body: { email: email.trim().toLowerCase(), redirectTo: `${siteUrl}/reset-password` }
+          });
 
-        console.log('Password reset response:', { resetData, fnError });
+          console.log('Password reset response:', { resetData, fnError });
 
-        // Check response data error first (edge function errors appear here)
-        if (resetData?.error) {
-          toast.error(resetData.error);
-          setLoading(false);
-          return;
-        }
+          // If there's a function error, it might contain the actual error message
+          if (fnError) {
+            const errorMessage = fnError.message || fnError.toString();
+            if (errorMessage.includes('No user') || errorMessage.includes('not found') || errorMessage.includes('404')) {
+              toast.error('No user account exists for this email address. Create a new account.');
+            } else {
+              toast.error('Failed to send reset email. Please try again.');
+            }
+            setLoading(false);
+            return;
+          }
 
-        // Then check function invocation error
-        if (fnError) {
-          toast.error(fnError.message || 'Failed to send reset email. Please try again.');
-          setLoading(false);
-          return;
-        }
+          // Check response data for errors
+          if (resetData?.error) {
+            toast.error(resetData.error);
+            setLoading(false);
+            return;
+          }
 
-        // Check if response indicates success
-        if (!resetData?.success) {
+          if (!resetData?.success) {
+            toast.error('Failed to send reset email. Please try again.');
+            setLoading(false);
+            return;
+          }
+
+          toast.success('Password reset email sent! Check your inbox.');
+          setMode('login');
+        } catch (err) {
+          console.error('Password reset error:', err);
           toast.error('Failed to send reset email. Please try again.');
           setLoading(false);
-          return;
         }
-
-        toast.success('Password reset email sent! Check your inbox.');
-        setMode('login');
       } else if (mode === 'login') {
         const { error } = await signIn(email, password);
         if (error) {

@@ -15,8 +15,16 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [isValidSession, setIsValidSession] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [hasToken, setHasToken] = useState(false);
 
   const showMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('type') === 'recovery') {
+      setHasToken(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Check if we have a valid recovery session
@@ -76,7 +84,7 @@ export default function ResetPassword() {
   };
 
   if (checking) {
-    return (
+    return hasToken ? null : (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-muted-foreground">Verifying...</div>
       </div>
