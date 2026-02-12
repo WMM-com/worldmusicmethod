@@ -15,6 +15,7 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { ReferralTracker } from "@/components/layout/ReferralTracker";
 import { useRedirectHandler } from "@/hooks/useRedirections";
 import { useUsernameRedirect } from "@/hooks/useUsernameRedirect";
+import { usePasswordRecoveryRedirect } from "@/hooks/usePasswordRecoveryRedirect";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
@@ -119,9 +120,8 @@ function AppContent() {
   // Global username redirect middleware — runs BEFORE route components mount.
   // Handles /@username → /username and /old-username → /current-username.
   useUsernameRedirect();
-
-  // Handle URL redirections from database
   useRedirectHandler();
+  usePasswordRecoveryRedirect();
 
   return (
     <>
