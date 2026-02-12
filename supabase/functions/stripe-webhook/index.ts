@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 import Stripe from 'https://esm.sh/stripe@14.21.0'
+import { getStripeSecretKey } from "../_shared/stripe-key.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,7 +22,7 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
-  const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
+  const stripeKey = getStripeSecretKey()
   const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getStripeSecretKey } from "../_shared/stripe-key.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +16,7 @@ const logStep = (step: string, details?: any) => {
 // Check if PAYPAL_SANDBOX env var is set, or infer from Stripe key prefix
 const getPayPalBaseUrl = () => {
   const useSandbox = Deno.env.get("PAYPAL_SANDBOX") === "true" || 
-    Deno.env.get("STRIPE_SECRET_KEY")?.startsWith("sk_test_");
+    getStripeSecretKey()?.startsWith("sk_test_");
   return useSandbox 
     ? "https://api-m.sandbox.paypal.com" 
     : "https://api-m.paypal.com";
@@ -108,7 +109,7 @@ serve(async (req) => {
     });
 
     if (subscription.payment_provider === 'stripe') {
-      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+      const stripe = new Stripe(getStripeSecretKey(), {
         apiVersion: "2025-08-27.basil",
       });
 
@@ -1254,7 +1255,7 @@ serve(async (req) => {
           if (confirmSwitch && pendingStripeSubId) {
             logStep("Confirming PayPal to Stripe switch", { pendingStripeSubId });
             
-            const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+            const stripe = new Stripe(getStripeSecretKey(), {
               apiVersion: "2025-08-27.basil",
             });
             
@@ -1397,7 +1398,7 @@ serve(async (req) => {
             throw new Error('User email not found');
           }
 
-          const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+          const stripe = new Stripe(getStripeSecretKey(), {
             apiVersion: "2025-08-27.basil",
           });
 

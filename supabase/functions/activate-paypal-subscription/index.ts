@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getStripeSecretKey } from "../_shared/stripe-key.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 // PayPal API base URL - use sandbox for testing, production for live
 const getPayPalBaseUrl = () => {
   const useSandbox = Deno.env.get("PAYPAL_SANDBOX") === "true" || 
-    Deno.env.get("STRIPE_SECRET_KEY")?.startsWith("sk_test_");
+    getStripeSecretKey()?.startsWith("sk_test_");
   return useSandbox 
     ? "https://api-m.sandbox.paypal.com" 
     : "https://api-m.paypal.com";
