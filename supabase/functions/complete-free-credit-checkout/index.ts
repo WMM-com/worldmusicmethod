@@ -22,9 +22,12 @@ Deno.serve(async (req) => {
     
     logStep("Request parsed", { productIds, email, creditAmountUsed });
 
-    if (!productIds || !email || !creditAmountUsed) {
-      throw new Error("Missing required fields: productIds, email, creditAmountUsed");
+    if (!productIds || !email) {
+      throw new Error("Missing required fields: productIds, email");
     }
+
+    // creditAmountUsed can be 0 for coupon-only free checkouts
+    const creditToUse = creditAmountUsed || 0;
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -59,53 +62,60 @@ Deno.serve(async (req) => {
       throw new Error("User not found and no password provided for account creation");
     }
 
-    // Verify user has sufficient credits
-    const { data: userCredits, error: creditsError } = await supabaseClient
-      .from('user_credits')
-      .select('balance')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Only verify/deduct credits if credits are being used
+    let currentBalance = 0;
+    let newBalance = 0;
 
-    if (creditsError) {
-      logStep("Error fetching user credits", { error: creditsError.message });
-      throw new Error("Failed to verify credit balance");
+    if (creditToUse > 0) {
+      const { data: userCredits, error: creditsError } = await supabaseClient
+        .from('user_credits')
+        .select('balance')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (creditsError) {
+        logStep("Error fetching user credits", { error: creditsError.message });
+        throw new Error("Failed to verify credit balance");
+      }
+
+      currentBalance = userCredits?.balance || 0;
+      if (currentBalance < creditToUse) {
+        throw new Error(`Insufficient credits. Available: ${currentBalance}, Required: ${creditToUse}`);
+      }
+
+      logStep("Credit balance verified", { currentBalance, creditToUse });
+
+      newBalance = currentBalance - creditToUse;
+
+      const { error: updateError } = await supabaseClient
+        .from('user_credits')
+        .update({ balance: newBalance, updated_at: new Date().toISOString() })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        throw new Error(`Failed to deduct credits: ${updateError.message}`);
+      }
+
+      logStep("Credits deducted", { newBalance });
+    } else {
+      logStep("No credits to deduct (coupon-only free checkout)");
     }
 
-    const currentBalance = userCredits?.balance || 0;
-    if (currentBalance < creditAmountUsed) {
-      throw new Error(`Insufficient credits. Available: ${currentBalance}, Required: ${creditAmountUsed}`);
-    }
+    // Record the credit transaction (only if credits were used)
+    if (creditToUse > 0) {
+      const { error: txError } = await supabaseClient
+        .from('credit_transactions')
+        .insert({
+          user_id: userId,
+          amount: -creditToUse,
+          type: 'spent_checkout',
+          description: `Checkout for products: ${productIds.join(', ')}`,
+          reference_id: `credit_checkout_${Date.now()}`,
+        });
 
-    logStep("Credit balance verified", { currentBalance, creditAmountUsed });
-
-    // Deduct credits and record transaction
-    const newBalance = currentBalance - creditAmountUsed;
-    
-    // Update user_credits balance
-    const { error: updateError } = await supabaseClient
-      .from('user_credits')
-      .update({ balance: newBalance, updated_at: new Date().toISOString() })
-      .eq('user_id', userId);
-
-    if (updateError) {
-      throw new Error(`Failed to deduct credits: ${updateError.message}`);
-    }
-
-    logStep("Credits deducted", { newBalance });
-
-    // Record the credit transaction
-    const { error: txError } = await supabaseClient
-      .from('credit_transactions')
-      .insert({
-        user_id: userId,
-        amount: -creditAmountUsed, // Negative for spending
-        type: 'spent_checkout',
-        description: `Checkout for products: ${productIds.join(', ')}`,
-        reference_id: `credit_checkout_${Date.now()}`,
-      });
-
-    if (txError) {
-      logStep("Warning: Failed to record credit transaction", { error: txError.message });
+      if (txError) {
+        logStep("Warning: Failed to record credit transaction", { error: txError.message });
+      }
     }
 
     // Create order record
@@ -117,8 +127,8 @@ Deno.serve(async (req) => {
         amount: 0,
         currency: 'USD',
         status: 'completed',
-        payment_method: 'credit',
-        credit_amount_used: creditAmountUsed,
+        payment_method: creditToUse > 0 ? 'credit' : 'coupon',
+        credit_amount_used: creditToUse,
         product_details: productDetails || productIds.map((id: string) => ({ id })),
       })
       .select()
@@ -165,7 +175,7 @@ Deno.serve(async (req) => {
         userId,
         isNewUser,
         email,
-        creditDeducted: creditAmountUsed,
+        creditDeducted: creditToUse,
         newBalance,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
