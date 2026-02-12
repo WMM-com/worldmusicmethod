@@ -296,12 +296,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the reset link - replace any .lovable.app domain with the correct site domain
+    // Build the reset link - replace any .lovable.app or .supabase.co domain with the correct site domain
     let resetLink = linkData.properties.action_link;
     const siteUrl = Deno.env.get('SITE_URL') || 'https://worldmusicmethod.com';
-    // The action_link may contain the Supabase project's internal domain; rewrite it
-    resetLink = resetLink.replace(/https?:\/\/[^\/]*\.lovable\.app/, siteUrl.replace(/\/$/, ''));
-    logStep("Reset link generated", { hasLink: !!resetLink, redirectTo: safeRedirectTo });
+    const cleanSiteUrl = siteUrl.replace(/\/$/, '');
+    resetLink = resetLink.replace(/https?:\/\/[^\/]*\.lovable\.app/, cleanSiteUrl);
+    resetLink = resetLink.replace(/https?:\/\/[^\/]*\.supabase\.co/, cleanSiteUrl);
+
+    // Ensure the redirect_to parameter uses the correct domain with /reset-password path
+    const resetUrl = new URL(resetLink);
+    resetUrl.searchParams.set('redirect_to', `${cleanSiteUrl}/reset-password`);
+    resetLink = resetUrl.toString();
+
+    logStep("Reset link generated", { resetLink, redirectTo: safeRedirectTo });
 
     const fromAddress = `World Music Method <info@${Deno.env.get('SITE_DOMAIN') || 'worldmusicmethod.com'}>`;
 

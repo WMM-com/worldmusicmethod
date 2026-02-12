@@ -100,23 +100,16 @@ export default function Auth() {
           body: { email: email.trim().toLowerCase(), redirectTo: `${siteUrl}/reset-password` }
         });
 
-        if (fnError) {
-          const errorMessage = fnError.message || 'Failed to send reset email. Please try again.';
-          if (errorMessage.includes('No user') || errorMessage.includes('not found')) {
-            toast.error('No user account exists for this email address. Create a new account.');
-          } else {
-            toast.error(errorMessage);
-          }
+        // Check response data error first (edge function errors appear here)
+        if (resetData?.error) {
+          toast.error(resetData.error);
           setLoading(false);
           return;
         }
 
-        if (resetData?.error) {
-          if (resetData.error.includes('No user') || resetData.error.includes('not found')) {
-            toast.error('No user account exists for this email address. Create a new account.');
-          } else {
-            toast.error(resetData.error);
-          }
+        // Then check function invocation error
+        if (fnError) {
+          toast.error('Failed to send reset email. Please try again.');
           setLoading(false);
           return;
         }
