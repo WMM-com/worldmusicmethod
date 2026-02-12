@@ -100,84 +100,109 @@ const PayPalButton = ({
           const paypalSubscriptionId = data.subscriptionId;
           const dbSubscriptionId = data.dbSubscriptionId;
 
+          // Clear any stale data from previous attempts
+          localStorage.removeItem('paypal_sub_success');
+          sessionStorage.removeItem('paypal_success');
+
+          const activateSubscription = async (subId: string, dbSubId: string) => {
+            let activateData = null;
+            let lastError: Error | null = null;
+            const maxRetries = 5;
+
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+              const { data, error: fnError } = await supabase.functions.invoke('activate-paypal-subscription', {
+                body: { 
+                  subscriptionId: subId,
+                  dbSubscriptionId: dbSubId,
+                },
+              });
+
+              if (data?.error) {
+                lastError = new Error(data.error);
+                console.warn(`[PayPal] Activation attempt ${attempt + 1} failed:`, data.error);
+                if (data.error.includes('email') && attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 3000 * Math.pow(2, attempt)));
+                  continue;
+                }
+                if (attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                  continue;
+                }
+                break;
+              }
+
+              if (fnError) {
+                lastError = new Error('Failed to activate subscription. Please try again.');
+                console.warn(`[PayPal] Activation attempt ${attempt + 1} invocation error:`, fnError);
+                if (attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                  continue;
+                }
+                break;
+              }
+
+              activateData = data;
+              lastError = null;
+              break;
+            }
+
+            if (lastError) throw lastError;
+            return activateData;
+          };
+
+          const handleAutoSignIn = async (authToken: string) => {
+            try {
+              const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
+                body: { token: authToken },
+              });
+              if (tokenData?.tokenHash && tokenData?.email) {
+                await supabase.auth.verifyOtp({
+                  email: tokenData.email,
+                  token: tokenData.tokenHash,
+                  type: 'magiclink',
+                });
+                console.log('[PayPal] Auto sign-in successful via token');
+              }
+            } catch (signInErr) {
+              console.warn('[PayPal] Auto sign-in failed:', signInErr);
+            }
+          };
+
           const pollTimer = setInterval(async () => {
             if (popup?.closed) {
               clearInterval(pollTimer);
-              const successData = sessionStorage.getItem('paypal_success');
-              if (successData) {
-                sessionStorage.removeItem('paypal_success');
-                const parsed = JSON.parse(successData);
+              
+              // Check both localStorage and sessionStorage for success data
+              const successData = localStorage.getItem('paypal_sub_success') || sessionStorage.getItem('paypal_success');
+              localStorage.removeItem('paypal_sub_success');
+              sessionStorage.removeItem('paypal_success');
+              
+              const subIdToActivate = successData
+                ? (JSON.parse(successData).subscriptionId || paypalSubscriptionId)
+                : paypalSubscriptionId;
+
+              // Always attempt activation - PayPal may have approved even if storage failed
+              if (subIdToActivate && dbSubscriptionId) {
                 try {
-                  // Activate the subscription with retry logic
-                  let activateData = null;
-                  let lastError: Error | null = null;
-                  const maxRetries = 3;
-
-                  for (let attempt = 0; attempt < maxRetries; attempt++) {
-                    const { data, error: fnError } = await supabase.functions.invoke('activate-paypal-subscription', {
-                      body: { 
-                        subscriptionId: parsed.subscriptionId || paypalSubscriptionId,
-                        dbSubscriptionId,
-                      },
-                    });
-
-                    if (data?.error) {
-                      lastError = new Error(data.error);
-                      console.warn(`[PayPal] Activation attempt ${attempt + 1} failed:`, data.error);
-                      if (attempt < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
-                        continue;
-                      }
-                      break;
-                    }
-
-                    if (fnError) {
-                      lastError = new Error('Failed to activate subscription. Please try again.');
-                      console.warn(`[PayPal] Activation attempt ${attempt + 1} invocation error:`, fnError);
-                      if (attempt < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
-                        continue;
-                      }
-                      break;
-                    }
-
-                    // Success
-                    activateData = data;
-                    lastError = null;
-                    break;
-                  }
-
-                  if (lastError) {
-                    throw lastError;
-                  }
+                  toast.info('Activating your subscription...');
+                  const activateData = await activateSubscription(subIdToActivate, dbSubscriptionId);
                   
-                  // Auto sign-in using one-time auth token
                   if (activateData?.authToken) {
-                    try {
-                      const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
-                        body: { token: activateData.authToken },
-                      });
-                      if (tokenData?.tokenHash && tokenData?.email) {
-                        await supabase.auth.verifyOtp({
-                          email: tokenData.email,
-                          token: tokenData.tokenHash,
-                          type: 'magiclink',
-                        });
-                        console.log('[PayPal] Auto sign-in successful via token');
-                      }
-                    } catch (signInErr) {
-                      console.warn('[PayPal] Auto sign-in failed:', signInErr);
-                    }
+                    await handleAutoSignIn(activateData.authToken);
                   }
                   
                   toast.success('Subscription activated!');
                   onSuccess();
                 } catch (activateErr: any) {
                   console.error('[PayPal] Activation failed after retries:', activateErr);
-                  toast.error(activateErr.message || 'Failed to activate subscription. Please contact support with your PayPal transaction ID.');
+                  if (!successData) {
+                    // Popup closed without any success signal - likely user cancelled
+                    toast.warning('PayPal window closed. If you completed payment, please refresh the page or contact support.');
+                  } else {
+                    toast.error(activateErr.message || 'Failed to activate subscription. Please contact support with your PayPal transaction ID.');
+                  }
                 }
               } else {
-                // Popup closed without success data
                 toast.warning('PayPal window closed. If you completed payment, please refresh the page or contact support.');
               }
               setIsLoading(false);
@@ -188,10 +213,13 @@ const PayPalButton = ({
             if (event.origin !== window.location.origin) return;
             if (event.data.type === 'paypal_success') {
               window.removeEventListener('message', messageHandler);
-              sessionStorage.setItem('paypal_success', JSON.stringify({ 
+              const successPayload = JSON.stringify({ 
                 subscriptionId: event.data.subscriptionId || paypalSubscriptionId,
                 dbSubscriptionId,
-              }));
+              });
+              // Store in BOTH for cross-window reliability
+              localStorage.setItem('paypal_sub_success', successPayload);
+              sessionStorage.setItem('paypal_success', successPayload);
               popup?.close();
             }
           };

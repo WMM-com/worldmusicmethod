@@ -134,7 +134,16 @@ serve(async (req) => {
       : null;
 
     const email = (authedEmail || (dbSub.customer_email ? String(dbSub.customer_email).toLowerCase() : null) || emailFromPaypal);
-    if (!email) throw new Error("Could not determine customer email");
+    if (!email) {
+      logStep("CRITICAL: Could not determine customer email from any source", {
+        authedEmail,
+        dbSubEmail: dbSub.customer_email,
+        paypalEmail: emailFromPaypal,
+        subscriptionId,
+      });
+      throw new Error("Could not determine customer email. Please contact support.");
+    }
+    logStep("Customer email resolved", { email, source: authedEmail ? 'auth' : (dbSub.customer_email ? 'db' : 'paypal') });
 
     let customerName: string | null = dbSub.customer_name ? String(dbSub.customer_name) : null;
 
