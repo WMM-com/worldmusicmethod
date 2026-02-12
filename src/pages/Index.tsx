@@ -81,6 +81,14 @@ export default function Index() {
     }
   }, []);
 
+  useEffect(() => {
+    if (showTrailer && trailerVideoRef.current) {
+      trailerVideoRef.current.play().catch((error) => {
+        console.log('Autoplay prevented:', error);
+      });
+    }
+  }, [showTrailer]);
+
   // Preload trailer video on hover/touch intent
   const preloadTrailer = () => {
     if (trailerPreloaded) return;
