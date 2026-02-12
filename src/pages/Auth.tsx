@@ -94,11 +94,12 @@ export default function Auth() {
 
     try {
       if (mode === 'forgot') {
-        // Use custom password reset function that checks auth.users directly
         const siteUrl = 'https://worldmusicmethod.com';
         const { data: resetData, error: fnError } = await supabase.functions.invoke('send-password-reset', {
           body: { email: email.trim().toLowerCase(), redirectTo: `${siteUrl}/reset-password` }
         });
+
+        console.log('Password reset response:', { resetData, fnError });
 
         // Check response data error first (edge function errors appear here)
         if (resetData?.error) {
@@ -109,6 +110,13 @@ export default function Auth() {
 
         // Then check function invocation error
         if (fnError) {
+          toast.error(fnError.message || 'Failed to send reset email. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        // Check if response indicates success
+        if (!resetData?.success) {
           toast.error('Failed to send reset email. Please try again.');
           setLoading(false);
           return;
