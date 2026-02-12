@@ -175,63 +175,77 @@ export function GeoPricingProvider({ children }: { children: React.ReactNode }) 
       // But don't show loading state if we have cached data
       
       // Try to detect country from IP using a free geo API
-      try {
-        const response = await fetch('https://ipapi.co/json/', { 
-          signal: AbortSignal.timeout(3000)
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const code = data.country_code;
-          const name = data.country_name || code;
-          
-          // Check if IP location differs from cache (VPN changed)
-          if (cachedData && cachedData.countryCode !== code) {
-            console.log('[GeoPricing] IP location changed from', cachedData.countryCode, 'to', code);
-          } else if (cachedData) {
-            console.log('[GeoPricing] IP matches cache:', code);
-            return; // No change needed
-          } else {
-            console.log('[GeoPricing] Detected country:', code, name);
+      // Try multiple geo APIs with fallbacks
+      const geoApis = [
+        {
+          url: 'https://ip-api.com/json/?fields=countryCode,country',
+          parse: (data: any) => ({ code: data.countryCode, name: data.country }),
+        },
+        {
+          url: 'https://ipapi.co/json/',
+          parse: (data: any) => ({ code: data.country_code, name: data.country_name }),
+        },
+      ];
+
+      let detectedCode: string | null = null;
+      let detectedName: string | null = null;
+
+      for (const api of geoApis) {
+        try {
+          const response = await fetch(api.url, { signal: AbortSignal.timeout(3000) });
+          if (response.ok) {
+            const data = await response.json();
+            const parsed = api.parse(data);
+            if (parsed.code) {
+              detectedCode = parsed.code;
+              detectedName = parsed.name || parsed.code;
+              break;
+            }
           }
-          
-          // Use local fallback first (instant), then update from DB if different
-          let detectedRegion: PricingRegion = countryToRegion[code] || 'default';
-          
-          setCountryCode(code);
-          setCountryName(name);
-          setRegion(detectedRegion);
-          setIsLoading(false);
-          
-          // Cache with new data
-          setCachedGeoData({
-            region: detectedRegion,
-            countryCode: code,
-            countryName: name,
-          });
-          
-          // Check database mapping in background (non-blocking)
-          supabase
-            .from('country_region_mapping')
-            .select('region')
-            .eq('country_code', code)
-            .maybeSingle()
-            .then(({ data: mapping }) => {
-              if (mapping?.region && mapping.region !== detectedRegion) {
-                console.log('[GeoPricing] Updating from DB mapping:', mapping.region);
-                const dbRegion = mapping.region as PricingRegion;
-                setRegion(dbRegion);
-                setCachedGeoData({
-                  region: dbRegion,
-                  countryCode: code,
-                  countryName: name,
-                });
-              }
-            });
-          return;
+        } catch {
+          // Try next API
         }
-      } catch (err) {
-        console.warn('[GeoPricing] IP detection failed, using locale fallback:', err);
       }
+
+      if (detectedCode) {
+        const code = detectedCode;
+        const name = detectedName || code;
+
+        if (cachedData && cachedData.countryCode !== code) {
+          console.log('[GeoPricing] IP location changed from', cachedData.countryCode, 'to', code);
+        } else if (cachedData) {
+          console.log('[GeoPricing] IP matches cache:', code);
+          return;
+        } else {
+          console.log('[GeoPricing] Detected country:', code, name);
+        }
+
+        let detectedRegion: PricingRegion = countryToRegion[code] || 'default';
+
+        setCountryCode(code);
+        setCountryName(name);
+        setRegion(detectedRegion);
+        setIsLoading(false);
+
+        setCachedGeoData({ region: detectedRegion, countryCode: code, countryName: name });
+
+        supabase
+          .from('country_region_mapping')
+          .select('region')
+          .eq('country_code', code)
+          .maybeSingle()
+          .then(({ data: mapping }) => {
+            if (mapping?.region && mapping.region !== detectedRegion) {
+              console.log('[GeoPricing] Updating from DB mapping:', mapping.region);
+              const dbRegion = mapping.region as PricingRegion;
+              setRegion(dbRegion);
+              setCachedGeoData({ region: dbRegion, countryCode: code, countryName: name });
+            }
+          });
+        return;
+      }
+
+      console.warn('[GeoPricing] All geo APIs failed, using locale fallback');
       
       // Only use locale fallback if no cached data
       if (!cachedData) {
