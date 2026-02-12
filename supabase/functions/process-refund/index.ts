@@ -95,8 +95,15 @@ serve(async (req) => {
 
       const auth = btoa(`${clientId}:${clientSecret}`);
 
+      // Use sandbox or production based on environment
+      const useSandbox = Deno.env.get("PAYPAL_SANDBOX") === "true" || 
+        getStripeSecretKey()?.startsWith("sk_test_");
+      const paypalBaseUrl = useSandbox 
+        ? "https://api-m.sandbox.paypal.com" 
+        : "https://api-m.paypal.com";
+
       // Get access token
-      const tokenResponse = await fetch("https://api-m.paypal.com/v1/oauth2/token", {
+      const tokenResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
         method: "POST",
         headers: {
           "Authorization": `Basic ${auth}`,
@@ -136,7 +143,7 @@ serve(async (req) => {
         const end = new Date();
 
         const txRes = await fetch(
-          `https://api-m.paypal.com/v1/billing/subscriptions/${sub.provider_subscription_id}/transactions?start_time=${encodeURIComponent(
+          `${paypalBaseUrl}/v1/billing/subscriptions/${sub.provider_subscription_id}/transactions?start_time=${encodeURIComponent(
             start.toISOString()
           )}&end_time=${encodeURIComponent(end.toISOString())}`,
           {
@@ -170,7 +177,7 @@ serve(async (req) => {
       }
 
       // Process refund
-      const refundResponse = await fetch(`https://api-m.paypal.com/v2/payments/captures/${captureId}/refund`, {
+      const refundResponse = await fetch(`${paypalBaseUrl}/v2/payments/captures/${captureId}/refund`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${access_token}`,
