@@ -229,81 +229,99 @@ const PayPalButton = ({
 
           const paypalOrderId = data.orderId;
 
+          // Use localStorage (shared across windows) instead of sessionStorage
+          localStorage.removeItem('paypal_otp_success');
+
+          const capturePayPalOrder = async (captureOrderId: string) => {
+            let captureData = null;
+            let lastError: Error | null = null;
+            const maxRetries = 3;
+
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+              const { data, error: fnError } = await supabase.functions.invoke('capture-paypal-order', {
+                body: { orderId: captureOrderId },
+              });
+
+              if (data?.error) {
+                lastError = new Error(data.error);
+                console.warn(`[PayPal] Capture attempt ${attempt + 1} failed:`, data.error);
+                if (attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                  continue;
+                }
+                break;
+              }
+
+              if (fnError) {
+                lastError = new Error('Failed to complete PayPal payment. Please try again.');
+                console.warn(`[PayPal] Capture attempt ${attempt + 1} invocation error:`, fnError);
+                if (attempt < maxRetries - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                  continue;
+                }
+                break;
+              }
+
+              captureData = data;
+              lastError = null;
+              break;
+            }
+
+            if (lastError) {
+              throw lastError;
+            }
+
+            // Auto sign-in using one-time auth token
+            if (captureData?.authToken) {
+              try {
+                const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
+                  body: { token: captureData.authToken },
+                });
+                if (tokenData?.tokenHash && tokenData?.email) {
+                  await supabase.auth.verifyOtp({
+                    email: tokenData.email,
+                    token: tokenData.tokenHash,
+                    type: 'magiclink',
+                  });
+                  console.log('[PayPal] Auto sign-in successful via token');
+                }
+              } catch (signInErr) {
+                console.warn('[PayPal] Auto sign-in failed:', signInErr);
+              }
+            }
+
+            return captureData;
+          };
+
           const pollTimer = setInterval(async () => {
             if (popup?.closed) {
               clearInterval(pollTimer);
-              const successData = sessionStorage.getItem('paypal_success');
-              if (successData) {
-                sessionStorage.removeItem('paypal_success');
-                const parsed = JSON.parse(successData);
-                const captureOrderId = parsed.orderId || paypalOrderId;
-                try {
-                  // Capture with retry logic
-                  let captureData = null;
-                  let lastError: Error | null = null;
-                  const maxRetries = 3;
 
-                  for (let attempt = 0; attempt < maxRetries; attempt++) {
-                    const { data, error: fnError } = await supabase.functions.invoke('capture-paypal-order', {
-                      body: { orderId: captureOrderId },
-                    });
+              // Check localStorage (shared across windows) first, then sessionStorage as fallback
+              const successRaw = localStorage.getItem('paypal_otp_success') || sessionStorage.getItem('paypal_success');
+              localStorage.removeItem('paypal_otp_success');
+              sessionStorage.removeItem('paypal_success');
 
-                    if (data?.error) {
-                      lastError = new Error(data.error);
-                      console.warn(`[PayPal] Capture attempt ${attempt + 1} failed:`, data.error);
-                      if (attempt < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
-                        continue;
-                      }
-                      break;
-                    }
+              // Determine the order ID to capture - use stored data or fall back to the original
+              const captureOrderId = successRaw
+                ? (JSON.parse(successRaw).orderId || paypalOrderId)
+                : paypalOrderId;
 
-                    if (fnError) {
-                      lastError = new Error('Failed to complete PayPal payment. Please try again.');
-                      console.warn(`[PayPal] Capture attempt ${attempt + 1} invocation error:`, fnError);
-                      if (attempt < maxRetries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
-                        continue;
-                      }
-                      break;
-                    }
-
-                    captureData = data;
-                    lastError = null;
-                    break;
-                  }
-
-                  if (lastError) {
-                    throw lastError;
-                  }
-                  
-                  // Auto sign-in using one-time auth token
-                  if (captureData?.authToken) {
-                    try {
-                      const { data: tokenData } = await supabase.functions.invoke('consume-auth-token', {
-                        body: { token: captureData.authToken },
-                      });
-                      if (tokenData?.tokenHash && tokenData?.email) {
-                        await supabase.auth.verifyOtp({
-                          email: tokenData.email,
-                          token: tokenData.tokenHash,
-                          type: 'magiclink',
-                        });
-                        console.log('[PayPal] Auto sign-in successful via token');
-                      }
-                    } catch (signInErr) {
-                      console.warn('[PayPal] Auto sign-in failed:', signInErr);
-                    }
-                  }
-                  
-                  toast.success('Payment successful!');
-                  onSuccess();
-                } catch (captureErr: any) {
-                  console.error('[PayPal] Capture failed after retries:', captureErr);
-                  toast.error(captureErr.message || 'Failed to complete PayPal payment. Please contact support.');
+              // Always attempt capture when popup closes - PayPal may have approved
+              // even if postMessage/storage failed
+              try {
+                await capturePayPalOrder(captureOrderId);
+                toast.success('Payment successful!');
+                onSuccess();
+              } catch (captureErr: any) {
+                console.error('[PayPal] Capture failed after retries:', captureErr);
+                // If the error indicates the order wasn't approved, show a softer message
+                if (captureErr.message?.includes('INSTRUMENT_DECLINED') || 
+                    captureErr.message?.includes('ORDER_NOT_APPROVED')) {
+                  toast.warning('PayPal payment was not completed. Please try again.');
+                } else {
+                  toast.error(captureErr.message || 'Payment may have completed but processing failed. Please contact support with your PayPal transaction ID.');
                 }
-              } else {
-                toast.warning('PayPal window closed. If you completed payment, please refresh the page or contact support.');
               }
               setIsLoading(false);
             }
@@ -313,9 +331,12 @@ const PayPalButton = ({
             if (event.origin !== window.location.origin) return;
             if (event.data.type === 'paypal_success') {
               window.removeEventListener('message', messageHandler);
-              sessionStorage.setItem('paypal_success', JSON.stringify({ 
+              // Write to both localStorage (cross-window) and sessionStorage (fallback)
+              const successPayload = JSON.stringify({ 
                 orderId: event.data.orderId || paypalOrderId 
-              }));
+              });
+              localStorage.setItem('paypal_otp_success', successPayload);
+              sessionStorage.setItem('paypal_success', successPayload);
               popup?.close();
             }
           };
