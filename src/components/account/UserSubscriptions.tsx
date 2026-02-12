@@ -352,7 +352,8 @@ export function UserSubscriptions() {
       const { data, error } = await supabase.functions.invoke('manage-subscription', {
         body: { action: 'cancel', subscriptionId }
       });
-      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (error) throw new Error('Failed to cancel subscription. Please try again.');
       return data;
     },
     onSuccess: (data) => {
@@ -373,7 +374,8 @@ export function UserSubscriptions() {
       const { data, error } = await supabase.functions.invoke('manage-subscription', {
         body: { action: 'reactivate', subscriptionId }
       });
-      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (error) throw new Error('Failed to reactivate subscription. Please try again.');
       return data;
     },
     onSuccess: () => {
@@ -390,7 +392,8 @@ export function UserSubscriptions() {
       const { data, error } = await supabase.functions.invoke('manage-subscription', {
         body: { action: 'update_price', subscriptionId, data: { newAmount: amount } }
       });
-      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (error) throw new Error('Failed to update price. Please try again.');
       return data;
     },
     onSuccess: () => {

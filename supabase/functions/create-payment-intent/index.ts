@@ -269,8 +269,8 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[CREATE-PAYMENT-INTENT] Error:", errorMessage);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });
