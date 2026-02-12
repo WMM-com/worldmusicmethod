@@ -163,18 +163,20 @@ serve(async (req) => {
     let authToken: string | null = null;
 
     if (!userId) {
-      // Create new user with a random secure password (user will reset via email if needed)
-      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      // Use the password provided during checkout, or generate a random one as fallback
+      const customerPassword = dbSub?.customer_password;
+      const userPassword = customerPassword || (crypto.randomUUID() + crypto.randomUUID());
+      const passwordWasProvided = !!customerPassword;
       
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
         email,
-        password: randomPassword,
+        password: userPassword,
         email_confirm: true,
         user_metadata: { full_name: customerName || email },
       });
       if (createError) throw new Error(`Failed to create user: ${createError.message}`);
       userId = newUser.user.id;
-      logStep("User created", { userId });
+      logStep("User created", { userId, passwordWasProvided });
       
       // Wait for profile trigger to create the profile row
       await new Promise(resolve => setTimeout(resolve, 2000));

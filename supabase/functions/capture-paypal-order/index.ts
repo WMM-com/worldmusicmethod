@@ -89,6 +89,7 @@ serve(async (req) => {
     const productDetails = pendingOrder.product_details || [];
     const email = pendingOrder.email;
     const full_name = pendingOrder.full_name;
+    const customerPassword = pendingOrder.customer_password;
     const coupon_code = pendingOrder.coupon_code;
     const coupon_discount = pendingOrder.coupon_discount || 0;
 
@@ -125,12 +126,13 @@ serve(async (req) => {
       const { data: tokenResult } = await supabaseClient.rpc('create_payment_auth_token', { p_user_id: userId });
       authToken = tokenResult;
     } else {
-      // Create new user with a random secure password (user will reset via email if needed)
-      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      // Use the password provided during checkout, or generate a random one as fallback
+      const userPassword = customerPassword || (crypto.randomUUID() + crypto.randomUUID());
+      const passwordWasProvided = !!customerPassword;
       
       const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
         email,
-        password: randomPassword,
+        password: userPassword,
         email_confirm: true,
         user_metadata: { full_name },
       });
@@ -140,7 +142,7 @@ serve(async (req) => {
       }
 
       userId = newUser.user.id;
-      console.log("[CAPTURE-PAYPAL-ORDER] New user created", { userId });
+      console.log("[CAPTURE-PAYPAL-ORDER] New user created", { userId, passwordWasProvided });
       
       // Wait for profile trigger to create the profile row
       await new Promise(resolve => setTimeout(resolve, 2000));

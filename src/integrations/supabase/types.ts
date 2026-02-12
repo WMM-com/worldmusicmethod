@@ -4376,6 +4376,7 @@ export type Database = {
           coupon_discount: number | null
           created_at: string
           currency: string | null
+          customer_password: string | null
           email: string
           expires_at: string
           full_name: string
@@ -4391,6 +4392,7 @@ export type Database = {
           coupon_discount?: number | null
           created_at?: string
           currency?: string | null
+          customer_password?: string | null
           email: string
           expires_at?: string
           full_name: string
@@ -4406,6 +4408,7 @@ export type Database = {
           coupon_discount?: number | null
           created_at?: string
           currency?: string | null
+          customer_password?: string | null
           email?: string
           expires_at?: string
           full_name?: string
@@ -5665,6 +5668,7 @@ export type Database = {
           current_period_start: string | null
           customer_email: string | null
           customer_name: string | null
+          customer_password: string | null
           id: string
           interval: string | null
           paused_at: string | null
@@ -5691,6 +5695,7 @@ export type Database = {
           current_period_start?: string | null
           customer_email?: string | null
           customer_name?: string | null
+          customer_password?: string | null
           id?: string
           interval?: string | null
           paused_at?: string | null
@@ -5717,6 +5722,7 @@ export type Database = {
           current_period_start?: string | null
           customer_email?: string | null
           customer_name?: string | null
+          customer_password?: string | null
           id?: string
           interval?: string | null
           paused_at?: string | null
