@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Profile } from '@/types/database';
@@ -25,7 +24,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -42,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') {
         setSession(session);
         setUser(session?.user ?? null);
-        navigate('/reset-password', { replace: true });
+        window.location.replace('/reset-password');
         return;
       }
 
