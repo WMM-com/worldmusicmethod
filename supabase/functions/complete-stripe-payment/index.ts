@@ -680,6 +680,17 @@ serve(async (req) => {
     // Create order records for EACH product with proportional fee distribution
     for (const detail of productDetailsList) {
       try {
+        const productInfo = productsMap.get(detail.id);
+
+        // Skip creating order record for subscriptions/memberships in trial period
+        // Sales records for these will be created by the stripe-webhook when the first real charge occurs
+        if (productInfo && (productInfo.product_type === 'subscription' || productInfo.product_type === 'membership')) {
+          if (productInfo.trial_enabled && productInfo.trial_length_days && productInfo.trial_length_days > 0) {
+            logStep("Skipping order creation for trial subscription", { productId: detail.id, trialDays: productInfo.trial_length_days });
+            continue;
+          }
+        }
+
         const discountedAmount = detail.amount * discountRatio;
         const subscriptionId = subscriptionIdsByProduct.get(detail.id) || null;
         
