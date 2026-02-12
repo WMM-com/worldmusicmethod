@@ -108,15 +108,48 @@ const PayPalButton = ({
                 sessionStorage.removeItem('paypal_success');
                 const parsed = JSON.parse(successData);
                 try {
-                  // Activate the subscription in the database
-                  const { data: activateData, error: activateError } = await supabase.functions.invoke('activate-paypal-subscription', {
-                    body: { 
-                      subscriptionId: parsed.subscriptionId || paypalSubscriptionId,
-                      dbSubscriptionId,
-                    },
-                  });
-                  if (activateData?.error) throw new Error(activateData.error);
-                  if (activateError) throw new Error('Failed to activate subscription. Please try again.');
+                  // Activate the subscription with retry logic
+                  let activateData = null;
+                  let lastError: Error | null = null;
+                  const maxRetries = 3;
+
+                  for (let attempt = 0; attempt < maxRetries; attempt++) {
+                    const { data, error: fnError } = await supabase.functions.invoke('activate-paypal-subscription', {
+                      body: { 
+                        subscriptionId: parsed.subscriptionId || paypalSubscriptionId,
+                        dbSubscriptionId,
+                      },
+                    });
+
+                    if (data?.error) {
+                      lastError = new Error(data.error);
+                      console.warn(`[PayPal] Activation attempt ${attempt + 1} failed:`, data.error);
+                      if (attempt < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                        continue;
+                      }
+                      break;
+                    }
+
+                    if (fnError) {
+                      lastError = new Error('Failed to activate subscription. Please try again.');
+                      console.warn(`[PayPal] Activation attempt ${attempt + 1} invocation error:`, fnError);
+                      if (attempt < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                        continue;
+                      }
+                      break;
+                    }
+
+                    // Success
+                    activateData = data;
+                    lastError = null;
+                    break;
+                  }
+
+                  if (lastError) {
+                    throw lastError;
+                  }
                   
                   // Auto sign-in using one-time auth token
                   if (activateData?.authToken) {
@@ -140,8 +173,12 @@ const PayPalButton = ({
                   toast.success('Subscription activated!');
                   onSuccess();
                 } catch (activateErr: any) {
-                  toast.error(activateErr.message || 'Failed to activate subscription');
+                  console.error('[PayPal] Activation failed after retries:', activateErr);
+                  toast.error(activateErr.message || 'Failed to activate subscription. Please contact support with your PayPal transaction ID.');
                 }
+              } else {
+                // Popup closed without success data
+                toast.warning('PayPal window closed. If you completed payment, please refresh the page or contact support.');
               }
               setIsLoading(false);
             }
@@ -201,11 +238,44 @@ const PayPalButton = ({
                 const parsed = JSON.parse(successData);
                 const captureOrderId = parsed.orderId || paypalOrderId;
                 try {
-                  const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
-                    body: { orderId: captureOrderId },
-                  });
-                  if (captureData?.error) throw new Error(captureData.error);
-                  if (captureError) throw new Error('Failed to complete PayPal payment. Please try again.');
+                  // Capture with retry logic
+                  let captureData = null;
+                  let lastError: Error | null = null;
+                  const maxRetries = 3;
+
+                  for (let attempt = 0; attempt < maxRetries; attempt++) {
+                    const { data, error: fnError } = await supabase.functions.invoke('capture-paypal-order', {
+                      body: { orderId: captureOrderId },
+                    });
+
+                    if (data?.error) {
+                      lastError = new Error(data.error);
+                      console.warn(`[PayPal] Capture attempt ${attempt + 1} failed:`, data.error);
+                      if (attempt < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                        continue;
+                      }
+                      break;
+                    }
+
+                    if (fnError) {
+                      lastError = new Error('Failed to complete PayPal payment. Please try again.');
+                      console.warn(`[PayPal] Capture attempt ${attempt + 1} invocation error:`, fnError);
+                      if (attempt < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
+                        continue;
+                      }
+                      break;
+                    }
+
+                    captureData = data;
+                    lastError = null;
+                    break;
+                  }
+
+                  if (lastError) {
+                    throw lastError;
+                  }
                   
                   // Auto sign-in using one-time auth token
                   if (captureData?.authToken) {
@@ -229,8 +299,11 @@ const PayPalButton = ({
                   toast.success('Payment successful!');
                   onSuccess();
                 } catch (captureErr: any) {
-                  toast.error(captureErr.message || 'Failed to complete PayPal payment');
+                  console.error('[PayPal] Capture failed after retries:', captureErr);
+                  toast.error(captureErr.message || 'Failed to complete PayPal payment. Please contact support.');
                 }
+              } else {
+                toast.warning('PayPal window closed. If you completed payment, please refresh the page or contact support.');
               }
               setIsLoading(false);
             }
