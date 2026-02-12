@@ -158,13 +158,58 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Calculate coupon discount (difference between original and passed amount)
-    const couponDiscount = originalAmount > totalAmount ? originalAmount - totalAmount : 0;
+    // ── Server-side coupon validation and discount ──────────────────
+    let couponDiscount = 0;
+    let validatedCouponCode = '';
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+      const normalizedCoupon = couponCode.trim();
+      console.log("[CREATE-PAYMENT-INTENT] Validating coupon server-side", { couponCode: normalizedCoupon });
+
+      const { data: coupon, error: couponError } = await supabaseClient
+        .from("coupons")
+        .select("*")
+        .ilike("code", normalizedCoupon)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (couponError) {
+        console.warn("[CREATE-PAYMENT-INTENT] Coupon lookup error", couponError);
+      } else if (coupon) {
+        const now = new Date();
+        const validFrom = !coupon.valid_from || new Date(coupon.valid_from) <= now;
+        const validUntil = !coupon.valid_until || new Date(coupon.valid_until) >= now;
+        const withinLimit = !coupon.max_redemptions || (coupon.times_redeemed ?? 0) < coupon.max_redemptions;
+        const appliesToOneTime = coupon.applies_to_one_time !== false;
+
+        if (validFrom && validUntil && withinLimit && appliesToOneTime) {
+          if (coupon.discount_type === 'percentage' && coupon.percent_off) {
+            couponDiscount = totalAmount * (coupon.percent_off / 100);
+          } else if (coupon.discount_type === 'fixed' && coupon.amount_off) {
+            couponDiscount = coupon.amount_off;
+          }
+          couponDiscount = Math.min(couponDiscount, totalAmount); // Can't discount more than total
+          validatedCouponCode = coupon.code;
+          console.log("[CREATE-PAYMENT-INTENT] Coupon applied", {
+            code: coupon.code,
+            type: coupon.discount_type,
+            discount: couponDiscount,
+          });
+        } else {
+          console.log("[CREATE-PAYMENT-INTENT] Coupon invalid/expired", {
+            validFrom, validUntil, withinLimit, appliesToOneTime,
+          });
+        }
+      } else {
+        console.log("[CREATE-PAYMENT-INTENT] Coupon not found", { couponCode: normalizedCoupon });
+      }
+    }
+
+    // Apply coupon discount first
+    let afterCoupon = totalAmount - couponDiscount;
 
     // Apply 2% discount for card payments (Stripe incentive)
-    // Note: For PWYF products, the discount is already included in the amount from frontend
-    const stripeDiscount = totalAmount * 0.02;
-    let finalPrice = totalAmount - stripeDiscount;
+    const stripeDiscount = afterCoupon * 0.02;
+    let finalPrice = afterCoupon - stripeDiscount;
     
     // Apply referral credit discount (creditToUse is in cents, convert to dollars)
     const creditDiscountDollars = creditToUse / 100;
@@ -176,7 +221,7 @@ Deno.serve(async (req) => {
       totalAmount, 
       originalAmount,
       couponDiscount,
-      couponCode,
+      couponCode: validatedCouponCode,
       stripeDiscount, 
       creditDiscountDollars,
       finalPrice, 
@@ -235,7 +280,7 @@ Deno.serve(async (req) => {
         product_details: JSON.stringify(productDetails),
         email,
         full_name: fullName,
-        coupon_code: couponCode || "",
+        coupon_code: validatedCouponCode || couponCode || "",
         coupon_discount: couponDiscount.toFixed(2),
         stripe_discount: stripeDiscount.toFixed(2),
         credit_amount_used: creditToUse.toString(), // Store credit used in cents
