@@ -36,13 +36,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      // On password recovery, redirect to reset-password page before setting session
+      console.log('[AuthContext] Auth event:', event, 'Session:', !!session);
+
       if (event === 'PASSWORD_RECOVERY') {
+        // Only redirect if the URL actually contains a recovery token indicator
+        // This prevents payment auto-login flows from being hijacked
+        const hasRecoveryToken = window.location.hash.includes('type=recovery') ||
+          window.location.search.includes('type=recovery');
+        
+        if (hasRecoveryToken && !window.location.pathname.includes('/reset-password')) {
+          console.log('[AuthContext] Password recovery detected, redirecting to reset page');
+          window.location.replace('/reset-password');
+        } else {
+          console.log('[AuthContext] PASSWORD_RECOVERY event but no recovery token in URL, ignoring redirect');
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
-        if (!window.location.pathname.includes('/reset-password')) {
-          window.location.replace('/reset-password');
-        }
         return;
       }
 

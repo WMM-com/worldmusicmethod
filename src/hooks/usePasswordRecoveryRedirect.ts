@@ -9,8 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 export function usePasswordRecoveryRedirect() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY' && window.location.pathname !== '/reset-password') {
-        window.location.href = '/reset-password';
+      if (event === 'PASSWORD_RECOVERY') {
+        const hasRecoveryToken = window.location.hash.includes('type=recovery') ||
+          window.location.search.includes('type=recovery');
+        if (hasRecoveryToken && window.location.pathname !== '/reset-password') {
+          window.location.href = '/reset-password';
+        }
       }
     });
     return () => subscription.unsubscribe();
