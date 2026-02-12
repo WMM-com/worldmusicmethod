@@ -114,7 +114,7 @@ export default function Index() {
       </Helmet>
       
       <SiteHeader />
-      <main className="min-h-screen bg-background pb-px">
+      <main className="min-h-screen bg-background pb-0.5">
         {/* Hero Section - Desktop: Split Layout */}
         <section className="relative w-full min-h-[85vh] hidden lg:flex items-stretch overflow-hidden">
           {/* Right side - Video */}
