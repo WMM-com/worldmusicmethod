@@ -549,11 +549,24 @@ serve(async (req) => {
 
       // IMPORTANT: Always store the base price (before discount) as the amount.
       // The coupon_discount field stores the discount value, and the UI calculates the effective price.
-      const basePrice = product.base_price_usd || 0;
       
-      // Use regional price if available, otherwise base price
-      const paypalStoreAmount = resolvedRegionalPrice !== null ? resolvedRegionalPrice : basePrice;
-      const paypalStoreCurrency = resolvedRegionalCurrency ? resolvedRegionalCurrency.toUpperCase() : currencyCode;
+      // Use regional price if available, otherwise use the amount/currency passed from frontend
+      // (which is already geo-adjusted), NOT the USD base price
+      const paypalStoreAmount = resolvedRegionalPrice !== null 
+        ? resolvedRegionalPrice 
+        : (typeof amount === 'number' && isFinite(amount) ? amount : (product.base_price_usd || 0));
+
+      const paypalStoreCurrency = resolvedRegionalCurrency 
+        ? resolvedRegionalCurrency.toUpperCase() 
+        : (typeof currency === 'string' && currency.trim() ? currency.trim().toUpperCase() : 'USD');
+
+      logStep("PayPal subscription amount/currency resolved", { 
+        amount: paypalStoreAmount, 
+        currency: paypalStoreCurrency,
+        usedRegionalPrice: resolvedRegionalPrice !== null,
+        passedAmount: amount,
+        passedCurrency: currency
+      });
       
       // Calculate correct trial end date using actual trial days
       const trialDays = product.trial_enabled ? (product.trial_length_days || 0) : 0;
