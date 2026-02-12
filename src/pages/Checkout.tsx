@@ -81,7 +81,8 @@ const PayPalButton = ({
           },
         });
 
-        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        if (error) throw new Error('Failed to start PayPal subscription. Please try again.');
 
         if (data?.approveUrl) {
           const width = 450;
@@ -114,7 +115,8 @@ const PayPalButton = ({
                       dbSubscriptionId,
                     },
                   });
-                  if (activateError) throw activateError;
+                  if (activateData?.error) throw new Error(activateData.error);
+                  if (activateError) throw new Error('Failed to activate subscription. Please try again.');
                   
                   // Auto sign-in using one-time auth token
                   if (activateData?.authToken) {
@@ -173,7 +175,8 @@ const PayPalButton = ({
           },
         });
 
-        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        if (error) throw new Error('Failed to start PayPal checkout. Please try again.');
 
         if (data?.approveUrl) {
           const width = 450;
@@ -201,7 +204,8 @@ const PayPalButton = ({
                   const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-paypal-order', {
                     body: { orderId: captureOrderId },
                   });
-                  if (captureError) throw captureError;
+                  if (captureData?.error) throw new Error(captureData.error);
+                  if (captureError) throw new Error('Failed to complete PayPal payment. Please try again.');
                   
                   // Auto sign-in using one-time auth token
                   if (captureData?.authToken) {
@@ -443,15 +447,13 @@ function CheckoutContent() {
         },
       });
 
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+
       if (error) {
-        let message = 'Invalid coupon code';
-        try {
-          const body = await (error as any)?.context?.json?.();
-          if (body?.error) message = body.error;
-        } catch {
-          // ignore parse errors
-        }
-        toast.error(message);
+        toast.error('Failed to validate coupon. Please try again.');
         return;
       }
 

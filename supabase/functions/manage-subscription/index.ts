@@ -57,18 +57,18 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 401,
+        status: 200,
       });
     }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: actorData, error: actorError } = await supabaseClient.auth.getUser(token);
     if (actorError || !actorData.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 401,
+        status: 200,
       });
     }
 
@@ -82,9 +82,9 @@ serve(async (req) => {
       .single();
 
     if (subError || !subscription) {
-      return new Response(JSON.stringify({ error: "Subscription not found" }), {
+      return new Response(JSON.stringify({ success: false, error: "Subscription not found" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 404,
+        status: 200,
       });
     }
 
@@ -95,9 +95,9 @@ serve(async (req) => {
 
     const canManage = isAdmin === true || actor.id === subscription.user_id;
     if (!canManage) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+      return new Response(JSON.stringify({ success: false, error: "Forbidden" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 403,
+        status: 200,
       });
     }
 
@@ -118,10 +118,11 @@ serve(async (req) => {
       if (typeof subscription.provider_subscription_id === 'string' && subscription.provider_subscription_id.startsWith('pi_')) {
         return new Response(
           JSON.stringify({
+            success: false,
             error:
               "This record isn't linked to a Stripe subscription (missing sub_ id). It was created via one-time payment, so pause/cancel/price changes aren't supported. Please re-create the subscription using the subscription checkout flow.",
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
         );
       }
 
@@ -1611,8 +1612,8 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ success: false, error: errorMessage }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });

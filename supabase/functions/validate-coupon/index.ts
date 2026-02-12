@@ -25,8 +25,8 @@ serve(async (req) => {
     const normalized = normalizeCode(couponCode || "");
 
     if (!normalized) {
-      return new Response(JSON.stringify({ error: "Missing couponCode" }), {
-        status: 400,
+      return new Response(JSON.stringify({ success: false, error: "Missing couponCode" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -45,15 +45,15 @@ serve(async (req) => {
 
     if (couponError) {
       console.error("[VALIDATE-COUPON] Coupon query error", couponError);
-      return new Response(JSON.stringify({ error: "Failed to validate coupon" }), {
-        status: 500,
+      return new Response(JSON.stringify({ success: false, error: "Failed to validate coupon" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (!coupon) {
-      return new Response(JSON.stringify({ error: "Invalid coupon code" }), {
-        status: 404,
+      return new Response(JSON.stringify({ success: false, error: "Invalid coupon code" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -61,14 +61,14 @@ serve(async (req) => {
     // Date validity
     const now = new Date();
     if (coupon.valid_from && new Date(coupon.valid_from) > now) {
-      return new Response(JSON.stringify({ error: "This coupon is not yet active" }), {
-        status: 400,
+      return new Response(JSON.stringify({ success: false, error: "This coupon is not yet active" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (coupon.valid_until && new Date(coupon.valid_until) < now) {
-      return new Response(JSON.stringify({ error: "This coupon has expired" }), {
-        status: 400,
+      return new Response(JSON.stringify({ success: false, error: "This coupon has expired" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -76,8 +76,8 @@ serve(async (req) => {
     // Max redemptions
     const timesRedeemed = coupon.times_redeemed ?? 0;
     if (coupon.max_redemptions && timesRedeemed >= coupon.max_redemptions) {
-      return new Response(JSON.stringify({ error: "This coupon has reached its maximum usage" }), {
-        status: 400,
+      return new Response(JSON.stringify({ success: false, error: "This coupon has reached its maximum usage" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -85,16 +85,16 @@ serve(async (req) => {
     // Product scoping (optional)
     if (coupon.applies_to_products && coupon.applies_to_products.length > 0) {
       if (productIds.length === 0) {
-        return new Response(JSON.stringify({ error: "This coupon does not apply to the selected products" }), {
-          status: 400,
+        return new Response(JSON.stringify({ success: false, error: "This coupon does not apply to the selected products" }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const hasApplicableProduct = productIds.some((pid) => coupon.applies_to_products?.includes(pid));
       if (!hasApplicableProduct) {
-        return new Response(JSON.stringify({ error: "This coupon does not apply to the selected products" }), {
-          status: 400,
+        return new Response(JSON.stringify({ success: false, error: "This coupon does not apply to the selected products" }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -109,8 +109,8 @@ serve(async (req) => {
 
       if (productsError) {
         console.error("[VALIDATE-COUPON] Products query error", productsError);
-        return new Response(JSON.stringify({ error: "Failed to validate coupon" }), {
-          status: 500,
+        return new Response(JSON.stringify({ success: false, error: "Failed to validate coupon" }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -120,15 +120,15 @@ serve(async (req) => {
       const hasOneTime = (products ?? []).some((p) => !isSubLike(p.product_type));
 
       if (hasOneTime && coupon.applies_to_one_time === false) {
-        return new Response(JSON.stringify({ error: "This coupon only applies to subscriptions" }), {
-          status: 400,
+        return new Response(JSON.stringify({ success: false, error: "This coupon only applies to subscriptions" }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       if (hasSubscription && coupon.applies_to_subscriptions === false) {
-        return new Response(JSON.stringify({ error: "This coupon only applies to one-time purchases" }), {
-          status: 400,
+        return new Response(JSON.stringify({ success: false, error: "This coupon only applies to one-time purchases" }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -149,8 +149,8 @@ serve(async (req) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[VALIDATE-COUPON] Error", message);
-    return new Response(JSON.stringify({ error: "Failed to validate coupon" }), {
-      status: 500,
+    return new Response(JSON.stringify({ success: false, error: "Failed to validate coupon" }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

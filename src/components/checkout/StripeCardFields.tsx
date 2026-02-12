@@ -141,7 +141,8 @@ export function StripeCardFields({
           },
         });
 
-        if (subError) throw subError;
+        if (subData?.error) throw new Error(subData.error);
+        if (subError) throw new Error('Failed to create subscription. Please try again.');
 
         // If subscription requires confirmation (incomplete status)
         if (subData?.clientSecret) {
@@ -183,7 +184,8 @@ export function StripeCardFields({
         },
       });
 
-      if (intentError) throw intentError;
+      if (intentData?.error) throw new Error(intentData.error);
+      if (intentError) throw new Error('Failed to initialize payment. Please try again.');
       
       // Check if this is a free checkout covered by credits
       if (intentData?.freeCheckout) {
@@ -239,7 +241,8 @@ export function StripeCardFields({
           },
         });
         
-        if (trialError) throw trialError;
+        if (trialData?.error) throw new Error(trialData.error);
+        if (trialError) throw new Error('Failed to start free trial. Please try again.');
         
         // Sign in the user if new - wait for email_verified to be set
         if (trialData?.userId && password) {
