@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { sanitizeSearchQuery } from '@/lib/sanitize';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,22 +112,15 @@ export function AdminUsers() {
     setCurrentPage(1);
   };
 
-  // Fetch total count for pagination
+  // Fetch total count for pagination using server-side function
   const { data: totalCount } = useQuery({
     queryKey: ['admin-users-count', searchQuery],
     queryFn: async () => {
-      let query = supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true });
-
-      if (searchQuery) {
-        const safeQuery = sanitizeSearchQuery(searchQuery);
-        query = query.or(`email.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`);
-      }
-
-      const { count, error } = await query;
+      const { data, error } = await supabase.rpc('admin_count_profiles', {
+        search_term: searchQuery || '',
+      });
       if (error) throw error;
-      return count || 0;
+      return (data as number) || 0;
     },
   });
 
@@ -136,24 +129,16 @@ export function AdminUsers() {
   const { data: users, isLoading, error: usersError } = useQuery({
     queryKey: ['admin-users', searchQuery, currentPage],
     queryFn: async () => {
-      const from = (currentPage - 1) * USERS_PER_PAGE;
-      const to = from + USERS_PER_PAGE - 1;
-      
-      let query = supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      const offset = (currentPage - 1) * USERS_PER_PAGE;
 
-      if (searchQuery) {
-        const safeQuery = sanitizeSearchQuery(searchQuery);
-        query = query.or(`email.ilike.%${safeQuery}%,full_name.ilike.%${safeQuery}%`);
-      }
-
-      const { data, error, status, statusText } = await query;
+      const { data, error } = await supabase.rpc('admin_search_profiles', {
+        search_term: searchQuery || '',
+        page_offset: offset,
+        page_limit: USERS_PER_PAGE,
+      });
       if (error) {
-        console.error('Admin users query failed:', { error, status, statusText, searchQuery });
-        throw new Error(`Query failed (${status}): ${error.message}`);
+        console.error('Admin users query failed:', { error, searchQuery });
+        throw new Error(`Query failed: ${error.message}`);
       }
       console.log(`Admin users query returned ${data?.length ?? 0} results (page ${currentPage}, search: "${searchQuery}")`);
       return data;

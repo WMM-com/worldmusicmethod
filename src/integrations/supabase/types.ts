@@ -6443,6 +6443,78 @@ export type Database = {
       }
     }
     Functions: {
+      admin_count_profiles: { Args: { search_term?: string }; Returns: number }
+      admin_search_profiles: {
+        Args: {
+          page_limit?: number
+          page_offset?: number
+          search_term?: string
+        }
+        Returns: {
+          address: string | null
+          auto_add_late_payment_message: boolean | null
+          auto_add_thank_you_message: boolean | null
+          avatar_url: string | null
+          bank_details: string | null
+          bio: string | null
+          brand_color: string | null
+          business_name: string | null
+          cover_image_url: string | null
+          created_at: string
+          default_currency: string | null
+          default_late_payment_message_id: string | null
+          default_thank_you_message_id: string | null
+          display_name_preference: string | null
+          email: string
+          email_verified: boolean | null
+          email_verified_at: string | null
+          first_name: string | null
+          full_name: string | null
+          hero_config: Json | null
+          hero_type: string | null
+          id: string
+          invoice_late_payment_messages: Json | null
+          invoice_thank_you_messages: Json | null
+          is_public: boolean | null
+          last_name: string | null
+          last_username_change: string | null
+          logo_url: string | null
+          message_privacy: string | null
+          notification_email_comments: boolean | null
+          notification_email_friend_requests: boolean | null
+          notification_email_invoices: boolean | null
+          notification_email_mentions: boolean | null
+          notification_email_reminders: boolean | null
+          notification_push_events: boolean | null
+          notification_push_messages: boolean | null
+          paypal_email: string | null
+          phone: string | null
+          profile_layout: Json | null
+          profile_tier: string | null
+          profile_type: string | null
+          social_links: Json | null
+          tagline: string | null
+          tags: string[] | null
+          tax_country: string | null
+          tax_id: string | null
+          timezone: string | null
+          tip_jar_enabled: boolean | null
+          updated_at: string
+          username: string | null
+          username_change_count: number
+          vat_number: string | null
+          visibility: Database["public"]["Enums"]["profile_visibility"] | null
+          website_url: string | null
+          wp_password_hash: string | null
+          wp_user_id: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       are_friends: {
         Args: { user1_id: string; user2_id: string }
         Returns: boolean
