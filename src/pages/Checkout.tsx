@@ -290,8 +290,15 @@ function useStripePublishableKey() {
           return;
         }
 
-        // No fallbacks - env var is the only source for publishable key
-        console.warn('VITE_STRIPE_PUBLISHABLE_KEY not set or invalid');
+        // Fallback: fetch from backend edge function
+        const { data, error } = await supabase.functions.invoke('get-stripe-publishable-key');
+        if (error) throw error;
+        const fetched = data?.publishableKey as string | undefined;
+        if (!cancelled && fetched && fetched.startsWith('pk_')) {
+          setPk(fetched);
+        } else {
+          console.warn('VITE_STRIPE_PUBLISHABLE_KEY not set and backend fallback failed');
+        }
       } catch (err) {
         console.error('Failed to get Stripe publishable key:', err);
       } finally {
