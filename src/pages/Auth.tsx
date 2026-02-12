@@ -94,8 +94,21 @@ export default function Auth() {
 
     try {
       if (mode === 'forgot') {
+        // Check if user exists first
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle();
+
+        if (profileError || !existingProfile) {
+          toast.error('No user account exists for this email address. Create a new account.');
+          setLoading(false);
+          return;
+        }
+
         // Use custom password reset function that sends from info@worldmusicmethod.com
-        const siteUrl = (import.meta.env.VITE_SUPABASE_URL ? 'https://worldmusicmethod.com' : window.location.origin);
+        const siteUrl = 'https://worldmusicmethod.com';
         const { error: fnError } = await supabase.functions.invoke('send-password-reset', {
           body: { email, redirectTo: `${siteUrl}/reset-password` }
         });
