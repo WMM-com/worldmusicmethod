@@ -462,30 +462,71 @@ Deno.serve(async (req) => {
         // For trial products: we set "trial_end" to the configured trial length from the product.
         const now = Math.floor(Date.now() / 1000);
 
-        // Calculate next billing date based on interval
-        let nextBillingTimestamp: number;
+        // Calculate next billing date based on interval using proper date arithmetic
+        let nextBillingDate = new Date();
         switch (stripeInterval) {
           case 'day':
-            nextBillingTimestamp = now + 86400; // 1 day
+            nextBillingDate.setDate(nextBillingDate.getDate() + 1);
             break;
           case 'week':
-            nextBillingTimestamp = now + 604800; // 7 days
+            nextBillingDate.setDate(nextBillingDate.getDate() + 7);
             break;
           case 'month':
-            nextBillingTimestamp = now + 2592000; // ~30 days
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
             break;
           case 'year':
-            nextBillingTimestamp = now + 31536000; // 365 days
+            nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
             break;
           default:
-            nextBillingTimestamp = now + 2592000;
+            nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
         }
 
-        let trialEndTimestamp = nextBillingTimestamp;
-        if (productInfo.trial_enabled && productInfo.trial_length_days) {
-          trialEndTimestamp = now + productInfo.trial_length_days * 86400;
-          logStep("Trial period applied from product", { days: productInfo.trial_length_days });
+        let nextBillingTimestamp = Math.floor(nextBillingDate.getTime() / 1000);
+
+        // Determine trial end timestamp
+        let trialEndTimestamp: number;
+        if (productInfo.trial_enabled && productInfo.trial_length_days && productInfo.trial_length_days > 0) {
+          // Product has a trial period - use trial days
+          const trialEndDate = new Date();
+          trialEndDate.setDate(trialEndDate.getDate() + productInfo.trial_length_days);
+          trialEndTimestamp = Math.floor(trialEndDate.getTime() / 1000);
+          logStep("Trial period applied from product", { 
+            days: productInfo.trial_length_days,
+            trialEndTimestamp,
+            trialEndDate: trialEndDate.toISOString()
+          });
+        } else {
+          // No trial - billing starts at next billing cycle
+          trialEndTimestamp = nextBillingTimestamp;
+          logStep("No trial - using next billing timestamp", { 
+            trialEndTimestamp,
+            nextBillingDate: nextBillingDate.toISOString()
+          });
         }
+
+        // Validate timestamp is in the future and reasonable (not more than 2 years out)
+        const maxFutureTimestamp = now + (2 * 365 * 86400); // 2 years
+        if (trialEndTimestamp <= now) {
+          logStep("ERROR: trial_end is in the past, adjusting", { 
+            trialEndTimestamp, 
+            now,
+            diff: trialEndTimestamp - now 
+          });
+          // Default to 30 days if something went wrong
+          trialEndTimestamp = now + (30 * 86400);
+        } else if (trialEndTimestamp > maxFutureTimestamp) {
+          logStep("ERROR: trial_end is too far in future, adjusting", { 
+            trialEndTimestamp, 
+            maxFutureTimestamp 
+          });
+          trialEndTimestamp = now + (365 * 86400); // Default to 1 year
+        }
+
+        logStep("Final trial_end timestamp", { 
+          trialEndTimestamp,
+          date: new Date(trialEndTimestamp * 1000).toISOString(),
+          daysFromNow: Math.floor((trialEndTimestamp - now) / 86400)
+        });
 
         const subscriptionParams: Stripe.SubscriptionCreateParams = {
           customer: customerId,
