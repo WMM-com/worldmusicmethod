@@ -261,10 +261,16 @@ serve(async (req) => {
     }
 
     // Create subscription with trial_period_days (NO upfront charge)
+    // Ensure trial_length_days is an integer
+    const trialDays = parseInt(String(product.trial_length_days), 10);
+    if (!trialDays || trialDays <= 0) {
+      throw new Error("Invalid trial length days");
+    }
+
     const subscriptionParams: Stripe.SubscriptionCreateParams = {
       customer: customerId,
       items: [{ price: priceId }],
-      trial_period_days: product.trial_length_days,
+      trial_period_days: trialDays,
       payment_settings: {
         payment_method_types: ['card'],
         save_default_payment_method: 'on_subscription',

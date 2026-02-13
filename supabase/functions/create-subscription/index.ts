@@ -288,13 +288,25 @@ serve(async (req) => {
 
       // Handle trial
       if (product.trial_enabled && product.trial_length_days) {
-        if (product.trial_price_usd === 0 || product.trial_price_usd === null) {
-          // Free trial
-          subscriptionParams.trial_period_days = product.trial_length_days;
-          logStep("Free trial added", { days: product.trial_length_days });
+        const trialDays = parseInt(String(product.trial_length_days), 10);
+        
+        if (!isNaN(trialDays) && trialDays > 0) {
+          if (product.trial_price_usd === 0 || product.trial_price_usd === null) {
+            // Free trial
+            subscriptionParams.trial_period_days = trialDays;
+            logStep("Free trial added", { days: trialDays });
+          } else {
+            // Paid trial - use trial_period_days and handle payment separately
+            subscriptionParams.trial_period_days = trialDays;
+            logStep("Paid trial configured", { 
+              days: trialDays, 
+              trialPrice: product.trial_price_usd 
+            });
+          }
         } else {
-          // Paid trial - will need to handle separately
-          logStep("Paid trial", { price: product.trial_price_usd, days: product.trial_length_days });
+          logStep("Invalid trial_length_days, skipping trial", { 
+            trial_length_days: product.trial_length_days 
+          });
         }
       }
 
@@ -306,11 +318,49 @@ serve(async (req) => {
         logStep("Coupon recorded (discount already in price)", { code: couponCode });
       }
 
-      const subscription = await stripe.subscriptions.create(subscriptionParams);
-      logStep("Stripe subscription created", { subscriptionId: subscription.id, status: subscription.status });
+      let subscription;
+      try {
+        logStep("Creating Stripe subscription with params", { 
+          customerId,
+          priceId,
+          trial_period_days: subscriptionParams.trial_period_days,
+          payment_behavior: subscriptionParams.payment_behavior,
+        });
+        
+        subscription = await stripe.subscriptions.create(subscriptionParams);
+        logStep("Stripe subscription created successfully", { 
+          subscriptionId: subscription.id, 
+          status: subscription.status,
+          current_period_start: subscription.current_period_start,
+          current_period_end: subscription.current_period_end,
+          trial_end: subscription.trial_end,
+        });
+      } catch (stripeError: any) {
+        logStep("Stripe subscription creation failed", { 
+          error: stripeError.message, 
+          code: stripeError.code,
+          type: stripeError.type,
+          param: stripeError.param,
+        });
+        throw new Error(`Stripe subscription error: ${stripeError.message}`);
+      }
 
       const invoice = subscription.latest_invoice as Stripe.Invoice;
       const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent;
+
+      // Validate Stripe timestamps before converting
+      const periodStart = subscription.current_period_start;
+      const periodEnd = subscription.current_period_end;
+      const trialEnd = subscription.trial_end;
+
+      if (!periodStart || !periodEnd) {
+        logStep("ERROR: Invalid Stripe subscription timestamps", { 
+          periodStart, 
+          periodEnd, 
+          trialEnd 
+        });
+        throw new Error("Stripe returned invalid subscription timestamps");
+      }
 
       // Use resolved regional currency, then passed currency, then default to USD
       const subscriptionCurrency = resolvedRegionalCurrency 
@@ -327,16 +377,14 @@ serve(async (req) => {
           payment_provider: 'stripe',
           provider_subscription_id: subscription.id,
           status: subscription.status === 'active' ? 'active' : 'trialing',
-          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-          current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          current_period_start: new Date(periodStart * 1000).toISOString(),
+          current_period_end: new Date(periodEnd * 1000).toISOString(),
           customer_name: fullName,
           customer_email: email,
           amount: typeof amount === 'number' && isFinite(amount) ? amount : product.base_price_usd,
           currency: subscriptionCurrency,
           interval: product.billing_interval,
-          trial_ends_at: subscription.trial_end 
-            ? new Date(subscription.trial_end * 1000).toISOString() 
-            : null,
+          trial_ends_at: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
           coupon_code: couponCode || null,
         })
         .select()
