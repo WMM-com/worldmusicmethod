@@ -348,26 +348,61 @@ serve(async (req) => {
       const invoice = subscription.latest_invoice as Stripe.Invoice;
       const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent;
 
-      // Validate Stripe timestamps before converting
-      const periodStart = subscription.current_period_start;
-      const periodEnd = subscription.current_period_end;
-      const trialEnd = subscription.trial_end;
-
-      if (!periodStart || !periodEnd) {
-        logStep("ERROR: Invalid Stripe subscription timestamps", { 
-          periodStart, 
-          periodEnd, 
-          trialEnd 
-        });
-        throw new Error("Stripe returned invalid subscription timestamps");
-      }
-
       // Use resolved regional currency, then passed currency, then default to USD
       const subscriptionCurrency = resolvedRegionalCurrency 
         ? resolvedRegionalCurrency.toUpperCase()
         : (typeof currency === 'string' && currency.trim()) 
           ? currency.trim().toUpperCase() 
           : 'USD';
+
+      // Handle timestamps - incomplete subscriptions may not have period dates yet
+      let periodStart: Date;
+      let periodEnd: Date;
+      let trialEndDate: Date | null = null;
+
+      if (subscription.current_period_start && subscription.current_period_end) {
+        periodStart = new Date(subscription.current_period_start * 1000);
+        periodEnd = new Date(subscription.current_period_end * 1000);
+        logStep("Using Stripe subscription timestamps", { 
+          periodStart: periodStart.toISOString(), 
+          periodEnd: periodEnd.toISOString() 
+        });
+      } else {
+        // Incomplete subscription - calculate expected dates
+        periodStart = new Date();
+        periodEnd = new Date();
+        switch (product.billing_interval) {
+          case 'daily':
+            periodEnd.setDate(periodEnd.getDate() + 1);
+            break;
+          case 'weekly':
+            periodEnd.setDate(periodEnd.getDate() + 7);
+            break;
+          case 'monthly':
+            periodEnd.setMonth(periodEnd.getMonth() + 1);
+            break;
+          case 'annual':
+          case 'yearly':
+            periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+            break;
+          default:
+            periodEnd.setMonth(periodEnd.getMonth() + 1);
+        }
+        logStep("Calculated timestamps for incomplete subscription", { 
+          periodStart: periodStart.toISOString(), 
+          periodEnd: periodEnd.toISOString(),
+          interval: product.billing_interval
+        });
+      }
+
+      // Handle trial end date
+      if (subscription.trial_end) {
+        trialEndDate = new Date(subscription.trial_end * 1000);
+      } else if (product.trial_enabled && product.trial_length_days) {
+        trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + parseInt(String(product.trial_length_days), 10));
+        logStep("Calculated trial end date", { trialEndDate: trialEndDate.toISOString() });
+      }
 
       // Save to database
       const { data: dbSubscription, error: dbError } = await supabaseClient
@@ -376,15 +411,16 @@ serve(async (req) => {
           product_id: productId,
           payment_provider: 'stripe',
           provider_subscription_id: subscription.id,
-          status: subscription.status === 'active' ? 'active' : 'trialing',
-          current_period_start: new Date(periodStart * 1000).toISOString(),
-          current_period_end: new Date(periodEnd * 1000).toISOString(),
+          status: subscription.status === 'active' ? 'active' : 
+                  subscription.status === 'trialing' ? 'trialing' : 'incomplete',
+          current_period_start: periodStart.toISOString(),
+          current_period_end: periodEnd.toISOString(),
           customer_name: fullName,
           customer_email: email,
           amount: typeof amount === 'number' && isFinite(amount) ? amount : product.base_price_usd,
           currency: subscriptionCurrency,
           interval: product.billing_interval,
-          trial_ends_at: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
+          trial_ends_at: trialEndDate?.toISOString() || null,
           coupon_code: couponCode || null,
         })
         .select()
@@ -392,8 +428,12 @@ serve(async (req) => {
 
       if (dbError) {
         logStep("Database error", dbError);
+        throw new Error(`Failed to save subscription: ${dbError.message}`);
       } else {
-        logStep("Subscription saved to database", { id: dbSubscription.id });
+        logStep("Subscription saved to database", { 
+          id: dbSubscription.id,
+          status: dbSubscription.status,
+        });
       }
 
       return new Response(
